@@ -104,7 +104,7 @@ class PostgresStore:
         dsn: str,
         *,
         connect_timeout: int = 15,
-        autocommit: bool = False,
+        autocommit: bool = True,
         use_copy: Optional[bool] = None,
     ) -> None:
         """
@@ -115,6 +115,12 @@ class PostgresStore:
             ``True``/``False`` to declare it explicitly and skip the probe —
             useful behind proxies that dislike the extra round-trip, or against
             servers known to mishandle the COPY sub-protocol.
+        autocommit:
+            Defaults True. With autocommit on, a bare read never leaves the shared
+            connection INTRANS, which would otherwise turn a later
+            ``transaction()`` into a nested savepoint whose commit is not durable.
+            Multi-statement atomicity still comes from :meth:`transaction`, which
+            issues explicit BEGIN/COMMIT.
         """
         self.dsn = dsn
         self.connect_timeout = connect_timeout
@@ -309,6 +315,73 @@ class PostgresStore:
             cur.executemany(stmt, batch)
             count += len(batch)
         return count
+
+    def upsert_table(
+        self,
+        table: str,
+        pk: str,
+        columns: Sequence[str],
+        rows: Iterator[Sequence[Any]],
+        *,
+        column_types: Optional[dict[str, str]] = None,
+        update_columns: Optional[Sequence[str]] = None,
+    ) -> LoadResult:
+        """Generic set-based upsert into ``mf.<table>`` keyed on ``pk``.
+
+        ``columns`` must include ``pk``. Rows are staged into an all-TEXT staging
+        table (so any Python value can be written), then merged with
+        ``ON CONFLICT (pk) DO UPDATE``, casting each staged value to its real type
+        given by ``column_types`` (default: text). Values written as text — a dict
+        serialised to JSON, a Decimal, a date — cast cleanly, which is why the
+        staging is untyped. On conflict only non-pk ``update_columns`` refresh.
+        """
+        res = LoadResult(target=table)
+        materialised = [tuple(r) for r in rows]
+        res.staged = len(materialised)
+        if not materialised:
+            return res
+        if pk not in columns:
+            raise ValueError(f"pk {pk!r} must be present in columns")
+
+        types = column_types or {}
+        non_pk = [c for c in columns if c != pk]
+        to_update = list(update_columns) if update_columns is not None else non_pk
+
+        def _cast(col: str) -> str:
+            t = types.get(col)
+            return f"NULLIF(s.{col}, '')::{t}" if t else f"s.{col}"
+
+        with self.transaction() as conn, conn.cursor() as cur:
+            ddl = ", ".join(f"{c} text" for c in columns)
+            self._create_staging(cur, f"stg_{table}", ddl)
+            self._copy_rows(cur, f"stg_{table}", columns, iter(materialised))
+
+            before = self._count(cur, table)
+            set_clause = ", ".join(f"{c} = EXCLUDED.{c}" for c in to_update)
+            # ON CONFLICT's WHERE sees only the existing row (t) and EXCLUDED; the
+            # staging subquery (s) is not in scope here.
+            guard = " OR ".join(
+                f"t.{c} IS DISTINCT FROM EXCLUDED.{c}" for c in to_update)
+            col_list = ", ".join(columns)
+            sel_list = ", ".join(_cast(c) for c in columns)
+            cur.execute(
+                f"""
+                INSERT INTO mf.{table} AS t ({col_list})
+                SELECT {sel_list} FROM (
+                    SELECT DISTINCT ON ({pk}) * FROM mf.stg_{table} ORDER BY {pk}
+                ) s
+                ON CONFLICT ({pk}) DO UPDATE SET {set_clause}
+                WHERE {guard}
+                """
+            )
+            written = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
+            res.inserted = self._count(cur, table) - before
+            res.updated = max(0, written - res.inserted)
+            res.unchanged = max(0, res.staged - written)
+            self._drop(cur, f"stg_{table}")
+        log.info("%s: staged=%d inserted=%d updated=%d unchanged=%d",
+                 table, res.staged, res.inserted, res.updated, res.unchanged)
+        return res
 
     @staticmethod
     def _count(cur: psycopg.Cursor, table: str) -> int:
@@ -746,4 +819,125 @@ class PostgresStore:
                 FROM mf.nav_history
                 """
             ).fetchone()
+
+    # -- checkpoints ---------------------------------------------------------
+
+    def checkpoint_get(
+        self, source: str, entity_kind: str, entity_key: str
+    ) -> Optional[dict[str, Any]]:
+        """Return the checkpoint row for (source, kind, key), or None."""
+        with self.connect().cursor() as cur:
+            return cur.execute(
+                """
+                SELECT source, entity_kind, entity_key, cursor_value, last_nav_date,
+                       records_done, status, attempts, last_error, started_at, updated_at
+                FROM mf.ingest_checkpoints
+                WHERE source = %s AND entity_kind = %s AND entity_key = %s
+                """,
+                (source, entity_kind, entity_key),
+            ).fetchone()
+
+    def checkpoint_should_run(self, source: str, entity_kind: str, entity_key: str) -> bool:
+        """True unless the checkpoint is already DONE. Resumable-run gate."""
+        row = self.checkpoint_get(source, entity_kind, entity_key)
+        return row is None or row["status"] != "DONE"
+
+    def checkpoint_start(self, source: str, entity_kind: str, entity_key: str) -> None:
+        """Mark a unit of work IN_PROGRESS (idempotent upsert, bumps attempts)."""
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO mf.ingest_checkpoints
+                    (source, entity_kind, entity_key, status, attempts, started_at, updated_at)
+                VALUES (%s, %s, %s, 'IN_PROGRESS', 1, now(), now())
+                ON CONFLICT (source, entity_kind, entity_key) DO UPDATE SET
+                    status     = 'IN_PROGRESS',
+                    attempts   = mf.ingest_checkpoints.attempts + 1,
+                    started_at = now(),
+                    updated_at = now()
+                """,
+                (source, entity_kind, entity_key),
+            )
+
+    def checkpoint_done(self, source: str, entity_kind: str, entity_key: str,
+                        records_done: int, cursor_value: Optional[str] = None) -> None:
+        """Mark a unit of work DONE with its record count."""
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE mf.ingest_checkpoints
+                SET status = 'DONE', records_done = %s, cursor_value = %s,
+                    last_error = NULL, updated_at = now()
+                WHERE source = %s AND entity_kind = %s AND entity_key = %s
+                """,
+                (records_done, cursor_value, source, entity_kind, entity_key),
+            )
+
+    def checkpoint_failed(self, source: str, entity_kind: str, entity_key: str,
+                          error: str) -> None:
+        """Mark a unit of work FAILED with the error; a re-run will retry it."""
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE mf.ingest_checkpoints
+                SET status = 'FAILED', last_error = %s, updated_at = now()
+                WHERE source = %s AND entity_kind = %s AND entity_key = %s
+                """,
+                (error, source, entity_kind, entity_key),
+            )
+
+    def pending_checkpoints(
+        self, source: str, entity_kind: str
+    ) -> list[dict[str, Any]]:
+        """All non-DONE checkpoints for a source+kind, in key order."""
+        with self.connect().cursor() as cur:
+            return cur.execute(
+                """
+                SELECT entity_key, status, attempts, last_error
+                FROM mf.ingest_checkpoints
+                WHERE source = %s AND entity_kind = %s AND status <> 'DONE'
+                ORDER BY entity_key
+                """,
+                (source, entity_kind),
+            ).fetchall()
+
+    # -- reference sets ------------------------------------------------------
+
+    def in_scope_codes(self, *, include_defunct: bool = False) -> set[int]:
+        """The in-scope Regular Plan scheme codes currently in mf.funds.
+
+        The 5-year NAV window is delivered for this set. History rows for codes
+        outside it are skipped during backfill.
+        """
+        sql = "SELECT amfi_scheme_code FROM mf.funds WHERE in_scope"
+        if not include_defunct:
+            sql += " AND NOT is_defunct"
+        with self.connect().cursor() as cur:
+            return {int(r["amfi_scheme_code"]) for r in cur.execute(sql).fetchall()}
+
+    def fund_codes(self) -> set[int]:
+        """Every scheme code currently in mf.funds (any plan, any scope)."""
+        with self.connect().cursor() as cur:
+            return {int(r["amfi_scheme_code"]) for r in cur.execute(
+                "SELECT amfi_scheme_code FROM mf.funds").fetchall()}
+
+    # -- source_metadata -----------------------------------------------------
+
+    def record_fetch(self, meta: dict[str, Any]) -> int:
+        """Insert one mf.source_metadata row. Returns the fetch_id."""
+        cols = (
+            "source", "endpoint", "entity_kind", "entity_key", "http_status",
+            "content_type", "content_hash", "content_bytes", "acquisition",
+            "wayback_ts", "user_agent", "request_url", "records_in", "records_ok",
+            "records_quarantined", "duration_ms", "error",
+        )
+        present = [c for c in cols if meta.get(c) is not None]
+        placeholders = ", ".join(["%s"] * len(present))
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"INSERT INTO mf.source_metadata ({', '.join(present)}) "
+                f"VALUES ({placeholders}) RETURNING fetch_id",
+                tuple(meta[c] for c in present),
+            )
+            return int(cur.fetchone()["fetch_id"])
 

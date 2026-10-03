@@ -163,7 +163,7 @@ COMMENT ON TABLE mf.fund_opinions IS
 CREATE TABLE IF NOT EXISTS mf.source_metadata (
     fetch_id       bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     source         text   NOT NULL CHECK (source IN
-                   ('MFAPI', 'AMFI', 'SCRIPBOX', 'CAM', 'WAYBACK', 'MANUAL')),
+                   ('MFAPI', 'AMFI', 'AMFI_HISTORY', 'SCRIPBOX', 'CAM', 'WAYBACK', 'MANUAL')),
     endpoint       text   NOT NULL,
     entity_kind    text   NOT NULL CHECK (entity_kind IN
                    ('LATEST_NAV', 'NAV_HISTORY', 'SCHEME_LIST', 'FUND_DETAIL',
