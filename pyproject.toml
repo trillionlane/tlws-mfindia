@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mfdataindia"
+version = "0.1.0"
+description = "Indian Regular Plan mutual fund schemes, variants, metadata, ISIN/AMFI codes and NAV history"
+readme = "docs/RESEARCH.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "MFDataIndia" }]
+keywords = ["india", "mutual-funds", "amfi", "nav", "isin"]
+
+# The AMFI parser is deliberately stdlib-only so it runs unchanged on an India
+# server with no dependency install. Only the PostgreSQL layer needs a driver.
+dependencies = [
+    "psycopg[binary]>=3.1",
+]
+
+[project.optional-dependencies]
+# Parquet is an export format derived from PostgreSQL, not a second store.
+export = ["pyarrow>=14"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+mfdataindia-amfi = "mfdataindia.ingest.amfi_navall:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+# Tests that need a live PostgreSQL are marked and skipped unless MF_TEST_DSN is set.
+markers = [
+    "postgres: requires a live PostgreSQL server (set MF_TEST_DSN to enable)",
+]
+
+[tool.coverage.run]
+source = ["mfdataindia"]

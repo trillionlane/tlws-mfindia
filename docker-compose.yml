@@ -1,0 +1,51 @@
+# MFDataIndia — PostgreSQL system of record.
+#
+#   docker compose up -d
+#
+# On first start, PostgreSQL executes everything in /docker-entrypoint-initdb.d
+# in filename order, so the numbered migrations in ./sql apply automatically and
+# the database comes up with the full mf.* schema. They are idempotent, so
+# re-applying later with `psql -f` is also safe.
+#
+# Sizing note: nav_history reaches ~5.4M rows for the required 5-year window and
+# ~26M with full history (~2.5GB including indexes). The defaults below are
+# modest; raise shared_buffers and work_mem for a production host.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mfdataindia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mfdataindia}
+      POSTGRES_USER: ${POSTGRES_USER:-mfdata}
+      POSTGRES_PASSWORD: ${POST…WORD}
+      # Indian market data: keep timestamps unambiguous.
+      TZ: Asia/Kolkata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - effective_cache_size=2GB
+      # Partition pruning is what makes the 5-year window cheap.
+      - -c
+      - enable_partition_pruning=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mfdata} -d ${POSTGRES_DB:-mfdataindia}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  pgdata:
