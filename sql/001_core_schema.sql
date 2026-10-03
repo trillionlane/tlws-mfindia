@@ -81,6 +81,14 @@ CREATE TABLE IF NOT EXISTS mf.funds (
     -- plan / option classification (see amfi_navall.classify_plan/classify_option)
     plan_type          text NOT NULL DEFAULT 'UNLABELLED' CHECK (plan_type IN
                          ('REGULAR', 'DIRECT', 'RETAIL', 'INSTITUTIONAL', 'UNLABELLED')),
+    -- How plan_type was determined. Scope depends on this, so it must be a real
+    -- column (a GENERATED in_scope cannot reference a parser-internal field).
+    --   COLUMN             the current feed's explicit Plan column. Authoritative.
+    --   NAME               legacy feed: name inference was the only signal.
+    --   COLUMN_BLANK       feed has a Plan column but left it empty => plan unknown.
+    --   COLUMN_UNRECOGNISED feed has a Plan column with a novel value.
+    plan_source        text NOT NULL DEFAULT 'NAME' CHECK (plan_source IN
+                         ('COLUMN', 'NAME', 'COLUMN_BLANK', 'COLUMN_UNRECOGNISED')),
     option_type        text NOT NULL DEFAULT 'UNKNOWN' CHECK (option_type IN
                          ('GROWTH', 'IDCW', 'DIVIDEND', 'BONUS', 'UNKNOWN')),
     periodicity        text CHECK (periodicity IS NULL OR periodicity IN
@@ -91,12 +99,15 @@ CREATE TABLE IF NOT EXISTS mf.funds (
     is_defunct         boolean NOT NULL DEFAULT false,
     nav_not_published  boolean NOT NULL DEFAULT false,
 
-    -- In-scope = Regular Plan, all options. Mirrors the Python classifier:
-    --   plan == REGULAR, or (plan == UNLABELLED and not an ETF).
+    -- In-scope = Regular Plan, all options. Mirrors amfi_navall.resolve_plan:
+    --   plan == REGULAR, or (plan == UNLABELLED and not an ETF AND the plan was
+    --   inferred from the name because no Plan column existed).
+    -- A blank Plan column (current feed) means "plan unknown" -> NOT in scope.
     -- Retail / Institutional are separate plan labels: stored, not in scope.
     in_scope           boolean GENERATED ALWAYS AS (
                            plan_type = 'REGULAR'
-                           OR (plan_type = 'UNLABELLED' AND NOT is_etf)
+                           OR (plan_type = 'UNLABELLED' AND NOT is_etf
+                               AND plan_source = 'NAME')
                        ) STORED,
 
     -- AMFI ISIN columns, preserving their exact dual-purpose semantics.

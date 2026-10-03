@@ -178,6 +178,7 @@ def fund_rows(
             s.scheme_category,                      # scheme_category_raw
             category_source,                        # category_source
             s.plan_type,                            # plan_type
+            s.plan_source,                          # plan_source
             s.option,                               # option_type
             map_periodicity(s.periodicity),         # periodicity
             bool(s.is_etf),                         # is_etf
@@ -290,6 +291,20 @@ def quality_flag_rows(
                     "scheme_name": s.scheme_name,
                     "nav": s.nav,
                     "nav_not_published": bool(s.nav_not_published),
+                }),
+                source,
+            )
+
+        if getattr(s, "plan_source", None) == "COLUMN_BLANK":
+            yield (
+                code, s.nav_date, "NAME_PARSE_FAILURE", "INFO",
+                "AMFI feed left the Plan column blank; plan is unknown, so the "
+                "scheme is stored with plan_type=UNLABELLED and excluded from the "
+                "default Regular-Plan scope",
+                json.dumps({
+                    "scheme_name": s.scheme_name,
+                    "plan_type": s.plan_type,
+                    "plan_source": "COLUMN_BLANK",
                 }),
                 source,
             )

@@ -16,11 +16,12 @@ Scope decisions locked with the user:
 
 | Source | Reachable | Auth | Robots | Verdict | Role |
 |---|---|---|---|---|---|
-| `api.mfapi.in` | ✅ | none | none published | **Primary** | Scheme master, ISIN, AMFI code, full NAV history |
+| `portal.amfiindia.com` | ✅ here | none | — | **SOLE NAV AUTHORITY** | Same-day NAVAll snapshot + bulk NAV history (§3B) |
+| `www.amfiindia.com` | ❌ here / ✅ from India | — | — | geo-blocked | same content as `portal.`; only needed for AUM/dividend pages |
+| `api.mfapi.in` | ✅ | none | none published | ❌ **dropped** | unreliable; kept only as a POC cross-check baseline |
 | `scripbox.com` HTML pages | ✅ | none | `/mutual-fund/*` allowed | **Primary enrichment** | 102-field factsheet per fund |
 | `scripbox.com/_next/data/…` | ✅ | none | ❌ `Disallow: */data/` | avoid | same data, robots-disallowed → use HTML instead |
-| `amfiindia.com` | ❌ here / ✅ **from India** | — | — | **Authority** | Clean type/category/AMC + official ISINs; fetch from India server (§3B) |
-| `web.archive.org` → AMFI | ✅ 200 | none | — | **format source** | Wayback holds `spages/NAVAll.txt`; parser built + validated **now** |
+| `web.archive.org` → AMFI | ✅ 200 | none | — | **regression fixture** | archived 6-column NAVAll.txt; the parser supports both layouts |
 | `www.amfi.org` | ✅ 200 | — | — | not a feed | member directory only |
 | `google.com/finance` | ✅ 200 | none | — | ❌ **rejected** | **zero** Indian MF coverage — tested, see §3B |
 | `sebi.gov.in` | ✅ | none | — | useful | SID / SIA / KIM filings reachable |
@@ -33,13 +34,11 @@ Scope decisions locked with the user:
 | CAMS / KFintech | SPA / 404 | — | — | drop | no public JSON API found |
 
 ### Key finding
-Scripbox and `api.mfapi.in` are **not redundant — they are complementary and they agree.**
-A proof-of-concept join on ICICI Prudential's 111 funds returned:
-
-- ISIN match rate: **111 / 111 = 100 %**
-- AMFI scheme-code agreement: **111 / 111 = 100 %**
-
-So the two sources can be joined safely on ISIN with AMFI scheme code as a cross-check.
+AMFI's own feed is now both **authoritative and sufficient** for NAV: the daily snapshot plus
+the bulk history report cover the full 5-year window. The earlier `api.mfapi.in` + Scripbox
+joining work remains useful as a cross-check baseline (a POC join on ICICI Prudential's 111
+funds matched ISIN **111 / 111** and AMFI scheme code **111 / 111**), but `api.mfapi.in` is
+no longer a NAV source — it is unreliable. Scripbox remains the **enrichment** layer.
 
 ---
 
@@ -155,29 +154,40 @@ Others 41 · Precious Metals 22.
 
 ## 3B. AMFI (`amfiindia.com`) — authority source, format confirmed
 
-AMFI is **geo-blocked from this network** (TCP connect times out; DNS resolves to 14.143.46.156).
-Two things changed that:
+AMFI is the **sole NAV authority** for MFDataIndia. Two earlier assumptions turned out to be
+wrong, and both corrections are significant:
 
-1. **The Wayback Machine holds a real copy of `spages/NAVAll.txt`.** We pulled a 1.6 MB snapshot
-   (13,738 schemes, dated 27-Dec-2024) and parsed it end-to-end. The format is now known exactly,
-   so the parser is written and validated *today* — the India-server run only swaps the URL.
-2. **Production ingest will run on an India server**, where AMFI is reachable. The file format is
-   identical, so the Wayback sample is a genuine dry-run fixture, not a guess.
+1. **Only `www.amfiindia.com` is geo-blocked.** `portal.amfiindia.com` serves the same paths
+   and is reachable globally (measured: `portal.amfiindia.com/spages/NAVAll.txt` → 1.52 MB in
+   1.7 s from this network). **No India server is required.**
+2. **AMFI *does* publish a bulk NAV-history download.** The claim that it did not was based on
+   the `spages/` snapshots only. `portal.amfiindia.com/DownloadNAVHistoryReport_Po.aspx`
+   returns every scheme's NAV for any date range, so the 5-year window is backfillable from
+   AMFI alone. `api.mfapi.in` is **dropped** as a NAV source (unreliable).
 
-### Exact URLs to fetch from the India server
-
-Confirmed from AMFI's own archived `/nav-history-download` page (the `?t=` value is a
-cache-buster; any timestamp works):
+### Exact URLs (all live on `portal.amfiindia.com`, no geo-block)
 
 | URL | Content |
 |---|---|
-| `https://www.amfiindia.com/spages/NAVAll.txt?t=<ts>` | **Complete** NAV report — all scheme types |
-| `https://www.amfiindia.com/spages/NAVOpen.txt?t=<ts>` | Open-ended schemes only |
-| `https://www.amfiindia.com/spages/NAVClose.txt?t=<ts>` | Close-ended schemes only |
-| `https://www.amfiindia.com/spages/NAVInterval.txt?t=<ts>` | Interval funds only |
+| `/spages/NAVAll.txt?t=<ts>` | **Complete** same-day NAV — all scheme types |
+| `/spages/NAVOpen.txt?t=<ts>` | Open-ended schemes only |
+| `/spages/NAVClose.txt?t=<ts>` | Close-ended schemes only |
+| `/spages/NAVInterval.txt?t=<ts>` | Interval funds only |
+| `/DownloadNAVHistoryReport_Po.aspx?frmdt=DD-Mon-YYYY&todt=DD-Mon-YYYY&tp=N&mc=0` | **Bulk NAV history** for a date range. `tp=1/2/3` = Open/Close/Interval (disjoint slices — fetch all three) |
 
-> ⚠️ **These are same-day snapshots, not history.** AMFI publishes only the latest NAV day.
-> There is **no** AMFI bulk NAV-history download. `api.mfapi.in` remains the NAV-history source.
+Measured: a 31-day range returns ~20 MB in ~120 s, so the 5-year window (~1.7 GB of text)
+backfills in ~2.5–3 h, chunked into ~90-day requests with a resume checkpoint each.
+
+### File format — two layouts, both parsed
+
+`NAVAll.txt` changed shape. The parser detects the layout by column count and handles both:
+
+* **Current (8 columns)** — AMFI added explicit ``Plan`` and ``Option`` columns:
+  `Scheme Code;ISIN …;Scheme Name;Plan;Option;Net Asset Value;Date`
+* **Legacy (6 columns)** — plan/option embedded in the name (the 27-Dec-2024 archive).
+
+The **history report** is also 8-column but in a *different order*:
+`Scheme Code;NAV Name;Plan;Option;ISIN …;ISIN …;Net Asset Value;Date` — its own parser.
 
 ### File format (validated against the real file)
 
@@ -208,7 +218,7 @@ Parse rules that matter:
 - Measured on the real file: 13,738 data rows, 51 type/category headers, 44 AMC headers, and
   **100 % of rows resolved to both a category and an AMC**.
 
-### Why AMFI is worth the India-server hop — measured
+### Why AMFI is the authority — measured against api.mfapi.in
 
 Cross-checked all 13,738 AMFI codes against `api.mfapi.in` (all 13,738 are present there):
 
@@ -286,21 +296,19 @@ mutual-fund coverage — no NAV, no AUM, no factsheet data. Indices do resolve, 
 series is JS-rendered and not extractable from the HTML (0 chart points, no `data-last-price`),
 so it is not usable as a benchmark source either. **Dropped.**
 
-### What to hand over from the India server
+### What is still missing (not fetchable from this network)
 
-Priority order — each is a plain file drop, no code needed:
+`portal.amfiindia.com` covers NAV fully. What it does **not** expose to this network:
 
-1. `https://www.amfiindia.com/spages/NAVAll.txt` ← **highest value**; fixes type/category/house
-2. `https://www.amfiindia.com/spages/NAVOpen.txt`, `NAVClose.txt`, `NAVInterval.txt`
-3. The monthly **scheme-wise AUM** file (under *Investor Corner → Online Center → Monthly
-   Factsheets*) — the one file we could **not** find in Wayback, and the only route to AUM history
-4. Fresh HTML of `/online-center/portfolio-disclosure` and
+1. The monthly **scheme-wise AUM** file (under *Investor Corner → Online Center → Monthly
+   Factsheets*) — the one file we could **not** find anywhere, and the only route to AUM history.
+2. Fresh HTML of `/online-center/portfolio-disclosure` and
    `/investor-corner/online-center/monthlyfactsheets`, so the AMC directory is current rather
-   than a 2025 snapshot
-5. Anything behind `/intermediary/other-data/scheme-dividends` — would close the IDCW-history gap
+   than a 2025 snapshot.
+3. Anything behind `/intermediary/other-data/scheme-dividends` — would close the IDCW-history gap.
 
-The pipeline ingests whatever arrives, and runs mfapi.in + Scripbox unchanged if AMFI files never
-show up.
+If those are wanted, an India-server run of `AmfiClient` against `www.amfiindia.com` fills them
+in; the ingestion path is unchanged.
 
 ---
 
@@ -313,6 +321,12 @@ Growth, IDCW/dividend, payout *and* reinvestment variants — not just Growth. D
 excluded.
 
 ### The population, measured
+
+> **Authoritative today (live portal feed, 01-Oct-2026):** the current `NAVAll.txt` carries an
+> explicit `Plan` column, so no name guessing is needed. Measured: **4,344 Regular-Plan schemes
+> (4,290 live)**, 4,317 Direct, 5,705 with a blank Plan cell (mostly superseded codes, ETFs and
+> segregated portfolios — stored and flagged, not assumed Regular). The §4 table below is the
+> older name-based analysis of the Dec-2024 archive, kept for context.
 
 Starting from the 8,676 active schemes, classified by `schemeName` (because `schemeType` is
 corrupt — see §2):
@@ -507,7 +521,7 @@ SIP backtests · lump-sum growth tables · NAV continuity/outlier detection.
 
 | Gap | Why | Mitigation |
 |---|---|---|
-| NAV before Apr-2006 | archive floor of `api.mfapi.in` | **Now moot** — user scoped to last 5 years (§4). AMFI publishes no NAV history anyway (§3B). |
+| NAV before the early-2000s | AMFI bulk-history floor | **Moot** — user scoped to last 5 years (§4), and AMFI's `DownloadNAVHistoryReport` (§3B) covers the full window. |
 | AUM **history** | Scripbox gives current AUM snapshot only | AMFI monthly scheme-wise AUM file is **not** in Wayback and is India-only → capture from the India server going forward; we build our own time series |
 | Portfolio holdings **history** | Scripbox `asset_holding` is current only | ✅ **partially solved** — AMFI's portfolio-disclosure page is a directory of 53 AMC domains / 181 landing pages / 70 direct `.xls`/`.xlsx` links, harvested to `research/amfi_amc_directory.json` |
 | Expense-ratio **history** | current value only | snapshot-only; build our own series going forward |
@@ -560,31 +574,30 @@ SIP backtests · lump-sum growth tables · NAV continuity/outlier detection.
 ## 8. Proposed architecture
 
 ```
-        amfiindia.com  (AUTHORITY — India server only)
-        spages/NAVAll.txt -> clean schemeType/Category/AMC, official ISINs
-                     |  metadata correction + reconciliation
-                     v
-              api.mfapi.in  (PRIMARY / canonical)
-              GET /mf/latest   -> 1 request, whole universe
-              GET /mf/{code}   -> full NAV history (serve last 5y by default)
-                     |  scheme_code, ISIN, name, house, category, NAV
-                     v
+        portal.amfiindia.com  (SOLE NAV AUTHORITY — globally reachable)
+        /spages/NAVAll.txt                 -> daily snapshot, all schemes, latest NAV
+        /DownloadNAVHistoryReport_Po.aspx  -> bulk NAV history (backfill 5y)
+                      |  authoritative: scheme code, ISIN, name, AMC,
+                      |  schemeType/Category, Plan, Option, NAV, date
+                      v
         ----------------------------------------------
         |  Ingestion layer (Python)                  |
-        |  mfapi / scripbox / amfi clients + http    |
-        |  retry, throttle, cache, checkpoint,       |
-        |  buildId refresh, normalise, quarantine    |
+        |  amfi client (retry, throttle, checkpoint) |
+        |  navall + nav-history parsers, normalise   |
         ----------------------------------------------
-                     ^  join on ISIN
-                     |  (AMFI code as cross-check)
-              scripbox.com  (ENRICHMENT)
+                      ^  join on ISIN
+                      |  (AMFI code as cross-check)
+              scripbox.com  (ENRICHMENT — facts only)
               /mutual-fund/amc                -> 50 AMCs
               /mutual-fund/amc/{slug}/isin-…  -> 1,761 funds + variants
               /mutual-fund/{slug}             -> 102 fields per fund
               (all via HTML + embedded __NEXT_DATA__, robots-clean)
-                     |
-                     v
+                      |
+                      v
               Storage: PostgreSQL 16  (+ Parquet export)
+
+        api.mfapi.in  — DROPPED as a NAV source (unreliable). Retained only as
+                        a historical cross-check baseline from the earlier POC.
 ```
 
 **Why PostgreSQL (revised from DuckDB).** This is a *continuously ingested, API-served*

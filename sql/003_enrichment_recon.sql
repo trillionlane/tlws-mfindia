@@ -297,7 +297,10 @@ CREATE TABLE IF NOT EXISTS mf.reconciliation_runs (
     finished_at   timestamptz,
     scope         text NOT NULL DEFAULT 'FULL' CHECK (scope IN
                   ('FULL', 'IN_SCOPE_ONLY', 'INCREMENTAL', 'SAMPLE')),
-    sources       text[] NOT NULL DEFAULT ARRAY['AMFI','MFAPI'],
+    -- AMFI is authoritative for NAV. mfapi.in is dropped as a NAV source
+    -- (unreliable); AMFI vs AMFI_HISTORY cross-check is the live reconciliation.
+    -- Sources compared can be extended if a second NAV source is ever re-added.
+    sources       text[] NOT NULL DEFAULT ARRAY['AMFI'],
     nav_date      date,
     schemes_compared   integer,
     nav_compared       integer,

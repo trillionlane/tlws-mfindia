@@ -70,8 +70,11 @@ CREATE TABLE IF NOT EXISTS mf.nav_history (
                        REFERENCES mf.funds (amfi_scheme_code) ON DELETE CASCADE,
     nav_date         date          NOT NULL,
     nav              numeric(18,4) NOT NULL CHECK (nav >= 0),
-    source           text          NOT NULL DEFAULT 'MFAPI' CHECK (source IN
-                       ('MFAPI', 'AMFI', 'CAM', 'MANUAL')),
+    -- AMFI is the sole NAV authority. mfapi.in is excluded from NAV sourcing
+    -- (unreliable); AMFI's same-day NAVAll.txt and its bulk history report both
+    -- come from portal.amfiindia.com.
+    source           text          NOT NULL DEFAULT 'AMFI' CHECK (source IN
+                       ('AMFI', 'AMFI_HISTORY', 'CAM', 'MANUAL')),
     is_cross_verified boolean      NOT NULL DEFAULT false,
     ingested_at      timestamptz   NOT NULL DEFAULT now(),
     PRIMARY KEY (amfi_scheme_code, nav_date)

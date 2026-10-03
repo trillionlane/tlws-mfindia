@@ -51,6 +51,7 @@ FUND_COLUMNS: tuple[str, ...] = (
     "scheme_category_raw",
     "category_source",
     "plan_type",
+    "plan_source",
     "option_type",
     "periodicity",
     "is_etf",
@@ -369,6 +370,7 @@ class PostgresStore:
         scheme_category_raw       text,
         category_source           text,
         plan_type                 text    NOT NULL,
+        plan_source               text,
         option_type               text    NOT NULL,
         periodicity               text,
         is_etf                    boolean NOT NULL DEFAULT false,
@@ -438,7 +440,7 @@ class PostgresStore:
             INSERT INTO mf.funds AS f (
                 amfi_scheme_code, mfapi_scheme_code, scheme_name, scheme_name_norm,
                 amc_id, scheme_type, scheme_category, scheme_category_raw,
-                category_source, plan_type, option_type, periodicity,
+                category_source, plan_type, plan_source, option_type, periodicity,
                 is_etf, is_defunct, nav_not_published,
                 isin_growth_or_div_payout, isin_div_reinvest,
                 first_seen_in_source, last_seen_in_source, is_active,
@@ -447,7 +449,7 @@ class PostgresStore:
             SELECT s.amfi_scheme_code, s.mfapi_scheme_code, s.scheme_name,
                    s.scheme_name_norm, a.amc_id, s.scheme_type, s.scheme_category,
                    s.scheme_category_raw, s.category_source, s.plan_type,
-                   s.option_type, s.periodicity, s.is_etf, s.is_defunct,
+                   s.plan_source, s.option_type, s.periodicity, s.is_etf, s.is_defunct,
                    s.nav_not_published, s.isin_growth_or_div_payout,
                    s.isin_div_reinvest, s.first_seen_in_source,
                    s.last_seen_in_source, s.is_active, s.metadata_authority, now()
@@ -466,6 +468,7 @@ class PostgresStore:
                 scheme_category_raw       = EXCLUDED.scheme_category_raw,
                 category_source           = EXCLUDED.category_source,
                 plan_type                 = EXCLUDED.plan_type,
+                plan_source               = EXCLUDED.plan_source,
                 option_type               = EXCLUDED.option_type,
                 periodicity               = EXCLUDED.periodicity,
                 is_etf                    = EXCLUDED.is_etf,
@@ -481,6 +484,7 @@ class PostgresStore:
                OR f.scheme_category           IS DISTINCT FROM EXCLUDED.scheme_category
                OR f.scheme_type               IS DISTINCT FROM EXCLUDED.scheme_type
                OR f.plan_type                 IS DISTINCT FROM EXCLUDED.plan_type
+               OR f.plan_source               IS DISTINCT FROM EXCLUDED.plan_source
                OR f.option_type               IS DISTINCT FROM EXCLUDED.option_type
                OR f.periodicity               IS DISTINCT FROM EXCLUDED.periodicity
                OR f.is_etf                    IS DISTINCT FROM EXCLUDED.is_etf

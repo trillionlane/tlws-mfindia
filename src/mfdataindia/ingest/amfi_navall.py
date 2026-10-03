@@ -1,28 +1,44 @@
 """Parser for AMFI's ``spages/NAVAll.txt`` daily NAV report.
 
-AMFI (amfiindia.com) is the canonical authority for Indian mutual fund metadata, but the site
-is only reachable from an Indian IP. This module is deliberately **dependency-free** (stdlib
-only) so it runs unchanged on an India server, and is validated against a real copy of the file
-retrieved via the Wayback Machine — see ``docs/RESEARCH.md`` §3B.
+AMFI is the canonical authority for Indian mutual fund NAV and metadata.
+**No India server is required**: ``www.amfiindia.com`` is geo-blocked from some
+networks, but ``portal.amfiindia.com`` serves the same paths and is reachable
+globally. This module is deliberately **dependency-free** (stdlib only) so it can
+run anywhere, and is validated against both a real archived copy of the file and
+the live portal feed — see ``docs/RESEARCH.md`` §3B.
 
-File format (semicolons, CRLF, with hierarchical section headers)::
+Two file layouts exist and both are supported, selected by column count:
+
+**Current (8 columns, 7 semicolons)** — AMFI added explicit ``Plan`` and
+``Option`` columns, so plan/option classification no longer needs name parsing::
+
+    Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date
+
+    135762;INF846K01WO1;-;Axis Children's Fund;Direct Plan;Growth Option;29.0001;01-Oct-2026
+
+**Legacy (6 columns, 5 semicolons)** — plan/option must be inferred from the
+scheme name, which is what the archived 2024 fixture uses::
 
     Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Net Asset Value;Date
 
-    Open Ended Schemes(Debt Scheme - Banking and PSU Fund)      <- schemeType(schemeCategory)
-
-    Aditya Birla Sun Life Mutual Fund                           <- AMC / fund house
-
     119551;INF209KA12Z1;INF209KA13Z9;<name> - DIRECT - IDCW;102.3377;27-Dec-2024
+
+Shared structure — hierarchical section headers carrying type *and* category::
+
+    Open Ended Schemes(Debt Scheme - Banking and PSU Fund)   <- schemeType(schemeCategory)
+
+    Aditya Birla Sun Life Mutual Fund                        <- AMC / fund house
 
 Rules encoded here:
 
-* a line is a **data row** iff it contains exactly 5 semicolons;
+* a line is a **data row** iff it contains exactly 5 or 7 semicolons;
 * section headers yield ``scheme_type`` *and* ``scheme_category`` together;
 * any other non-empty line is the current **AMC** name;
 * missing ISINs are the literal ``-``;
 * column A is dual-purpose — Growth ISIN for growth options, Div-Payout ISIN for IDCW options;
-* dates are ``DD-Mon-YYYY``, **not** mfapi.in's ``DD-MM-YYYY``.
+* dates are ``DD-Mon-YYYY``;
+* the explicit ``Plan``/``Option`` columns win when recognisable, and the scheme
+  name is the fallback — so a blank or novel cell never loses the classification.
 
 Usage::
 
@@ -83,6 +99,9 @@ _IDCW_SPELLINGS = (
 #: The literal header line of NAVAll.txt — skipped, not quarantined.
 _HEADER_PREFIX = "Scheme Code;ISIN Div Payout"
 
+#: The literal header line of the bulk NAV-history report (different column order).
+_HEADER_PREFIX_HISTORY = "Scheme Code;NAV Name"
+
 
 @dataclass(slots=True)
 class AmfiScheme:
@@ -104,6 +123,11 @@ class AmfiScheme:
     is_defunct: bool = False
     nav_not_published: bool = False
     in_scope: bool = False
+    #: How plan_type was determined: COLUMN / COLUMN_BLANK / COLUMN_UNRECOGNISED / NAME.
+    #: Scope depends on this — see resolve_plan().
+    plan_source: str = "NAME"
+    #: How option was determined: COLUMN or NAME.
+    option_source: str = "NAME"
     line_no: int = 0
     warnings: list[str] = field(default_factory=list)
 
@@ -132,6 +156,83 @@ def classify_plan(name: str) -> str:
         if token in up:
             return label
     return "UNLABELLED"
+
+
+#: Values seen in the explicit ``Plan`` column of the current 8-column feed.
+#: ``Regular Plan`` / ``Direct Plan`` are the current spellings; the bare forms are
+#: tolerated because AMFI has varied them. This is an exact-match map rather than a
+#: substring test, so a plan cell can never be misread as an option word.
+_EXPLICIT_PLAN = {
+    "REGULAR PLAN": "REGULAR",
+    "REGULAR": "REGULAR",
+    "DIRECT PLAN": "DIRECT",
+    "DIRECT": "DIRECT",
+    "RETAIL PLAN": "RETAIL",
+    "RETAIL": "RETAIL",
+    "INSTITUTIONAL PLAN": "INSTITUTIONAL",
+    "INSTITUTIONAL": "INSTITUTIONAL",
+}
+
+
+def _cell_key(raw: Optional[str]) -> str:
+    """Fold a CSV cell for exact-map lookup: uppercase, single-spaced, stripped."""
+    if not raw:
+        return ""
+    return " ".join(str(raw).upper().split())
+
+
+def classify_plan_explicit(raw: Optional[str]) -> Optional[str]:
+    """Map the ``Plan`` column to a plan label, or None if unrecognised.
+
+    Returning None (rather than UNLABELLED) lets the caller fall back to name
+    inference, so a blank or novel cell degrades gracefully instead of silently
+    dropping a scheme out of scope.
+    """
+    key = _cell_key(raw)
+    if not key:
+        return None
+    return _EXPLICIT_PLAN.get(key)
+
+
+def resolve_plan(name: str, plan_cell: Optional[str]) -> tuple[str, str]:
+    """Return ``(plan_type, source)`` preferring the explicit column over the name.
+
+    ``source`` distinguishes three genuinely different situations, because scope
+    depends on it:
+
+    ``COLUMN``
+        The feed supplied a recognisable plan. Authoritative.
+    ``COLUMN_BLANK``
+        The feed *has* a plan column but left it empty. No plan information was
+        supplied, so an unlabelled result here is a data gap — not a Regular Plan.
+    ``NAME``
+        No plan column exists at all (legacy 6-column feed), so the name is the
+        only signal. Here ``UNLABELLED`` means "a plan written without the word
+        Regular", which is treated as in-scope.
+    """
+    if plan_cell is None:
+        return classify_plan(name), "NAME"
+    if _cell_key(plan_cell):
+        explicit = classify_plan_explicit(plan_cell)
+        if explicit:
+            return explicit, "COLUMN"
+        return classify_plan(name), "COLUMN_UNRECOGNISED"
+    return classify_plan(name), "COLUMN_BLANK"
+
+
+def resolve_option(name: str, option_cell: Optional[str]) -> tuple[str, Optional[str], str]:
+    """Return ``(option, periodicity, source)`` preferring the explicit column.
+
+    The ``Option`` cell carries both the option and its periodicity (``Monthly
+    IDCW``, ``Quarterly IDCW Option``, ``Growth Option``), and :func:`classify_option`
+    already understands that vocabulary, so it is reused verbatim here.
+    """
+    if _cell_key(option_cell):
+        option, periodicity = classify_option(option_cell)
+        if option != "UNKNOWN":
+            return option, periodicity, "COLUMN"
+    option, periodicity = classify_option(name)
+    return option, periodicity, "NAME"
 
 
 def classify_option(name: str) -> tuple[str, Optional[str]]:
@@ -184,6 +285,12 @@ class ParseReport:
     total_lines: int = 0
     header_rows: int = 0
     data_rows: int = 0
+    #: Which NAVAll layout was parsed: "NAVALL_8COL" (current) or "NAVALL_6COL" (legacy),
+    #: or "UNKNOWN" if no data rows were seen.
+    format: str = "UNKNOWN"
+    #: How plan/option were determined, per row: COLUMN (explicit feed column) or NAME.
+    plan_class_source: Counter = field(default_factory=Counter)
+    option_class_source: Counter = field(default_factory=Counter)
     section_headers: int = 0
     amc_headers: int = 0
     quarantined: int = 0
@@ -206,6 +313,7 @@ class ParseReport:
             f"lines read         : {self.total_lines}",
             f"header rows        : {self.header_rows}",
             f"data rows parsed   : {self.data_rows}",
+            f"file format        : {self.format}",
             f"section headers    : {self.section_headers}",
             f"AMC headers        : {self.amc_headers} (distinct {self.distinct_amcs})",
             f"distinct categories: {self.distinct_categories}",
@@ -216,6 +324,10 @@ class ParseReport:
                 f"{k}={v}" for k, v in self.quarantine_reasons.most_common()))
         lines.append("plan types         : " + ", ".join(
             f"{k}={v}" for k, v in self.plan_types.most_common()))
+        lines.append("plan from          : " + ", ".join(
+            f"{k}={v}" for k, v in self.plan_class_source.most_common()))
+        lines.append("option from        : " + ", ".join(
+            f"{k}={v}" for k, v in self.option_class_source.most_common()))
         lines.append("options            : " + ", ".join(
             f"{k}={v}" for k, v in self.options.most_common()))
         lines.append("scheme types       : " + ", ".join(
@@ -269,9 +381,19 @@ def parse_navall(
             report.header_rows += 1
             continue
 
-        # --- data row: exactly 5 semicolons ---
-        if s.count(";") == 5:
-            code, isin_a, isin_b, name, nav_raw, date_raw = (p.strip() for p in s.split(";"))
+        # --- data row: 5 semicolons (legacy 6-col) or 7 (current 8-col) ---
+        n_semis = s.count(";")
+        if n_semis in (5, 7):
+            parts = [p.strip() for p in s.split(";")]
+            if n_semis == 7:
+                # Current AMFI feed: explicit Plan and Option columns.
+                (code, isin_a, isin_b, name,
+                 plan_cell, option_cell, nav_raw, date_raw) = parts
+                report.format = "NAVALL_8COL"
+            else:
+                (code, isin_a, isin_b, name, nav_raw, date_raw) = parts
+                plan_cell = option_cell = None
+                report.format = "NAVALL_6COL"
 
             if not code.isdigit():
                 _quarantine("non_numeric_scheme_code", line_no, s)
@@ -298,8 +420,10 @@ def parse_navall(
             if isin_b_c is None:
                 report.missing_isin_b += 1
 
-            plan = classify_plan(name)
-            option, periodicity = classify_option(name)
+            plan, plan_src = resolve_plan(name, plan_cell)
+            option, periodicity, option_src = resolve_option(name, option_cell)
+            report.plan_class_source[plan_src] += 1
+            report.option_class_source[option_src] += 1
             up_name = name.upper()
             is_etf = "ETF" in up_name
             # Dead schemes: AMFI keeps them listed with NAV 0.0000 or N.A., and some AMCs also
@@ -314,6 +438,10 @@ def parse_navall(
             warnings: list[str] = []
             if cur_type is None or cur_amc is None:
                 warnings.append("no_section_or_amc_header")
+            if plan_src == "COLUMN_BLANK":
+                warnings.append("plan_column_blank")
+            if plan_src == "COLUMN_UNRECOGNISED":
+                warnings.append("plan_column_unrecognised")
             if nav is None:
                 warnings.append("nav_not_published" if nav_np else "unparsed_nav")
             elif nav <= 0:
@@ -345,7 +473,15 @@ def parse_navall(
                 nav_not_published=nav_np,
                 # In scope = Regular Plan, all options. Retail / Institutional are separate plan
                 # labels: captured, but excluded from the default regular-only view.
-                in_scope=(plan == "REGULAR") or (plan == "UNLABELLED" and not is_etf),
+                #
+                # An unlabelled row counts as in-scope ONLY when the plan was inferred
+                # from the name because no plan column existed (legacy feed). When the
+                # current feed HAS a plan column and left it blank, "unlabelled" means
+                # the plan is unknown — stored and flagged, never assumed to be Regular.
+                in_scope=(plan == "REGULAR")
+                or (plan == "UNLABELLED" and not is_etf and plan_src == "NAME"),
+                plan_source=plan_src,
+                option_source=option_src,
                 line_no=line_no,
                 warnings=warnings,
             )
