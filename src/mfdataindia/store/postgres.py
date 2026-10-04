@@ -37,6 +37,7 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "001_core_schema.sql",
     "002_nav_and_views.sql",
     "003_enrichment_recon.sql",
+    "004_groww_enrichment.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
@@ -868,6 +869,27 @@ class PostgresStore:
                 (source, entity_kind, entity_key),
             )
 
+    def checkpoint_register(
+        self, source: str, entity_kind: str, entity_key: str,
+        cursor_value: Optional[str] = None,
+    ) -> None:
+        """Register a PENDING work item (a work queue) without starting it.
+
+        Discovery phases use this to enqueue fetch work; the fetch phase then
+        drains PENDING items, so a long crawl is fully resumable from the
+        checkpoint table alone.
+        """
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO mf.ingest_checkpoints
+                    (source, entity_kind, entity_key, cursor_value, status, updated_at)
+                VALUES (%s, %s, %s, %s, 'PENDING', now())
+                ON CONFLICT (source, entity_kind, entity_key) DO NOTHING
+                """,
+                (source, entity_kind, entity_key, cursor_value),
+            )
+
     def checkpoint_done(self, source: str, entity_kind: str, entity_key: str,
                         records_done: int, cursor_value: Optional[str] = None) -> None:
         """Mark a unit of work DONE with its record count."""
@@ -898,6 +920,7 @@ class PostgresStore:
     def pending_checkpoints(
         self, source: str, entity_kind: str
     ) -> list[dict[str, Any]]:
+
         """All non-DONE checkpoints for a source+kind, in key order."""
         with self.connect().cursor() as cur:
             return cur.execute(
