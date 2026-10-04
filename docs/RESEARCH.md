@@ -30,6 +30,7 @@ Scope decisions locked with the user:
 | `sbimf.com` | ❌ 404 | — | — | deferred | path guessing failed |
 | `nipponindiaim.com` | ❌ conn fail | — | — | deferred | |
 | `moneycontrol.com` | bot-wall | — | — | drop | returns news pages |
+| `groww.in` | ✅ 200 (MF pages) | — | — | **redundant** | Next.js `__NEXT_DATA__` like Scripbox; same fund data, no unique fields found. Skipped — Scripbox already supplies 102 fields. |
 | `valueresearchonline.com` | ❌ 403 | — | — | drop | |
 | CAMS / KFintech | SPA / 404 | — | — | drop | no public JSON API found |
 

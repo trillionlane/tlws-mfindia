@@ -135,12 +135,21 @@ class PostgresStore:
     # -- connection lifecycle ------------------------------------------------
 
     def _open(self) -> psycopg.Connection:
-        """Open a connection and pin the session search path to mf, public."""
+        """Open a connection and pin the session search path to mf, public.
+
+        ``prepare_threshold=None`` disables server-side prepared statements.
+        psycopg auto-prepares a statement after repeated executions, which
+        (a) PGlite's socket bridge rejects with DuplicatePreparedStatement, and
+        (b) breaks behind transaction-pooling proxies like pgbouncer. Disabling
+        is the portable choice; the performance cost is negligible for this
+        workload (bulk loads are set-based, not hot-loop prepared statements).
+        """
         conn = psycopg.connect(
             self.dsn,
             connect_timeout=self.connect_timeout,
             autocommit=self.autocommit,
             row_factory=dict_row,
+            prepare_threshold=None,
         )
         with conn.cursor() as cur:
             cur.execute("SET search_path TO mf, public")

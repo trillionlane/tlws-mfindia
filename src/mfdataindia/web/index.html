@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MFDataIndia</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="accent">MFD</span>ataIndia
+      <small id="brand-sub">Indian Regular-Plan mutual funds</small>
+    </div>
+    <div class="search">
+      <span class="icon">&#128269;</span>
+      <input id="q" type="text" placeholder="Search funds, ISIN, or scheme code…" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="statbar" id="statbar"><span class="loading">Loading…</span></div>
+
+    <div class="filters">
+      <select id="f-amc"><option value="">All fund houses</option></select>
+      <select id="f-cat"><option value="">All categories</option></select>
+      <select id="f-opt"><option value="">All options</option></select>
+      <select id="f-sort">
+        <option value="name">Sort: Name</option>
+        <option value="nav">Sort: Latest NAV</option>
+        <option value="aum">Sort: AUM</option>
+        <option value="return_5y">Sort: 5Y return</option>
+        <option value="expense">Sort: Expense ratio</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div id="list"><div class="loading">Loading funds…</div></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+
+  <script src="/static/index.js"></script>
+</body>
+</html>

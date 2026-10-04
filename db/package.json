@@ -1,0 +1,14 @@
+{
+  "name": "mfdataindia-db",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local embedded PostgreSQL (PGlite) engine for MFDataIndia",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-socket": "^0.2.11"
+  }
+}

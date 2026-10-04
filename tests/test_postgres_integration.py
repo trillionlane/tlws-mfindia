@@ -29,7 +29,9 @@ from mfdataindia.store.postgres import PostgresStore
 
 pytestmark = pytest.mark.postgres
 
-_TABLES_TO_CLEAR = ("quality_flags", "fund_variants", "nav_history", "funds", "amcs")
+_TABLES_TO_CLEAR = (
+    "ingest_checkpoints", "quality_flags", "fund_variants", "nav_history", "funds", "amcs",
+)
 
 
 @pytest.fixture(scope="module")
@@ -41,6 +43,18 @@ def store(pg_dsn, repo_root):
     s = PostgresStore(pg_dsn, use_copy=use_copy)
     s.connect()
     s.apply_migrations(Path(repo_root) / "sql")
+
+    # Safety guard: these tests are destructive. Refuse to wipe a database that
+    # already holds real data unless the operator explicitly opts in — this
+    # prevents pointing MF_TEST_DSN at a populated/demo/production database.
+    with s.transaction() as conn, conn.cursor() as cur:
+        existing = cur.execute("SELECT count(*) AS n FROM mf.funds").fetchone()["n"]
+    if existing > 0 and not os.environ.get("MF_TEST_ALLOW_WIPE"):
+        pytest.skip(
+            f"database has {existing} funds; these tests wipe data. "
+            "Point MF_TEST_DSN at a scratch DB, or set MF_TEST_ALLOW_WIPE=1"
+        )
+
     with s.transaction() as conn, conn.cursor() as cur:
         for table in _TABLES_TO_CLEAR:
             cur.execute(f"DELETE FROM mf.{table}")

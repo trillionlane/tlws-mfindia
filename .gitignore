@@ -39,5 +39,10 @@ research/downloads/
 .vscode/
 .DS_Store
 
+# Node (PGlite local database engine)
+node_modules/
+db/node_modules/
+
 # Postgres local run
 pgdata/
+data/pglite/

@@ -16,6 +16,9 @@ keywords = ["india", "mutual-funds", "amfi", "nav", "isin"]
 # server with no dependency install. Only the PostgreSQL layer needs a driver.
 dependencies = [
     "psycopg[binary]>=3.1",
+    "requests>=2.31",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
 ]
 
 [project.optional-dependencies]

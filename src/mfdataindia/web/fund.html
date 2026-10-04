@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fund — MFDataIndia</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><a href="/" style="color:inherit;text-decoration:none"><span class="accent">MFD</span>ataIndia</a></div>
+  </div>
+
+  <div class="container">
+    <div class="detail-head" id="head"><div class="loading">Loading…</div></div>
+
+    <div class="card chart-wrap">
+      <div class="range-btns" id="ranges">
+        <button data-y="0.083">1M</button>
+        <button data-y="0.5">6M</button>
+        <button data-y="1">1Y</button>
+        <button data-y="3">3Y</button>
+        <button data-y="5" class="active">5Y</button>
+        <button data-y="">MAX</button>
+      </div>
+      <canvas id="chart" height="110"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="ret-grid" id="returns"><div class="loading">Loading…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="grid" id="facts"></div>
+    </div>
+
+    <div class="card" id="siblings-card" style="display:none">
+      <div style="padding:16px 16px 8px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Plan variants of this scheme</div>
+      <div id="siblings" style="padding:0 8px 12px"></div>
+    </div>
+  </div>
+
+  <script src="/static/fund.js"></script>
+</body>
+</html>
