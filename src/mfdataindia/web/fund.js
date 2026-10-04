@@ -52,7 +52,10 @@
     const cells = [
       ["AUM", fx.aum != null ? "₹" + fmtInt(fx.aum) + " cr" : "—"],
       ["Expense ratio", fx.expense_ratio != null ? fmt(fx.expense_ratio, 2) + "%" : "—"],
-      ["Inception", fx.inception_date || "—"],
+      ["Benchmark", fx.benchmark_name || fx.benchmark || "—"],
+      ["Fund manager", fx.fund_manager_name || "—"],
+      ["Risk (riskometer)", fx.risk_level || "—"],
+      ["Inception", fx.inception_date || fx.launch_date || "—"],
       ["Scheme type", f.scheme_type || "—"],
       ["Plan", f.plan_type],
       ["Option", f.option_type === "UNKNOWN" ? "—" : f.option_type],
@@ -65,6 +68,25 @@
       ["ISIN (reinvest)", f.isin_div_reinvest || "—"],
     ];
     $("facts").innerHTML = cells.map(([k, v]) => `<div class="cell"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
+  }
+
+  function renderHoldings(f) {
+    if (!f.holdings || !f.holdings.length) return;
+    $("holdings-card").style.display = "";
+    const totalW = f.holdings.reduce((a, h) => a + (h.weight_pct || 0), 0);
+    const rows = f.holdings.map((h) => {
+      const w = h.weight_pct;
+      const barW = w ? Math.min(100, (w / (f.holdings[0].weight_pct || 1)) * 100) : 0;
+      return `<div style="padding:8px 16px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px">
+          <span>${esc(h.company_name)}${h.sector_name ? ` <span style="color:var(--muted);font-size:12px">· ${esc(h.sector_name)}</span>` : ""}</span>
+          <span style="font-variant-numeric:tabular-nums;font-weight:600">${w != null ? w.toFixed(2) + "%" : "—"}</span>
+        </div>
+        <div style="height:4px;background:var(--panel);border-radius:2px"><div style="height:4px;width:${barW}%;background:var(--accent);border-radius:2px"></div></div>
+      </div>`;
+    }).join("");
+    $("holdings").innerHTML = rows +
+      `<div style="padding:10px 16px;color:var(--muted);font-size:12px">Top ${f.holdings.length} shown · ${totalW.toFixed(1)}% of portfolio</div>`;
   }
 
   function renderSiblings(f) {
@@ -116,6 +138,7 @@
       const fund = await api(`/api/funds/${code}`);
       renderHead(fund, null);
       renderFacts(fund);
+      renderHoldings(fund);
       renderSiblings(fund);
       const ret = await api(`/api/funds/${code}/returns`);
       renderReturns(ret);

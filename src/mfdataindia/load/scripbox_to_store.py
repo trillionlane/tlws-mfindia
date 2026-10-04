@@ -239,6 +239,36 @@ def factsheet_to_opinions(fs: dict[str, Any]) -> Optional[tuple]:
     return tuple(row.get(c) for c in FUND_OPINIONS_COLUMNS)
 
 
+def factsheet_to_holdings(fs: dict[str, Any]) -> list[tuple]:
+    """Map Scripbox ``asset_holding`` to fund_holdings row bodies.
+
+    Row shape matches store.replace_holdings' per-row tuple (scheme code is added
+    by replace_holdings):
+      (portfolio_date, holding_rank, company_name, sector_name, nature_name,
+       market_value, weight_pct, rating)
+    Scripbox's asset_holding has instrument type, not sector, so sector_name is
+    left NULL and nature_name carries the asset class.
+    """
+    out: list[tuple] = []
+    holdings = fs.get("asset_holding") or []
+    hm = fs.get("holdings_maturity") or {}
+    portfolio_date = _date(hm.get("as_on_date"))
+    for rank, h in enumerate(holdings, start=1):
+        if not isinstance(h, dict):
+            continue
+        out.append((
+            portfolio_date,
+            rank,
+            h.get("name"),
+            None,                                  # sector_name (not in asset_holding)
+            h.get("instrument_asset_class"),       # nature_name
+            None,                                  # market_value
+            _num(h.get("percentage")),
+            None,                                  # rating
+        ))
+    return out
+
+
 def load_factsheets(store: Any, factsheets: Iterable[dict[str, Any]]) -> dict[str, Any]:
     """Upsert fund_facts + fund_opinions from an iterable of factsheetData dicts.
 
@@ -258,6 +288,10 @@ def load_factsheets(store: Any, factsheets: Iterable[dict[str, Any]]) -> dict[st
             continue
         facts_rows.append(fr)
         opinion_rows.append(factsheet_to_opinions(fs))
+        # holdings snapshot (Scripbox asset_holding)
+        holdings = factsheet_to_holdings(fs)
+        if holdings:
+            store.replace_holdings(code, holdings)
     return {
         "fund_facts": store.upsert_table(
             "fund_facts", "amfi_scheme_code", FUND_FACTS_COLUMNS,

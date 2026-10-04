@@ -156,11 +156,23 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                return_1day, return_3month, return_6month, return_1year, return_3year,
                return_5year, return_10year, return_since_launch,
                min_initial_investment_amount, min_subsequent_investment_amount,
-               is_sip_allowed, status, transaction_status, scripbox_fund_id, fund_slug
+               is_sip_allowed, status, transaction_status, scripbox_fund_id, fund_slug,
+               benchmark, benchmark_name, fund_manager_name, risk_level,
+               base_expense_ratio, super_category, sub_category, registrar_agent
         FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
         """,
         {"code": code},
     ).fetchone()
+
+    holdings = conn.execute(
+        """
+        SELECT holding_rank, company_name, sector_name, nature_name, weight_pct
+        FROM mf.fund_holdings
+        WHERE amfi_scheme_code = %(code)s
+        ORDER BY holding_rank LIMIT 20
+        """,
+        {"code": code},
+    ).fetchall()
 
     # siblings in the same variant group (Regular/Direct/IDCW twins)
     siblings = conn.execute(
@@ -198,6 +210,10 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
     else:
         out["facts"] = None
     out["siblings"] = siblings
+    for h in holdings:
+        if isinstance(h.get("weight_pct"), Decimal):
+            h["weight_pct"] = float(h["weight_pct"])
+    out["holdings"] = holdings
     return out
 
 

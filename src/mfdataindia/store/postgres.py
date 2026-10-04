@@ -953,6 +953,30 @@ class PostgresStore:
             return {int(r["amfi_scheme_code"]) for r in cur.execute(
                 "SELECT amfi_scheme_code FROM mf.funds").fetchall()}
 
+    def replace_holdings(
+        self,
+        amfi_scheme_code: int,
+        rows: Sequence[Sequence[Any]],
+    ) -> int:
+        """Replace a fund's holdings snapshot atomically (delete + insert).
+
+        Holdings are a current-snapshot, so a full replace per fund is correct
+        and simpler than a diff. Returns the number of rows written.
+        """
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM mf.fund_holdings WHERE amfi_scheme_code = %s",
+                (amfi_scheme_code,))
+            stmt = (
+                "INSERT INTO mf.fund_holdings (amfi_scheme_code, portfolio_date, "
+                "holding_rank, company_name, sector_name, nature_name, market_value, "
+                "weight_pct, rating) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)")
+            count = 0
+            for row in rows:
+                cur.execute(stmt, (amfi_scheme_code, *row))
+                count += 1
+        return count
+
     # -- source_metadata -----------------------------------------------------
 
     def record_fetch(self, meta: dict[str, Any]) -> int:
