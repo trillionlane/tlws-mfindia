@@ -43,6 +43,10 @@ research/downloads/
 node_modules/
 db/node_modules/
 
+# Local DB snapshots / dumps — large binaries, restorable from the live DB
+backup/
+*.dump
+
 # Postgres local run
 pgdata/
 data/pglite/
