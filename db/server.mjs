@@ -25,6 +25,7 @@ const migrations = [
   "002_nav_and_views.sql",
   "003_enrichment_recon.sql",
   "004_groww_enrichment.sql",
+  "005_groww_deep_enrichment.sql",
 ];
 
 const db = await PGlite.create({ dataDir });

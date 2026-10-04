@@ -9,6 +9,7 @@ to ``float`` only at the JSON boundary — never stored as float anywhere upstre
 
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Optional
@@ -215,7 +216,10 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                min_initial_investment_amount, min_subsequent_investment_amount,
                is_sip_allowed, status, transaction_status, scripbox_fund_id, fund_slug,
                benchmark, benchmark_name, fund_manager_name, risk_level,
-               base_expense_ratio, super_category, sub_category, registrar_agent
+               base_expense_ratio, super_category, sub_category, registrar_agent,
+               groww_rating, crisil_rating, sub_type, exit_load_value, lock_in_period,
+               portfolio_turnover, return_1week, return_1month, return_9month,
+               sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis
         FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
         """,
         {"code": code},
@@ -263,6 +267,14 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                 facts[k] = v.isoformat()
             elif isinstance(v, Decimal):
                 facts[k] = float(v)
+        # jsonb arrives as a dict via psycopg; guard the (rare) string case so the
+        # API always emits an object, not a JSON string.
+        ha = facts.get("holdings_analysis")
+        if isinstance(ha, str):
+            try:
+                facts["holdings_analysis"] = json.loads(ha)
+            except ValueError:
+                facts["holdings_analysis"] = None
         out["facts"] = facts
     else:
         out["facts"] = None

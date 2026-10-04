@@ -66,6 +66,13 @@
       ["SIP allowed", fx.is_sip_allowed == null ? "—" : fx.is_sip_allowed ? "Yes" : "No"],
       ["ISIN (growth/payout)", f.isin_growth_or_div_payout || "—"],
       ["ISIN (reinvest)", f.isin_div_reinvest || "—"],
+      ["Groww rating", fx.groww_rating != null ? fmt(fx.groww_rating, 1) : "—"],
+      ["Sub-type", fx.sub_type || "—"],
+      ["Lock-in", fx.lock_in_period || "—"],
+      ["Exit load", fx.exit_load_value || "—"],
+      ["Portfolio turnover", fx.portfolio_turnover != null ? fmt(fx.portfolio_turnover, 1) + "%" : "—"],
+      ["Sharpe ratio", fx.sharpe_ratio != null ? fmt(fx.sharpe_ratio, 2) : "—"],
+      ["Beta", fx.beta != null ? fmt(fx.beta, 2) : "—"],
     ];
     $("facts").innerHTML = cells.map(([k, v]) => `<div class="cell"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
   }
@@ -87,6 +94,55 @@
     }).join("");
     $("holdings").innerHTML = rows +
       `<div style="padding:10px 16px;color:var(--muted);font-size:12px">Top ${f.holdings.length} shown · ${totalW.toFixed(1)}% of portfolio</div>`;
+  }
+
+  function palette(n) {
+    const base = ["#1a73e8", "#188038", "#e8710a", "#9334e6", "#d93025",
+      "#0095f7", "#c237a2", "#f9b300", "#12b5cb", "#7f6100", "#649136", "#aa4b61"];
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(base[i % base.length]);
+    return out;
+  }
+
+  function stackedBar(items) {
+    const total = items.reduce((s, x) => s + x.value, 0);
+    const colors = palette(items.length);
+    const segs = items.map((it, i) => {
+      const w = total > 0 ? (it.value / total) * 100 : 0;
+      return w > 0.15 ? `<div title="${esc(it.label)} ${it.value.toFixed(2)}%" style="width:${w}%;background:${colors[i]}"></div>` : "";
+    }).join("");
+    const legend = items.map((it, i) => `
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0">
+        <span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex:none"></span>
+        <span style="flex:1">${esc(it.label)}</span>
+        <span style="font-variant-numeric:tabular-nums;font-weight:600">${it.value.toFixed(2)}%</span>
+      </div>`).join("");
+    return `<div style="height:16px;display:flex;border-radius:3px;overflow:hidden;background:var(--panel);margin-bottom:12px;min-width:200px">${segs}</div>${legend}`;
+  }
+
+  function renderAnalysis(f) {
+    const ha = f.facts && f.facts.holdings_analysis;
+    if (!ha || (!ha.asset_class && !ha.sector)) return;
+    $("analysis-card").style.display = "";
+    const toItems = (o) => o ? Object.entries(o)
+      .map(([label, value]) => ({ label, value: Number(value) }))
+      .filter((x) => x.value > 0)
+      .sort((a, b) => b.value - a.value) : [];
+    const ac = toItems(ha.asset_class);
+    const sec = toItems(ha.sector);
+    let html = "";
+    html += `<div style="margin-bottom:20px">
+      <div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Asset class</div>
+      ${ac.length ? stackedBar(ac) : '<div style="color:var(--muted);font-size:13px">—</div>'}
+    </div>`;
+    if (sec.length) {
+      html += `<div><div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Sector</div>${stackedBar(sec)}</div>`;
+    }
+    const meta = [];
+    if (ha.source) meta.push(`Source ${esc(ha.source)}`);
+    if (ha.computed_at) meta.push(`computed ${new Date(ha.computed_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`);
+    if (meta.length) html += `<div style="margin-top:16px;color:var(--muted);font-size:11px">${meta.join(" · ")}</div>`;
+    $("analysis").innerHTML = html;
   }
 
   function renderSiblings(f) {
@@ -138,6 +194,7 @@
       const fund = await api(`/api/funds/${code}`);
       renderHead(fund, null);
       renderFacts(fund);
+      renderAnalysis(fund);
       renderHoldings(fund);
       renderSiblings(fund);
       const ret = await api(`/api/funds/${code}/returns`);
