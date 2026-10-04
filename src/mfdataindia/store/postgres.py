@@ -38,6 +38,7 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "002_nav_and_views.sql",
     "003_enrichment_recon.sql",
     "004_groww_enrichment.sql",
+    "005_groww_deep_enrichment.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
@@ -335,6 +336,7 @@ class PostgresStore:
         *,
         column_types: Optional[dict[str, str]] = None,
         update_columns: Optional[Sequence[str]] = None,
+        coalesce_missing: bool = False,
     ) -> LoadResult:
         """Generic set-based upsert into ``mf.<table>`` keyed on ``pk``.
 
@@ -344,6 +346,14 @@ class PostgresStore:
         given by ``column_types`` (default: text). Values written as text — a dict
         serialised to JSON, a Decimal, a date — cast cleanly, which is why the
         staging is untyped. On conflict only non-pk ``update_columns`` refresh.
+
+        ``coalesce_missing`` switches the conflict to *merge* semantics: each
+        stored column is set to ``COALESCE(EXCLUDED.col, t.col)``, so a value
+        incoming as NULL never blanks a value already present. This is how a
+        second source (Groww) fills gaps in a row a first source (Scripbox)
+        already owns, keyed on the same ``pk``. The refreshed set is still
+        ``update_columns`` (pass it to keep e.g. the ``source`` tag from the
+        original writer).
         """
         res = LoadResult(target=table)
         materialised = [tuple(r) for r in rows]
@@ -367,11 +377,20 @@ class PostgresStore:
             self._copy_rows(cur, f"stg_{table}", columns, iter(materialised))
 
             before = self._count(cur, table)
-            set_clause = ", ".join(f"{c} = EXCLUDED.{c}" for c in to_update)
-            # ON CONFLICT's WHERE sees only the existing row (t) and EXCLUDED; the
-            # staging subquery (s) is not in scope here.
-            guard = " OR ".join(
-                f"t.{c} IS DISTINCT FROM EXCLUDED.{c}" for c in to_update)
+            if coalesce_missing:
+                # Merge: keep the stored value when the incoming value is NULL,
+                # so a later source fills gaps without blanking the first. No
+                # guard — an upsert always touches the row (fetched_at moves).
+                set_clause = ", ".join(
+                    f"{c} = COALESCE(EXCLUDED.{c}, t.{c})" for c in to_update)
+                where_sql = ""
+            else:
+                set_clause = ", ".join(f"{c} = EXCLUDED.{c}" for c in to_update)
+                # ON CONFLICT's WHERE sees only the existing row (t) and EXCLUDED;
+                # the staging subquery (s) is not in scope here.
+                guard = " OR ".join(
+                    f"t.{c} IS DISTINCT FROM EXCLUDED.{c}" for c in to_update)
+                where_sql = f"WHERE {guard}"
             col_list = ", ".join(columns)
             sel_list = ", ".join(_cast(c) for c in columns)
             cur.execute(
@@ -381,7 +400,7 @@ class PostgresStore:
                     SELECT DISTINCT ON ({pk}) * FROM mf.stg_{table} ORDER BY {pk}
                 ) s
                 ON CONFLICT ({pk}) DO UPDATE SET {set_clause}
-                WHERE {guard}
+                {where_sql}
                 """
             )
             written = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
@@ -952,6 +971,34 @@ class PostgresStore:
         with self.connect().cursor() as cur:
             return {int(r["amfi_scheme_code"]) for r in cur.execute(
                 "SELECT amfi_scheme_code FROM mf.funds").fetchall()}
+
+    def update_amc_info(
+        self,
+        amfi_amc_name: str,
+        values: dict[str, Any],
+    ) -> int:
+        """Update Groww-provided metadata on an existing AMC (never inserts).
+
+        The AMC set is owned by AMFI; Groww's ``amc_info`` enriches the
+        AMFI-registered row in place, keyed on the exact AMFI header string.
+        Unknown keys are ignored. Returns the number of rows affected (0 if the
+        AMC does not exist, which should not happen for in-scope funds).
+        """
+        allowed = (
+            "amc_aum", "amc_rank", "amc_launch_date", "amc_address",
+            "amc_description", "amc_sponsor", "amc_source", "amc_fetched_at",
+        )
+        keys = [k for k in allowed if values.get(k) is not None]
+        if not keys:
+            return 0
+        sets = ", ".join(f"{k} = %s" for k in keys)
+        with self.transaction() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE mf.amcs SET {sets}, updated_at = now() "
+                f"WHERE amfi_amc_name = %s",
+                tuple(values[k] for k in keys) + (amfi_amc_name,),
+            )
+            return cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
 
     def replace_holdings(
         self,

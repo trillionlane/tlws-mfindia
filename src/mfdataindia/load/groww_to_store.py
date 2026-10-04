@@ -1,32 +1,138 @@
-"""Map Groww ``mfServerSideData`` payloads onto ``mf.fund_facts`` / ``mf.fund_holdings``.
+"""Map Groww ``mfServerSideData`` payloads onto fund_facts / fund_holdings / amcs.
 
-Groww is the backfill source for what Scripbox misses (~12% of in-scope codes) and
-for fields Scripbox lacks (benchmark on multi-asset funds, expense-ratio history,
-fund-manager bios, holdings with sector). The join key is ISIN, resolved by the
-crawl (which validates the fetched page's ISIN against the fund).
+Groww is the backfill source that (a) fills the gaps Scripbox missed and (b)
+supplies the fields only it has: the "Holdings analysis" breakdown, AMC-house
+metadata, Groww/Crisil ratings, sub-type, exit-load / lock-in / portfolio
+turnover, the full returns + category-comparison payload, and sector-tagged top
+holdings.
+
+The payload is *flat* (top-level ``mfServerSideData``; there is no
+``fund_data``/``financials`` nesting). Join key is ISIN, validated by the crawl.
+
+Because ``mf.fund_facts`` is keyed by ``amfi_scheme_code`` and already holds a
+SCRIPBOX row for most funds, this loader uses a *merge* upsert
+(``store.upsert_table(..., coalesce_missing=True)``) so Groww fills gaps and adds
+its own fields without blanking values Scripbox already provided.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Optional
 
 from mfdataindia.load.scripbox_to_store import (
     FUND_FACTS_COLUMNS, FUND_FACTS_TYPES, _bool, _date, _int, _json, _num, _ts,
 )
 
-__all__ = ["groww_to_facts", "groww_to_holdings", "load_groww_fund"]
+__all__ = [
+    "GROWW_FUND_FACTS_COLUMNS", "GROWW_FUND_FACTS_TYPES",
+    "groww_to_facts", "groww_to_amc", "groww_to_holdings",
+    "holdings_analysis", "load_groww_fund",
+]
+
+# Columns Groww additionally fills beyond the shared Scripbox shape.
+GROWW_EXTRA_COLUMNS: tuple[str, ...] = (
+    "groww_rating", "crisil_rating", "sub_type", "exit_load_value",
+    "lock_in_period", "portfolio_turnover",
+    "return_1week", "return_1month", "return_9month",
+    "sharpe_ratio", "beta", "std_deviation", "risk_rating",
+    "groww_return_stats", "holdings_analysis", "groww_fetched_at",
+)
+GROWW_FUND_FACTS_COLUMNS: tuple[str, ...] = FUND_FACTS_COLUMNS + GROWW_EXTRA_COLUMNS
+
+GROWW_FUND_FACTS_TYPES: dict[str, str] = {
+    **FUND_FACTS_TYPES,
+    "groww_rating": "numeric(4,2)", "sub_type": "text", "exit_load_value": "text",
+    "lock_in_period": "text", "portfolio_turnover": "numeric(9,2)",
+    "return_1week": "numeric(9,4)", "return_1month": "numeric(9,4)",
+    "return_9month": "numeric(9,4)",
+    "sharpe_ratio": "numeric(9,4)", "beta": "numeric(9,4)",
+    "std_deviation": "numeric(9,4)", "risk_rating": "text",
+    "groww_return_stats": "jsonb", "holdings_analysis": "jsonb",
+    "groww_fetched_at": "timestamptz",
+}
+
+# nature_name value -> display label for the asset-class split in the analysis.
+_ASSET_CLASS_LABEL = {
+    "EQUITY": "Equity", "DEBT": "Debt", "CASH": "Cash", "MF": "Fund of Funds",
+    "REALEST": "Real Estate", "COMM": "Commodities",
+}
 
 
-def groww_to_facts(sd: dict[str, Any], amfi_scheme_code: int) -> tuple:
+def _format_lock_in(li: Any) -> Optional[str]:
+    """Groww ``lock_in`` {years, months, days} -> '2y 6m' / 'Nil' / None."""
+    if not isinstance(li, dict):
+        return None
+    parts = []
+    if li.get("years"):
+        parts.append(f"{li['years']}y")
+    if li.get("months"):
+        parts.append(f"{li['months']}m")
+    if li.get("days"):
+        parts.append(f"{li['days']}d")
+    return " ".join(parts) if parts else "Nil"
+
+
+def holdings_analysis(sd: dict[str, Any]) -> Optional[dict]:
+    """Aggregate Groww's sector/nature-tagged holdings into the "Holdings analysis".
+
+    Returns ``{asset_class, sector, as_on_date, source, computed_at}`` or None when
+    there is nothing to aggregate. ``asset_class`` sums weights by instrument
+    nature; a residual ``Other`` is added so the split reconciles to ~100 when the
+    listed holdings do not (top-N portfolios). ``sector`` sums weights by
+    sector_name (equity side; empty for pure debt funds).
+    """
+    holdings = sd.get("holdings") or []
+    if not holdings:
+        return None
+    asset: dict[str, float] = {}
+    sector: dict[str, float] = {}
+    as_on: Optional[str] = None
+    for h in holdings:
+        if not isinstance(h, dict):
+            continue
+        try:
+            w = float(h.get("corpus_per") or 0)
+        except (TypeError, ValueError):
+            w = 0.0
+        if as_on is None:
+            as_on = h.get("portfolio_date")
+        nat = (h.get("nature_name") or "").upper()
+        if nat:
+            label = _ASSET_CLASS_LABEL.get(nat, nat.title())
+            asset[label] = asset.get(label, 0.0) + w
+        sec = h.get("sector_name")
+        if sec:
+            sector[sec] = sector.get(sec, 0.0) + w
+    total_asset = sum(asset.values())
+    if 0 < total_asset < 99.5:
+        asset["Other"] = asset.get("Other", 0.0) + (100.0 - total_asset)
+    return {
+        "asset_class": {k: round(v, 2)
+                        for k, v in sorted(asset.items(), key=lambda x: -x[1])},
+        "sector": {k: round(v, 2)
+                   for k, v in sorted(sector.items(), key=lambda x: -x[1])},
+        "as_on_date": _date(as_on),
+        "source": "GROWW",
+        "computed_at": datetime.now().isoformat(),
+    }
+
+
+def groww_to_facts(sd: dict[str, Any], amfi_scheme_code: int,
+                   *, fetched_at: Optional[datetime] = None) -> tuple:
     """Map one Groww ``mfServerSideData`` dict to a mf.fund_facts row.
 
-    Only fields Groww reliably provides are mapped; the rest stay NULL so a
-    Scripbox value already present is never clobbered by an empty Groww cell.
-    ``launch_date`` is Groww's fund inception (DD-Mon-YYYY).
+    Fields Groww reliably provides are mapped; the rest stay NULL so a Scripbox
+    value already present is never clobbered (the caller uses a merge upsert).
+    Trailing returns come from ``return_stats[0]`` (annualised), the same basis as
+    the published CAGR figures; the raw payloads are kept whole in
+    ``groww_return_stats`` for re-derivation without re-fetching.
     """
-    launch = _date(sd.get("launch_date") or sd.get("allotment_date"))
+    now = fetched_at or datetime.now()
+    stats = (sd.get("return_stats") or [{}])[0] if sd.get("return_stats") else {}
     row = {
         "amfi_scheme_code": str(amfi_scheme_code),
+        # identity / classification
         "fund_slug": sd.get("search_id"),
         "groww_slug": sd.get("search_id"),
         "rta_scheme_code": sd.get("rta_scheme_code"),
@@ -34,18 +140,24 @@ def groww_to_facts(sd: dict[str, Any], amfi_scheme_code: int) -> tuple:
         "sub_asset_class": sd.get("sub_category"),
         "super_category": sd.get("super_category"),
         "sub_category": sd.get("sub_category"),
+        "sub_type": (sd.get("category_info") or {}).get("sub_type"),
+        # sizes / costs
         "aum": _num(sd.get("aum")),
         "expense_ratio": _num(sd.get("expense_ratio")),
         "base_expense_ratio": _num(sd.get("base_expense_ratio")),
         "face_value": _num(sd.get("face_value")),
-        "inception_date": launch,
-        "launch_date": launch,
+        "inception_date": _date(sd.get("launch_date") or sd.get("allotment_date")),
+        "launch_date": _date(sd.get("launch_date") or sd.get("allotment_date")),
+        # risk / transactional
         "benchmark": sd.get("benchmark"),
         "benchmark_name": sd.get("benchmark_name"),
         "fund_manager_name": sd.get("fund_manager"),
         "fund_manager_details": _json(sd.get("fund_manager_details")),
         "risk_level": sd.get("nfo_risk"),
         "registrar_agent": sd.get("registrar_agent"),
+        "exit_load_value": sd.get("exit_load"),
+        "lock_in_period": _format_lock_in(sd.get("lock_in")),
+        "portfolio_turnover": _num(sd.get("portfolio_turnover")),
         "is_sip_allowed": _bool(sd.get("sip_allowed")),
         "is_purchase_allowed": _bool(sd.get("lumpsum_allowed")),
         "is_investable": _bool(sd.get("available_for_investment")),
@@ -55,12 +167,64 @@ def groww_to_facts(sd: dict[str, Any], amfi_scheme_code: int) -> tuple:
         "min_subsequent_investment_amount": _num(sd.get("min_sip_investment")),
         "min_withdrawal_amount": _num(sd.get("min_withdrawal")),
         "expense_ratio_history": _json(sd.get("historic_fund_expense")),
+        # source NAV snapshot
         "source_nav": _num(sd.get("nav")),
         "source_nav_date": _date(sd.get("nav_date")),
+        "returns_as_on_date": _date(sd.get("nav_date")),
+        # annualised trailing returns (from return_stats)
+        "return_1day": _num(stats.get("return1d")),
+        "return_1week": _num(stats.get("return1w")),
+        "return_3month": _num(stats.get("return3m")),
+        "return_6month": _num(stats.get("return6m")),
+        "return_1year": _num(stats.get("return1y")),
+        "return_2year": _num(stats.get("return2y")),
+        "return_3year": _num(stats.get("return3y")),
+        "return_4year": _num(stats.get("return4y")),
+        "return_5year": _num(stats.get("return5y")),
+        "return_7year": _num(stats.get("return7y")),
+        "return_10year": _num(stats.get("return10y")),
+        "return_9month": _num(stats.get("return9m")),
+        "return_1month": _num(stats.get("return1m")),
+        "return_since_launch": _num(stats.get("return_since_created")),
+        # risk metrics
+        "sharpe_ratio": _num(stats.get("sharpe_ratio")),
+        "beta": _num(stats.get("beta")),
+        "std_deviation": _num(stats.get("standard_deviation")),
+        "risk_rating": stats.get("risk_rating") or stats.get("risk"),
+        # Groww-only enriched fields
+        "groww_rating": _num(sd.get("groww_rating")),
+        "crisil_rating": sd.get("crisil_rating"),
+        "groww_return_stats": _json({
+            "annualized": stats,
+            "cumulative": sd.get("simple_return"),
+        }),
+        "holdings_analysis": _json(holdings_analysis(sd)),
         "source": "GROWW",
-        "fetched_at": _ts(sd.get("updated_at")) or _ts(__import__("datetime").datetime.now()),
+        "fetched_at": _ts(now),
+        "groww_fetched_at": _ts(now),
     }
-    return tuple(row.get(c) for c in FUND_FACTS_COLUMNS)
+    return tuple(row.get(c) for c in GROWW_FUND_FACTS_COLUMNS)
+
+
+def groww_to_amc(sd: dict[str, Any], *, fetched_at: Optional[datetime] = None) -> dict:
+    """Extract AMC-house metadata from Groww ``amc_info`` for update_amc_info.
+
+    Returns a dict of the groww-provided ``amcs`` columns; None values are dropped
+    by the store. (No `amfi_amc_name` here — the store keys the update by the
+    fund's AMFI-registered AMC name threaded through the job.)
+    """
+    ai = sd.get("amc_info") or {}
+    now = fetched_at or datetime.now()
+    return {
+        "amc_aum": _num(ai.get("aum")),
+        "amc_rank": _int(ai.get("rank")),
+        "amc_launch_date": _date(ai.get("launch_date")),
+        "amc_address": ai.get("address"),
+        "amc_description": ai.get("description"),
+        "amc_sponsor": ai.get("sponsor"),
+        "amc_source": "GROWW",
+        "amc_fetched_at": _ts(now),
+    }
 
 
 def groww_to_holdings(sd: dict[str, Any]) -> list[tuple]:
@@ -74,7 +238,7 @@ def groww_to_holdings(sd: dict[str, Any]) -> list[tuple]:
         out.append((
             portfolio_date or _date(h.get("portfolio_date")),
             rank,
-            h.get("company_name"),
+            h.get("company_name") or h.get("instrument_name"),
             h.get("sector_name"),
             h.get("nature_name"),
             _num(h.get("market_value")),
@@ -84,12 +248,29 @@ def groww_to_holdings(sd: dict[str, Any]) -> list[tuple]:
     return out
 
 
-def load_groww_fund(store: Any, sd: dict[str, Any], amfi_scheme_code: int) -> int:
-    """Upsert one Groww fund into fund_facts and replace its holdings. Returns rows."""
-    facts_row = groww_to_facts(sd, amfi_scheme_code)
+def load_groww_fund(
+    store: Any,
+    sd: dict[str, Any],
+    amfi_scheme_code: int,
+    amc_name: Optional[str] = None,
+) -> int:
+    """Enrich one Groww fund: merge fund_facts, enrich the AMC, replace holdings.
+
+    Returns the number of rows written (facts row + holdings). ``amc_name`` is the
+    fund's AMFI-registered AMC header (threaded through from the job); when given,
+    Groww's ``amc_info`` is merged onto that existing AMC row.
+    """
+    now = datetime.now()
+    facts_row = groww_to_facts(sd, amfi_scheme_code, fetched_at=now)
     store.upsert_table(
-        "fund_facts", "amfi_scheme_code", FUND_FACTS_COLUMNS,
-        iter([facts_row]), column_types=FUND_FACTS_TYPES)
+        "fund_facts", "amfi_scheme_code", GROWW_FUND_FACTS_COLUMNS,
+        iter([facts_row]), column_types=GROWW_FUND_FACTS_TYPES,
+        coalesce_missing=True,
+        update_columns=[c for c in GROWW_FUND_FACTS_COLUMNS
+                        if c not in ("amfi_scheme_code", "source")],
+    )
+    if amc_name:
+        store.update_amc_info(amc_name, groww_to_amc(sd, fetched_at=now))
     holdings = groww_to_holdings(sd)
     if holdings:
         store.replace_holdings(amfi_scheme_code, holdings)

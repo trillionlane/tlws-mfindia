@@ -50,13 +50,18 @@ def _targets(store: PostgresStore, mode: str) -> list[dict[str, Any]]:
     with store.connect().cursor() as cur:
         if mode == "all":
             return cur.execute(
-                "SELECT amfi_scheme_code, scheme_name, plan_type, option_type, isin_primary "
-                "FROM mf.funds WHERE in_scope AND NOT is_defunct AND isin_primary IS NOT NULL "
-                "ORDER BY amfi_scheme_code").fetchall()
+                "SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, "
+                "f.option_type, f.isin_primary, a.amfi_amc_name "
+                "FROM mf.funds f "
+                "JOIN mf.amcs a ON a.amc_id = f.amc_id "
+                "WHERE f.in_scope AND NOT f.is_defunct AND f.isin_primary IS NOT NULL "
+                "ORDER BY f.amfi_scheme_code").fetchall()
         return cur.execute(
             """
-            SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type, f.isin_primary
+            SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
+                   f.isin_primary, a.amfi_amc_name
             FROM mf.funds f
+            JOIN mf.amcs a ON a.amc_id = f.amc_id
             LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
             WHERE f.in_scope AND NOT f.is_defunct AND f.isin_primary IS NOT NULL
               AND (ff.amfi_scheme_code IS NULL OR ff.benchmark IS NULL)
@@ -95,7 +100,7 @@ def enrich_groww(
                 report.no_match += 1
                 store.checkpoint_done(SOURCE, KIND_FUND, key, 0, cursor_value="no_match")
             else:
-                load_groww_fund(store, data, code)
+                load_groww_fund(store, data, code, f.get("amfi_amc_name"))
                 report.enriched += 1
                 store.checkpoint_done(SOURCE, KIND_FUND, key, 1, cursor_value=slug)
             done += 1
