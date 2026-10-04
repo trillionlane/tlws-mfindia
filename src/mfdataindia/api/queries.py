@@ -323,6 +323,114 @@ def options(conn) -> list[str]:
         "ORDER BY option_type").fetchall()]
 
 
+def suggest(conn, q: str, *, limit: int = 10) -> list[dict[str, Any]]:
+    """Autocomplete suggestions. Exact code/ISIN match first, then name prefix,
+    then substring. Fast and lightweight (no joins to facts/holdings)."""
+    q = (q or "").strip()
+    if not q:
+        return []
+    rows = conn.execute(
+        """
+        SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
+               a.amfi_amc_name
+        FROM mf.funds f
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        WHERE f.in_scope AND NOT f.is_defunct AND (
+            CAST(f.amfi_scheme_code AS text) = %(qeq)s
+            OR f.isin_primary = %(qeq)s
+            OR f.scheme_name ILIKE %(q)s
+        )
+        ORDER BY
+            (CAST(f.amfi_scheme_code AS text) = %(qeq)s OR f.isin_primary = %(qeq)s) DESC,
+            (f.scheme_name ILIKE %(qprefix)s) DESC,
+            f.scheme_name
+        LIMIT %(limit)s
+        """,
+        {"q": f"%{q}%", "qeq": q, "qprefix": f"{q}%", "limit": limit},
+    ).fetchall()
+    return rows
+
+
+#: movers period -> approximate day span.
+_MOVER_DAYS = {"1d": 1, "1w": 7, "1m": 30, "3m": 90, "6m": 182, "1y": 365}
+
+
+def movers(
+    conn, *, period: str = "1m", direction: str = "gainers", limit: int = 10
+) -> dict[str, Any]:
+    """Top gainers/losers over a period, computed from our own NAV history.
+
+    For each in-scope fund: latest NAV vs the NAV at or just before the period
+    start. The cutoff is computed in Python (portable)."""
+    days = _MOVER_DAYS.get(period, 30)
+    ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
+    if ref is None:
+        return {"period": period, "direction": direction, "results": []}
+    cutoff = ref - timedelta(days=days)
+    order = "DESC" if direction == "gainers" else "ASC"
+    rows = conn.execute(
+        f"""
+        WITH latest AS (
+            SELECT DISTINCT ON (amfi_scheme_code) amfi_scheme_code, nav, nav_date
+            FROM mf.nav_history ORDER BY amfi_scheme_code, nav_date DESC
+        ),
+        prev AS (
+            SELECT DISTINCT ON (amfi_scheme_code) amfi_scheme_code, nav, nav_date
+            FROM mf.nav_history WHERE nav_date <= %(cutoff)s
+            ORDER BY amfi_scheme_code, nav_date DESC
+        )
+        SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
+               a.amfi_amc_name, l.nav AS latest_nav, l.nav_date AS latest_nav_date,
+               p.nav AS prev_nav, p.nav_date AS prev_nav_date,
+               ((l.nav / nullif(p.nav, 0)) - 1.0) * 100.0 AS pct_change
+        FROM latest l
+        JOIN prev p ON p.amfi_scheme_code = l.amfi_scheme_code
+        JOIN mf.funds f ON f.amfi_scheme_code = l.amfi_scheme_code
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        WHERE f.in_scope AND NOT f.is_defunct AND p.nav > 0
+        ORDER BY pct_change {order} NULLS LAST
+        LIMIT %(limit)s
+        """,
+        {"cutoff": cutoff, "limit": limit},
+    ).fetchall()
+    for r in rows:
+        r["latest_nav"] = _f(r["latest_nav"])
+        r["prev_nav"] = _f(r["prev_nav"])
+        r["pct_change"] = _f(r["pct_change"])
+        r["latest_nav_date"] = r["latest_nav_date"].isoformat()
+        r["prev_nav_date"] = r["prev_nav_date"].isoformat()
+    return {"period": period, "direction": direction,
+            "as_of": ref.isoformat(), "from": cutoff.isoformat(), "results": rows}
+
+
+def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
+    """Normalized NAV overlay for up to N funds.
+
+    Each series is rebased to 100 at the window start so funds on different NAV
+    scales compare fairly. Returns per-fund metadata plus date-aligned series.
+    """
+    out_funds: list[dict[str, Any]] = []
+    for code in codes:
+        fund = conn.execute(
+            """
+            SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
+                   a.amfi_amc_name
+            FROM mf.funds f JOIN mf.amcs a ON a.amc_id = f.amc_id
+            WHERE f.amfi_scheme_code = %(code)s
+            """, {"code": code}).fetchone()
+        if not fund:
+            continue
+        series = nav_series(conn, code, years=years)["points"]
+        if series:
+            base = series[0]["nav"]
+            if base and base > 0:
+                for pt in series:
+                    pt["value"] = round(pt["nav"] / base * 100.0, 4)
+        out_funds.append({"fund": dict(fund), "points": series,
+                          "returns": returns(conn, code)["horizons"]})
+    return {"years": years, "funds": out_funds}
+
+
 def list_fund_families(
     conn,
     *,

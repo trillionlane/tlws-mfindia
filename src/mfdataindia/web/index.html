@@ -8,17 +8,39 @@
 </head>
 <body>
   <div class="topbar">
-    <div class="brand"><span class="accent">MFD</span>ataIndia
+    <div class="brand"><a href="/" style="color:inherit;text-decoration:none"><span class="accent">MFD</span>ataIndia</a>
       <small id="brand-sub">Indian Regular-Plan mutual funds</small>
     </div>
     <div class="search">
       <span class="icon">&#128269;</span>
       <input id="q" type="text" placeholder="Search funds, ISIN, or scheme code…" autocomplete="off">
+      <div id="suggest-box" class="suggest" style="display:none"></div>
     </div>
+    <a class="toplink" href="/compare">Compare</a>
   </div>
 
   <div class="container">
     <div class="statbar" id="statbar"><span class="loading">Loading…</span></div>
+
+    <div class="card movers-card">
+      <div class="movers-head">
+        <span class="movers-title">Top movers</span>
+        <div class="movers-controls">
+          <div class="range-btns" id="movers-period">
+            <button data-p="1d">1D</button>
+            <button data-p="1w">1W</button>
+            <button data-p="1m" class="active">1M</button>
+            <button data-p="3m">3M</button>
+            <button data-p="1y">1Y</button>
+          </div>
+          <div class="range-btns" id="movers-dir">
+            <button data-d="gainers" class="active">Gainers</button>
+            <button data-d="losers">Losers</button>
+          </div>
+        </div>
+      </div>
+      <div id="movers"><div class="loading">Loading…</div></div>
+    </div>
 
     <div class="filters">
       <select id="f-amc"><option value="">All fund houses</option></select>

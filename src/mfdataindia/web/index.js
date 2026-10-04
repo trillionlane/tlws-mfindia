@@ -96,16 +96,96 @@
     $("pg-next").onclick = () => { if (state.page < pages) { state.page++; loadList(); } };
   }
 
-  let timer;
-  $("q").addEventListener("input", (e) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => { state.q = e.target.value.trim(); state.page = 1; loadList(); }, 250);
+  // ---- autocomplete ----
+  let sugTimer, sugItems = [], sugActive = -1;
+  const qInput = $("q"), sugBox = $("suggest-box");
+
+  function hideSuggest() { sugBox.style.display = "none"; sugItems = []; sugActive = -1; }
+
+  function hl(text, q) {
+    const i = text.toLowerCase().indexOf((q || "").toLowerCase());
+    if (i < 0 || !q) return text;
+    return text.slice(0, i) + "<b>" + text.slice(i, i + q.length) + "</b>" + text.slice(i + q.length);
+  }
+
+  function goSuggest(code) { hideSuggest(); location.href = "/fund/" + code; }
+
+  function paintActive() {
+    sugBox.querySelectorAll(".suggest-item").forEach((el, i) =>
+      el.classList.toggle("active", i === sugActive));
+  }
+
+  async function loadSuggest() {
+    const q = qInput.value.trim();
+    if (!q) { hideSuggest(); return; }
+    try {
+      const items = await api("/api/suggest?q=" + encodeURIComponent(q) + "&limit=10");
+      if (!items.length) { hideSuggest(); return; }
+      sugItems = items; sugActive = -1;
+      sugBox.innerHTML = items.map((it, i) => `
+        <div class="suggest-item" data-i="${i}" data-code="${it.amfi_scheme_code}">
+          <div>
+            <div class="nm">${hl(esc(it.scheme_name), q)}</div>
+            <div class="mt">${esc(it.amfi_amc_name)} · ${esc(it.option_type)} · ${it.amfi_scheme_code}</div>
+          </div>
+          <span class="badge ${it.plan_type === "REGULAR" ? "regular" : ""}">${esc(it.plan_type)}</span>
+        </div>`).join("");
+      sugBox.style.display = "";
+      sugBox.querySelectorAll(".suggest-item").forEach((el) =>
+        el.addEventListener("mousedown", (e) => { e.preventDefault(); goSuggest(+el.dataset.code); }));
+    } catch (e) { hideSuggest(); }
+  }
+
+  qInput.addEventListener("input", () => { clearTimeout(sugTimer); sugTimer = setTimeout(loadSuggest, 180); });
+  qInput.addEventListener("keydown", (e) => {
+    const open = sugBox.style.display !== "none";
+    if (e.key === "ArrowDown" && open) { e.preventDefault(); sugActive = Math.min(sugActive + 1, sugItems.length - 1); paintActive(); }
+    else if (e.key === "ArrowUp" && open) { e.preventDefault(); sugActive = Math.max(sugActive - 1, 0); paintActive(); }
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      if (open && sugActive >= 0) goSuggest(sugItems[sugActive].amfi_scheme_code);
+      else { hideSuggest(); state.q = qInput.value.trim(); state.page = 1; loadList(); }
+    }
+    else if (e.key === "Escape") hideSuggest();
   });
+  qInput.addEventListener("blur", () => setTimeout(hideSuggest, 150));
   $("f-amc").onchange = (e) => { state.amc = e.target.value; state.page = 1; loadList(); };
   $("f-cat").onchange = (e) => { state.category = e.target.value; state.page = 1; loadList(); };
   $("f-opt").onchange = (e) => { state.option = e.target.value; state.page = 1; loadList(); };
   $("f-sort").onchange = (e) => { state.sort = e.target.value; state.page = 1; loadList(); };
   $("f-family").onchange = (e) => { state.family = e.target.checked; state.page = 1; loadList(); };
 
-  loadStats(); loadFilters(); loadList();
+  // ---- top movers ----
+  const mstate = { period: "1m", direction: "gainers" };
+  async function loadMovers() {
+    $("movers").innerHTML = '<div class="loading">Loading…</div>';
+    try {
+      const data = await api(`/api/movers?period=${mstate.period}&direction=${mstate.direction}&limit=10`);
+      if (!data.results.length) { $("movers").innerHTML = '<div class="empty">No data.</div>'; return; }
+      $("movers").innerHTML = '<div class="movers-list">' + data.results.map((f) => {
+        const up = (f.pct_change || 0) >= 0;
+        return `<div class="mover-row" data-code="${f.amfi_scheme_code}">
+          <div>
+            <div class="nm">${esc(f.scheme_name)}</div>
+            <div class="sub">${esc(f.amfi_amc_name)} · ${esc(f.option_type)} · ₹${fmt(f.latest_nav, 2)}</div>
+          </div>
+          <span class="pct" style="color:var(--${up ? "up" : "down"})">${up ? "▲" : "▼"} ${Math.abs(f.pct_change || 0).toFixed(2)}%</span>
+        </div>`;
+      }).join("") + "</div>";
+      document.querySelectorAll("#movers .mover-row").forEach((el) =>
+        el.addEventListener("click", () => (location.href = "/fund/" + el.dataset.code)));
+    } catch (e) { $("movers").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+  }
+  document.querySelectorAll("#movers-period button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#movers-period button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active"); mstate.period = b.dataset.p; loadMovers();
+    }));
+  document.querySelectorAll("#movers-dir button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#movers-dir button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active"); mstate.direction = b.dataset.d; loadMovers();
+    }));
+
+  loadStats(); loadFilters(); loadList(); loadMovers();
 })();

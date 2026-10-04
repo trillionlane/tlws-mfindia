@@ -125,6 +125,31 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
         with pool.connection() as conn:
             return queries.options(conn)
 
+    @app.get("/api/suggest")
+    def api_suggest(q: str = Query(""), limit: int = Query(10, ge=1, le=25)) -> list[dict[str, Any]]:
+        with pool.connection() as conn:
+            return queries.suggest(conn, q, limit=limit)
+
+    @app.get("/api/movers")
+    def api_movers(
+        period: str = Query("1m"),
+        direction: str = Query("gainers"),
+        limit: int = Query(10, ge=1, le=50),
+    ) -> dict[str, Any]:
+        with pool.connection() as conn:
+            return queries.movers(conn, period=period, direction=direction, limit=limit)
+
+    @app.get("/api/compare")
+    def api_compare(
+        codes: str = Query(...),
+        years: float = Query(1.0, ge=0),
+    ) -> dict[str, Any]:
+        parsed = [int(c) for c in codes.split(",") if c.strip().isdigit()][:4]
+        if not parsed:
+            raise HTTPException(status_code=422, detail="codes must be comma-separated ints")
+        with pool.connection() as conn:
+            return queries.compare(conn, parsed, years=years)
+
     @app.get("/api/health")
     def api_health() -> dict[str, Any]:
         with pool.connection() as conn:
@@ -143,5 +168,9 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
         @app.get("/fund/{code}", include_in_schema=False)
         def fund_page(code: int) -> FileResponse:
             return FileResponse(str(WEB_DIR / "fund.html"))
+
+        @app.get("/compare", include_in_schema=False)
+        def compare_page() -> FileResponse:
+            return FileResponse(str(WEB_DIR / "compare.html"))
 
     return app

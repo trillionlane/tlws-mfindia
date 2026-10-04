@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compare — MFDataIndia</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><a href="/" style="color:inherit;text-decoration:none"><span class="accent">MFD</span>ataIndia</a>
+      <small>Compare funds</small>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div class="movers-head">
+        <span class="movers-title">Add funds to compare</span>
+      </div>
+      <div style="padding: 4px 16px 14px">
+        <div class="search" style="max-width:none">
+          <span class="icon">&#128269;</span>
+          <input id="cq" type="text" placeholder="Search a fund to add… (up to 4)" autocomplete="off">
+          <div id="c-suggest" class="suggest" style="display:none"></div>
+        </div>
+        <div id="chips" class="chips"></div>
+      </div>
+    </div>
+
+    <div class="card chart-wrap" id="chart-card" style="display:none">
+      <div class="range-btns" id="c-ranges">
+        <button data-y="0.5">6M</button>
+        <button data-y="1" class="active">1Y</button>
+        <button data-y="3">3Y</button>
+        <button data-y="5">5Y</button>
+        <button data-y="">MAX</button>
+      </div>
+      <canvas id="cchart" height="90"></canvas>
+      <div class="price-sub" style="padding:0 12px 10px">Rebased to 100 at the window start.</div>
+    </div>
+
+    <div class="card" id="table-card" style="display:none">
+      <div class="movers-head"><span class="movers-title">Side-by-side</span></div>
+      <div id="ctable" style="overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <script src="/static/compare.js"></script>
+</body>
+</html>
