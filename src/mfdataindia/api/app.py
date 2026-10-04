@@ -74,6 +74,22 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
                 conn, q=q, amc=amc, category=category, option=option,
                 in_scope=in_scope, live=live, page=page, per_page=per_page, sort=sort)
 
+    @app.get("/api/fund-families")
+    def api_fund_families(
+        q: Optional[str] = Query(None),
+        amc: Optional[str] = Query(None),
+        category: Optional[str] = Query(None),
+        option: Optional[str] = Query(None),
+        live: bool = Query(True),
+        page: int = Query(1, ge=1),
+        per_page: int = Query(50, ge=1, le=500),
+        sort: str = Query("name"),
+    ) -> dict[str, Any]:
+        with pool.connection() as conn:
+            return queries.list_fund_families(
+                conn, q=q, amc=amc, category=category, option=option,
+                live=live, page=page, per_page=per_page, sort=sort)
+
     @app.get("/api/funds/{code}")
     def api_fund(code: int) -> dict[str, Any]:
         with pool.connection() as conn:

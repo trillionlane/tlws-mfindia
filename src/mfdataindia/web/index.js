@@ -1,6 +1,6 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  const state = { q: "", amc: "", category: "", option: "", sort: "name", page: 1, per_page: 50 };
+  const state = { q: "", amc: "", category: "", option: "", sort: "name", page: 1, per_page: 50, family: false };
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g,
@@ -55,8 +55,9 @@
     if (state.category) p.set("category", state.category);
     if (state.option) p.set("option", state.option);
     p.set("sort", state.sort); p.set("page", state.page); p.set("per_page", state.per_page);
+    const endpoint = state.family ? "/api/fund-families" : "/api/funds";
     try {
-      const data = await api("/api/funds?" + p.toString());
+      const data = await api(endpoint + "?" + p.toString());
       renderList(data);
       renderPager(data);
     } catch (e) { $("list").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
@@ -67,7 +68,7 @@
     const rows = data.results.map((f) => `
       <tr data-code="${f.amfi_scheme_code}">
         <td>
-          <div class="fund-name">${esc(f.scheme_name)}</div>
+          <div class="fund-name">${esc(f.scheme_name)}${f.variant_count > 1 ? `<span class="vcount">+${f.variant_count - 1} variants</span>` : ""}</div>
           <div class="fund-sub">${esc(f.amfi_amc_name)} · ${esc(f.scheme_category)}</div>
         </td>
         <td>${badgeFor(f)}</td>
@@ -104,6 +105,7 @@
   $("f-cat").onchange = (e) => { state.category = e.target.value; state.page = 1; loadList(); };
   $("f-opt").onchange = (e) => { state.option = e.target.value; state.page = 1; loadList(); };
   $("f-sort").onchange = (e) => { state.sort = e.target.value; state.page = 1; loadList(); };
+  $("f-family").onchange = (e) => { state.family = e.target.checked; state.page = 1; loadList(); };
 
   loadStats(); loadFilters(); loadList();
 })();

@@ -23,6 +23,17 @@ _SORT = {
     "return_5y": "ff.return_5year DESC NULLS LAST",
 }
 
+#: Sort keys for the family query, whose picked CTE is aliased ``s`` and whose
+#: fund_facts join is ``ff``. (A naive f.->s. string replacement would corrupt
+#: ``ff.aum`` into ``sf.aum``.)
+_SORT_FAMILY = {
+    "name": "s.scheme_name",
+    "nav": "lt.nav DESC NULLS LAST",
+    "aum": "ff.aum DESC NULLS LAST",
+    "expense": "ff.expense_ratio ASC NULLS LAST",
+    "return_5y": "ff.return_5year DESC NULLS LAST",
+}
+
 
 def _f(v: Any) -> Optional[float]:
     return None if v is None else float(v)
@@ -310,3 +321,94 @@ def options(conn) -> list[str]:
     return [r["option_type"] for r in conn.execute(
         "SELECT DISTINCT option_type FROM mf.funds WHERE in_scope AND NOT is_defunct "
         "ORDER BY option_type").fetchall()]
+
+
+def list_fund_families(
+    conn,
+    *,
+    q: Optional[str] = None,
+    amc: Optional[str] = None,
+    category: Optional[str] = None,
+    option: Optional[str] = None,
+    live: bool = True,
+    page: int = 1,
+    per_page: int = 50,
+    sort: str = "name",
+) -> dict[str, Any]:
+    """One row per scheme family (base scheme), collapsing plan/option variants.
+
+    The representative row is the Regular Growth variant where one exists, else
+    the first in-scope variant. `variant_count` reports how many in-scope
+    variants the family has. Funds with no variant group are their own family.
+    """
+    order = _SORT_FAMILY.get(sort, "s.scheme_name")
+    where = ["f.in_scope"]
+    params: dict[str, Any] = {}
+    if live:
+        where.append("NOT f.is_defunct")
+    if q:
+        where.append("(f.scheme_name ILIKE %(q)s OR CAST(f.amfi_scheme_code AS text) = %(qeq)s "
+                     "OR f.isin_primary = %(qeq)s)")
+        params["q"] = f"%{q}%"
+        params["qeq"] = q.strip()
+    if amc:
+        where.append("a.amfi_amc_name = %(amc)s")
+        params["amc"] = amc
+    if category:
+        where.append("f.scheme_category = %(cat)s")
+        params["cat"] = category
+    if option:
+        where.append("f.option_type = %(opt)s")
+        params["opt"] = option
+    where_sql = " AND ".join(where)
+
+    base = f"""
+        WITH scoped AS (
+            SELECT f.*, a.amfi_amc_name,
+                   coalesce(fv.group_key, CAST(f.amfi_scheme_code AS text)) AS fam_key
+            FROM mf.funds f
+            JOIN mf.amcs a ON a.amc_id = f.amc_id
+            LEFT JOIN mf.fund_variants fv ON fv.amfi_scheme_code = f.amfi_scheme_code
+            WHERE {where_sql}
+        ), picked AS (
+            SELECT *,
+                row_number() OVER (PARTITION BY fam_key
+                    ORDER BY (option_type = 'GROWTH') DESC, (plan_type = 'REGULAR') DESC,
+                             amfi_scheme_code) AS rn,
+                count(*) OVER (PARTITION BY fam_key) AS variant_count
+            FROM scoped
+        )
+        SELECT * FROM picked
+    """
+    total = conn.execute(
+        f"SELECT count(*) AS n FROM ({base} WHERE rn = 1) t", params).fetchone()["n"]
+    params["per"] = per_page
+    params["off"] = (page - 1) * per_page
+    rows = conn.execute(
+        f"""
+        SELECT s.amfi_scheme_code, s.scheme_name, s.plan_type, s.option_type,
+               s.scheme_category, s.is_active, s.is_defunct, s.isin_primary,
+               s.amfi_amc_name, s.variant_count, s.fam_key,
+               lt.nav AS latest_nav, lt.nav_date AS latest_nav_date,
+               ff.aum, ff.expense_ratio, ff.return_5year
+        FROM ({base} WHERE rn = 1) s
+        LEFT JOIN LATERAL (
+            SELECT n.nav, n.nav_date FROM mf.nav_history n
+            WHERE n.amfi_scheme_code = s.amfi_scheme_code
+            ORDER BY n.nav_date DESC LIMIT 1
+        ) lt ON true
+        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = s.amfi_scheme_code
+        ORDER BY {order}, s.amfi_scheme_code
+        LIMIT %(per)s OFFSET %(off)s
+        """,
+        params,
+    ).fetchall()
+
+    for r in rows:
+        r["latest_nav"] = _f(r["latest_nav"])
+        r["aum"] = _f(r["aum"])
+        r["expense_ratio"] = _f(r["expense_ratio"])
+        r["return_5year"] = _f(r["return_5year"])
+        if r["latest_nav_date"]:
+            r["latest_nav_date"] = r["latest_nav_date"].isoformat()
+    return {"total": total, "page": page, "per_page": per_page, "results": rows}
