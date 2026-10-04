@@ -40,7 +40,11 @@ FUND_FACTS_COLUMNS: tuple[str, ...] = (
     "return_10year", "return_since_launch", "source_nav", "source_nav_date",
     "composition", "sectorwise_holding", "asset_holding", "holdings_maturity",
     "exit_load", "sip", "stp", "swp", "stats_variables", "category_return",
-    "fund_manager", "fund_variant", "source", "source_updated_at", "fetched_at",
+    "fund_manager", "fund_variant",
+    # surfaced descriptive facts (mapped from Scripbox; Groww can overwrite)
+    "benchmark", "benchmark_name", "fund_manager_name", "risk_level",
+    "fund_manager_details", "launch_date",
+    "source", "source_updated_at", "fetched_at",
     "raw_payload",
 )
 
@@ -67,6 +71,8 @@ FUND_FACTS_TYPES: dict[str, str] = {
     "holdings_maturity": "jsonb", "exit_load": "jsonb", "sip": "jsonb", "stp": "jsonb",
     "swp": "jsonb", "stats_variables": "jsonb", "category_return": "jsonb",
     "fund_manager": "jsonb", "fund_variant": "jsonb", "raw_payload": "jsonb",
+    "fund_manager_details": "jsonb",
+    "launch_date": "date",
     "source_updated_at": "timestamptz", "fetched_at": "timestamptz",
 }
 
@@ -141,6 +147,13 @@ def _json(v: Any) -> Optional[str]:
         return None
 
 
+def _manager_names(fs: dict[str, Any]) -> Optional[str]:
+    """Comma-joined manager names from Scripbox's fund_manager list."""
+    managers = fs.get("fund_manager") or []
+    names = [m.get("name") for m in managers if isinstance(m, dict) and m.get("name")]
+    return ", ".join(names) if names else None
+
+
 def factsheet_to_facts(fs: dict[str, Any]) -> Optional[tuple]:
     """Map one ``factsheetData`` dict to a mf.fund_facts row. None if no code."""
     code = fs.get("amfi_code")
@@ -209,6 +222,14 @@ def factsheet_to_facts(fs: dict[str, Any]) -> Optional[tuple]:
         "category_return": _json(fs.get("category_return")),
         "fund_manager": _json(fs.get("fund_manager")),
         "fund_variant": _json(fs.get("fund_variant")),
+        # surfaced descriptive facts
+        "benchmark": ((fs.get("index") or {}).get("short_name")
+                      or (fs.get("index") or {}).get("full_name")),
+        "benchmark_name": (fs.get("index") or {}).get("full_name"),
+        "fund_manager_name": _manager_names(fs),
+        "risk_level": fs.get("risk_level"),   # factual SEBI riskometer
+        "fund_manager_details": _json(fs.get("fund_manager")),
+        "launch_date": _date(fs.get("inception_date")),
         "source": "SCRIPBOX",
         "source_updated_at": _ts(fs.get("updated_at")),
         "fetched_at": now,
