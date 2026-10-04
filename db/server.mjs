@@ -43,7 +43,27 @@ const server = new PGLiteSocketServer({
   // across connections. The default of 1 would reject the API's connection pool,
   // so allow a few concurrent client connections.
   maxConnections: 16,
+  // Reap only truly-abandoned connections. Too short and it would drop the API's
+  // legitimately-held connection between requests; 60s is long enough for active
+  // use and short enough to recover slots from a client that died without closing.
+  idleTimeout: 60_000,
 });
+
+// A client that disconnects mid-query (ECONNRESET / EPIPE) must not take the
+// server down. These are routine in a web app (browser tab closed, request
+// cancelled) and should be logged, not fatal.
+process.on("uncaughtException", (err) => {
+  if (err && (err.code === "ECONNRESET" || err.code === "EPIPE" || err.code === "ECONNABORTED")) {
+    console.error(`[mfdataindia-db] client connection dropped (ignored): ${err.code}`);
+    return;
+  }
+  console.error("[mfdataindia-db] fatal:", err);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[mfdataindia-db] unhandled rejection (ignored):", reason);
+});
+
 await server.start();
 console.log(`[mfdataindia-db] listening on 127.0.0.1:${port} (data: ${dataDir})`);
 console.log(`[mfdataindia-db] DSN: host=127.0.0.1 port=${port} user=postgres dbname=postgres sslmode=disable`);

@@ -97,6 +97,15 @@ def list_funds(
         params["opt"] = option
 
     where_sql = " AND ".join(where)
+    # Count with a lightweight FROM — the lateral latest-NAV join and the facts
+    # join must NOT run for a count, or we compute latest NAV for every row just
+    # to count them.
+    count_base = f"""
+        FROM mf.funds f
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        WHERE {where_sql}
+    """
+    total = conn.execute(f"SELECT count(*) AS n {count_base}", params).fetchone()["n"]
     base = f"""
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
@@ -108,18 +117,55 @@ def list_funds(
         LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE {where_sql}
     """
-    total = conn.execute(f"SELECT count(*) AS n {base}", params).fetchone()["n"]
     params["per"] = per_page
     params["off"] = (page - 1) * per_page
-    rows = conn.execute(
-        f"""
+
+    # Paginate FIRST over a cheap scan, then join the expensive bits (latest NAV,
+    # facts) only for the page's rows. The sort key decides what the page CTE must
+    # join: a name sort needs no join; a facts/NAV sort needs its column available
+    # before ORDER BY. ``pos`` preserves page order through the outer joins.
+    if sort in ("aum", "expense", "return_5y"):
+        sort_join = ("LEFT JOIN mf.fund_facts fs "
+                     "ON fs.amfi_scheme_code = f.amfi_scheme_code")
+        order = {"aum": "fs.aum DESC NULLS LAST",
+                 "expense": "fs.expense_ratio ASC NULLS LAST",
+                 "return_5y": "fs.return_5year DESC NULLS LAST"}[sort]
+    elif sort == "nav":
+        sort_join = ("LEFT JOIN LATERAL (SELECT n.nav FROM mf.nav_history n "
+                     "WHERE n.amfi_scheme_code = f.amfi_scheme_code "
+                     "ORDER BY n.nav_date DESC LIMIT 1) lt ON true")
+        order = "lt.nav DESC NULLS LAST"
+    else:
+        sort_join = ""
+        order = "f.scheme_name"
+
+    page_cte = f"""
         SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
                f.scheme_category, f.is_active, f.is_defunct, f.isin_primary,
-               a.amfi_amc_name, lt.nav AS latest_nav, lt.nav_date AS latest_nav_date,
+               a.amfi_amc_name,
+               row_number() OVER (ORDER BY {order}, f.amfi_scheme_code) AS pos
+        FROM mf.funds f
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        {sort_join}
+        WHERE {where_sql}
+    """
+    rows = conn.execute(
+        f"""
+        SELECT p.amfi_scheme_code, p.scheme_name, p.plan_type, p.option_type,
+               p.scheme_category, p.is_active, p.is_defunct, p.isin_primary,
+               p.amfi_amc_name, lt.nav AS latest_nav, lt.nav_date AS latest_nav_date,
                ff.aum, ff.expense_ratio, ff.return_5year
-        {base}
-        ORDER BY {order}, f.amfi_scheme_code
-        LIMIT %(per)s OFFSET %(off)s
+        FROM (
+            SELECT * FROM ({page_cte}) t
+            ORDER BY pos LIMIT %(per)s OFFSET %(off)s
+        ) p
+        LEFT JOIN LATERAL (
+            SELECT n.nav, n.nav_date FROM mf.nav_history n
+            WHERE n.amfi_scheme_code = p.amfi_scheme_code
+            ORDER BY n.nav_date DESC LIMIT 1
+        ) lt ON true
+        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = p.amfi_scheme_code
+        ORDER BY p.pos
         """,
         params,
     ).fetchall()
@@ -367,40 +413,51 @@ def movers(
     if ref is None:
         return {"period": period, "direction": direction, "results": []}
     cutoff = ref - timedelta(days=days)
-    order = "DESC" if direction == "gainers" else "ASC"
+    # Single group-by scan over the recent window (fast on the embedded engine).
+    # "prev" is the earliest NAV at/after the period start, "latest" the most recent.
     rows = conn.execute(
-        f"""
-        WITH latest AS (
-            SELECT DISTINCT ON (amfi_scheme_code) amfi_scheme_code, nav, nav_date
-            FROM mf.nav_history ORDER BY amfi_scheme_code, nav_date DESC
-        ),
-        prev AS (
-            SELECT DISTINCT ON (amfi_scheme_code) amfi_scheme_code, nav, nav_date
-            FROM mf.nav_history WHERE nav_date <= %(cutoff)s
-            ORDER BY amfi_scheme_code, nav_date DESC
-        )
-        SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
-               a.amfi_amc_name, l.nav AS latest_nav, l.nav_date AS latest_nav_date,
-               p.nav AS prev_nav, p.nav_date AS prev_nav_date,
-               ((l.nav / nullif(p.nav, 0)) - 1.0) * 100.0 AS pct_change
-        FROM latest l
-        JOIN prev p ON p.amfi_scheme_code = l.amfi_scheme_code
-        JOIN mf.funds f ON f.amfi_scheme_code = l.amfi_scheme_code
-        JOIN mf.amcs a ON a.amc_id = f.amc_id
-        WHERE f.in_scope AND NOT f.is_defunct AND p.nav > 0
-        ORDER BY pct_change {order} NULLS LAST
-        LIMIT %(limit)s
+        """
+        SELECT amfi_scheme_code,
+               (array_agg(nav ORDER BY nav_date DESC))[1] AS latest_nav,
+               (array_agg(nav ORDER BY nav_date ASC))[1]  AS prev_nav,
+               max(nav_date) AS latest_nav_date,
+               min(nav_date) AS prev_nav_date
+        FROM mf.nav_history
+        WHERE nav_date >= %(cutoff)s
+          AND amfi_scheme_code IN (
+              SELECT amfi_scheme_code FROM mf.funds WHERE in_scope AND NOT is_defunct)
+        GROUP BY amfi_scheme_code
         """,
-        {"cutoff": cutoff, "limit": limit},
+        {"cutoff": cutoff},
     ).fetchall()
+    codes = [int(r["amfi_scheme_code"]) for r in rows]
+    names = {}
+    if codes:
+        for r in conn.execute(
+                "SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type, a.amfi_amc_name "
+                "FROM mf.funds f JOIN mf.amcs a ON a.amc_id = f.amc_id "
+                "WHERE f.amfi_scheme_code = ANY(%(codes)s)",
+                {"codes": codes}).fetchall():
+            names[int(r["amfi_scheme_code"])] = r
+    out = []
     for r in rows:
-        r["latest_nav"] = _f(r["latest_nav"])
-        r["prev_nav"] = _f(r["prev_nav"])
-        r["pct_change"] = _f(r["pct_change"])
-        r["latest_nav_date"] = r["latest_nav_date"].isoformat()
-        r["prev_nav_date"] = r["prev_nav_date"].isoformat()
+        latest, prev = r["latest_nav"], r["prev_nav"]
+        if latest and prev and float(prev) > 0:
+            meta = names.get(int(r["amfi_scheme_code"]), {})
+            out.append({
+                "amfi_scheme_code": int(r["amfi_scheme_code"]),
+                "scheme_name": meta.get("scheme_name"),
+                "plan_type": meta.get("plan_type"),
+                "option_type": meta.get("option_type"),
+                "amfi_amc_name": meta.get("amfi_amc_name"),
+                "latest_nav": _f(latest), "prev_nav": _f(prev),
+                "latest_nav_date": r["latest_nav_date"].isoformat(),
+                "prev_nav_date": r["prev_nav_date"].isoformat(),
+                "pct_change": round((float(latest) / float(prev) - 1.0) * 100.0, 2),
+            })
+    out.sort(key=lambda x: x["pct_change"], reverse=(direction == "gainers"))
     return {"period": period, "direction": direction,
-            "as_of": ref.isoformat(), "from": cutoff.isoformat(), "results": rows}
+            "as_of": ref.isoformat(), "from": cutoff.isoformat(), "results": out[:limit]}
 
 
 def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
@@ -488,8 +545,17 @@ def list_fund_families(
         )
         SELECT * FROM picked
     """
+    # Count distinct families cheaply — no window functions, no per-row joins.
     total = conn.execute(
-        f"SELECT count(*) AS n FROM ({base} WHERE rn = 1) t", params).fetchone()["n"]
+        f"""
+        SELECT count(DISTINCT coalesce(fv.group_key, CAST(f.amfi_scheme_code AS text))) AS n
+        FROM mf.funds f
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        LEFT JOIN mf.fund_variants fv ON fv.amfi_scheme_code = f.amfi_scheme_code
+        WHERE {where_sql}
+        """,
+        params,
+    ).fetchone()["n"]
     params["per"] = per_page
     params["off"] = (page - 1) * per_page
     rows = conn.execute(

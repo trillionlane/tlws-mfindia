@@ -29,10 +29,19 @@ if [ "$API_ONLY" -eq 0 ]; then
       (cd db && npm install --no-audit --no-fund --silent)
     fi
     mkdir -p data/pglite
-    (cd db && nohup node server.mjs > ../data/pglite/server.log 2>&1 & echo $! > ../data/pglite/server.pid)
+    # supervisor: restart the DB if it ever exits (it self-handles client
+    # disconnects, but this covers any other crash) with a small backoff.
+    nohup bash -c '
+      while true; do
+        (cd db && node server.mjs) >> data/pglite-server.log 2>&1
+        echo "[mfdataindia-db] exited; restarting in 2s" >> data/pglite-server.log
+        sleep 2
+      done
+    ' > /dev/null 2>&1 &
+    echo $! > data/pglite/supervisor.pid
     # wait for readiness
-    for _ in $(seq 1 30); do nc -z 127.0.0.1 "$PG_PORT" 2>/dev/null && break; sleep 1; done
-    echo "[up] DB ready (log: data/pglite/server.log)"
+    for _ in $(seq 1 40); do nc -z 127.0.0.1 "$PG_PORT" 2>/dev/null && break; sleep 1; done
+    echo "[up] DB ready (log: data/pglite-server.log)"
   fi
 fi
 
