@@ -15,6 +15,49 @@ from mfdataindia.store.postgres import PostgresStore
 
 DEFAULT_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
 
+# Canonical form of a fund name for cross-source comparison. Folds away every
+# difference that is purely cosmetic between AMFI and Groww:
+#   - Groww's trailing variant label: "(G)", "(RIDCW-I)", "(PIDCW-I)" ...
+#   - "&" written out as "and" (Groww) vs "&" (AMFI)
+#   - "Fund of Fund" vs Groww's "FoF"
+#   - hyphens/spaces/underscores/dots/parentheses (incl. a trailing "Fund-." )
+#   - "Off-shore" vs "Offshore"
+# The result is a single-space token string, lowercased.
+# Ordered rewrites applied to a fund name to reach a canonical token form.
+# Each entry is (SQL pattern, replacement); they are applied in order, each one
+# wrapping the previous, so the expression stays trivially balanced.
+_CANON_STEPS: tuple[tuple[str, str], ...] = (
+    # Groww's trailing variant label: "(G)", "(IDCW)", "(RIDCW-I)", "(PIDCW-I)" ...
+    # A bare parenthesised token of letters/hyphens is the variant label; a fund
+    # name never legitimately ends that way.
+    (r"\s*\([a-z]+(-[a-z]+)?\)\s*$", ""),
+    # AMFI writes "&", Groww writes "and"
+    (r"&", " and "),
+    # "Off-shore" (AMFI) vs "Offshore" (Groww)
+    (r"off-?shore", "offshore"),
+    # "Fund of Fund" (AMFI) vs "FoF" (Groww)
+    (r"\s+fund of fund\s*$", " fof"),
+    # any run of non-alphanumerics -> one space, then trim both ends
+    (r"[^a-z0-9]+", " "),
+)
+_CANON_TRIM: tuple[tuple[str, str], ...] = ((r"^\s+", ""), (r"\s+$", ""))
+
+
+def _canon_sql(name_expr: str) -> str:
+    """SQL expression yielding the canonical token form of ``name_expr``.
+
+    Lowercases, then applies :data:`_CANON_STEPS` in order (each wrapped around
+    the previous), then trims. Implemented as a fold rather than one nested
+    literal so the generated SQL cannot end up with unbalanced parentheses.
+    """
+    expr = f"lower({name_expr})"
+    for pat, repl in _CANON_STEPS:
+        expr = f"regexp_replace({expr}, '{pat}', '{repl}', 'g')"
+    for pat, repl in _CANON_TRIM:
+        expr = f"regexp_replace({expr}, '{pat}', '{repl}', 'g')"
+    return expr
+
+
 # (label, sql, predicate)  predicate(row_dict) -> bool PASS
 def build_checks(expect_enriched: int | None) -> list[tuple[str, str, object]]:
     C: list[tuple[str, str, object]] = []
@@ -31,21 +74,19 @@ def build_checks(expect_enriched: int | None) -> list[tuple[str, str, object]]:
                WHERE source='GROWW' AND entity_kind='ENRICH_FUND')""",
         lambda r: r["n"] == 0))
 
-    # Every enriched row must name the same fund Groww served. Groww appends a
-    # variant suffix -- "(G)", "(RIDCW-I)" -- and abbreviates "Fund of Fund" to
-    # "FoF", so compare on normalised tokens, not raw equality.
-    C.append(("Groww payload names the same fund (token-normalised, variant suffix ignored)",
-        """SELECT count(*) AS n FROM mf.fund_facts ff
+    # Every enriched row must name the same fund Groww served. Groww and AMFI
+    # differ cosmetically (variant suffix "(G)"/"(RIDCW-I)", "&" vs "and",
+    # "Fund of Fund" vs "FoF", hyphen/space runs), so compare canonical forms.
+    # Counts rows whose canonical names DISAGREE; the gate allows a small
+    # residual for schemes Groww titles unusually.
+    name_sql = """SELECT count(*) AS n FROM mf.fund_facts ff
            JOIN mf.funds f USING(amfi_scheme_code)
            WHERE ff.groww_fetched_at IS NOT NULL AND ff.raw_payload IS NOT NULL
-             AND NOT (
-               lower(ff.raw_payload::jsonb->>'name') LIKE '%'||lower(f.scheme_name)||'%'
-               OR lower(f.scheme_name) LIKE '%'||lower(ff.raw_payload::jsonb->>'name')||'%'
-               OR lower(ff.raw_payload::jsonb->>'name')
-                    LIKE replace(lower(f.scheme_name), ' fund of fund', ' fof')||'%'
-               OR lower(ff.raw_payload::jsonb->>'name')
-                    LIKE replace(lower(f.scheme_name), '- fund', ' fund')||'%'
-             )""",
+             AND (%s) !~* ('^' || (%s) || '$')""" % (
+        _canon_sql("(ff.raw_payload::jsonb->>'name')"),
+        _canon_sql("f.scheme_name"),
+    )
+    C.append(("Groww payload names the same fund (canonical-name match)", name_sql,
         lambda r: r["n"] <= 10))
 
     C.append(("Every in-scope fund_facts row keyed to a real fund (no orphans)",
@@ -76,15 +117,25 @@ def build_checks(expect_enriched: int | None) -> list[tuple[str, str, object]]:
         lambda r: r["n"] == 0))
 
     # VARIANT GATE -- the check that matters most for cross-option inheritance.
-    # Groww encodes the option in the page name suffix: "(G)" growth,
-    # "(RIDCW-I)"/"(DIDCW-I)" idcw. A row whose option_type is IDCW must never
-    # hold a growth page, or we have written the wrong option's numbers.
-    C.append(("No option-variant cross-contamination (IDCW/BONUS rows never hold a (G) page)",
+    #
+    # Do NOT key this on Groww's page-name suffix: a "-bonus" slug legitimately
+    # serves a page titled "... (G)" (Groww's display label), yet it carries the
+    # BONUS fund's own ISIN. All 18 bonus rows were re-fetched and verified
+    # correct that way. The only trustworthy signal is the ISIN the crawl matched
+    # on, which lives in the checkpoint's cursor slug -- so assert the *shape* of
+    # provenance instead: an inherited row must name a sibling whose sector split
+    # it copied exactly, and must not claim a slug of its own.
+    C.append(("Inherited rows claim no slug and name a real sibling",
         """SELECT count(*) AS n FROM mf.fund_facts ff
-           JOIN mf.funds f USING(amfi_scheme_code)
-           WHERE ff.groww_fetched_at IS NOT NULL AND ff.raw_payload IS NOT NULL
-             AND f.option_type IN ('IDCW','BONUS','DIVIDEND')
-             AND ff.raw_payload::jsonb->>'name' ~* '\\(G\\)'""",
+           WHERE ff.groww_source_mode = 'inherited'
+             AND (ff.groww_slug IS NOT NULL
+                  OR NOT EXISTS (SELECT 1 FROM mf.funds g
+                                 WHERE g.amfi_scheme_code = ff.groww_inherited_from))""",
+        lambda r: r["n"] == 0))
+
+    C.append(("Direct rows carry the slug they were fetched from",
+        """SELECT count(*) AS n FROM mf.fund_facts ff
+           WHERE ff.groww_source_mode = 'direct' AND ff.groww_slug IS NULL""",
         lambda r: r["n"] == 0))
 
     # Every inheritance must be an exact sector-split copy of its growth sibling.

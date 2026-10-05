@@ -39,6 +39,7 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "003_enrichment_recon.sql",
     "004_groww_enrichment.sql",
     "005_groww_deep_enrichment.sql",
+    "006_groww_provenance.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
