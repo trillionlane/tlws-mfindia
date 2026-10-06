@@ -171,13 +171,22 @@
     });
   }
 
+  let holdingsAll = null, holdingsExpanded = false;
   function renderHoldings(f) {
     if (!f.holdings || !f.holdings.length) return;
+    holdingsAll = f.holdings;
+    holdingsExpanded = false;
     $("holdings-card").style.display = "";
-    const totalW = f.holdings.reduce((a, h) => a + (h.weight_pct || 0), 0);
-    const rows = f.holdings.map((h) => {
+    paintHoldings();
+  }
+  function paintHoldings() {
+    const all = holdingsAll;
+    const shown = holdingsExpanded ? all : all.slice(0, 5);
+    const maxW = all[0].weight_pct || 1;
+    const totalW = shown.reduce((a, h) => a + (h.weight_pct || 0), 0);
+    const rows = shown.map((h) => {
       const w = h.weight_pct;
-      const barW = w ? Math.min(100, (w / (f.holdings[0].weight_pct || 1)) * 100) : 0;
+      const barW = w ? Math.min(100, (w / maxW) * 100) : 0;
       return `<div style="padding:8px 16px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px">
           <span>${esc(h.company_name)}${h.sector_name ? ` <span style="color:var(--muted);font-size:12px">· ${esc(h.sector_name)}</span>` : ""}</span>
@@ -186,8 +195,13 @@
         <div style="height:4px;background:var(--panel);border-radius:2px"><div style="height:4px;width:${barW}%;background:var(--accent);border-radius:2px"></div></div>
       </div>`;
     }).join("");
-    $("holdings").innerHTML = rows +
-      `<div style="padding:10px 16px;color:var(--muted);font-size:12px">Top ${f.holdings.length} shown · ${totalW.toFixed(1)}% of portfolio</div>`;
+    const toggle = all.length > 5
+      ? `<div style="padding:10px 16px 0"><button id="holdings-toggle" class="toplink" type="button" style="font-size:13px">${holdingsExpanded ? "Show top 5" : "Show all " + all.length}</button></div>`
+      : "";
+    $("holdings").innerHTML = rows + toggle +
+      `<div style="padding:10px 16px;color:var(--muted);font-size:12px">Top ${shown.length} of ${all.length} shown · ${totalW.toFixed(1)}% of portfolio</div>`;
+    const btn = $("holdings-toggle");
+    if (btn) btn.onclick = () => { holdingsExpanded = !holdingsExpanded; paintHoldings(); };
   }
 
   function palette(n) {
@@ -198,22 +212,33 @@
     return out;
   }
 
-  function stackedBar(items) {
-    const total = items.reduce((s, x) => s + x.value, 0);
+  // Doughnut chart for one holdings-analysis split. The exact-value legend is
+  // rendered as HTML below the canvas (Chart.js's built-in legend shows no %s).
+  function doughnut(canvasId, items) {
     const colors = palette(items.length);
-    const segs = items.map((it, i) => {
-      const w = total > 0 ? (it.value / total) * 100 : 0;
-      return w > 0.15 ? `<div title="${esc(it.label)} ${it.value.toFixed(2)}%" style="width:${w}%;background:${colors[i]}"></div>` : "";
-    }).join("");
-    const legend = items.map((it, i) => `
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0">
-        <span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex:none"></span>
-        <span style="flex:1">${esc(it.label)}</span>
-        <span style="font-variant-numeric:tabular-nums;font-weight:600">${it.value.toFixed(2)}%</span>
-      </div>`).join("");
-    return `<div style="height:16px;display:flex;border-radius:3px;overflow:hidden;background:var(--panel);margin-bottom:12px;min-width:200px">${segs}</div>${legend}`;
+    return new Chart($(canvasId), {
+      type: "doughnut",
+      data: { labels: items.map((i) => i.label),
+        datasets: [{ data: items.map((i) => i.value), backgroundColor: colors,
+          borderColor: "#fff", borderWidth: 1 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "58%",
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: (c) => ` ${c.label}: ${Number(c.parsed).toFixed(2)}%` } } },
+      },
+    });
+  }
+  function legendHtml(items) {
+    const colors = palette(items.length);
+    return `<div class="ac-legend">` + items.map((it, i) => `
+      <div class="ac-legend-row">
+        <span class="sw" style="background:${colors[i]}"></span>
+        <span class="nm">${esc(it.label)}</span>
+        <span class="pv">${it.value.toFixed(2)}%</span>
+      </div>`).join("") + `</div>`;
   }
 
+  let acChart = null, secChart = null;
   function renderAnalysis(f) {
     const ha = f.facts && f.facts.holdings_analysis;
     if (!ha || (!ha.asset_class && !ha.sector)) return;
@@ -224,19 +249,20 @@
       .sort((a, b) => b.value - a.value) : [];
     const ac = toItems(ha.asset_class);
     const sec = toItems(ha.sector);
-    let html = "";
-    html += `<div style="margin-bottom:20px">
-      <div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Asset class</div>
-      ${ac.length ? stackedBar(ac) : '<div style="color:var(--muted);font-size:13px">—</div>'}
-    </div>`;
-    if (sec.length) {
-      html += `<div><div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Sector</div>${stackedBar(sec)}</div>`;
-    }
+    const block = (title, id, items) => {
+      const body = items.length
+        ? `<div class="ac-chart"><canvas id="${id}"></canvas></div>${legendHtml(items)}`
+        : '<div style="color:var(--muted);font-size:13px;padding:14px 0">—</div>';
+      return `<div class="ac-block"><div class="ac-title">${title}</div>${body}</div>`;
+    };
+    let html = `<div class="ac-grid">${block("Asset class", "acchart", ac)}${block("Sector", "sechart", sec)}</div>`;
     const meta = [];
     if (ha.source) meta.push(`Source ${esc(ha.source)}`);
     if (ha.computed_at) meta.push(`computed ${new Date(ha.computed_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`);
     if (meta.length) html += `<div style="margin-top:16px;color:var(--muted);font-size:11px">${meta.join(" · ")}</div>`;
     $("analysis").innerHTML = html;
+    if (ac.length) { if (acChart) acChart.destroy(); acChart = doughnut("acchart", ac); }
+    if (sec.length) { if (secChart) secChart.destroy(); secChart = doughnut("sechart", sec); }
   }
 
   function renderSiblings(f) {

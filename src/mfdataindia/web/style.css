@@ -181,3 +181,13 @@ table.cmp td.txt { text-align:left; }
 .erlog-row { display:flex; align-items:center; gap:12px; font-size:13px; }
 .erlog-row .when { color:var(--muted); width:96px; flex:none; }
 .erlog-row .vals { font-variant-numeric:tabular-nums; }
+
+/* --- fund detail: holdings analysis doughnut charts, side by side --- */
+.ac-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 28px; align-items:start; }
+.ac-block .ac-title { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+.ac-block .ac-chart { position:relative; height:190px; max-width:250px; margin:0 auto 12px; }
+.ac-legend { max-width:300px; margin:0 auto; }
+.ac-legend-row { display:flex; align-items:center; gap:8px; font-size:13px; padding:3px 0; }
+.ac-legend-row .sw { width:10px; height:10px; border-radius:2px; flex:none; }
+.ac-legend-row .nm { flex:1; }
+.ac-legend-row .pv { font-variant-numeric:tabular-nums; font-weight:600; }
