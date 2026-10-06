@@ -11,9 +11,8 @@ from __future__ import annotations
 import argparse, os, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn
 from mfdataindia.store.postgres import PostgresStore
-
-DEFAULT_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
 
 # Canonical form of a fund name for cross-source comparison. Folds away every
 # difference that is purely cosmetic between AMFI and Groww:
@@ -185,13 +184,65 @@ def build_checks(expect_enriched: int | None) -> list[tuple[str, str, object]]:
     return C
 
 
+def _restore_module():
+    """Load ``scripts/restore_scripbox_ownership.py`` (scripts/ is not a package).
+
+    The ownership check reuses that script's column set and its type-aware
+    comparison so the verifier and the restore tool can never disagree about what
+    "unchanged" means.
+    """
+    import importlib.util
+    path = Path(__file__).resolve().parent / "restore_scripbox_ownership.py"
+    spec = importlib.util.spec_from_file_location("_restore_scripbox_ownership", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def check_scripbox_ownership(cur) -> tuple[int, int, int]:
+    """Re-derive Scripbox's values from ``raw_payload`` and compare.
+
+    Returns ``(drifted_funds, drifted_values, checked)``. Any drift means a
+    secondary source replaced a value Scripbox owns -- the bug that hit 2,087
+    funds -- and is a hard FAIL, not a warning.
+    """
+    mod = _restore_module()
+    sel = ", ".join(["amfi_scheme_code", "raw_payload", *mod.RESTORE_COLUMNS])
+    rows = cur.execute(
+        f"SELECT {sel} FROM mf.fund_facts "
+        "WHERE groww_fetched_at IS NOT NULL AND raw_payload IS NOT NULL").fetchall()
+    drifted = values = 0
+    for r in rows:
+        try:
+            fs = mod.factsheet_to_facts(mod._payload(r["raw_payload"]))
+        except Exception:                                    # noqa: BLE001
+            continue
+        if fs is None:
+            continue
+        want = dict(zip(mod.FUND_FACTS_COLUMNS, fs))
+        diff = [c for c in mod.RESTORE_COLUMNS if not mod._same(c, r[c], want.get(c))]
+        if diff:
+            drifted += 1
+            values += len(diff)
+    return drifted, values, len(rows)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dsn", default=os.environ.get("MFDATAINDIA_DSN", DEFAULT_DSN))
+    ap.add_argument("--dsn", default=None,
+                    help="target DSN (default: $MFDATAINDIA_DSN); required, there is "
+                         "no built-in default because a stale PGlite instance is "
+                         "still listening on 5433")
     ap.add_argument("--expect-enriched", type=int, default=None,
                     help="minimum number of Groww-enriched fund_facts rows")
     a = ap.parse_args()
-    store = PostgresStore(a.dsn, use_copy=os.environ.get("MF_TEST_NO_COPY") is None)
+    try:
+        dsn = resolve_dsn(a.dsn, purpose="Groww integrity verification")
+    except DsnError as exc:
+        ap.error(str(exc))
+        return 2
+    print(f"target database: {describe_dsn(dsn)}")
+    store = PostgresStore(dsn, use_copy=os.environ.get("MF_TEST_NO_COPY") is None)
     checks = build_checks(a.expect_enriched)
     failed = 0
     with store:
@@ -210,6 +261,23 @@ def main() -> int:
             except Exception as e:  # noqa: BLE001
                 failed += 1
                 print(f"[ERROR] {label}: {type(e).__name__}: {e}")
+
+        # Python-side gate: cannot be expressed in SQL because it re-runs the
+        # Scripbox mapper over the retained raw_payload.
+        try:
+            drifted, values, checked = check_scripbox_ownership(cur)
+            if drifted:
+                failed += 1
+            print(f"[{'PASS' if not drifted else 'FAIL'}] "
+                  f"No Scripbox-owned value replaced by Groww (ownership intact)\n"
+                  f"         checked={checked} drifted_funds={drifted} "
+                  f"drifted_values={values}"
+                  + ("" if not drifted else
+                     "  -> run scripts/restore_scripbox_ownership.py"))
+        except Exception as e:  # noqa: BLE001
+            failed += 1
+            print(f"[ERROR] Scripbox ownership check: {type(e).__name__}: {e}")
+
     print(f"\n{'ALL CHECKS PASSED' if not failed else str(failed) + ' CHECK(S) FAILED'}")
     return 1 if failed else 0
 

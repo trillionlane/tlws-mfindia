@@ -338,6 +338,8 @@ class PostgresStore:
         column_types: Optional[dict[str, str]] = None,
         update_columns: Optional[Sequence[str]] = None,
         coalesce_missing: bool = False,
+        fill_only: bool = False,
+        overwrite_columns: Sequence[str] = (),
     ) -> LoadResult:
         """Generic set-based upsert into ``mf.<table>`` keyed on ``pk``.
 
@@ -355,6 +357,16 @@ class PostgresStore:
         already owns, keyed on the same ``pk``. The refreshed set is still
         ``update_columns`` (pass it to keep e.g. the ``source`` tag from the
         original writer).
+
+        ``fill_only`` is the strict form of that, and is what a secondary source
+        should use when it must never replace data it does not own: each stored
+        column is set to ``COALESCE(t.col, EXCLUDED.col)``, i.e. **the existing
+        value wins** and the incoming value lands only where the column is still
+        NULL. Columns named in ``overwrite_columns`` are exempted and keep normal
+        incoming-wins semantics — use it for the columns the secondary source
+        genuinely owns (its own ratings, its own fetch stamp) so a re-run can
+        still refresh them. The conflict is guarded, so a row that would gain
+        nothing is left untouched and its ``fetched_at`` does not move.
         """
         res = LoadResult(target=table)
         materialised = [tuple(r) for r in rows]
@@ -378,7 +390,24 @@ class PostgresStore:
             self._copy_rows(cur, f"stg_{table}", columns, iter(materialised))
 
             before = self._count(cur, table)
-            if coalesce_missing:
+            if fill_only and coalesce_missing:
+                raise ValueError(
+                    "fill_only and coalesce_missing are mutually exclusive")
+            owned = set(overwrite_columns)
+            if fill_only:
+                # Gap-fill: the stored value wins, so a secondary source can only
+                # write into columns the primary source left NULL. Columns it
+                # genuinely owns keep incoming-wins so a re-run can refresh them.
+                set_clause = ", ".join(
+                    f"{c} = EXCLUDED.{c}" if c in owned
+                    else f"{c} = COALESCE(t.{c}, EXCLUDED.{c})"
+                    for c in to_update)
+                guard = " OR ".join(
+                    f"t.{c} IS DISTINCT FROM EXCLUDED.{c}" if c in owned
+                    else f"(t.{c} IS NULL AND EXCLUDED.{c} IS NOT NULL)"
+                    for c in to_update)
+                where_sql = f"WHERE {guard}"
+            elif coalesce_missing:
                 # Merge: keep the stored value when the incoming value is NULL,
                 # so a later source fills gaps without blanking the first. No
                 # guard — an upsert always touches the row (fetched_at moves).
@@ -1005,16 +1034,33 @@ class PostgresStore:
         self,
         amfi_scheme_code: int,
         rows: Sequence[Sequence[Any]],
+        *,
+        only_if_empty: bool = False,
     ) -> int:
         """Replace a fund's holdings snapshot atomically (delete + insert).
 
         Holdings are a current-snapshot, so a full replace per fund is correct
         and simpler than a diff. Returns the number of rows written.
+
+        ``only_if_empty`` makes the write non-destructive: if the fund already
+        has holdings rows the call is a no-op returning 0. ``fund_holdings`` has
+        no source column, so a replace cannot tell whose snapshot it is about to
+        delete — a secondary source must therefore pass this and may only populate
+        funds nobody has written yet. The owning source (Scripbox) keeps the
+        default replacing behaviour.
         """
         with self.transaction() as conn, conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM mf.fund_holdings WHERE amfi_scheme_code = %s",
-                (amfi_scheme_code,))
+            if only_if_empty:
+                cur.execute(
+                    "SELECT 1 FROM mf.fund_holdings "
+                    "WHERE amfi_scheme_code = %s LIMIT 1",
+                    (amfi_scheme_code,))
+                if cur.fetchone() is not None:
+                    return 0
+            else:
+                cur.execute(
+                    "DELETE FROM mf.fund_holdings WHERE amfi_scheme_code = %s",
+                    (amfi_scheme_code,))
             stmt = (
                 "INSERT INTO mf.fund_holdings (amfi_scheme_code, portfolio_date, "
                 "holding_rank, company_name, sector_name, nature_name, market_value, "

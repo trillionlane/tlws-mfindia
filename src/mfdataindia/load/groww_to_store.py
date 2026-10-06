@@ -10,9 +10,12 @@ The payload is *flat* (top-level ``mfServerSideData``; there is no
 ``fund_data``/``financials`` nesting). Join key is ISIN, validated by the crawl.
 
 Because ``mf.fund_facts`` is keyed by ``amfi_scheme_code`` and already holds a
-SCRIPBOX row for most funds, this loader uses a *merge* upsert
-(``store.upsert_table(..., coalesce_missing=True)``) so Groww fills gaps and adds
-its own fields without blanking values Scripbox already provided.
+SCRIPBOX row for most funds, this loader *gap-fills* rather than merges
+(``store.upsert_table(..., fill_only=True)``): Scripbox owns every shared column
+and its value always wins, so Groww writes only into columns Scripbox left NULL.
+The Groww-only columns in ``GROWW_OWNED_COLUMNS`` are exempt and stay refreshable
+on a re-run. Holdings are written ``only_if_empty`` for the same reason — Groww
+must never delete a snapshot it cannot attribute to itself.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from mfdataindia.load.scripbox_to_store import (
 
 __all__ = [
     "GROWW_FUND_FACTS_COLUMNS", "GROWW_FUND_FACTS_TYPES",
+    "GROWW_EXTRA_COLUMNS", "GROWW_OWNED_COLUMNS",
     "groww_to_facts", "groww_to_amc", "groww_to_holdings",
     "holdings_analysis", "load_groww_fund",
 ]
@@ -37,8 +41,22 @@ GROWW_EXTRA_COLUMNS: tuple[str, ...] = (
     "return_1week", "return_1month", "return_9month",
     "sharpe_ratio", "beta", "std_deviation", "risk_rating",
     "groww_return_stats", "holdings_analysis", "groww_fetched_at",
+    # Groww-only columns the mapper has always produced but which were missing
+    # from this tuple, so groww_to_facts emitted them and upsert_table silently
+    # dropped them. Every field groww_to_facts maps must appear here.
+    #
+    # super_category / sub_category are intentionally ABSENT. Groww's
+    # `super_category` is the fund name, not a category, and `sub_category`
+    # duplicates sub_asset_class. Those two columns stay NULL permanently; do not
+    # add them back without re-probing the payload. See sql/008.
+    "base_expense_ratio", "expense_ratio_history", "registrar_agent",
 )
 GROWW_FUND_FACTS_COLUMNS: tuple[str, ...] = FUND_FACTS_COLUMNS + GROWW_EXTRA_COLUMNS
+
+# Columns Groww *owns*: everything it adds beyond the Scripbox shape. On a merge
+# these keep incoming-wins semantics; every other (Scripbox-shaped) column is
+# gap-fill only, so Groww can never replace a value Scripbox already provided.
+GROWW_OWNED_COLUMNS: tuple[str, ...] = GROWW_EXTRA_COLUMNS
 
 GROWW_FUND_FACTS_TYPES: dict[str, str] = {
     **FUND_FACTS_TYPES,
@@ -50,6 +68,8 @@ GROWW_FUND_FACTS_TYPES: dict[str, str] = {
     "std_deviation": "numeric(9,4)", "risk_rating": "text",
     "groww_return_stats": "jsonb", "holdings_analysis": "jsonb",
     "groww_fetched_at": "timestamptz",
+    "base_expense_ratio": "numeric", "expense_ratio_history": "jsonb",
+    "registrar_agent": "text",
 }
 
 # nature_name value -> display label for the asset-class split in the analysis.
@@ -138,8 +158,14 @@ def groww_to_facts(sd: dict[str, Any], amfi_scheme_code: int,
         "rta_scheme_code": sd.get("rta_scheme_code"),
         "asset_class": sd.get("category"),
         "sub_asset_class": sd.get("sub_category"),
-        "super_category": sd.get("super_category"),
-        "sub_category": sd.get("sub_category"),
+        # super_category / sub_category are deliberately NOT mapped. Groww's
+        # `super_category` field holds the FUND NAME, not a category -- a live
+        # probe found `super_category == fund_name` on every fund sampled. And
+        # Groww's real hierarchy (`category` -> `sub_category`) is already
+        # captured on the two lines above as asset_class / sub_asset_class, which
+        # are 99.9% populated on live in-scope funds. Mapping them would put
+        # scheme names into a category column and duplicate data we already hold.
+        # See the DROPPED ENTIRELY note in sql/008_fund_data_status_v2.sql.
         "sub_type": (sd.get("category_info") or {}).get("sub_type"),
         # sizes / costs
         "aum": _num(sd.get("aum")),
@@ -254,18 +280,29 @@ def load_groww_fund(
     amfi_scheme_code: int,
     amc_name: Optional[str] = None,
 ) -> int:
-    """Enrich one Groww fund: merge fund_facts, enrich the AMC, replace holdings.
+    """Enrich one Groww fund: gap-fill fund_facts, enrich the AMC, add holdings.
 
     Returns the number of rows written (facts row + holdings). ``amc_name`` is the
     fund's AMFI-registered AMC header (threaded through from the job); when given,
     Groww's ``amc_info`` is merged onto that existing AMC row.
+
+    Groww is a *secondary* source and never replaces data it does not own:
+
+    * ``fund_facts`` is gap-filled (``fill_only``) — Scripbox's value wins on every
+      shared column and Groww writes only where it is still NULL. The columns
+      listed in ``GROWW_OWNED_COLUMNS`` are exempt, so Groww's own ratings,
+      holdings analysis and fetch stamp still refresh on a re-run.
+    * holdings are written ``only_if_empty`` — a fund that already has a snapshot
+      (Scripbox's) keeps it untouched. ``fund_holdings`` carries no source column,
+      so a replace there would delete a snapshot we cannot attribute.
     """
     now = datetime.now()
     facts_row = groww_to_facts(sd, amfi_scheme_code, fetched_at=now)
     store.upsert_table(
         "fund_facts", "amfi_scheme_code", GROWW_FUND_FACTS_COLUMNS,
         iter([facts_row]), column_types=GROWW_FUND_FACTS_TYPES,
-        coalesce_missing=True,
+        fill_only=True,
+        overwrite_columns=GROWW_OWNED_COLUMNS,
         update_columns=[c for c in GROWW_FUND_FACTS_COLUMNS
                         if c not in ("amfi_scheme_code", "source")],
     )
@@ -273,5 +310,5 @@ def load_groww_fund(
         store.update_amc_info(amc_name, groww_to_amc(sd, fetched_at=now))
     holdings = groww_to_holdings(sd)
     if holdings:
-        store.replace_holdings(amfi_scheme_code, holdings)
+        store.replace_holdings(amfi_scheme_code, holdings, only_if_empty=True)
     return 1 + len(holdings)
