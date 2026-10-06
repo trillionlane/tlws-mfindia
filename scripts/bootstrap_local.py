@@ -34,12 +34,17 @@ from mfdataindia.ingest.amfi_navall import parse_navall
 from mfdataindia.jobs.backfill_nav import backfill_nav_history
 from mfdataindia.load.amfi_to_store import load_parsed_amfi
 from mfdataindia.load.scripbox_to_store import load_factsheets
+from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn
 from mfdataindia.store.postgres import PostgresStore
 
 log = logging.getLogger("bootstrap")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
+
+# The one script that legitimately targets the PGlite dev instance -- it is what
+# creates that database in the first place -- so it is the only caller that goes
+# through resolve_dsn() with allow_pglite=True.
+PGLITE_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
 
 
 def _load_scripbox_evidence(store: PostgresStore) -> None:
@@ -66,7 +71,9 @@ def main() -> int:
     ap.add_argument("--chunk-days", type=int, default=90)
     ap.add_argument("--min-delay", type=float, default=1.0,
                     help="seconds between AMFI requests")
-    ap.add_argument("--dsn", default=os.environ.get("MFDATAINDIA_DSN", DEFAULT_DSN))
+    ap.add_argument("--dsn", default=os.environ.get("MFDATAINDIA_DSN", PGLITE_DSN),
+                    help="target DSN (default: $MFDATAINDIA_DSN, else the PGlite dev "
+                         "instance -- this script is the one caller allowed to use it)")
     ap.add_argument("--use-copy", action="store_true",
                     help="use COPY bulk load (real PostgreSQL only, not PGlite)")
     ap.add_argument("--skip-history", action="store_true",
@@ -76,12 +83,19 @@ def main() -> int:
                          "(use if nav_history was wiped independently of the checkpoints)")
     args = ap.parse_args()
 
+    try:
+        dsn = resolve_dsn(args.dsn, allow_pglite=True, purpose="the local bootstrap")
+    except DsnError as exc:
+        ap.error(str(exc))
+        return 2
+
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    log.info("target database: %s", describe_dsn(dsn))
     today = date.today()
     use_copy = args.use_copy if args.use_copy else (os.environ.get("MF_TEST_NO_COPY") is None)
 
     client = AmfiClient(min_delay=args.min_delay)
-    store = PostgresStore(args.dsn, use_copy=use_copy)
+    store = PostgresStore(dsn, use_copy=use_copy)
 
     log.info("=== step 1: NAVAll.txt snapshot ===")
     fetch = client.fetch_navall()

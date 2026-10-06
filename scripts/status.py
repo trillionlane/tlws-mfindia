@@ -13,9 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn
 from mfdataindia.store.postgres import PostgresStore
-
-DEFAULT_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
 
 
 def _checkpoint_summary(store, source: str) -> dict:
@@ -31,7 +30,12 @@ def _checkpoint_summary(store, source: str) -> dict:
 
 
 def main() -> int:
-    dsn = os.environ.get("MFDATAINDIA_DSN", DEFAULT_DSN)
+    try:
+        dsn = resolve_dsn(purpose="the status report")
+    except DsnError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(f"target database: {describe_dsn(dsn)}")
     use_copy = os.environ.get("MF_TEST_NO_COPY") is None
     with PostgresStore(dsn, use_copy=use_copy, connect_timeout=30) as store:
         cov = store.coverage()

@@ -7,7 +7,6 @@ concurrent threadpool that FastAPI sync endpoints run on.
 
 from __future__ import annotations
 
-import os
 import threading
 from pathlib import Path
 from typing import Any, Optional
@@ -19,14 +18,14 @@ from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
 
 from mfdataindia.api import queries
+from mfdataindia.store.dsn import resolve_dsn
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
-DEFAULT_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
-
-
 def create_app(dsn: Optional[str] = None) -> FastAPI:
-    dsn = dsn or os.environ.get("MFDATAINDIA_DSN") or DEFAULT_DSN
+    # No built-in default. This used to fall back to the PGlite dev instance on
+    # 5433, which serves stale fund data while looking perfectly healthy.
+    dsn = resolve_dsn(dsn, purpose="the MFDataIndia API")
 
     app = FastAPI(title="MFDataIndia", version="0.1.0")
 
