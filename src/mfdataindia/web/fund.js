@@ -2,6 +2,8 @@
   const $ = (id) => document.getElementById(id);
   const code = location.pathname.split("/").pop();
   let chart = null;
+  // Pencil-mark annotations on the NAV chart: up to 2 clicked dates.
+  let marks = [], chartLabels = [], chartValues = [];
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g,
@@ -279,11 +281,60 @@
     }).join("");
   }
 
+  // ---- pencil-mark annotations --------------------------------------------
+  // Inline plugin: draws a dashed vertical line + dot at each marked index.
+  const navMarkPlugin = {
+    id: "navMarks",
+    afterDatasetsDraw(c) {
+      const ms = c.$marks || [];
+      if (!ms.length) return;
+      const { ctx, chartArea } = c;
+      const meta = c.getDatasetMeta(0);
+      ms.forEach((idx) => {
+        const pt = meta.data[idx];
+        if (!pt) return;
+        ctx.save();
+        ctx.strokeStyle = "#e8710a"; ctx.lineWidth = 1.2; ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(pt.x, chartArea.top); ctx.lineTo(pt.x, chartArea.bottom); ctx.stroke();
+        ctx.setLineDash([]); ctx.fillStyle = "#e8710a";
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+    },
+  };
+  function addMark(idx) {
+    if (marks.includes(idx)) marks = marks.filter((m) => m !== idx);
+    else { marks.push(idx); if (marks.length > 2) marks.shift(); marks.sort((a, b) => a - b); }
+    chart.$marks = marks; chart.update();
+    paintMarks();
+  }
+  function clearMarks() { marks = []; if (chart) { chart.$marks = []; chart.update(); } paintMarks(); }
+  function paintMarks() {
+    const el = $("marks");
+    if (!el) return;
+    if (!marks.length) { el.style.display = "none"; return; }
+    const items = marks.map((i) =>
+      `<div class="mk-row"><span class="mk-date">${esc(chartLabels[i])}</span><span class="mk-nav">₹${fmt(chartValues[i], 2)}</span></div>`).join("");
+    let between = "";
+    if (marks.length === 2) {
+      const [a, b] = marks;
+      const pct = (chartValues[b] / chartValues[a] - 1) * 100;
+      const up = pct >= 0;
+      between = `<div class="mk-between ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${Math.abs(pct).toFixed(2)}% <span class="mk-sub">${esc(chartLabels[a])} → ${esc(chartLabels[b])}</span></div>`;
+    }
+    el.style.display = "";
+    el.innerHTML = `<div class="mk-box">${items}${between}</div>
+      <button id="marks-clear" class="toplink" style="font-size:12px" type="button">Clear marks</button>`;
+    $("marks-clear").onclick = clearMarks;
+  }
+
   async function loadChart(years) {
     const p = years ? ("?years=" + years) : "";
     const data = await api(`/api/funds/${code}/nav${p}`);
     const labels = data.points.map((x) => x.date);
     const values = data.points.map((x) => x.nav);
+    chartLabels = labels; chartValues = values;
+    marks = [];                       // window changed -> old indices are stale
     const up = values.length > 1 && values[values.length - 1] >= values[0];
     const color = up ? "#188038" : "#d93025";
     if (chart) chart.destroy();
@@ -291,8 +342,15 @@
       type: "line",
       data: { labels, datasets: [{ data: values, borderColor: color, borderWidth: 1.8, pointRadius: 0, tension: 0.08, fill: true,
         backgroundColor: up ? "rgba(24,128,56,0.08)" : "rgba(217,48,37,0.08)" }] },
+      plugins: [navMarkPlugin],
       options: {
         responsive: true, maintainAspectRatio: true, interaction: { mode: "index", intersect: false },
+        onClick: (evt) => {
+          const meta = chart.getDatasetMeta(0);
+          let best = -1, bestD = Infinity;
+          meta.data.forEach((pt, i) => { const d = Math.abs(pt.x - evt.x); if (d < bestD) { bestD = d; best = i; } });
+          if (best >= 0) addMark(best);
+        },
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => "₹" + fmt(c.parsed.y) } } },
         scales: {
           x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
@@ -300,6 +358,86 @@
         },
       },
     });
+    chart.$marks = [];
+    paintMarks();
+  }
+
+  // ---- derived analytics (risk + returns breakdown) ------------------------
+  function renderRisk(a) {
+    if (!a || a.too_short) return;
+    $("risk-card").style.display = "";
+    const cell = (k, v, cls) => `<div class="cell"><div class="k">${k}</div><div class="v ${cls || ""}">${esc(v)}</div></div>`;
+    const pct = (v) => v == null ? "—" : v.toFixed(2) + "%";
+    $("risk").innerHTML = [
+      cell("Max drawdown", pct(a.max_drawdown_pct), "down"),
+      cell("DD peak → trough", a.max_dd_peak_date + " → " + a.max_dd_trough_date),
+      cell("Recovered", a.max_dd_recovery_date || "still underwater"),
+      cell("Annual volatility", pct(a.annual_vol_pct)),
+      cell("CAGR", a.cagr_pct != null ? (a.cagr_pct >= 0 ? "+" : "") + pct(a.cagr_pct) : "—"),
+      cell("Sharpe", a.sharpe != null ? a.sharpe.toFixed(2) : "—"),
+      cell("Sortino", a.sortino != null ? a.sortino.toFixed(2) : "—"),
+      cell("Calmar", a.calmar != null ? a.calmar.toFixed(2) : "—"),
+      cell("Win rate · days", a.win_rate_days_pct != null ? a.win_rate_days_pct.toFixed(0) + "%" : "—"),
+      cell("Win rate · months", a.win_rate_months_pct != null ? a.win_rate_months_pct.toFixed(0) + "%" : "—"),
+    ].join("");
+    $("risk-note").textContent = `Computed from our ${a.points.toLocaleString("en-IN")} daily AMFI NAV points (${a.first_date} → ${a.as_of}); risk-free ${a.risk_free_pct}%. Ours, not the source-published Sharpe/volatility.`;
+  }
+
+  let yrChart = null;
+  function renderBreakdown(a) {
+    if (!a || a.too_short) return;
+    $("breakdown-card").style.display = "";
+    const yvals = a.yearly.map((y) => y.return_pct);
+    if (yrChart) yrChart.destroy();
+    yrChart = new Chart($("yrcanvas"), {
+      type: "bar",
+      data: { labels: a.yearly.map((y) => y.year), datasets: [{
+        data: yvals, borderRadius: 3,
+        backgroundColor: yvals.map((v) => v == null ? "#e0e3e7" : v >= 0 ? "rgba(24,128,56,.75)" : "rgba(217,48,37,.75)"),
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.parsed.y == null ? "—" : (c.parsed.y >= 0 ? "+" : "") + c.parsed.y.toFixed(2) + "%" } } },
+        scales: {
+          x: { ticks: { color: "#5f6368" }, grid: { display: false } },
+          y: { ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+        },
+      },
+    });
+    renderHeatmap(a.monthly);
+  }
+
+  function renderHeatmap(monthly) {
+    const el = $("heatmap");
+    const years = Object.keys(monthly).sort();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let maxAbs = 0;
+    years.forEach((y) => months.forEach((_, i) => {
+      const v = monthly[y][String(i + 1)];
+      if (v != null) maxAbs = Math.max(maxAbs, Math.abs(v));
+    }));
+    if (maxAbs === 0) maxAbs = 1;
+    const paint = (v) => {
+      if (v == null) return { bg: "transparent", fg: "transparent" };
+      const t = Math.abs(v) / maxAbs, alpha = 0.12 + 0.78 * t;
+      return v >= 0
+        ? { bg: `rgba(24,128,56,${alpha.toFixed(3)})`, fg: t > 0.45 ? "#fff" : "#14532d" }
+        : { bg: `rgba(217,48,37,${alpha.toFixed(3)})`, fg: t > 0.45 ? "#fff" : "#7f1d1d" };
+    };
+    let html = '<div class="hm"><div class="hm-corner"></div>';
+    years.forEach((y) => { html += `<div class="hm-colhead">${y}</div>`; });
+    months.forEach((m, i) => {
+      html += `<div class="hm-rowhead">${m}</div>`;
+      years.forEach((y) => {
+        const v = monthly[y][String(i + 1)];
+        const c = paint(v);
+        const title = v == null ? "" : `${m} ${y}: ${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
+        html += `<div class="hm-cell" style="background:${c.bg};color:${c.fg}" title="${esc(title)}">${v == null ? "" : v.toFixed(1)}</div>`;
+      });
+    });
+    html += "</div>";
+    el.innerHTML = html;
+    el.querySelector(".hm").style.gridTemplateColumns = `44px repeat(${years.length}, minmax(42px, 1fr))`;
   }
 
   document.querySelectorAll("#ranges button").forEach((b) =>
@@ -319,7 +457,10 @@
       renderHoldings(fund);
       renderSiblings(fund);
       const ret = await api(`/api/funds/${code}/returns`);
+      const ana = await api(`/api/funds/${code}/analytics`);
       renderReturns(ret);
+      renderRisk(ana);
+      renderBreakdown(ana);
       renderHead(fund, ret);
       await loadChart(5);
     } catch (e) {

@@ -191,3 +191,32 @@ table.cmp td.txt { text-align:left; }
 .ac-legend-row .sw { width:10px; height:10px; border-radius:2px; flex:none; }
 .ac-legend-row .nm { flex:1; }
 .ac-legend-row .pv { font-variant-numeric:tabular-nums; font-weight:600; }
+
+/* --- card title + note (analytics cards) --- */
+.card-title { padding:16px 16px 0; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+.card-note { padding:10px 16px 16px; color:var(--muted); font-size:11px; }
+.grid .v.down { color:var(--down); }
+.grid .v.up { color:var(--up); }
+
+/* --- pencil-mark annotations on the NAV chart --- */
+.marks { padding:10px 16px 14px; }
+.chart-hint { padding:0 16px 12px; color:var(--muted); font-size:11px; }
+.mk-box { display:flex; gap:18px; flex-wrap:wrap; align-items:center; }
+.mk-row { display:flex; gap:10px; align-items:baseline; font-size:13px; }
+.mk-row .mk-date { color:var(--muted); }
+.mk-row .mk-nav { font-variant-numeric:tabular-nums; font-weight:600; }
+.mk-between { font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.mk-between.up { color:var(--up); }
+.mk-between.down { color:var(--down); }
+.mk-between .mk-sub { color:var(--muted); font-weight:400; font-size:12px; margin-left:6px; }
+
+/* --- returns breakdown: yearly bars + monthly heatmap, side by side --- */
+.bd-grid { display:grid; grid-template-columns: 1fr 1fr; gap:24px; padding:14px 16px 18px; }
+@media (max-width:720px){ .bd-grid { grid-template-columns:1fr; } }
+.bd-sub { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; }
+.bd-chart { position:relative; height:220px; }
+.hm-wrap { overflow-x:auto; }
+.hm { display:grid; gap:3px; align-items:center; }
+.hm-colhead { text-align:center; font-size:11px; color:var(--muted); font-weight:600; }
+.hm-rowhead { font-size:11px; color:var(--muted); text-align:right; padding-right:6px; }
+.hm-cell { text-align:center; font-size:11px; padding:6px 2px; border-radius:3px; font-variant-numeric:tabular-nums; min-width:42px; }

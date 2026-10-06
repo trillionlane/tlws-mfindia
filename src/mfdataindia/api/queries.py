@@ -10,6 +10,7 @@ to ``float`` only at the JSON boundary — never stored as float anywhere upstre
 from __future__ import annotations
 
 import json
+import math
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Optional
@@ -347,6 +348,133 @@ def returns(conn, code: int) -> dict[str, Any]:
             out["horizons"][label] = round(pct, 2)
         else:
             out["horizons"][label] = None
+    return out
+
+
+#: Annual risk-free rate assumed for Sharpe/Sortino, stated to the client.
+#: Conventional India figure tracks the long-end G-Sec; not a live feed.
+RISK_FREE_ANNUAL = 0.065
+_TRADING_DAYS = 252.0
+
+
+def _annualized(rets: list[float]) -> tuple[float, float]:
+    """(mean, stdev) of daily returns -> annualized via *252 / *sqrt(252)."""
+    n = len(rets)
+    mean = sum(rets) / n
+    var = sum((r - mean) ** 2 for r in rets) / (n - 1)
+    std = math.sqrt(var)
+    return mean * _TRADING_DAYS, std * math.sqrt(_TRADING_DAYS)
+
+
+def fund_analytics(conn, code: int) -> dict[str, Any]:
+    """Risk/behaviour analytics derived from the fund's own NAV series.
+
+    Every figure here is computed from ``mf.nav_history`` (the AMFI-sourced
+    daily NAV), so coverage is 100% of funds regardless of which enrichment
+    source populated ``fund_facts``. This deliberately *differs* from the
+    Groww/Scripbox Sharpe/std-dev/beta columns, which use their own windows
+    and assumptions and cover only 20-37% of funds.
+
+    Returns ``{"points": n}`` (and nothing else) when the series is too short
+    to be meaningful; the client hides the analytics cards in that case.
+    """
+    rows = conn.execute(
+        "SELECT nav_date, nav FROM mf.nav_history "
+        "WHERE amfi_scheme_code = %(code)s ORDER BY nav_date",
+        {"code": code}).fetchall()
+    if len(rows) < 30:
+        return {"code": code, "points": len(rows), "too_short": True}
+
+    dates = [r["nav_date"] for r in rows]
+    navs = [float(r["nav"]) for r in rows]
+    n = len(navs)
+    out: dict[str, Any] = {
+        "code": code, "points": n,
+        "first_date": dates[0].isoformat(), "as_of": dates[-1].isoformat(),
+        "risk_free_pct": round(RISK_FREE_ANNUAL * 100, 2),
+    }
+
+    # ---- daily log returns -------------------------------------------------
+    rets = [math.log(navs[i] / navs[i - 1]) for i in range(1, n)
+            if navs[i - 1] > 0 and navs[i] > 0]
+    if not rets:
+        out["too_short"] = True
+        return out
+    ann_return, ann_vol = _annualized(rets)
+    out["annualized_return_pct"] = round(ann_return * 100, 2)
+    out["annual_vol_pct"] = round(ann_vol * 100, 2)
+
+    # ---- Sharpe / Sortino (risk-free annualised to daily) ------------------
+    if ann_vol > 0:
+        out["sharpe"] = round((ann_return - RISK_FREE_ANNUAL) / ann_vol, 2)
+    rf_daily = RISK_FREE_ANNUAL / _TRADING_DAYS
+    downside = math.sqrt(sum(min(r - rf_daily, 0.0) ** 2 for r in rets) / len(rets))
+    if downside > 0:
+        out["sortino"] = round(
+            (ann_return - RISK_FREE_ANNUAL) / (downside * math.sqrt(_TRADING_DAYS)), 2)
+
+    # ---- max drawdown (depth, trough window, recovery) ---------------------
+    peak = navs[0]
+    peak_i = 0
+    max_dd = 0.0
+    dd_peak_i = dd_trough_i = 0
+    for i in range(n):
+        if navs[i] >= peak:
+            peak, peak_i = navs[i], i
+        dd = navs[i] / peak - 1.0
+        if dd < max_dd:
+            max_dd, dd_peak_i, dd_trough_i = dd, peak_i, i
+    trough_peak = max(navs[dd_peak_i:dd_trough_i + 1])
+    recovery_i = next((j for j in range(dd_trough_i + 1, n)
+                       if navs[j] >= trough_peak), None)
+    out["max_drawdown_pct"] = round(max_dd * 100, 2)
+    out["max_dd_peak_date"] = dates[dd_peak_i].isoformat()
+    out["max_dd_trough_date"] = dates[dd_trough_i].isoformat()
+    out["max_dd_recovery_date"] = (dates[recovery_i].isoformat()
+                                   if recovery_i is not None else None)
+
+    # ---- CAGR + Calmar -----------------------------------------------------
+    years = (dates[-1] - dates[0]).days / 365.25
+    if years > 0 and navs[0] > 0:
+        cagr = (navs[-1] / navs[0]) ** (1 / years) - 1
+        out["cagr_pct"] = round(cagr * 100, 2)
+        if max_dd < 0:
+            out["calmar"] = round(cagr / abs(max_dd), 2)
+
+    # ---- win rates ---------------------------------------------------------
+    out["win_rate_days_pct"] = round(100.0 * sum(1 for r in rets if r > 0) / len(rets), 1)
+
+    # ---- calendar-year returns (each year vs prior year's last NAV) --------
+    by_year: dict[int, list] = {}
+    for d, v in zip(dates, navs):
+        by_year.setdefault(d.year, []).append((d, v))
+    yearly = []
+    prev_last = None
+    for year, pts in by_year.items():
+        base = prev_last if prev_last is not None else pts[0][1]
+        r = (pts[-1][1] / base - 1) * 100 if base > 0 else None
+        yearly.append({"year": year, "return_pct": round(r, 2) if r is not None else None})
+        prev_last = pts[-1][1]
+    out["yearly"] = yearly
+
+    # ---- monthly returns (month vs its own first NAV) -> heatmap ----------
+    by_month: dict[tuple[int, int], list] = {}
+    for d, v in zip(dates, navs):
+        by_month.setdefault((d.year, d.month), []).append(v)
+    monthly: dict[str, dict[str, float]] = {}
+    pos = neg = 0
+    for (year, month), vs in by_month.items():
+        if vs[0] > 0:
+            r = (vs[-1] / vs[0] - 1) * 100
+            monthly.setdefault(str(year), {})[str(month)] = round(r, 2)
+            if r > 0:
+                pos += 1
+            else:
+                neg += 1
+    out["monthly"] = monthly
+    total_months = pos + neg
+    if total_months:
+        out["win_rate_months_pct"] = round(100.0 * pos / total_months, 1)
     return out
 
 

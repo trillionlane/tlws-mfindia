@@ -155,6 +155,12 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             conn = get_conn()
             return queries.returns(conn, code)
 
+    @app.get("/api/funds/{code}/analytics")
+    def api_fund_analytics(code: int) -> dict[str, Any]:
+        with lock:
+            conn = get_conn()
+            return queries.fund_analytics(conn, code)
+
     @app.get("/api/amcs")
     def api_amcs() -> list[dict[str, Any]]:
         with lock:
