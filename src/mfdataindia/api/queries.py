@@ -218,9 +218,10 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                is_sip_allowed, status, transaction_status, scripbox_fund_id, fund_slug,
                benchmark, benchmark_name, fund_manager_name, risk_level,
                base_expense_ratio, registrar_agent, expense_ratio_history,
-               groww_rating, crisil_rating, sub_type, exit_load_value, lock_in_period,
-               portfolio_turnover, return_1week, return_1month, return_9month,
-               sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis
+               groww_rating, crisil_rating, sub_type, exit_load_value, exit_load,
+               lock_in_period, portfolio_turnover, return_1week, return_1month, return_9month,
+               sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis,
+               holdings_maturity, category_return
         FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
         """,
         {"code": code},
@@ -476,6 +477,139 @@ def fund_analytics(conn, code: int) -> dict[str, Any]:
     if total_months:
         out["win_rate_months_pct"] = round(100.0 * pos / total_months, 1)
     return out
+
+
+def fund_peers(conn, code: int) -> dict[str, Any]:
+    """Peer ranking of one fund inside its SEBI category.
+
+    The percentile is computed from *our own* fund_facts return columns (so it
+    is reproducible and 100% ours), NOT from the source's category aggregate.
+    For each horizon we rank the fund's return against every other in-scope
+    fund in the same ``sebi_category_name`` that has a non-null return for that
+    horizon. ``beats_pct`` is the share of peers the fund outperforms.
+
+    A category with fewer than 10 scored funds is too small to rank
+    meaningfully, so that horizon is reported with ``peer_count`` and a null
+    ``beats_pct``; the client hides it.
+    """
+    row = conn.execute(
+        """
+        SELECT f.amfi_scheme_code, ff.sebi_category_name,
+               ff.return_1year, ff.return_3year, ff.return_5year
+        FROM mf.funds f LEFT JOIN mf.fund_facts ff
+             ON ff.amfi_scheme_code = f.amfi_scheme_code
+        WHERE f.amfi_scheme_code = %(code)s
+        """, {"code": code}).fetchone()
+    if not row or not row["sebi_category_name"]:
+        return {"code": code, "category": None, "horizons": {}}
+
+    cat = row["sebi_category_name"]
+    colmap = {"1Y": ("return_1year", row["return_1year"]),
+              "3Y": ("return_3year", row["return_3year"]),
+              "5Y": ("return_5year", row["return_5year"])}
+    out = {"code": code, "category": cat, "horizons": {}}
+    for label, (col, mine) in colmap.items():
+        peers = [r["r"] for r in conn.execute(
+            f"""
+            SELECT {col} AS r FROM mf.fund_facts ff
+            JOIN mf.funds f ON f.amfi_scheme_code = ff.amfi_scheme_code
+            WHERE ff.sebi_category_name = %(cat)s
+              AND f.in_scope AND NOT f.is_defunct AND ff.{col} IS NOT NULL
+            """, {"cat": cat}).fetchall()]
+        n = len(peers)
+        if n < 10 or mine is None:
+            out["horizons"][label] = {
+                "peer_count": n, "fund_return": _f(mine), "beats_pct": None}
+            continue
+        below = sum(1 for p in peers if _f(p) < _f(mine))
+        out["horizons"][label] = {
+            "peer_count": n, "fund_return": round(float(mine), 2),
+            "beats_pct": round(100.0 * below / (n - 1), 1),
+            "rank": n - below,
+        }
+    return out
+
+
+def risk_reward(conn, code: int) -> dict[str, Any]:
+    """Category risk-reward map: (annualized volatility, CAGR) per peer fund.
+
+    Data comes from the derived ``mf.fund_risk_profile`` table (refreshed by
+    scripts/refresh_risk_profile.py). Points are the fund's own SEBI-category
+    peers; the fund itself is flagged so the client can highlight it. AUM is
+    attached for bubble sizing. Returns ``{"category": ...}`` with an empty
+    ``points`` list when the profile table is empty (not yet refreshed).
+    """
+    me = conn.execute(
+        """
+        SELECT f.amfi_scheme_code, f.scheme_name, ff.sebi_category_name, ff.aum
+        FROM mf.funds f LEFT JOIN mf.fund_facts ff
+             ON ff.amfi_scheme_code = f.amfi_scheme_code
+        WHERE f.amfi_scheme_code = %(code)s
+        """, {"code": code}).fetchone()
+    if not me or not me["sebi_category_name"]:
+        return {"code": code, "category": None, "points": []}
+
+    rows = conn.execute(
+        """
+        SELECT f.amfi_scheme_code, f.scheme_name, ff.aum,
+               rp.annual_vol, rp.cagr, rp.max_drawdown, rp.points AS nav_points
+        FROM mf.fund_risk_profile rp
+        JOIN mf.funds f ON f.amfi_scheme_code = rp.amfi_scheme_code
+        JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
+        WHERE ff.sebi_category_name = %(cat)s
+          AND f.in_scope AND NOT f.is_defunct
+        ORDER BY rp.annual_vol
+        """, {"cat": me["sebi_category_name"]}).fetchall()
+
+    points = [{
+        "amfi_scheme_code": r["amfi_scheme_code"],
+        "scheme_name": r["scheme_name"],
+        "vol": _f(r["annual_vol"]),
+        "return": _f(r["cagr"]),
+        "max_drawdown": _f(r["max_drawdown"]),
+        "aum": _f(r["aum"]),
+        "self": r["amfi_scheme_code"] == code,
+    } for r in rows if r["annual_vol"] is not None and r["cagr"] is not None]
+    return {"code": code, "category": me["sebi_category_name"],
+            "points": points, "refreshed": bool(points)}
+
+
+def holdings_overlap(conn, codes: list[int]) -> dict[str, Any]:
+    """Pairwise top-holdings overlap for the compare page.
+
+    For each pair of funds, reports how many of their top holdings (by
+    company_name) are shared, the combined weight of the shared names, and the
+    union size (for a Jaccard similarity). Company names are normalised
+    (lower-cased, surrounding punctuation stripped) so "HDFC Bank Ltd." and
+    "HDFC Bank Ltd" still match. Funds with no holdings are omitted from their
+    pairs.
+    """
+    names: dict[int, list[str]] = {}
+    for c in codes:
+        rows = conn.execute(
+            """
+            SELECT company_name, weight_pct FROM mf.fund_holdings
+            WHERE amfi_scheme_code = %(c)s ORDER BY holding_rank LIMIT 20
+            """, {"c": c}).fetchall()
+        names[c] = [r["company_name"] for r in rows if r["company_name"]]
+
+    def norm(s: str) -> str:
+        return " ".join(s.lower().replace(".", " ").replace(",", " ").split())
+
+    pairs = []
+    for i in range(len(codes)):
+        for j in range(i + 1, len(codes)):
+            a, b = codes[i], codes[j]
+            sa, sb = {norm(n) for n in names.get(a, [])}, {norm(n) for n in names.get(b, [])}
+            shared = sa & sb
+            union = sa | sb
+            pairs.append({
+                "a": a, "b": b,
+                "shared_count": len(shared),
+                "union_count": len(union),
+                "jaccard": round(len(shared) / len(union), 3) if union else None,
+            })
+    return {"codes": list(codes), "pairs": pairs}
 
 
 def amcs(conn) -> list[dict[str, Any]]:

@@ -40,6 +40,11 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "004_groww_enrichment.sql",
     "005_groww_deep_enrichment.sql",
     "006_groww_provenance.sql",
+    # Derived table (idempotent CREATE TABLE) required by the /api/funds/
+    # {code}/risk-reward endpoint, so it is a core migration rather than a
+    # manually-applied reporting view like 007/008. Populated by
+    # scripts/refresh_risk_profile.py.
+    "009_fund_risk_profile.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.

@@ -161,6 +161,28 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             conn = get_conn()
             return queries.fund_analytics(conn, code)
 
+    @app.get("/api/funds/{code}/peers")
+    def api_fund_peers(code: int) -> dict[str, Any]:
+        with lock:
+            conn = get_conn()
+            return queries.fund_peers(conn, code)
+
+    @app.get("/api/funds/{code}/risk-reward")
+    def api_fund_risk_reward(code: int) -> dict[str, Any]:
+        with lock:
+            conn = get_conn()
+            return queries.risk_reward(conn, code)
+
+    @app.get("/api/holdings-overlap")
+    def api_holdings_overlap(codes: str = Query(...)) -> dict[str, Any]:
+        parsed = [int(c) for c in codes.split(",") if c.strip().isdigit()][:6]
+        if len(parsed) < 2:
+            raise HTTPException(
+                status_code=422, detail="codes must be 2+ comma-separated ints")
+        with lock:
+            conn = get_conn()
+            return queries.holdings_overlap(conn, parsed)
+
     @app.get("/api/amcs")
     def api_amcs() -> list[dict[str, Any]]:
         with lock:
