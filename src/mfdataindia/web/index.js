@@ -10,6 +10,20 @@
     if (v == null) return "—";
     return Number(v).toLocaleString("en-IN", { maximumFractionDigits: digits == null ? 4 : digits });
   }
+  // Days since the NAV date (date-only strings), clamped to >= 0 for future-dated rows.
+  function navAgeDays(dateStr) {
+    if (!dateStr) return null;
+    const t = new Date();
+    const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    const d = new Date(dateStr.slice(0, 10) + "T00:00:00");
+    return Math.max(0, Math.round((today - d) / 86400000));
+  }
+  function ageCell(dateStr) {
+    if (!dateStr) return "—";
+    const age = navAgeDays(dateStr);
+    const cls = age == null ? "" : age <= 7 ? "fresh" : age <= 30 ? "aging" : "stale";
+    return `<span class="navage ${cls}" title="${age} days ago">${dateStr}</span>`;
+  }
   function badgeFor(f) {
     const parts = [];
     parts.push(`<span class="badge ${f.plan_type === "REGULAR" ? "regular" : f.plan_type === "DIRECT" ? "direct" : ""}">${esc(f.plan_type)}</span>`);
@@ -23,6 +37,34 @@
     const r = await fetch(path);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
+  }
+
+  // ---- shareable URL state -------------------------------------------------
+  // Filters are mirrored to query params so a filtered view can be bookmarked
+  // or shared. replaceState keeps the browser history clean.
+  const SORT_KEYS = ["name", "nav", "aum", "expense", "return_5y"];
+  function applyUrlState() {
+    const p = new URLSearchParams(location.search);
+    state.q = (p.get("q") || "").slice(0, 200);
+    state.amc = p.get("amc") || "";
+    state.category = p.get("cat") || "";
+    state.option = p.get("opt") || "";
+    if (SORT_KEYS.includes(p.get("sort"))) state.sort = p.get("sort");
+    const page = parseInt(p.get("page"), 10);
+    if (page >= 1) state.page = page;
+    state.family = p.get("family") === "1";
+  }
+  function syncUrl() {
+    const p = new URLSearchParams();
+    if (state.q) p.set("q", state.q);
+    if (state.amc) p.set("amc", state.amc);
+    if (state.category) p.set("cat", state.category);
+    if (state.option) p.set("opt", state.option);
+    if (state.sort !== "name") p.set("sort", state.sort);
+    if (state.page > 1) p.set("page", state.page);
+    if (state.family) p.set("family", "1");
+    const qs = p.toString();
+    history.replaceState(null, "", qs ? "?" + qs : location.pathname);
   }
 
   async function loadStats() {
@@ -45,9 +87,18 @@
       cats.map((c) => `<option value="${esc(c.scheme_category)}">${esc(c.scheme_category)} (${c.live_funds})</option>`).join("");
     $("f-opt").innerHTML = '<option value="">All options</option>' +
       opts.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join("");
+    // Reflect URL-restored state into the controls (a value with no matching
+    // option is left at "" — the list query still honours state).
+    if (state.amc) $("f-amc").value = state.amc;
+    if (state.category) $("f-cat").value = state.category;
+    if (state.option) $("f-opt").value = state.option;
+    if (state.sort !== "name") $("f-sort").value = state.sort;
+    if (state.family) $("f-family").checked = true;
+    if (state.q) $("q").value = state.q;
   }
 
   async function loadList() {
+    syncUrl();
     $("list").innerHTML = '<div class="loading">Loading funds…</div>';
     const p = new URLSearchParams();
     if (state.q) p.set("q", state.q);
@@ -73,13 +124,14 @@
         </td>
         <td>${badgeFor(f)}</td>
         <td class="nav">${f.latest_nav == null ? "—" : "₹" + fmt(f.latest_nav)}</td>
-        <td class="num">${f.latest_nav_date || "—"}</td>
+        <td class="num">${ageCell(f.latest_nav_date)}</td>
         <td class="num">${f.return_5year == null ? "—" : fmt(f.return_5year, 1) + "%"}</td>
+        <td class="num">${f.expense_ratio == null ? "—" : fmt(f.expense_ratio, 2) + "%"}</td>
         <td class="num">${f.aum == null ? "—" : "₹" + Math.round(f.aum).toLocaleString("en-IN") + " cr"}</td>
       </tr>`).join("");
     $("list").innerHTML = `
       <table class="fundlist">
-        <thead><tr><th>Fund</th><th>Plan / Option</th><th class="nav">Latest NAV</th><th class="num">As of</th><th class="num">5Y</th><th class="num">AUM</th></tr></thead>
+        <thead><tr><th>Fund</th><th>Plan / Option</th><th class="nav">Latest NAV</th><th class="num">As of</th><th class="num">5Y</th><th class="num">ER</th><th class="num">AUM</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     document.querySelectorAll("#list tbody tr").forEach((tr) =>
@@ -187,5 +239,6 @@
       b.classList.add("active"); mstate.direction = b.dataset.d; loadMovers();
     }));
 
+  applyUrlState();
   loadStats(); loadFilters(); loadList(); loadMovers();
 })();
