@@ -20,6 +20,7 @@
     if (state.selected.some((s) => s.code === it.amfi_scheme_code)) { hideSuggest(); return; }
     if (state.selected.length >= 4) return;
     state.selected.push({ code: it.amfi_scheme_code, name: it.scheme_name, amc: it.amfi_amc_name });
+    MFDCompare.set(state.selected.map((s) => s.code));
     hideSuggest();
     qInput.value = "";
     renderChips();
@@ -27,6 +28,7 @@
   }
   function removeFund(code) {
     state.selected = state.selected.filter((s) => s.code !== code);
+    MFDCompare.set(state.selected.map((s) => s.code));
     renderChips();
     refresh();
   }
@@ -82,6 +84,7 @@
     const data = await api(`/api/compare?codes=${codes}&years=${state.years || ""}`);
     renderChart(data);
     renderTable(data);
+    renderStats(data);
   }
 
   function renderChart(data) {
@@ -131,6 +134,34 @@
     $("ctable").innerHTML = `<table class="cmp"><thead><tr><th>Return</th>${heads}</tr></thead><tbody>${rows}</tbody></table>`;
   }
 
+  function renderStats(data) {
+    const funds = data.funds;
+    if (funds.length < 2) { $("stats-card").style.display = "none"; return; }
+    const money = (v) => v == null ? "—" : "₹" + Math.round(v).toLocaleString("en-IN") + " cr";
+    const pct2 = (v) => v == null ? "—" : v.toFixed(2) + "%";
+    // [label, leftAligned, cell-getter]
+    const rows = [
+      ["Latest NAV", false, (f) => f.latest_nav == null ? "—" : "₹" + f.latest_nav.toFixed(2)],
+      ["AUM", false, (f) => money(f.aum)],
+      ["Expense ratio", false, (f) => pct2(f.expense_ratio)],
+      ["Base expense ratio", false, (f) => pct2(f.base_expense_ratio)],
+      ["5Y return", false, (f) => f.return_5year == null ? "—" : (f.return_5year >= 0 ? "+" : "") + f.return_5year.toFixed(2) + "%"],
+      ["Sharpe ratio", false, (f) => f.sharpe_ratio == null ? "—" : f.sharpe_ratio.toFixed(2)],
+      ["Beta", false, (f) => f.beta == null ? "—" : f.beta.toFixed(2)],
+      ["Riskometer", true, (f) => f.risk_level || "—"],
+      ["Fund manager", true, (f) => f.fund_manager_name || "—"],
+      ["Benchmark", true, (f) => f.benchmark_name || "—"],
+      ["Inception", true, (f) => f.inception_date || "—"],
+      ["Registrar agent", true, (f) => f.registrar_agent || "—"],
+    ];
+    const heads = funds.map((f, i) =>
+      `<th class="txt"><span class="fdot" style="background:${COLORS[i % COLORS.length]}"></span>${esc(f.fund.scheme_name)}</th>`).join("");
+    const body = rows.map(([label, txt, get]) =>
+      `<tr><td>${label}</td>${funds.map((f) => `<td class="${txt ? "txt" : ""}">${esc(get(f.fund))}</td>`).join("")}</tr>`).join("");
+    $("stats-card").style.display = "";
+    $("cstats").innerHTML = `<table class="cmp"><thead><tr><th>Fact</th>${heads}</tr></thead><tbody>${body}</tbody></table>`;
+  }
+
   document.querySelectorAll("#c-ranges button").forEach((b) =>
     b.addEventListener("click", () => {
       document.querySelectorAll("#c-ranges button").forEach((x) => x.classList.remove("active"));
@@ -139,14 +170,21 @@
       refresh();
     }));
 
-  // deep link: /compare?codes=123,456
-  const pre = new URLSearchParams(location.search).get("codes");
-  if (pre) {
-    const codes = pre.split(",").map((c) => parseInt(c, 10)).filter((c) => Number.isFinite(c)).slice(0, 4);
+  // Deep link: /compare?codes=123,456 — authoritative over the cart; the
+  // cart is otherwise the source of truth across pages (survives reloads).
+  function selectCodes(codes) {
     Promise.all(codes.map((c) => api("/api/funds/" + c))).then((funds) => {
       funds.forEach((f) => state.selected.push({ code: f.amfi_scheme_code, name: f.scheme_name, amc: f.amfi_amc_name }));
+      MFDCompare.set(codes);
       renderChips();
       refresh();
     }).catch(() => {});
+  }
+  const pre = new URLSearchParams(location.search).get("codes");
+  if (pre) {
+    selectCodes(pre.split(",").map((c) => parseInt(c, 10)).filter((c) => Number.isFinite(c)).slice(0, 4));
+  } else {
+    const cart = MFDCompare.get();
+    if (cart.length) selectCodes(cart);
   }
 })();
