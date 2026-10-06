@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg.rows import dict_row
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from mfdataindia.api import queries
 from mfdataindia.store.dsn import resolve_dsn
@@ -28,6 +29,22 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
     dsn = resolve_dsn(dsn, purpose="the MFDataIndia API")
 
     app = FastAPI(title="MFDataIndia", version="0.1.0")
+
+    # The UI is iterated on constantly during ingest work. Starlette's
+    # StaticFiles sends only ETag/Last-Modified, so browsers heuristic-cache
+    # fund.js for a while and silently show the pre-change UI after a deploy.
+    # no-cache keeps caching cheap (revalidate -> 304) but never stale.
+    _UI_PATHS = ("/", "/compare")
+
+    class _NoCacheUI(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            p = request.url.path
+            if p.startswith("/static/") or p in _UI_PATHS or p.startswith("/fund/"):
+                response.headers["Cache-Control"] = "no-cache"
+            return response
+
+    app.add_middleware(_NoCacheUI)
 
     # The embedded engine (PGlite) is single-writer and serialises queries, and
     # its socket bridge is fragile when many client connections are held open —
