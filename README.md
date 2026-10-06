@@ -7,18 +7,25 @@ metadata, and NAV history (last-5-years window), sourced **entirely from AMFI**
 `api.mfapi.in` is intentionally **not** used for NAV (unreliable). AMFI is reachable
 globally via `portal.amfiindia.com` — no India server required.
 
-## Quickstart (local, self-contained)
+## Quickstart (local)
 
-Requires Python 3.11+, Node 18+ (for the embedded database engine).
+Requires Python 3.11+ and Docker (PostgreSQL is the system of record).
 
 ```bash
 # 1. install Python deps
 python3 -m pip install -e .[dev]
 
-# 2. start the stack (embedded PostgreSQL + API + UI)
-./scripts/up.sh                 # serves http://127.0.0.1:8000
+# 2. start PostgreSQL (system of record); the sql/ migrations auto-apply on first boot
+docker compose up -d            # postgres:16 on 127.0.0.1:5432
 
-# 3. in another terminal, load data (1-year NAV window is a fast demo)
+# 3. point the app at it — required; there is no built-in default DSN
+export MFDATAINDIA_DSN="host=127.0.0.1 port=5432 dbname=mfdataindia user=mfdata password=…"
+
+# 4. start the API + UI (or just `make api` with MFDATAINDIA_DSN set)
+PYTHONPATH=src python3 -m uvicorn mfdataindia.api.app:create_app --factory \
+  --host 127.0.0.1 --port 8000   # serves http://127.0.0.1:8000
+
+# 5. in another terminal, load data (1-year NAV window is a fast demo)
 make bootstrap YEARS=1          # ~2 min
 # or the full required 5-year window (resumable, ~3 h):
 make backfill YEARS=5
@@ -26,7 +33,7 @@ make backfill YEARS=5
 
 Then open **http://127.0.0.1:8000** to browse funds, and **http://127.0.0.1:8000/docs** for the API.
 
-Stop with `make db-stop` (sends SIGTERM so the embedded database flushes cleanly).
+Stop the database with `docker compose down` (add `-v` to also drop the `pgdata` volume).
 
 ## Components
 
@@ -40,20 +47,24 @@ Stop with `make db-stop` (sends SIGTERM so the embedded database flushes cleanly
 | Enrichment | `src/mfdataindia/load/scripbox_to_store.py` | factsheetData → `fund_facts` + `fund_opinions` (licensing split). |
 | API | `src/mfdataindia/api/` | FastAPI: funds / search / NAV / returns / amcs / categories. |
 | UI | `src/mfdataindia/web/` | Google-Finance-style fund browser + detail page with NAV chart. |
-| Local DB | `db/server.mjs` | PGlite (real PostgreSQL 18), data in `data/pglite/`. |
+| Database | `docker-compose.yml` | PostgreSQL 16 — system of record; `sql/` migrations auto-applied on first boot. |
 
 ## Database
 
-The local stack uses **PGlite** (embedded real PostgreSQL 18) — no container needed.
-For a durable/production deployment, run real PostgreSQL:
+**PostgreSQL is the system of record.** `docker compose up -d` starts PostgreSQL 16
+and applies the numbered `sql/` migrations automatically on first boot (they are
+idempotent, so re-applying later with `psql -f` is also safe). The app has **no
+built-in default DSN** — set `MFDATAINDIA_DSN` so the API, ingest, and enrichment all
+target the same server:
 
 ```bash
-docker compose up -d          # applies sql/ migrations on first boot
+docker compose up -d          # postgres:16; applies sql/ migrations on first boot
 export MFDATAINDIA_DSN="host=127.0.0.1 port=5432 dbname=mfdataindia user=mfdata password=…"
 ```
 
-> PGlite keeps its working set in memory and flushes to `data/pglite/` on clean
-> shutdown (SIGTERM). Always stop it via `make db-stop`, never `kill -9`.
+Compose credentials come from `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD`
+(defaults `mfdataindia` / `mfdata` / `mfdata`); data persists in the `pgdata` volume.
+Stop with `docker compose down` (add `-v` to drop the volume).
 
 ## API
 
