@@ -6,6 +6,13 @@ required 5-year window. Interrupt freely — it resumes.
     PYTHONPATH=src python scripts/backfill_nav.py                 # 5 years
     PYTHONPATH=src python scripts/backfill_nav.py --years 2       # shorter
     PYTHONPATH=src python scripts/backfill_nav.py --force         # reset + full re-run
+    PYTHONPATH=src python scripts/backfill_nav.py \
+        --from-date 2026-10-01 --to-date 2026-10-05               # latest gap only
+
+For incremental / latest-NAV runs pass --from-date/--to-date explicitly. Chunk
+checkpoints are keyed by their (from, to) bounds, so even a one-day shift in
+the start date re-keys the whole window and silently re-fetches every
+already-DONE chunk.
 """
 
 from __future__ import annotations
@@ -28,6 +35,12 @@ from mfdataindia.store.postgres import PostgresStore
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--years", type=float, default=5.0)
+    ap.add_argument("--from-date", type=date.fromisoformat, default=None,
+                    metavar="YYYY-MM-DD",
+                    help="explicit window start (default: today - --years)")
+    ap.add_argument("--to-date", type=date.fromisoformat, default=None,
+                    metavar="YYYY-MM-DD",
+                    help="explicit window end (default: today)")
     ap.add_argument("--chunk-days", type=int, default=90)
     ap.add_argument("--min-delay", type=float, default=1.0)
     ap.add_argument("--dsn", default=None,
@@ -50,7 +63,12 @@ def main() -> int:
     client = AmfiClient(min_delay=args.min_delay)
 
     today = date.today()
-    from_date = today - timedelta(days=int(args.years * 365.25))
+    from_date = args.from_date or (today - timedelta(days=int(args.years * 365.25)))
+    to_date = args.to_date or today
+    if from_date > to_date:
+        ap.error(f"--from-date {from_date.isoformat()} is after "
+                 f"--to-date {to_date.isoformat()}")
+    logging.getLogger("backfill_nav").info("window: %s -> %s", from_date, to_date)
 
     with store:
         if args.force:
@@ -59,7 +77,7 @@ def main() -> int:
                     "DELETE FROM mf.ingest_checkpoints WHERE source='AMFI_HISTORY'").rowcount
             logging.info("--force: reset %d backfill checkpoints", n)
         rep = backfill_nav_history(
-            store, client, from_date, today, chunk_days=args.chunk_days, strict=False)
+            store, client, from_date, to_date, chunk_days=args.chunk_days, strict=False)
         print("BACKFILL REPORT:", rep.as_dict())
         print("nav_span:", store.nav_span())
     return 0
