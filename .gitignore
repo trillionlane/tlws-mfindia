@@ -50,3 +50,6 @@ backup/
 # Postgres local run
 pgdata/
 data/pglite/
+
+# Generated inventories / exports — reproducible from mf.v_fund_data_status
+reports/
