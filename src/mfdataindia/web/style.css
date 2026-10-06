@@ -162,3 +162,22 @@ table.cmp th, table.cmp td { padding: 10px 16px; border-bottom: 1px solid var(--
 table.cmp th:first-child, table.cmp td:first-child { text-align: left; color: var(--muted); }
 table.cmp th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 table.cmp td .fdot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+table.cmp td.txt { text-align:left; }
+
+/* --- fund list: NAV freshness + expense ratio --- */
+.navage.fresh { color:var(--up); }
+.navage.aging { color:#e8710a; }
+.navage.stale { color:var(--down); }
+
+/* --- shared compare cart badge --- */
+.cmp-count {
+  display:inline-block; min-width:16px; padding:0 5px; margin-left:6px;
+  border-radius:9px; background:var(--accent); color:#fff;
+  font-size:11px; font-weight:600; line-height:16px; text-align:center;
+}
+
+/* --- fund detail: ER history card --- */
+.erlog { margin-top:12px; display:grid; gap:6px; max-width:560px; }
+.erlog-row { display:flex; align-items:center; gap:12px; font-size:13px; }
+.erlog-row .when { color:var(--muted); width:96px; flex:none; }
+.erlog-row .vals { font-variant-numeric:tabular-nums; }

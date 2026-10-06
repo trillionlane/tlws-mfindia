@@ -216,7 +216,7 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                min_initial_investment_amount, min_subsequent_investment_amount,
                is_sip_allowed, status, transaction_status, scripbox_fund_id, fund_slug,
                benchmark, benchmark_name, fund_manager_name, risk_level,
-               base_expense_ratio, super_category, sub_category, registrar_agent,
+               base_expense_ratio, registrar_agent, expense_ratio_history,
                groww_rating, crisil_rating, sub_type, exit_load_value, lock_in_period,
                portfolio_turnover, return_1week, return_1month, return_9month,
                sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis
@@ -483,19 +483,38 @@ def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
         fund = conn.execute(
             """
             SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
-                   a.amfi_amc_name
-            FROM mf.funds f JOIN mf.amcs a ON a.amc_id = f.amc_id
+                   a.amfi_amc_name,
+                   ff.aum, ff.expense_ratio, ff.base_expense_ratio, ff.return_5year,
+                   ff.sharpe_ratio, ff.beta, ff.risk_level, ff.fund_manager_name,
+                   ff.benchmark_name, ff.inception_date, ff.registrar_agent,
+                   lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
+            FROM mf.funds f
+            JOIN mf.amcs a ON a.amc_id = f.amc_id
+            LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
+            LEFT JOIN LATERAL (
+                SELECT n.nav, n.nav_date FROM mf.nav_history n
+                WHERE n.amfi_scheme_code = f.amfi_scheme_code
+                ORDER BY n.nav_date DESC LIMIT 1
+            ) lt ON true
             WHERE f.amfi_scheme_code = %(code)s
             """, {"code": code}).fetchone()
         if not fund:
             continue
+        fund = dict(fund)
+        for k in ("aum", "expense_ratio", "base_expense_ratio", "return_5year",
+                  "sharpe_ratio", "beta", "latest_nav"):
+            if fund.get(k) is not None:
+                fund[k] = float(fund[k])
+        for k in ("inception_date", "latest_nav_date"):
+            if fund.get(k):
+                fund[k] = fund[k].isoformat()
         series = nav_series(conn, code, years=years)["points"]
         if series:
             base = series[0]["nav"]
             if base and base > 0:
                 for pt in series:
                     pt["value"] = round(pt["nav"] / base * 100.0, 4)
-        out_funds.append({"fund": dict(fund), "points": series,
+        out_funds.append({"fund": fund, "points": series,
                           "returns": returns(conn, code)["horizons"]})
     return {"years": years, "funds": out_funds}
 

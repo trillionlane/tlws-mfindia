@@ -35,7 +35,26 @@
         <div class="price">₹${fmt(f.latest_nav)}</div>
         ${change}
       </div>
-      <div class="price-sub">NAV as of ${f.latest_nav_date || "—"} · ISIN ${esc(f.isin_primary || "—")} · Code ${f.amfi_scheme_code}</div>`;
+      <div class="price-sub">NAV as of ${f.latest_nav_date || "—"} · ISIN ${esc(f.isin_primary || "—")} · Code ${f.amfi_scheme_code}</div>
+      <div style="margin-top:10px"><button id="cmp-add" class="toplink" type="button"></button></div>`;
+    wireCompareBtn();
+  }
+
+  function wireCompareBtn() {
+    const btn = $("cmp-add");
+    if (!btn) return;
+    const paint = () => {
+      btn.textContent = MFDCompare.has(code) ? "✓ In compare list" : "＋ Add to compare";
+    };
+    paint();
+    btn.addEventListener("click", () => {
+      if (!MFDCompare.has(code) && !MFDCompare.add(code)) {
+        btn.textContent = "Compare list is full (max 4)";
+        setTimeout(paint, 1600);
+        return;
+      }
+      location.href = "/compare";
+    });
   }
 
   function renderReturns(ret) {
@@ -52,6 +71,7 @@
     const cells = [
       ["AUM", fx.aum != null ? "₹" + fmtInt(fx.aum) + " cr" : "—"],
       ["Expense ratio", fx.expense_ratio != null ? fmt(fx.expense_ratio, 2) + "%" : "—"],
+      ["Base expense ratio", fx.base_expense_ratio != null ? fmt(fx.base_expense_ratio, 2) + "%" : "—"],
       ["Benchmark", fx.benchmark_name || fx.benchmark || "—"],
       ["Fund manager", fx.fund_manager_name || "—"],
       ["Risk (riskometer)", fx.risk_level || "—"],
@@ -59,6 +79,7 @@
       ["Scheme type", f.scheme_type || "—"],
       ["Plan", f.plan_type],
       ["Option", f.option_type === "UNKNOWN" ? "—" : f.option_type],
+      ["Registrar agent", fx.registrar_agent || "—"],
       ["SEBI category", fx.sebi_category_name || "—"],
       ["Asset class", fx.asset_class || "—"],
       ["Taxability", fx.taxability || "—"],
@@ -75,6 +96,79 @@
       ["Beta", fx.beta != null ? fmt(fx.beta, 2) : "—"],
     ];
     $("facts").innerHTML = cells.map(([k, v]) => `<div class="cell"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
+  }
+
+  // ---- expense ratio history (from the Groww re-enrichment) ----
+  let erChart = null;
+  function renderErHistory(f) {
+    const hist = f.facts && f.facts.expense_ratio_history;
+    if (!Array.isArray(hist) || hist.length < 2) return;
+    const pts = hist
+      .filter((h) => h && h.as_on_date)
+      .map((h) => ({
+        date: String(h.as_on_date).slice(0, 10),
+        base: h.base_expense_ratio != null ? Number(h.base_expense_ratio) : null,
+        total: h.expense_ratio != null ? Number(h.expense_ratio) : null,
+      }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (pts.length < 2) return;
+    // Prefer the base ER (the part a fund house actually controls); fall back to
+    // the total where base is missing on every point.
+    const useBase = pts.some((p) => p.base != null);
+    const val = (p) => (useBase ? p.base : p.total);
+
+    // Revision points: every date the value first appeared / changed.
+    const revs = [];
+    let prev = null;
+    for (const p of pts) {
+      const v = val(p);
+      if (v == null) continue;
+      if (prev == null) revs.push({ date: p.date, from: null, to: v });
+      else if (v !== prev) revs.push({ date: p.date, from: prev, to: v });
+      prev = v;
+    }
+    const changes = revs.filter((r) => r.from != null);
+    const last = revs.length ? revs[revs.length - 1] : null;
+    const fmtD = (d) => new Date(d + "T00:00:00").toLocaleDateString("en-IN",
+      { day: "2-digit", month: "short", year: "numeric" });
+
+    let logHtml;
+    if (changes.length) {
+      logHtml = `<div class="erlog">` + changes.map((r) =>
+        `<div class="erlog-row"><span class="when">${fmtD(r.date)}</span>` +
+        `<span class="vals">${r.from.toFixed(2)}% → <b>${r.to.toFixed(2)}%</b></span>` +
+        (r.to < r.from
+          ? '<span class="badge regular">reduced</span>'
+          : '<span class="badge" style="background:var(--down-bg);color:var(--down);border-color:transparent">increased</span>') +
+        `</div>`).join("") + `</div>`;
+    } else if (last) {
+      logHtml = `<div style="color:var(--muted);font-size:13px">No revisions in the available history — ` +
+        `${last.to.toFixed(2)}% throughout (since ${fmtD(revs[0].date)}).</div>`;
+    } else {
+      logHtml = "";
+    }
+
+    $("erhist-card").style.display = "";
+    $("erhist").innerHTML =
+      `<div style="height:130px;position:relative"><canvas id="erchart"></canvas></div>` + logHtml;
+    if (erChart) erChart.destroy();
+    erChart = new Chart($("erchart"), {
+      type: "line",
+      data: { labels: pts.map((p) => p.date), datasets: [{
+        data: pts.map(val), borderColor: "#e8710a", borderWidth: 1.6,
+        pointRadius: 0, stepped: true, fill: true,
+        backgroundColor: "rgba(232,113,10,0.06)",
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: (c) => (c.parsed.y == null ? "—" : c.parsed.y.toFixed(2) + "%") } } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
+          y: { ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+        },
+      },
+    });
   }
 
   function renderHoldings(f) {
@@ -194,6 +288,7 @@
       const fund = await api(`/api/funds/${code}`);
       renderHead(fund, null);
       renderFacts(fund);
+      renderErHistory(fund);
       renderAnalysis(fund);
       renderHoldings(fund);
       renderSiblings(fund);
