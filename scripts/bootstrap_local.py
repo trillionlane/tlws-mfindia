@@ -13,8 +13,8 @@ Usage::
     PYTHONPATH=src python scripts/bootstrap_local.py --years 5 --min-delay 1.0
 
 Environment:
-    MFDATAINDIA_DSN   Postgres DSN (default: local PGlite on 127.0.0.1:5433)
-    MF_TEST_NO_COPY   set to 1 when the server is PGlite (no COPY sub-protocol)
+    MFDATAINDIA_DSN   Postgres DSN (required; no built-in default -- see store/dsn.py)
+    MF_TEST_NO_COPY   set to 1 to force batched INSERT instead of COPY bulk load
 """
 
 from __future__ import annotations
@@ -41,11 +41,6 @@ log = logging.getLogger("bootstrap")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# The one script that legitimately targets the PGlite dev instance -- it is what
-# creates that database in the first place -- so it is the only caller that goes
-# through resolve_dsn() with allow_pglite=True.
-PGLITE_DSN = "host=127.0.0.1 port=5433 user=postgres dbname=postgres sslmode=disable"
-
 
 def _load_scripbox_evidence(store: PostgresStore) -> None:
     """Load any factsheetData payloads bundled under research/evidence (demo)."""
@@ -71,11 +66,11 @@ def main() -> int:
     ap.add_argument("--chunk-days", type=int, default=90)
     ap.add_argument("--min-delay", type=float, default=1.0,
                     help="seconds between AMFI requests")
-    ap.add_argument("--dsn", default=os.environ.get("MFDATAINDIA_DSN", PGLITE_DSN),
-                    help="target DSN (default: $MFDATAINDIA_DSN, else the PGlite dev "
-                         "instance -- this script is the one caller allowed to use it)")
+    ap.add_argument("--dsn", default=os.environ.get("MFDATAINDIA_DSN"),
+                    help="target DSN (default: $MFDATAINDIA_DSN; required -- there is "
+                         "no built-in default; see store/dsn.py)")
     ap.add_argument("--use-copy", action="store_true",
-                    help="use COPY bulk load (real PostgreSQL only, not PGlite)")
+                    help="force COPY bulk load (default unless MF_TEST_NO_COPY=1)")
     ap.add_argument("--skip-history", action="store_true",
                     help="load only the latest snapshot, no backfill")
     ap.add_argument("--force", action="store_true",
@@ -84,7 +79,7 @@ def main() -> int:
     args = ap.parse_args()
 
     try:
-        dsn = resolve_dsn(args.dsn, allow_pglite=True, purpose="the local bootstrap")
+        dsn = resolve_dsn(args.dsn, allow_pglite=False, purpose="the local bootstrap")
     except DsnError as exc:
         ap.error(str(exc))
         return 2

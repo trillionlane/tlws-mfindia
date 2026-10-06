@@ -19,7 +19,7 @@ if ! podman ps --filter name=mf-postgres-prod --format '{{.Names}}' | grep -q mf
     else
         echo "⚠️  PostgreSQL container is missing — creating a fresh one (postgres:18)."
         echo "   NOTE: a brand-new container has NO data. If your previous one was"
-        echo "   removed, re-run the PGlite→Postgres migration to restore it."
+        echo "   removed, restore it from a backup (see backup/)."
         podman run --name mf-postgres-prod \
             -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=mfdataindia \
             -p 5432:5432 -d postgres:18 || {

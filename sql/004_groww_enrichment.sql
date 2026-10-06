@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MFDataIndia — Groww enrichment
--- Target: PostgreSQL 16+ (validated against PostgreSQL 18 via PGlite)
+-- Target: PostgreSQL 16+ (validated against PostgreSQL 18)
 -- Depends on: 001, 002, 003
 --
 -- Groww fund pages (robots-allowed /mutual-funds/<slug>) carry a rich

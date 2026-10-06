@@ -1,15 +1,18 @@
-# MFDataIndia — common tasks. The local stack uses embedded PostgreSQL (PGlite);
-# use `docker compose up` + MFDATAINDIA_DSN for a durable/real deployment.
+# MFDataIndia — common tasks.
+# PostgreSQL is the system of record: docker compose runs it on :5432.
+# All data targets honor $MFDATAINDIA_DSN (set it to your own Postgres, or use
+# the docker-compose instance). Real Postgres uses COPY bulk load.
 
 SHELL := /bin/bash
 PY    := PYTHONPATH=src python3
+YEARS ?= 1
 
-.PHONY: help install up api bootstrap backfill enrich-scripbox enrich-groww status test clean db-stop
+.PHONY: help install up api bootstrap backfill enrich-scripbox enrich-groww enrich-groww-all status test clean
 
 help:
 	@echo "make install           — install Python deps"
-	@echo "make up                — start local stack (embedded Postgres + API + UI)"
-	@echo "make api               — start only the API"
+	@echo "make up                — start local stack (docker compose Postgres + API + UI)"
+	@echo "make api               — start only the API (assumes Postgres already up)"
 	@echo "make bootstrap YEARS=1 — load NAVAll + NAV window + bundled evidence"
 	@echo "make backfill          — full 5-year NAV window (resumable)"
 	@echo "make enrich-scripbox   — Scripbox facts crawl (reliable core, resumable)"
@@ -17,7 +20,7 @@ help:
 	@echo "make enrich-groww-all  — Groww for ALL funds (benchmark, manager, expense history)"
 	@echo "make status            — coverage + backfill + enrichment progress"
 	@echo "make test              — unit tests (integration needs MF_TEST_DSN)"
-	@echo "make db-stop           — stop the embedded database (clean flush)"
+	@echo "make clean             — remove caches and stop docker compose"
 
 install:
 	python3 -m pip install -e .[dev]
@@ -29,32 +32,27 @@ api:
 	./scripts/up.sh --api-only
 
 bootstrap:
-	MF_TEST_NO_COPY=1 $(PY) scripts/bootstrap_local.py --years $(YEARS)
-
-YEARS ?= 1
+	$(PY) scripts/bootstrap_local.py --years $(YEARS)
 
 backfill:
-	MF_TEST_NO_COPY=1 $(PY) scripts/backfill_nav.py --years 5 --min-delay 0.8
+	$(PY) scripts/backfill_nav.py --years 5 --min-delay 0.8
 
 enrich-scripbox:
-	MF_TEST_NO_COPY=1 $(PY) scripts/enrich_scripbox.py
+	$(PY) scripts/enrich_scripbox.py
 
 enrich-groww:
-	MF_TEST_NO_COPY=1 $(PY) scripts/enrich_groww.py
+	$(PY) scripts/enrich_groww.py
 
 enrich-groww-all:
-	MF_TEST_NO_COPY=1 $(PY) scripts/enrich_groww.py --all
+	$(PY) scripts/enrich_groww.py --all
 
 status:
-	MF_TEST_NO_COPY=1 $(PY) scripts/status.py
+	$(PY) scripts/status.py
 
 test:
 	$(PY) -m pytest tests/ -q
 
-db-stop:
-	@PID=$$(lsof -nP -iTCP:$${MF_PG_PORT:-5433} -sTCP:LISTEN -t 2>/dev/null | head -1); \
-	 [ -n "$$PID" ] && kill $$PID && echo "stopped (clean flush)" || echo "not running"
-
 clean:
-	rm -rf data/pglite .pytest_cache
+	rm -rf .pytest_cache
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
+	docker compose down

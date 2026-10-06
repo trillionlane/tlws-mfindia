@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MFDataIndia — enrichment, provenance, taxonomy, reconciliation
--- Target: PostgreSQL 16+ (validated against PostgreSQL 18 via PGlite)
+-- Target: PostgreSQL 16+ (validated against PostgreSQL 18)
 -- Depends on: 001_core_schema.sql, 002_nav_and_views.sql
 -- =============================================================================
 

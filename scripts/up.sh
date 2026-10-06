@@ -1,51 +1,38 @@
 #!/usr/bin/env bash
 # MFDataIndia — local stack launcher.
 #
-#   ./scripts/up.sh            # start DB + API (http://127.0.0.1:8000)
-#   ./scripts/up.sh --api-only # start only the API (assumes DB already up)
+#   ./scripts/up.sh            # start Postgres (docker compose) + API (http://127.0.0.1:8000)
+#   ./scripts/up.sh --api-only # start only the API (assumes Postgres already up)
 #
-# Uses PGlite (embedded real PostgreSQL) under data/pglite. For a durable
-# deployment, run real PostgreSQL via `docker compose up` and set MFDATAINDIA_DSN.
+# PostgreSQL is the system of record. Honors $MFDATAINDIA_DSN if you point it at
+# your own Postgres; otherwise starts the docker-compose instance on :5432.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PG_PORT="${MF_PG_PORT:-5433}"
 API_PORT="${MF_API_PORT:-8000}"
-export MFDATAINDIA_DSN="${MFDATAINDIA_DSN:-host=127.0.0.1 port=${PG_PORT} user=postgres dbname=postgres sslmode=disable}"
-# PGlite does not implement the COPY sub-protocol; the store must use batched INSERT.
-export MF_TEST_NO_COPY=1
+export MFDATAINDIA_DSN="${MFDATAINDIA_DSN:-postgres://mfdataindia:mfdataindia@localhost:5432/mfdataindia}"
 
 API_ONLY=0
 [ "${1:-}" = "--api-only" ] && API_ONLY=1
 
 if [ "$API_ONLY" -eq 0 ]; then
-  if nc -z 127.0.0.1 "$PG_PORT" 2>/dev/null; then
-    echo "[up] PostgreSQL already listening on :$PG_PORT"
-  else
-    echo "[up] starting embedded PostgreSQL (PGlite) on :$PG_PORT ..."
-    if [ ! -d db/node_modules ]; then
-      echo "[up] installing PGlite (first run only) ..."
-      (cd db && npm install --no-audit --no-fund --silent)
+  echo "[up] starting PostgreSQL via docker compose ..."
+  docker compose up -d
+  echo -n "[up] waiting for postgres "
+  for _ in $(seq 1 60); do
+    if docker compose exec -T db pg_isready -U mfdataindia >/dev/null 2>&1; then
+      echo " ok"; break
     fi
-    mkdir -p data/pglite
-    # supervisor: restart the DB if it ever exits (it self-handles client
-    # disconnects, but this covers any other crash) with a small backoff.
-    nohup bash -c '
-      while true; do
-        (cd db && node server.mjs) >> data/pglite-server.log 2>&1
-        echo "[mfdataindia-db] exited; restarting in 2s" >> data/pglite-server.log
-        sleep 2
-      done
-    ' > /dev/null 2>&1 &
-    echo $! > data/pglite/supervisor.pid
-    # wait for readiness
-    for _ in $(seq 1 40); do nc -z 127.0.0.1 "$PG_PORT" 2>/dev/null && break; sleep 1; done
-    echo "[up] DB ready (log: data/pglite-server.log)"
-  fi
+    echo -n "."; sleep 1
+  done
+  docker compose exec -T db pg_isready -U mfdataindia >/dev/null 2>&1 || {
+    echo " ERROR: postgres did not become ready"; exit 1; }
 fi
 
+echo "[up] DSN: $MFDATAINDIA_DSN"
 echo "[up] starting API on http://127.0.0.1:${API_PORT}"
 echo "[up] open  http://127.0.0.1:${API_PORT}"
+echo "[up] stop everything with: docker compose down"
 PYTHONPATH=src exec python3 -m uvicorn mfdataindia.api.app:create_app --factory \
-  --host 127.0.0.1 --port "$API_PORT"
+  --host 127.0.0.1 --port "$API_PORT" --reload

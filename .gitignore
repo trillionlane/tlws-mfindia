@@ -39,9 +39,8 @@ research/downloads/
 .vscode/
 .DS_Store
 
-# Node (PGlite local database engine)
+# Node
 node_modules/
-db/node_modules/
 
 # Local DB snapshots / dumps — large binaries, restorable from the live DB
 backup/
@@ -49,7 +48,6 @@ backup/
 
 # Postgres local run
 pgdata/
-data/pglite/
 
 # Generated inventories / exports — reproducible from mf.v_fund_data_status
 reports/

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MFDataIndia — NAV history, variants, and the 5-year serving view
--- Target: PostgreSQL 16+ (validated against PostgreSQL 18 via PGlite)
+-- Target: PostgreSQL 16+ (validated against PostgreSQL 18)
 -- Depends on: 001_core_schema.sql
 -- =============================================================================
 

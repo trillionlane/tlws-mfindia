@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MFDataIndia — core schema
--- Target: PostgreSQL 16+ (validated against PostgreSQL 18 via PGlite)
+-- Target: PostgreSQL 16+ (validated against PostgreSQL 18)
 --
 -- Scope: Indian Regular Plan mutual fund schemes, all options/variants,
 --        fund metadata, ISIN/AMFI codes, and NAV history (5-year required
