@@ -210,6 +210,23 @@ table.cmp td.txt { text-align:left; }
 .mk-between.down { color:var(--down); }
 .mk-between .mk-sub { color:var(--muted); font-weight:400; font-size:12px; margin-left:6px; }
 
+/* --- chart header: range buttons + line/candles mode toggle --- */
+.chart-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+.card-title-sub { color:var(--text); font-weight:600; text-transform:none; letter-spacing:0; margin-left:6px; }
+
+/* --- category standing (peer percentile) rows --- */
+.peer-row { display:flex; align-items:center; gap:12px; padding:6px 16px; font-size:13px; }
+.peer-row + .peer-row { border-top:1px solid var(--border); }
+.peer-h { width:30px; flex:none; color:var(--muted); font-weight:600; }
+.peer-track { flex:1; height:8px; background:var(--panel); border-radius:4px; overflow:hidden; max-width:320px; }
+.peer-fill { height:100%; background:var(--accent); border-radius:4px; }
+.peer-val { flex:none; color:var(--muted); }
+.peer-ret { width:72px; flex:none; text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+.peer-muted { color:var(--muted); font-size:12px; }
+
+/* --- risk-reward bubble map --- */
+.rm-wrap { padding:8px 16px 4px; height:300px; }
+
 /* --- returns breakdown: yearly bars + monthly heatmap, side by side --- */
 .bd-grid { display:grid; grid-template-columns: 1fr 1fr; gap:24px; padding:14px 16px 18px; }
 @media (max-width:720px){ .bd-grid { grid-template-columns:1fr; } }

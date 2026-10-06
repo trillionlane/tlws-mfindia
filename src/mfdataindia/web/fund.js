@@ -328,38 +328,74 @@
     $("marks-clear").onclick = clearMarks;
   }
 
+  // ---- derived analytics (risk + returns breakdown) ------------------------
+  let chartMode = "line";
+  function buildNavChart() {
+    const labels = chartLabels, values = chartValues;
+    if (!values.length) return;
+    const common = {
+      responsive: true, maintainAspectRatio: true, interaction: { mode: "index", intersect: false },
+      onClick: (evt) => {
+        const meta = chart.getDatasetMeta(0);
+        let best = -1, bestD = Infinity;
+        meta.data.forEach((pt, i) => { const d = Math.abs(pt.x - evt.x); if (d < bestD) { bestD = d; best = i; } });
+        if (best >= 0) addMark(best);
+      },
+    };
+    if (chart) chart.destroy();
+    if (chartMode === "candles") {
+      // NAV is a daily close only: each candle body spans previous -> current
+      // NAV. No intraday data exists, so wicks are degenerate (zero length).
+      const prev = [values[0], ...values.slice(0, -1)];
+      const bars = values.map((v, i) => [Math.min(prev[i], v), Math.max(prev[i], v)]);
+      const colors = values.map((v, i) => i === 0 ? "#dadce0"
+        : v >= prev[i] ? "rgba(24,128,56,.75)" : "rgba(217,48,37,.75)");
+      chart = new Chart($("chart"), {
+        type: "bar",
+        data: { labels, datasets: [{ data: bars, backgroundColor: colors, borderWidth: 0, borderSkipped: false }] },
+        plugins: [navMarkPlugin],
+        options: {
+          ...common,
+          plugins: { legend: { display: false }, tooltip: { callbacks: {
+            label: (c) => {
+              const i = c.dataIndex, chg = values[i] - prev[i];
+              return `${labels[i]}: ₹${fmt(values[i], 2)} (${chg >= 0 ? "+" : ""}${chg.toFixed(2)})`;
+            } } } },
+          scales: {
+            x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
+            y: { ticks: { color: "#5f6368", callback: (v) => "₹" + fmt(v, 2) }, grid: { color: "#eef0f2" } },
+          },
+        },
+      });
+    } else {
+      const up = values.length > 1 && values[values.length - 1] >= values[0];
+      const color = up ? "#188038" : "#d93025";
+      chart = new Chart($("chart"), {
+        type: "line",
+        data: { labels, datasets: [{ data: values, borderColor: color, borderWidth: 1.8, pointRadius: 0, tension: 0.08, fill: true,
+          backgroundColor: up ? "rgba(24,128,56,0.08)" : "rgba(217,48,37,0.08)" }] },
+        plugins: [navMarkPlugin],
+        options: {
+          ...common,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => "₹" + fmt(c.parsed.y) } } },
+          scales: {
+            x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
+            y: { ticks: { color: "#5f6368", callback: (v) => "₹" + fmt(v, 2) }, grid: { color: "#eef0f2" } },
+          },
+        },
+      });
+    }
+    chart.$marks = marks.slice();
+    paintMarks();
+  }
+
   async function loadChart(years) {
     const p = years ? ("?years=" + years) : "";
     const data = await api(`/api/funds/${code}/nav${p}`);
-    const labels = data.points.map((x) => x.date);
-    const values = data.points.map((x) => x.nav);
-    chartLabels = labels; chartValues = values;
+    chartLabels = data.points.map((x) => x.date);
+    chartValues = data.points.map((x) => x.nav);
     marks = [];                       // window changed -> old indices are stale
-    const up = values.length > 1 && values[values.length - 1] >= values[0];
-    const color = up ? "#188038" : "#d93025";
-    if (chart) chart.destroy();
-    chart = new Chart($("chart"), {
-      type: "line",
-      data: { labels, datasets: [{ data: values, borderColor: color, borderWidth: 1.8, pointRadius: 0, tension: 0.08, fill: true,
-        backgroundColor: up ? "rgba(24,128,56,0.08)" : "rgba(217,48,37,0.08)" }] },
-      plugins: [navMarkPlugin],
-      options: {
-        responsive: true, maintainAspectRatio: true, interaction: { mode: "index", intersect: false },
-        onClick: (evt) => {
-          const meta = chart.getDatasetMeta(0);
-          let best = -1, bestD = Infinity;
-          meta.data.forEach((pt, i) => { const d = Math.abs(pt.x - evt.x); if (d < bestD) { bestD = d; best = i; } });
-          if (best >= 0) addMark(best);
-        },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => "₹" + fmt(c.parsed.y) } } },
-        scales: {
-          x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
-          y: { ticks: { color: "#5f6368", callback: (v) => "₹" + fmt(v, 2) }, grid: { color: "#eef0f2" } },
-        },
-      },
-    });
-    chart.$marks = [];
-    paintMarks();
+    buildNavChart();
   }
 
   // ---- derived analytics (risk + returns breakdown) ------------------------
@@ -440,11 +476,120 @@
     el.querySelector(".hm").style.gridTemplateColumns = `44px repeat(${years.length}, minmax(42px, 1fr))`;
   }
 
+  // ---- peer ranking / risk map / debt profile (Tier 3 + Tier 4) -----------
+  function renderPeers(p) {
+    const el = $("peers");
+    if (!p || !p.category || !p.horizons || !Object.keys(p.horizons).length) return;
+    const rows = [];
+    for (const label of ["1Y", "3Y", "5Y"]) {
+      const h = p.horizons[label];
+      if (!h) continue;
+      if (h.beats_pct == null) {
+        rows.push(`<div class="peer-row"><span class="peer-h">${label}</span>
+          <span class="peer-muted">ranked among too few peers (${h.peer_count || 0}) to score</span></div>`);
+        continue;
+      }
+      const w = Math.max(2, Math.min(100, h.beats_pct));
+      rows.push(`<div class="peer-row">
+        <span class="peer-h">${label}</span>
+        <div class="peer-track"><div class="peer-fill" style="width:${w}%"></div></div>
+        <span class="peer-val">beats <b>${h.beats_pct.toFixed(0)}%</b> of ${h.peer_count} peers</span>
+        <span class="peer-ret" style="color:var(${h.fund_return >= 0 ? "--up" : "--down"})">${h.fund_return >= 0 ? "+" : ""}${h.fund_return.toFixed(2)}%</span>
+      </div>`);
+    }
+    $("peers-card").style.display = "";
+    $("peers-cat").textContent = p.category;
+    el.innerHTML = rows.join("");
+    const scored = Object.values(p.horizons).filter((h) => h.beats_pct != null);
+    $("peers-note").textContent = scored.length
+      ? "Percentile is computed from our own fund_facts returns across all in-scope funds in this SEBI category (funds with fewer than 10 scored peers are not ranked)."
+      : "Not enough peers in this category carry our return data to rank.";
+  }
+
+  let rmChart = null;
+  function renderRiskMap(r) {
+    const el = $("riskmap-card");
+    if (!r || !r.category || !r.points || r.points.length < 3) { el.style.display = "none"; return; }
+    el.style.display = "";
+    $("riskmap-cat").textContent = r.category;
+    const peerPts = r.points.filter((p) => !p.self).map((p) => ({
+      x: p.vol, y: p["return"], r: 3 + Math.sqrt(Math.max(p.aum || 0, 1)) * 0.06,
+      name: p.scheme_name, code: p.amfi_scheme_code, aum: p.aum,
+    }));
+    const self = r.points.find((p) => p.self);
+    const selfDs = self ? [{
+      label: self.scheme_name,
+      data: [{ x: self.vol, y: self["return"], r: 8, name: self.scheme_name,
+               code: self.amfi_scheme_code, aum: self.aum }],
+      backgroundColor: "rgba(26,115,232,.85)", borderColor: "#fff", borderWidth: 1.5,
+    }] : [];
+    if (rmChart) rmChart.destroy();
+    rmChart = new Chart($("rmchart"), {
+      type: "bubble",
+      data: { datasets: [
+        { label: "Category peers", data: peerPts,
+          backgroundColor: "rgba(95,99,104,.35)", borderColor: "rgba(95,99,104,.6)", borderWidth: 1 },
+        ...selfDs,
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onClick: (evt) => {
+          const pts = rmChart.getElementsAtEventForMode(evt, "nearest", { intersect: true }, true);
+          const hit = pts && pts[0] && rmChart.data.datasets[pts[0].datasetIndex].data[pts[0].index];
+          if (hit && hit.code && hit.code !== code) location.href = "/fund/" + hit.code;
+        },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => {
+          const d = c.raw;
+          return ` ${d.name}: ${d.x.toFixed(1)}% vol · ${d.y >= 0 ? "+" : ""}${d.y.toFixed(1)}% CAGR` +
+            (d.aum != null ? ` · ₹${Math.round(d.aum).toLocaleString("en-IN")} cr` : "");
+        } } } },
+        scales: {
+          x: { title: { display: true, text: "Annualised volatility (%)", color: "#5f6368", font: { size: 11 } },
+               ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+          y: { title: { display: true, text: "CAGR (%)", color: "#5f6368", font: { size: 11 } },
+               ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+        },
+      },
+    });
+    $("riskmap-note").textContent = "Each bubble is a peer in this SEBI category (size ≈ AUM). Blue is this fund. Top-left is the sweet spot: low volatility, high return. Click a peer to open it.";
+  }
+
+  function renderDebt(f) {
+    const m = f.facts && f.facts.holdings_maturity;
+    if (!m) return;
+    const dur = m.macaulay_duration != null ? m.macaulay_duration : m.duration;
+    const cells = [
+      ["Macaulay duration", dur != null ? dur.toFixed(2) + " yrs" : "—"],
+      ["Average YTM", m.avg_ytm != null ? m.avg_ytm.toFixed(2) + "%" : "—"],
+      ["Avg. maturity", m.average_maturity_period != null ? m.average_maturity_period.toFixed(2) + " yrs" : "—"],
+    ];
+    if (!cells.some(([, v]) => v !== "—")) return;
+    $("debt-card").style.display = "";
+    $("debt").innerHTML = cells.map(([k, v]) => `<div class="cell"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
+    $("debt-note").textContent = m.as_on_date ? `As of ${m.as_on_date}` : "";
+  }
+
+  function renderFactsNote(f) {
+    const fx = f.facts || {};
+    const el = $("facts-note");
+    const note = fx.exit_load && fx.exit_load.note ? fx.exit_load.note : "";
+    if (!note) { el.style.display = "none"; return; }
+    el.style.display = "";
+    el.textContent = "Exit load note: " + note + (fx.exit_load && fx.exit_load.as_on_date ? ` (as of ${fx.exit_load.as_on_date})` : "");
+  }
+
   document.querySelectorAll("#ranges button").forEach((b) =>
     b.addEventListener("click", () => {
       document.querySelectorAll("#ranges button").forEach((x) => x.classList.remove("active"));
       b.classList.add("active");
       loadChart(b.dataset.y || null);
+    }));
+  document.querySelectorAll("#chartmode button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#chartmode button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      chartMode = b.dataset.m;
+      if (chartLabels.length) buildNavChart();
     }));
 
   (async () => {
@@ -452,15 +597,21 @@
       const fund = await api(`/api/funds/${code}`);
       renderHead(fund, null);
       renderFacts(fund);
+      renderFactsNote(fund);
       renderErHistory(fund);
       renderAnalysis(fund);
       renderHoldings(fund);
       renderSiblings(fund);
+      renderDebt(fund);
       const ret = await api(`/api/funds/${code}/returns`);
       const ana = await api(`/api/funds/${code}/analytics`);
+      const peers = await api(`/api/funds/${code}/peers`);
+      const riskmap = await api(`/api/funds/${code}/risk-reward`);
       renderReturns(ret);
       renderRisk(ana);
       renderBreakdown(ana);
+      renderPeers(peers);
+      renderRiskMap(riskmap);
       renderHead(fund, ret);
       await loadChart(5);
     } catch (e) {

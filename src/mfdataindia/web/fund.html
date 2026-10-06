@@ -17,17 +17,23 @@
     <div class="detail-head" id="head"><div class="loading">Loading…</div></div>
 
     <div class="card chart-wrap">
-      <div class="range-btns" id="ranges">
-        <button data-y="0.083">1M</button>
-        <button data-y="0.5">6M</button>
-        <button data-y="1">1Y</button>
-        <button data-y="3">3Y</button>
-        <button data-y="5" class="active">5Y</button>
-        <button data-y="">MAX</button>
+      <div class="chart-head">
+        <div class="range-btns" id="ranges">
+          <button data-y="0.083">1M</button>
+          <button data-y="0.5">6M</button>
+          <button data-y="1">1Y</button>
+          <button data-y="3">3Y</button>
+          <button data-y="5" class="active">5Y</button>
+          <button data-y="">MAX</button>
+        </div>
+        <div class="range-btns" id="chartmode">
+          <button data-m="line" class="active">Line</button>
+          <button data-m="candles">Candles</button>
+        </div>
       </div>
       <canvas id="chart" height="110"></canvas>
       <div id="marks" class="marks" style="display:none"></div>
-      <div class="chart-hint">Tip: click the chart to drop up to 2 pencil marks and read the return between them.</div>
+      <div class="chart-hint">Tip: click the chart to drop up to 2 pencil marks and read the return between them. Candle bodies span the previous day’s NAV — NAV is a daily close, so there are no intraday wicks.</div>
     </div>
 
     <div class="card">
@@ -54,8 +60,27 @@
       </div>
     </div>
 
+    <div class="card" id="peers-card" style="display:none">
+      <div class="card-title">Category standing <span class="card-title-sub" id="peers-cat"></span></div>
+      <div id="peers"></div>
+      <div class="card-note" id="peers-note"></div>
+    </div>
+
+    <div class="card" id="riskmap-card" style="display:none">
+      <div class="card-title">Category risk-reward map <span class="card-title-sub" id="riskmap-cat"></span></div>
+      <div class="rm-wrap"><canvas id="rmchart" height="110"></canvas></div>
+      <div class="card-note" id="riskmap-note"></div>
+    </div>
+
+    <div class="card" id="debt-card" style="display:none">
+      <div class="card-title">Debt profile</div>
+      <div class="grid" id="debt"></div>
+      <div class="card-note" id="debt-note"></div>
+    </div>
+
     <div class="card">
       <div class="grid" id="facts"></div>
+      <div class="card-note" id="facts-note" style="display:none"></div>
     </div>
 
     <div class="card" id="erhist-card" style="display:none">

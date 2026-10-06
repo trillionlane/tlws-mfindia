@@ -79,12 +79,47 @@
     const has = state.selected.length > 0;
     $("chart-card").style.display = has ? "" : "none";
     $("table-card").style.display = has ? "" : "none";
-    if (!has) return;
+    if (!has) { $("stats-card").style.display = "none"; $("overlap-card").style.display = "none"; return; }
     const codes = state.selected.map((s) => s.code).join(",");
     const data = await api(`/api/compare?codes=${codes}&years=${state.years || ""}`);
     renderChart(data);
     renderTable(data);
     renderStats(data);
+    if (state.selected.length >= 2) {
+      try {
+        const ov = await api(`/api/holdings-overlap?codes=${codes}`);
+        renderOverlap(ov);
+      } catch (e) { $("overlap-card").style.display = "none"; }
+    } else {
+      $("overlap-card").style.display = "none";
+    }
+  }
+
+  function renderOverlap(ov) {
+    const el = $("overlap");
+    if (!ov || !ov.pairs || !ov.pairs.length) { $("overlap-card").style.display = "none"; return; }
+    const names = {};
+    state.selected.forEach((s) => { names[s.code] = s.name; });
+    const label = (c) => (names[c] || ("Fund " + c)).split(" Fund")[0];
+    const codes = state.selected.map((s) => s.code);
+    const cell = (a, b) => {
+      const p = ov.pairs.find((x) => (x.a === a && x.b === b) || (x.a === b && x.b === a));
+      if (!p) return `<td style="text-align:center;color:var(--muted)">—</td>`;
+      if (p.shared_count == null || !p.union_count) return `<td style="text-align:center;color:var(--muted)">n/a</td>`;
+      const sim = p.jaccard != null ? p.jaccard : 0;
+      const bg = `rgba(26,115,232,${(0.06 + 0.6 * sim).toFixed(3)})`;
+      const fg = sim > 0.45 ? "#fff" : "var(--text)";
+      return `<td style="text-align:center;background:${bg};color:${fg};font-weight:600" title="Jaccard ${p.jaccard}">${p.shared_count}</td>`;
+    };
+    let head = `<tr><th></th>${codes.map((c) => `<th class="txt" style="max-width:150px">${esc(label(c))}</th>`).join("")}</tr>`;
+    let body = codes.map((a) =>
+      `<tr><td style="color:var(--muted)">${esc(label(a))}</td>` +
+      codes.map((b) => a === b
+        ? `<td style="text-align:center;color:var(--border)">•</td>`
+        : cell(a, b)).join("") + `</tr>`).join("");
+    el.innerHTML = `<table class="cmp"><thead>${head}</thead><tbody>${body}</tbody></table>
+      <div style="color:var(--muted);font-size:12px;padding:10px 0 0">Number of shared top-20 holdings (company name, normalised). Darker = higher overlap; diagonal is the fund itself.</div>`;
+    $("overlap-card").style.display = "";
   }
 
   function renderChart(data) {
