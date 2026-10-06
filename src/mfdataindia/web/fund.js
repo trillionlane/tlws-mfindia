@@ -2,6 +2,9 @@
   const $ = (id) => document.getElementById(id);
   const code = location.pathname.split("/").pop();
   let chart = null;
+  // Rolling-returns + projection-calculator state (see renderRolling/renderSIP).
+  let rollingPts = null, rollingWindow = 1, rollingChart = null;
+  let sipChart = null, sipMode = "sip";
   // Pencil-mark annotations on the NAV chart: up to 2 clicked dates.
   let marks = [], chartLabels = [], chartValues = [];
 
@@ -578,6 +581,118 @@
     el.textContent = "Exit load note: " + note + (fx.exit_load && fx.exit_load.as_on_date ? ` (as of ${fx.exit_load.as_on_date})` : "");
   }
 
+  // ---- projection calculator (SIP / lumpsum) ------------------------------
+  // Purely illustrative: a constant-rate future value, no fee/tax/step-up
+  // modelling. The default rate is prefilled from the trailing 3Y CAGR.
+  function parseAmt(id, fallback) {
+    const el = $(id); const n = el ? parseFloat(el.value) : NaN;
+    return isFinite(n) && n > 0 ? n : fallback;
+  }
+  function sipFuture(amt, yrs, ratePct) {
+    const n = Math.max(1, Math.round(yrs)) * 12, i = ratePct / 100 / 12;
+    if (i === 0) return { fv: amt * n, invested: amt * n };
+    const fv = amt * ((Math.pow(1 + i, n) - 1) / i) * (1 + i);  // SIP-due (month-start)
+    return { fv, invested: amt * n };
+  }
+  function lumpFuture(amt, yrs, ratePct) {
+    return { fv: amt * Math.pow(1 + ratePct / 100, Math.max(0, yrs)), invested: amt };
+  }
+  function renderSIP() {
+    const yrs = Math.min(40, Math.max(1, Math.round(parseAmt("sip-yrs", 10))));
+    const rate = Math.min(30, Math.max(0, parseAmt("sip-rate", 12)));
+    const isSIP = sipMode === "sip";
+    const amt = isSIP ? parseAmt("sip-amt", 10000) : parseAmt("sip-lump", 100000);
+    const r = isSIP ? sipFuture(amt, yrs, rate) : lumpFuture(amt, yrs, rate);
+    const gain = r.fv - r.invested;
+    const rows = [["Invested", "₹" + fmtInt(Math.round(r.invested))],
+      ["Projected value", "₹" + fmtInt(Math.round(r.fv))],
+      ["Projected gain", "₹" + fmtInt(Math.round(gain))],
+      ["Return multiple", fmt(r.invested ? r.fv / r.invested : 0, 2) + "×"]];
+    $("sip-result").innerHTML = rows.map(([k, v]) =>
+      `<div class="cell"><div class="k">${k}</div><div class="v" style="font-size:18px">${v}</div></div>`).join("");
+    $("sip-note").textContent = `Illustrative only — assumes a constant ${fmt(rate, 2)}% p.a. ` +
+      (isSIP ? "with contributions invested at the start of each month (SIP-due), "
+             : "compounded annually, ") +
+      "reinvested gains, and no fees, taxes, or step-ups. Not a forecast; actual returns will vary.";
+    const N = Math.max(1, Math.round(yrs));
+    const labels = ["0"], val = [0];
+    for (let y = 1; y <= N; y++) {
+      labels.push(String(y));
+      val.push(isSIP ? sipFuture(amt, y, rate).fv : lumpFuture(amt, y, rate).fv);
+    }
+    if (sipChart) sipChart.destroy();
+    sipChart = new Chart($("sipcanvas"), {
+      type: "line",
+      data: { labels, datasets: [{ data: val, borderColor: "#1a73e8", borderWidth: 2,
+        pointRadius: 0, fill: true, backgroundColor: "rgba(26,115,232,0.10)", tension: 0.15 }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: (c) => " ₹" + fmtInt(Math.round(c.parsed.y)) + " after " + c.label + " yr" } } },
+        scales: { x: { grid: { display: false }, title: { display: true, text: "Years", color: "#5f6368" } },
+          y: { ticks: { color: "#5f6368", callback: (v) => "₹" + (v >= 1e7 ? (v / 1e7).toFixed(1) + "cr" : v >= 1e5 ? (v / 1e5).toFixed(1) + "L" : Math.round(v)) }, grid: { color: "#eef0f2" } } } },
+    });
+  }
+
+  // ---- rolling returns (computed from the NAV series) ---------------------
+  function rollingSeries(pts, years) {
+    const span = years * 365.25, out = [];
+    for (let j = Math.floor(span); j < pts.length; j++) {
+      let i = j - Math.floor(span);
+      if (i < 0) continue;
+      // Walk back to the NAV closest to (j - span); trading-day gaps make exact rare.
+      while (i > 0 && (new Date(pts[j].date) - new Date(pts[i].date)) / 86400000 > span + 6) i--;
+      const a = pts[i].nav, b = pts[j].nav;
+      if (a > 0 && b > 0) out.push({ date: pts[j].date, val: (Math.pow(b / a, 1 / years) - 1) * 100 });
+    }
+    return out;
+  }
+  function buildRollingChart() {
+    if (!rollingPts || rollingPts.length < 2) return;
+    const pts = rollingSeries(rollingPts, rollingWindow);
+    if (!pts.length) {
+      // Enough NAV for the card but not for this window (e.g. 3Y on a young fund):
+      // keep the card so the user can switch back, and explain in the note.
+      $("rolling-sub").textContent = `${rollingWindow}Y annualised`;
+      $("rolling-note").textContent = `Not enough NAV history for a ${rollingWindow}Y rolling window.`;
+      if (rollingChart) { rollingChart.destroy(); rollingChart = null; }
+      return;
+    }
+    $("rolling-card").style.display = "";
+    const vals = pts.map((p) => p.val);
+    const best = Math.max(...vals), worst = Math.min(...vals);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const above = vals.filter((v) => v > 0).length;
+    $("rolling-sub").textContent = `${rollingWindow}Y annualised · ${pts.length} rolling windows`;
+    $("rolling-note").textContent =
+      `Best ${best.toFixed(2)}% · Worst ${worst.toFixed(2)}% · Average ${avg.toFixed(2)}% · ` +
+      `${((above / vals.length) * 100).toFixed(0)}% of windows positive. Each point is the annualised ` +
+      `return over the trailing ${rollingWindow} year(s) ending that date — the variability you would ` +
+      `have experienced holding this fund, not a single point-to-point figure.`;
+    if (rollingChart) rollingChart.destroy();
+    rollingChart = new Chart($("rollingcanvas"), {
+      type: "line",
+      data: { labels: pts.map((p) => p.date), datasets: [{ data: vals,
+        borderColor: "#1a73e8", borderWidth: 1.4, pointRadius: 0, fill: { target: { value: 0 } },
+        above: "rgba(26,115,232,0.14)", below: "rgba(217,48,37,0.14)" }] },
+      options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: (c) => " " + (c.parsed.y >= 0 ? "+" : "") + c.parsed.y.toFixed(2) + "%" } } },
+        scales: { x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
+          y: { ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" },
+               title: { display: true, text: `${rollingWindow}Y annualised`, color: "#5f6368" } } } },
+    });
+  }
+  async function renderRolling() {
+    try {
+      const d = await api(`/api/funds/${code}/nav?years=20`);
+      rollingPts = (d.points || []).filter((p) => p.nav != null);
+    } catch (e) { return; }
+    if (!rollingPts || rollingPts.length < 2) return;
+    // Cap to ~10y of daily points to bound the rolling computation.
+    if (rollingPts.length > 2600) rollingPts = rollingPts.slice(rollingPts.length - 2600);
+    buildRollingChart();
+  }
+
   document.querySelectorAll("#ranges button").forEach((b) =>
     b.addEventListener("click", () => {
       document.querySelectorAll("#ranges button").forEach((x) => x.classList.remove("active"));
@@ -591,6 +706,25 @@
       chartMode = b.dataset.m;
       if (chartLabels.length) buildNavChart();
     }));
+
+  document.querySelectorAll("#rolling-range button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#rolling-range button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      rollingWindow = Number(b.dataset.w) || 1;
+      buildRollingChart();
+    }));
+  document.querySelectorAll("#sip-mode button").forEach((b) =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#sip-mode button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      sipMode = b.dataset.mode === "lumpsum" ? "lumpsum" : "sip";
+      $("sip-amt-wrap").style.display = sipMode === "sip" ? "" : "none";
+      $("sip-lump-wrap").style.display = sipMode === "lumpsum" ? "" : "none";
+      renderSIP();
+    }));
+  ["sip-amt", "sip-yrs", "sip-rate", "sip-lump"].forEach((id) => $(id).addEventListener("input", renderSIP));
+  renderSIP();
 
   (async () => {
     try {
@@ -613,6 +747,11 @@
       renderPeers(peers);
       renderRiskMap(riskmap);
       renderHead(fund, ret);
+      // Prefill the calculator's default rate with the trailing 3Y CAGR, then draw.
+      const cagr3 = ret && ret.horizons ? ret.horizons["3Y"] : null;
+      if (cagr3 != null && isFinite(cagr3)) $("sip-rate").value = Math.max(0, Math.min(30, +cagr3.toFixed(2)));
+      renderSIP();
+      renderRolling();
       await loadChart(5);
     } catch (e) {
       $("head").innerHTML = `<div class="error">${esc(e.message)}</div>`;

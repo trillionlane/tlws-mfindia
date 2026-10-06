@@ -40,6 +40,27 @@
       <div class="ret-grid" id="returns"><div class="loading">Loading…</div></div>
     </div>
 
+    <div class="card" id="sip-card">
+      <div class="card-title">Projection calculator <span class="card-title-sub">illustrative, not a forecast</span></div>
+      <div class="sip-grid">
+        <div class="sip-inputs">
+          <label class="sip-field" id="sip-amt-wrap"><span>Monthly investment (₹)</span><input id="sip-amt" type="number" min="100" step="100" value="10000"></label>
+          <label class="sip-field"><span>Years</span><input id="sip-yrs" type="number" min="1" max="40" step="1" value="10"></label>
+          <label class="sip-field"><span>Expected return (% p.a.)</span><input id="sip-rate" type="number" min="0" max="30" step="0.5" value="12"></label>
+          <div class="sip-mode" id="sip-mode">
+            <button data-mode="sip" class="active" type="button">SIP</button>
+            <button data-mode="lumpsum" type="button">Lumpsum</button>
+          </div>
+          <label class="sip-field" id="sip-lump-wrap" style="display:none"><span>One-time investment (₹)</span><input id="sip-lump" type="number" min="1000" step="1000" value="100000"></label>
+        </div>
+        <div class="sip-out">
+          <div class="grid" id="sip-result"></div>
+          <div class="sip-chart"><canvas id="sipcanvas"></canvas></div>
+        </div>
+      </div>
+      <div class="card-note" id="sip-note"></div>
+    </div>
+
     <div class="card" id="risk-card" style="display:none">
       <div class="card-title">Risk &amp; behaviour</div>
       <div class="grid" id="risk"></div>
@@ -58,6 +79,18 @@
           <div id="heatmap" class="hm-wrap"></div>
         </div>
       </div>
+    </div>
+
+    <div class="card" id="rolling-card" style="display:none">
+      <div class="chart-head" style="padding:16px 16px 0">
+        <div class="card-title" style="padding:0">Rolling returns <span class="card-title-sub" id="rolling-sub"></span></div>
+        <div class="range-btns" id="rolling-range">
+          <button data-w="1" class="active" type="button">1Y</button>
+          <button data-w="3" type="button">3Y</button>
+        </div>
+      </div>
+      <div class="bd-chart" style="padding:10px 16px 0"><canvas id="rollingcanvas"></canvas></div>
+      <div class="card-note" id="rolling-note"></div>
     </div>
 
     <div class="card" id="peers-card" style="display:none">
@@ -84,7 +117,8 @@
     </div>
 
     <div class="card" id="erhist-card" style="display:none">
-      <div style="padding:16px 16px 4px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Expense ratio history</div>
+      <div class="card-title">Expense ratio history</div>
+      <div class="erchart-wrap"><canvas id="erchart"></canvas></div>
       <div id="erhist" style="padding:6px 16px 16px"></div>
     </div>
 

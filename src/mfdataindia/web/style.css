@@ -237,3 +237,18 @@ table.cmp td.txt { text-align:left; }
 .hm-colhead { text-align:center; font-size:11px; color:var(--muted); font-weight:600; }
 .hm-rowhead { font-size:11px; color:var(--muted); text-align:right; padding-right:6px; }
 .hm-cell { text-align:center; font-size:11px; padding:6px 2px; border-radius:3px; font-variant-numeric:tabular-nums; min-width:42px; }
+
+/* --- expense-ratio trend chart --- */
+.erchart-wrap { position:relative; height:180px; padding:10px 16px 0; }
+
+/* --- projection calculator (SIP / lumpsum) --- */
+.sip-grid { display:grid; grid-template-columns: minmax(220px,300px) 1fr; gap:24px; padding:14px 16px 4px; align-items:start; }
+@media (max-width:720px){ .sip-grid { grid-template-columns:1fr; } }
+.sip-inputs { display:flex; flex-direction:column; gap:12px; }
+.sip-field { display:flex; flex-direction:column; gap:5px; font-size:13px; color:var(--muted); }
+.sip-field input { padding:9px 12px; font-size:14px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); outline:none; font-variant-numeric:tabular-nums; }
+.sip-field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(26,115,232,.12); }
+.sip-mode { display:flex; gap:8px; }
+.sip-mode button { flex:1; padding:8px 10px; font-size:13px; border:1px solid var(--border); border-radius:18px; background:var(--bg); color:var(--muted); cursor:pointer; }
+.sip-mode button.active { background:#e8f0fe; color:var(--accent); border-color:transparent; font-weight:600; }
+.sip-out .sip-chart { position:relative; height:200px; margin-top:12px; }
