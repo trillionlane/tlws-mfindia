@@ -140,6 +140,7 @@ if ! gcloud sql instances describe "$SQL_INSTANCE" --project="$PROJECT_ID" >/dev
   gcloud sql instances create "$SQL_INSTANCE" \
     --project="$PROJECT_ID" \
     --database-version=POSTGRES_18 \
+    --edition=enterprise \
     --region="$REGION" \
     --tier=db-g1-small \
     --availability-type=zonal \
