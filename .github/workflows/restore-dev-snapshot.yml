@@ -1,0 +1,129 @@
+name: Restore MFDataIndia DEV Snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_database:
+        description: "Type mfdataindia"
+        required: true
+        type: string
+      confirm_object:
+        description: "Type mfdataindia_full_20261008_045418_snapshot.dump"
+        required: true
+        type: string
+      confirm_generation:
+        description: "Type 1791431731173325"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-restore-dev
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  RESTORE_JOB: tlws-mf-data-restore-dev
+  SNAPSHOT_BUCKET: tlws_mf_data_source
+  SNAPSHOT_OBJECT: mfdataindia_full_20261008_045418_snapshot.dump
+  SNAPSHOT_GENERATION: "1791431731173325"
+
+jobs:
+  restore:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate typed restore contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+          test "${{ inputs.confirm_database }}" = "mfdataindia"
+          test "${{ inputs.confirm_object }}" = "$SNAPSHOT_OBJECT"
+          test "${{ inputs.confirm_generation }}" = "$SNAPSHOT_GENERATION"
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REPOSITORY_ID" = "1403671867"
+          test "$GITHUB_REF" = "refs/heads/main"
+
+      - id: auth
+        name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Google Cloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Verify immutable restore target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ vars.GCP_PROJECT_ID }}" = "$EXPECTED_PROJECT"
+          test "${{ vars.GCP_REGION }}" = "$EXPECTED_REGION"
+          test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
+          test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
+          test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(databaseVersion)')" = "POSTGRES_18"
+
+      - name: Configure Artifact Registry
+        run: gcloud auth configure-docker "$EXPECTED_REGION-docker.pkg.dev" --quiet
+
+      - name: Build and publish immutable restore image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia-restore:$GITHUB_SHA"
+          docker build --file Dockerfile.restore --tag "$image" .
+          docker push "$image"
+          digest="$(gcloud artifacts docker images describe "$image" --format='value(image_summary.digest)')"
+          test -n "$digest"
+          echo "uri=$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia-restore@$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy zero-retry restore job
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$RESTORE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_RESTORE_SERVICE_ACCOUNT }}" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_ADMIN_DSN=tlws-mf-data-admin-dsn-dev:latest \
+            --set-env-vars=GOOGLE_CLOUD_PROJECT=trillionlane-dev \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=20m \
+            --cpu=2 \
+            --memory=2Gi \
+            --labels=product=mfdataindia,environment=dev,operation=snapshot-restore,managed-by=github-actions \
+            --quiet
+
+      - name: Execute once and wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs execute "$RESTORE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --wait \
+            --quiet

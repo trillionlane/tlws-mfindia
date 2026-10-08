@@ -1,0 +1,21 @@
+FROM postgres:18.6-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN apk add --no-cache ca-certificates python3 py3-pip \
+    && python3 -m venv /opt/restore \
+    && /opt/restore/bin/pip install --no-cache-dir \
+        google-cloud-storage==3.4.1 \
+        google-crc32c==1.7.1 \
+    && addgroup -S -g 10001 mfrestore \
+    && adduser -S -D -H -u 10001 -G mfrestore mfrestore
+
+WORKDIR /app
+
+COPY --chown=mfrestore:mfrestore scripts/restore_snapshot.py /app/scripts/restore_snapshot.py
+COPY --chown=mfrestore:mfrestore sql /app/sql
+
+USER 10001:10001
+
+ENTRYPOINT ["/opt/restore/bin/python", "/app/scripts/restore_snapshot.py"]
