@@ -26,6 +26,7 @@ env:
   SERVICE_NAME: tlws-mf-data-dev
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
+  INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
   INSIGHTS_RUNTIME_SERVICE_ACCOUNT: trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
   VPC_NETWORK: tl-dev-vpc
   VPC_SUBNET: tl-dev-mumbai
@@ -96,7 +97,7 @@ jobs:
           test "${CLOUDSDK_CORE_PROJECT:-}" = "$EXPECTED_PROJECT"
           test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
           test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
-          gcloud iam service-accounts describe "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" >/dev/null
+          test "$(gcloud run services describe "$INSIGHTS_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.serviceAccountName)')" = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"
 
       - name: Configure Artifact Registry
         run: gcloud auth configure-docker "$EXPECTED_REGION-docker.pkg.dev" --quiet
