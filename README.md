@@ -104,8 +104,9 @@ PYTHONPATH=src python3 scripts/backfill_nav.py --from-date 2026-10-08 --to-date 
 **Automated in DEV**: the zero-retry Cloud Run job fetches AMFI's authoritative
 `NAVAll.txt` once, updates scheme identity and in-scope NAV, refreshes fund-family
 identity, and runs integrity checks. Cloud Scheduler invokes it at **19:30 IST,
-Mon–Fri** after a supervised execution has passed. On market holidays, a valid
-unchanged NAV date is a safe no-op.
+Mon–Fri** at steady state. During the initial DEV observation period it runs
+every six hours in `Asia/Kolkata` after a supervised execution has passed; a
+valid unchanged NAV date is a safe no-op.
 
 - Idempotent and resumable: each (day × scheme-type) chunk is checkpointed in
   `mf.ingest_checkpoints`; re-runs skip DONE chunks and never duplicate rows.

@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       confirm_schedule:
-        description: "Type 30 19 * * 1-5"
+        description: "Type 0 */6 * * *"
         required: true
         type: string
 
@@ -24,7 +24,7 @@ env:
   EXPECTED_REGION: asia-south1
   REFRESH_JOB: tlws-mf-data-nav-refresh-dev
   SCHEDULER_JOB: tlws-mf-data-nav-refresh-dev
-  SCHEDULE: "30 19 * * 1-5"
+  SCHEDULE: "0 */6 * * *"
 
 jobs:
   enable:
@@ -64,7 +64,7 @@ jobs:
           test -n "$latest"
           test "$(gcloud run jobs executions describe "$latest" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.conditions[0].status)')" = "True"
 
-      - name: Enable weekday 19:30 IST schedule
+      - name: Enable six-hour IST schedule
         shell: bash
         run: |
           set -euo pipefail
@@ -91,7 +91,7 @@ jobs:
             --oauth-service-account-email="$scheduler_sa" \
             --oauth-token-scope=https://www.googleapis.com/auth/cloud-platform \
             --max-retry-attempts=0 \
-            --description="MFDataIndia authoritative AMFI NAV refresh; weekdays 19:30 IST; zero retry" \
+            --description="MFDataIndia authoritative AMFI NAV refresh; every six hours IST; zero retry" \
             --quiet
           member="serviceAccount:$scheduler_sa"
           policy="$(gcloud run jobs get-iam-policy "$REFRESH_JOB" \
