@@ -63,9 +63,11 @@ The repository keeps these operations separate:
    verifies the deployed digest and source SHA. Automatic deployment remains
    disabled unless `MFDATAINDIA_DEV_AUTO_DEPLOY=true`; supervised manual dispatch
    is the first-deployment path.
-3. `restore-dev-snapshot.yml` will be manual-only and will require typed project,
-   database, object and generation confirmation. It will use a dedicated restore
-   identity, `maxRetries=0`, and will not run from an ordinary push or deployment.
+3. `restore-dev-snapshot.yml` is manual-only and requires typed project,
+   database, object and generation confirmation. It verifies remote and local
+   object checksums, refuses a non-empty database, uses PostgreSQL 18 tooling and
+   a dedicated restore identity, validates the restored data manifest, records
+   the verified migration baseline, and runs with `maxRetries=0`.
 4. The NAV refresh job and scheduler will remain disabled until one supervised
    job execution has passed its data-integrity checks.
 

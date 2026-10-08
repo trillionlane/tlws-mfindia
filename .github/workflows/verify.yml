@@ -71,3 +71,11 @@ jobs:
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; import mfdataindia; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/sql/000_schema_migrations.sql").is_file()'
+
+      - name: Build and verify PostgreSQL 18 restore image
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data-restore:${{ github.sha }}"
+          docker build --file Dockerfile.restore --tag "$image" .
+          test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
+          docker run --rm --entrypoint pg_restore "$image" --version | grep -F 'pg_restore (PostgreSQL) 18.'
