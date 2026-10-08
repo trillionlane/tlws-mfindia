@@ -44,7 +44,7 @@ Stop the database with `docker compose down` (add `-v` to also drop the `pgdata`
 | Parsers | `src/mfdataindia/ingest/amfi_navall.py`, `amfi_nav_history.py` | both NAVAll layouts (6-col archive, 8-col current) + the history report. |
 | Store | `src/mfdataindia/store/postgres.py` | COPY bulk load + batched-INSERT fallback, set-based upserts, checkpoints. |
 | Backfill job | `src/mfdataindia/jobs/backfill_nav.py` | resumable via `mf.ingest_checkpoints`. |
-| Enrichment | `src/mfdataindia/load/scripbox_to_store.py` | factsheetData → `fund_facts` + `fund_opinions` (licensing split). |
+| Enrichment | `src/mfdataindia/ingest/amc_factsheets/` | AMC monthly factsheet → risk metrics (fill-if-missing). |
 | API | `src/mfdataindia/api/` | FastAPI: funds / search / NAV / returns / amcs / categories. |
 | UI | `src/mfdataindia/web/` | Google-Finance-style fund browser + detail page with NAV chart. |
 | Database | `docker-compose.yml` | PostgreSQL 16 — system of record; `sql/` migrations auto-applied on first boot. |
@@ -65,6 +65,22 @@ export MFDATAINDIA_DSN="host=127.0.0.1 port=5432 dbname=mfdataindia user=mfdata 
 Compose credentials come from `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD`
 (defaults `mfdataindia` / `mfdata` / `mfdata`); data persists in the `pgdata` volume.
 Stop with `docker compose down` (add `-v` to drop the volume).
+
+> **After any fresh boot or database restore, run `make build-family`.**
+> `mf.fund_family` (our own fund identity: `tlws_mf_id` / `slug` / `tags`) is
+> populated by **`scripts/build_fund_family.py`, not by a migration** — the
+> migrations only create the table. A restore of a *recent* dump carries the
+> rows, but a dump taken before migration 013 (or a from-scratch DB built by
+> re-ingest) leaves it empty, and stale rows miss any families added since:
+>
+> ```bash
+> make build-family    # idempotent upsert from mf.fund_variants (group_key)
+> ```
+>
+> So the **prod migration** sequence is: pg_dump → `compose up` (migrations
+> 001–013) → restore → **`make build-family`** → start API. Re-run any time
+> AMFI adds new fund families (new schemes land via the daily NAV refresh;
+> the builder picks them up on the next run).
 
 ## Daily NAV refresh
 
