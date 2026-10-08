@@ -6,10 +6,11 @@
 SHELL := /bin/bash
 PY    := PYTHONPATH=src python3
 YEARS ?= 1
+API_BASE_URL ?= http://127.0.0.1:8000
 # Indian market data: "today" always means today in IST.
 TODAY := $(shell TZ=Asia/Kolkata date +%F)
 
-.PHONY: help install up api migrate bootstrap backfill nav-today compute enrich-factsheet build-family status test clean
+.PHONY: help install up api migrate bootstrap backfill nav-today compute enrich-factsheet build-family status benchmark-api test clean
 
 help:
 	@echo "make install           — install Python deps"
@@ -23,6 +24,7 @@ help:
 	@echo "make enrich-factsheet  — fill NULL beta/Sharpe/std-dev from AMC monthly factsheets"
 	@echo "make build-family      — build mf.fund_family (own tlws_mf_id / slug / tags)"
 	@echo "make status            — coverage + backfill + enrichment progress"
+	@echo "make benchmark-api     — bounded read-only API latency/transfer benchmark"
 	@echo "make test              — unit tests (integration needs MF_TEST_DSN)"
 	@echo "make clean             — remove caches and stop docker compose"
 
@@ -58,6 +60,9 @@ build-family:
 
 status:
 	$(PY) scripts/status.py
+
+benchmark-api:
+	$(PY) scripts/benchmark_api.py --base-url $(API_BASE_URL)
 
 test:
 	$(PY) -m pytest tests/ -q
