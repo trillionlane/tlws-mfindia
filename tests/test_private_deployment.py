@@ -18,6 +18,16 @@ def test_dev_deployment_is_internal_and_authenticated_only() -> None:
     assert "roles/run.invoker" in workflow
 
 
+def test_dev_preflight_verifies_the_deployed_insights_identity_without_iam_read() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
+
+    assert "INSIGHTS_SERVICE_NAME: trillion-insights-api-dev" in workflow
+    assert 'gcloud run services describe "$INSIGHTS_SERVICE_NAME"' in workflow
+    assert "value(spec.template.spec.serviceAccountName)" in workflow
+    assert ' = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"' in workflow
+    assert "gcloud iam service-accounts describe" not in workflow
+
+
 def test_dev_deployment_uses_internal_zero_retry_smoke_job() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
