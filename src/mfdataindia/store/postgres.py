@@ -56,6 +56,7 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     # file in sql/), so the purge migrations are core, not optional.
     "012_drop_aggregator_identity.sql",
     "013_purge_aggregator_references.sql",
+    "014_ingest_role_privileges.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.

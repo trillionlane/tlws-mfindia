@@ -1,0 +1,101 @@
+name: Refresh MFDataIndia NAV DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_job:
+        description: "Type tlws-mf-data-nav-refresh-dev"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-nav-refresh-dev
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  SERVICE_NAME: tlws-mf-data-dev
+  REFRESH_JOB: tlws-mf-data-nav-refresh-dev
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Validate supervised execution contract
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+          test "${{ inputs.confirm_job }}" = "$REFRESH_JOB"
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REPOSITORY_ID" = "1403671867"
+          test "$GITHUB_REF" = "refs/heads/main"
+
+      - id: auth
+        name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy the exact live image as a zero-retry refresh job
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ vars.GCP_PROJECT_ID }}" = "$EXPECTED_PROJECT"
+          test "${{ vars.GCP_REGION }}" = "$EXPECTED_REGION"
+          image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
+          case "$image" in
+            "$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia@sha256:"*) ;;
+            *) echo "Unexpected live image: $image" >&2; exit 1 ;;
+          esac
+          service_url="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.url)')"
+          curl --fail --silent --show-error "$service_url/api/stats" > "$RUNNER_TEMP/before.json"
+          gcloud run jobs deploy "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="$image" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/refresh_daily.py \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=10m \
+            --cpu=1 \
+            --memory=1Gi \
+            --labels=product=mfdataindia,environment=dev,operation=nav-refresh,managed-by=github-actions \
+            --quiet
+          gcloud run jobs execute "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --wait \
+            --quiet
+          curl --fail --silent --show-error "$service_url/api/stats" > "$RUNNER_TEMP/after.json"
+          jq -e --slurpfile before "$RUNNER_TEMP/before.json" '
+            .schemes_total >= $before[0].schemes_total and
+            .nav_rows >= $before[0].nav_rows and
+            .nav_last >= $before[0].nav_last
+          ' "$RUNNER_TEMP/after.json" >/dev/null
+          echo "Before: $(jq -c . "$RUNNER_TEMP/before.json")"
+          echo "After:  $(jq -c . "$RUNNER_TEMP/after.json")"

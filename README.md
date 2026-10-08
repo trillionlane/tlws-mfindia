@@ -101,10 +101,11 @@ Equivalent explicit form:
 PYTHONPATH=src python3 scripts/backfill_nav.py --from-date 2026-10-08 --to-date 2026-10-08
 ```
 
-**Automated**: a scheduled agent task (`MFDataIndia daily NAV refresh`) runs the same
-incremental backfill automatically at **19:30 IST, Mon–Fri** — AMFI publishes the day's
-NAV around 18:30 IST, so this catches the freshest published data. On weekends and
-market holidays it is a safe no-op (AMFI publishes nothing, 0 rows inserted).
+**Automated in DEV**: the zero-retry Cloud Run job fetches AMFI's authoritative
+`NAVAll.txt` once, updates scheme identity and in-scope NAV, refreshes fund-family
+identity, and runs integrity checks. Cloud Scheduler invokes it at **19:30 IST,
+Mon–Fri** after a supervised execution has passed. On market holidays, a valid
+unchanged NAV date is a safe no-op.
 
 - Idempotent and resumable: each (day × scheme-type) chunk is checkpointed in
   `mf.ingest_checkpoints`; re-runs skip DONE chunks and never duplicate rows.
