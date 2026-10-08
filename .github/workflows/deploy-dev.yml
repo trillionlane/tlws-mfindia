@@ -101,8 +101,12 @@ jobs:
           image="$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME:$GITHUB_SHA"
           docker build --tag "$image" .
           docker push "$image"
-          digest="$(gcloud artifacts docker images describe "$image" --format='value(image_summary.digest)')"
-          test -n "$digest"
+          pushed_ref="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
+          case "$pushed_ref" in
+            "$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME@sha256:"*) ;;
+            *) echo "Unexpected pushed image reference: $pushed_ref" >&2; exit 1 ;;
+          esac
+          digest="${pushed_ref##*@}"
           echo "uri=$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME@$digest" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
