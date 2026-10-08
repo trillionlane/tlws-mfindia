@@ -26,6 +26,7 @@ import pytest
 
 from mfdataindia.load.amfi_to_store import fund_rows, load_parsed_amfi
 from mfdataindia.api import queries
+from mfdataindia.api.queries import FAMILY_ORDER
 from mfdataindia.store.postgres import PostgresStore
 
 pytestmark = pytest.mark.postgres
@@ -314,3 +315,62 @@ def test_funds_batch_returns_latest_nav(store, scheme_factory):
     assert by_code[200010]["latest_nav"] == 10.0
     assert by_code[200010]["latest_nav_date"] == "2024-12-25"
     assert by_code[200011]["latest_nav"] == 20.0
+
+
+def test_category_movers_groups_by_family(store, scheme_factory):
+    """category_movers: top-5 gainers/losers per broad family, in-scope only."""
+    day1, day2 = date(2024, 12, 1), date(2024, 12, 27)
+    base = dict(amc="Test Mutual Fund", scheme_type="Open Ended Schemes")
+
+    def scheme(code, cat, nav, nav_date, **kw):
+        return scheme_factory(amfi_scheme_code=code, plan_type="REGULAR", option="GROWTH",
+                              scheme_name=f"Cat {code} - Regular Plan - Growth",
+                              scheme_category=cat, nav=nav, nav_date=nav_date, **base, **kw)
+
+    # Two NAV dates per fund so the 1m window has a prev and a latest.
+    specs = [
+        # code,    category,                    nav@day1, nav@day2
+        ("300001", "Equity Scheme - Large Cap Fund", 100.0, 110.0),   # +10% Equity
+        ("300002", "Equity Scheme - Small Cap Fund", 100.0, 90.0),    # -10% Equity
+        ("300003", "Debt Scheme - Liquid Fund", 1000.0, 1001.0),      # +0.1% Debt
+        ("300004", "Hybrid Scheme - Multi Asset Allocation", 100.0, 105.0),  # +5% Hybrid
+        ("300005", "Index Funds - Equity Funds", 50.0, 48.0),         # -4% Index
+        ("300006", "Other Scheme - Other  ETFs", 20.0, 21.0),         # +5% ETF
+    ]
+    load_parsed_amfi(store, [scheme(c, cat, n1, day1) for c, cat, n1, _ in specs], source_date=day1)
+    load_parsed_amfi(store, [scheme(c, cat, n2, day2) for c, cat, _, n2 in specs], source_date=day2)
+    # Direct-plan scheme: out of scope, must never appear.
+    load_parsed_amfi(store, [
+        scheme_factory(amfi_scheme_code="300007", plan_type="DIRECT", option="GROWTH",
+                       scheme_name="Cat Direct Excluded - Direct Plan - Growth",
+                       scheme_category="Equity Scheme - Mid Cap Fund",
+                       nav=200.0, nav_date=day2, **base)], source_date=day2)
+
+    res = queries.category_movers(store.connect(), period="1m", limit=5)
+    fams = {c["category"]: c for c in res["categories"]}
+
+    # Expected families are present (plus whatever the shared fixture loaded).
+    for fam in ("Equity", "Debt", "Hybrid", "Index", "ETF"):
+        assert fam in fams, fam
+    g = {c["category"]: [f["amfi_scheme_code"] for f in c["gainers"]] for c in res["categories"]}
+    l = {c["category"]: [f["amfi_scheme_code"] for f in c["losers"]] for c in res["categories"]}
+    # 300001 (+10%) is the best equity mover; 300002 (-10%) the worst.
+    assert g["Equity"][0] == 300001
+    assert l["Equity"][0] == 300002
+    assert g["Debt"][0] == 300003
+    assert g["Hybrid"][0] == 300004
+    assert l["Index"][0] == 300005
+    assert g["ETF"][0] == 300006
+    # pct_change is computed, not stored
+    eq_gainer = next(f for f in fams["Equity"]["gainers"] if f["amfi_scheme_code"] == 300001)
+    assert eq_gainer["pct_change"] == 10.0
+    # out-of-scope direct plan excluded everywhere
+    for fam in res["categories"]:
+        for f in fam["gainers"] + fam["losers"]:
+            assert f["amfi_scheme_code"] != 300007
+    # limit is honoured
+    assert all(len(fam["gainers"]) <= 5 and len(fam["losers"]) <= 5 for fam in res["categories"])
+    # families come back in the canonical order
+    order = [c["category"] for c in res["categories"]]
+    for a, b in zip(order, order[1:]):
+        assert FAMILY_ORDER.index(a) <= FAMILY_ORDER.index(b)

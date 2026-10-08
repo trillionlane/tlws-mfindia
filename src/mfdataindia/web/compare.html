@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Compare — MFDataIndia</title>
+  <script>
+    // Apply the saved (or OS) theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem("mfd-theme") ||
+          (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -12,6 +22,7 @@
     <div class="brand"><a href="/" style="color:inherit;text-decoration:none"><span class="accent">MFD</span>ataIndia</a>
       <small>Compare funds</small>
     </div>
+    <button id="theme-toggle" class="toplink" type="button" aria-label="Toggle dark mode"></button>
   </div>
 
   <div class="container">
@@ -58,6 +69,7 @@
   </div>
 
   <script src="/static/compare-cart.js"></script>
+  <script src="/static/theme.js"></script>
   <script src="/static/compare.js"></script>
 </body>
 </html>

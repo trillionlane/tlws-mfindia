@@ -207,36 +207,41 @@
   $("f-sort").onchange = (e) => { state.sort = e.target.value; state.page = 1; loadList(); };
   $("f-family").onchange = (e) => { state.family = e.target.checked; state.page = 1; loadList(); };
 
-  // ---- top movers ----
-  const mstate = { period: "1m", direction: "gainers" };
+  // ---- top movers by category ----
+  const mstate = { period: "1m" };
+  function miniRow(f) {
+    const up = (f.pct_change || 0) >= 0;
+    return `<div class="mini-row" data-code="${f.amfi_scheme_code}">
+      <span class="nm" title="${esc(f.scheme_name)}">${esc(f.scheme_name)}</span>
+      <span class="pct ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${Math.abs(f.pct_change || 0).toFixed(2)}%</span>
+    </div>`;
+  }
+  function miniCol(title, cls, items) {
+    const body = items.length ? items.map(miniRow).join("") : '<div class="mini-none">—</div>';
+    return `<div class="cat-col"><h4 class="${cls}">${title}</h4>${body}</div>`;
+  }
   async function loadMovers() {
-    $("movers").innerHTML = '<div class="loading">Loading…</div>';
+    const box = $("catmovers");
+    box.innerHTML = '<div class="loading">Loading…</div>';
     try {
-      const data = await api(`/api/movers?period=${mstate.period}&direction=${mstate.direction}&limit=10`);
-      if (!data.results.length) { $("movers").innerHTML = '<div class="empty">No data.</div>'; return; }
-      $("movers").innerHTML = '<div class="movers-list">' + data.results.map((f) => {
-        const up = (f.pct_change || 0) >= 0;
-        return `<div class="mover-row" data-code="${f.amfi_scheme_code}">
-          <div>
-            <div class="nm">${esc(f.scheme_name)}</div>
-            <div class="sub">${esc(f.amfi_amc_name)} · ${esc(f.option_type)} · ₹${fmt(f.latest_nav, 2)}</div>
+      const data = await api(`/api/movers/categories?period=${mstate.period}&limit=5`);
+      if (!data.categories.length) { box.innerHTML = '<div class="empty">No data.</div>'; return; }
+      box.innerHTML = '<div class="catgrid">' + data.categories.map((c) => `
+        <div class="cat-tile">
+          <div class="cat-head"><span class="nm">${esc(c.category)}</span><span class="ct">${c.funds} funds</span></div>
+          <div class="cat-cols">
+            ${miniCol("Top 5 gainers", "up", c.gainers)}
+            ${miniCol("Top 5 losers", "down", c.losers)}
           </div>
-          <span class="pct" style="color:var(--${up ? "up" : "down"})">${up ? "▲" : "▼"} ${Math.abs(f.pct_change || 0).toFixed(2)}%</span>
-        </div>`;
-      }).join("") + "</div>";
-      document.querySelectorAll("#movers .mover-row").forEach((el) =>
+        </div>`).join("") + "</div>";
+      box.querySelectorAll(".mini-row").forEach((el) =>
         el.addEventListener("click", () => (location.href = "/fund/" + el.dataset.code)));
-    } catch (e) { $("movers").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+    } catch (e) { box.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
   }
   document.querySelectorAll("#movers-period button").forEach((b) =>
     b.addEventListener("click", () => {
       document.querySelectorAll("#movers-period button").forEach((x) => x.classList.remove("active"));
       b.classList.add("active"); mstate.period = b.dataset.p; loadMovers();
-    }));
-  document.querySelectorAll("#movers-dir button").forEach((b) =>
-    b.addEventListener("click", () => {
-      document.querySelectorAll("#movers-dir button").forEach((x) => x.classList.remove("active"));
-      b.classList.add("active"); mstate.direction = b.dataset.d; loadMovers();
     }));
 
   applyUrlState();

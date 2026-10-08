@@ -111,6 +111,26 @@ crawlers are no longer the only thing keeping full holdings current.
 
 ---
 
+## UI: dark mode + front-page category movers (done, 2026-10-08)
+
+- **Dark mode** on all three pages (index / fund / compare). The theme is
+  applied before first paint by an inline head snippet (no flash); the topbar
+  toggle persists to `localStorage` and defaults to the OS preference.
+  Everything is driven by CSS custom properties — the dark palette is one
+  `:root[data-theme="dark"]` block. Chart.js canvases bake colors in at build
+  time, so `fund.js`/`compare.js` read `--chart-tick`/`--chart-grid`/
+  `--chart-fill-border` at draw time and re-run their init on toggle
+  (`window.__mfdThemeChanged`).
+- **Front page** now leads with **Top movers by category**: one tile per broad
+  family (Equity, Debt, Hybrid, Index, ETF, FoF, Solution) showing top-5
+  gainers and top-5 losers for the selected period (1D/1W/1M/3M/1Y), above the
+  existing filters. Backed by `GET /api/movers/categories` — one window scan
+  (same semantics as `/api/movers`), grouped in Python by `queries.fund_family()`
+  which maps AMFI's mixed current/legacy `scheme_category` strings to families.
+- Known data artifact (pre-existing, same in `/api/movers`): matured close-ended
+  FMPs show their NAV reset-to-par at maturity as a large "loser" (e.g. an HDFC
+  FMP that matured within the window).
+
 ## API: batch fund lookup (done, 2026-10-08)
 
 - `GET /api/funds/batch?ids=100033,INF209K01LV0,999999` — one comma-separated

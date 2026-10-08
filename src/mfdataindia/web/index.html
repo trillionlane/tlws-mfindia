@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MFDataIndia</title>
+  <script>
+    // Apply the saved (or OS) theme before first paint to avoid a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem("mfd-theme") ||
+          (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -17,6 +27,7 @@
       <div id="suggest-box" class="suggest" style="display:none"></div>
     </div>
     <a class="toplink" href="/compare">Compare<span class="cmp-count" id="compare-count" style="display:none"></span></a>
+    <button id="theme-toggle" class="toplink" type="button" aria-label="Toggle dark mode"></button>
   </div>
 
   <div class="container">
@@ -24,7 +35,7 @@
 
     <div class="card movers-card">
       <div class="movers-head">
-        <span class="movers-title">Top movers</span>
+        <span class="movers-title">Top movers by category</span>
         <div class="movers-controls">
           <div class="range-btns" id="movers-period">
             <button data-p="1d">1D</button>
@@ -33,13 +44,9 @@
             <button data-p="3m">3M</button>
             <button data-p="1y">1Y</button>
           </div>
-          <div class="range-btns" id="movers-dir">
-            <button data-d="gainers" class="active">Gainers</button>
-            <button data-d="losers">Losers</button>
-          </div>
         </div>
       </div>
-      <div id="movers"><div class="loading">Loading…</div></div>
+      <div id="catmovers"><div class="loading">Loading…</div></div>
     </div>
 
     <div class="filters">
@@ -65,6 +72,7 @@
   </div>
 
   <script src="/static/compare-cart.js"></script>
+  <script src="/static/theme.js"></script>
   <script src="/static/index.js"></script>
 </body>
 </html>

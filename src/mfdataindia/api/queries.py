@@ -853,6 +853,101 @@ def movers(
             "as_of": ref.isoformat(), "from": cutoff.isoformat(), "results": out[:limit]}
 
 
+# Broad families for the front-page category movers. AMFI's scheme_category
+# mixes current names ("Equity Scheme - Large Cap Fund") with legacy ones
+# ("Equity Schemes - Thematic Fund", "Income/Debt Oriented Schemes - X",
+# "Other Scheme - Index Funds"), so mapping is by keyword, not exact string.
+FAMILY_ORDER = ("Equity", "Debt", "Hybrid", "Index", "ETF", "FoF", "Solution", "Other")
+
+
+def fund_family(scheme_category: Optional[str]) -> str:
+    """Map an AMFI scheme_category to its broad family (Equity/Debt/…)."""
+    c = (scheme_category or "").strip()
+    cl = c.lower()
+    if cl.startswith("equity scheme") or cl.startswith("elss"):
+        return "Equity"            # ELSS is a tax-saver equity scheme
+    if cl.startswith("income/debt oriented") or cl.startswith("debt scheme") or cl == "income":
+        return "Debt"              # "Income" (legacy) was a debt income category
+    if cl.startswith("hybrid scheme"):
+        return "Hybrid"
+    if "etf" in cl or "exchange traded fund" in cl:
+        return "ETF"               # catches "… - Other ETFs", "Gold ETF", "Equity ETF"
+    if cl.startswith("index fund") or "index funds" in cl:
+        return "Index"
+    if "fund of funds" in cl or "fof" in cl:
+        return "FoF"
+    if cl.startswith("solution oriented") or cl.startswith("children"):
+        return "Solution"
+    return "Other"
+
+
+def category_movers(
+    conn, *, period: str = "1m", limit: int = 5
+) -> dict[str, Any]:
+    """Top-N gainers AND losers per broad category family.
+
+    Same period logic as ``movers`` (latest NAV vs the NAV at/just before the
+    period start), but grouped by fund family so the front page can show one
+    compact tile per family. One window scan; grouping/slicing in Python.
+    """
+    days = _MOVER_DAYS.get(period, 30)
+    ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
+    if ref is None:
+        return {"period": period, "categories": []}
+    cutoff = ref - timedelta(days=days)
+    rows = conn.execute(
+        """
+        SELECT f.amfi_scheme_code, f.scheme_name, f.scheme_category, f.option_type,
+               a.amfi_amc_name,
+               (array_agg(n.nav ORDER BY n.nav_date DESC))[1] AS latest_nav,
+               (array_agg(n.nav ORDER BY n.nav_date ASC))[1]  AS prev_nav,
+               max(n.nav_date) AS latest_nav_date
+        FROM mf.nav_history n
+        JOIN mf.funds f ON f.amfi_scheme_code = n.amfi_scheme_code
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        WHERE n.nav_date >= %(cutoff)s
+          AND f.in_scope AND NOT f.is_defunct
+        GROUP BY f.amfi_scheme_code, f.scheme_name, f.scheme_category,
+                 f.option_type, a.amfi_amc_name
+        """,
+        {"cutoff": cutoff},
+    ).fetchall()
+
+    def item(r) -> dict[str, Any]:
+        latest, prev = r["latest_nav"], r["prev_nav"]
+        if not (latest and prev) or float(prev) <= 0:
+            return None
+        return {
+            "amfi_scheme_code": int(r["amfi_scheme_code"]),
+            "scheme_name": r["scheme_name"],
+            "scheme_category": r["scheme_category"],
+            "amfi_amc_name": r["amfi_amc_name"],
+            "option_type": r["option_type"],
+            "latest_nav": _f(latest),
+            "latest_nav_date": r["latest_nav_date"].isoformat(),
+            "pct_change": round((float(latest) / float(prev) - 1.0) * 100.0, 2),
+        }
+
+    by_family: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        it = item(r)
+        if it is None:
+            continue
+        by_family.setdefault(fund_family(r["scheme_category"]), []).append(it)
+
+    categories = []
+    for fam in FAMILY_ORDER:
+        items = by_family.get(fam)
+        if not items:
+            continue
+        gainers = sorted(items, key=lambda x: x["pct_change"], reverse=True)[:limit]
+        losers = sorted(items, key=lambda x: x["pct_change"])[:limit]
+        categories.append({"category": fam, "funds": len(items),
+                           "gainers": gainers, "losers": losers})
+    return {"period": period, "as_of": ref.isoformat(),
+            "from": cutoff.isoformat(), "categories": categories}
+
+
 def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
     """Normalized NAV overlay for up to N funds.
 

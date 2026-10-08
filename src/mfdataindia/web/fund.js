@@ -16,6 +16,12 @@
   function fmtInt(v) { return v == null ? "—" : Math.round(Number(v)).toLocaleString("en-IN"); }
   async function api(p) { const r = await fetch(p); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
 
+  // Charts bake colors in at build time, so axis/grid chrome is read from the
+  // current CSS theme at draw time (see the --chart-* vars in style.css).
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
   function badgeFor(f) {
     const parts = [];
     parts.push(`<span class="badge ${f.plan_type === "REGULAR" ? "regular" : f.plan_type === "DIRECT" ? "direct" : ""}">${esc(f.plan_type)}</span>`);
@@ -168,8 +174,8 @@
         plugins: { legend: { display: false },
           tooltip: { callbacks: { label: (c) => (c.parsed.y == null ? "—" : c.parsed.y.toFixed(2) + "%") } } },
         scales: {
-          x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
-          y: { ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+          x: { ticks: { maxTicksLimit: 8, color: cssVar("--chart-tick") }, grid: { display: false } },
+          y: { ticks: { color: cssVar("--chart-tick"), callback: (v) => v + "%" }, grid: { color: cssVar("--chart-grid") } },
         },
       },
     });
@@ -224,7 +230,7 @@
       type: "doughnut",
       data: { labels: items.map((i) => i.label),
         datasets: [{ data: items.map((i) => i.value), backgroundColor: colors,
-          borderColor: "#fff", borderWidth: 1 }] },
+          borderColor: cssVar("--chart-fill-border"), borderWidth: 1 }] },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: "58%",
         plugins: { legend: { display: false },
@@ -364,8 +370,8 @@
               return `${labels[i]}: ₹${fmt(values[i], 2)} (${chg >= 0 ? "+" : ""}${chg.toFixed(2)})`;
             } } } },
           scales: {
-            x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
-            y: { ticks: { color: "#5f6368", callback: (v) => "₹" + fmt(v, 2) }, grid: { color: "#eef0f2" } },
+            x: { ticks: { maxTicksLimit: 8, color: cssVar("--chart-tick") }, grid: { display: false } },
+            y: { ticks: { color: cssVar("--chart-tick"), callback: (v) => "₹" + fmt(v, 2) }, grid: { color: cssVar("--chart-grid") } },
           },
         },
       });
@@ -381,8 +387,8 @@
           ...common,
           plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => "₹" + fmt(c.parsed.y) } } },
           scales: {
-            x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
-            y: { ticks: { color: "#5f6368", callback: (v) => "₹" + fmt(v, 2) }, grid: { color: "#eef0f2" } },
+            x: { ticks: { maxTicksLimit: 8, color: cssVar("--chart-tick") }, grid: { display: false } },
+            y: { ticks: { color: cssVar("--chart-tick"), callback: (v) => "₹" + fmt(v, 2) }, grid: { color: cssVar("--chart-grid") } },
           },
         },
       });
@@ -437,8 +443,8 @@
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => c.parsed.y == null ? "—" : (c.parsed.y >= 0 ? "+" : "") + c.parsed.y.toFixed(2) + "%" } } },
         scales: {
-          x: { ticks: { color: "#5f6368" }, grid: { display: false } },
-          y: { ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+          x: { ticks: { color: cssVar("--chart-tick") }, grid: { display: false } },
+          y: { ticks: { color: cssVar("--chart-tick"), callback: (v) => v + "%" }, grid: { color: cssVar("--chart-grid") } },
         },
       },
     });
@@ -455,12 +461,15 @@
       if (v != null) maxAbs = Math.max(maxAbs, Math.abs(v));
     }));
     if (maxAbs === 0) maxAbs = 1;
+    const dark = document.documentElement.dataset.theme === "dark";
+    // Low-alpha cells need a light-foreground fallback in dark mode: the
+    // tinted-dark greens/reds used on white are unreadable on the dark card.
     const paint = (v) => {
       if (v == null) return { bg: "transparent", fg: "transparent" };
       const t = Math.abs(v) / maxAbs, alpha = 0.12 + 0.78 * t;
       return v >= 0
-        ? { bg: `rgba(24,128,56,${alpha.toFixed(3)})`, fg: t > 0.45 ? "#fff" : "#14532d" }
-        : { bg: `rgba(217,48,37,${alpha.toFixed(3)})`, fg: t > 0.45 ? "#fff" : "#7f1d1d" };
+        ? { bg: `rgba(24,128,56,${alpha.toFixed(3)})`, fg: t > 0.45 ? "#fff" : (dark ? "#c7e5d2" : "#14532d") }
+        : { bg: `rgba(217,48,37,${alpha.toFixed(3)})`, fg: t > 0.45 ? "#fff" : (dark ? "#f5c2be" : "#7f1d1d") };
     };
     let html = '<div class="hm"><div class="hm-corner"></div>';
     years.forEach((y) => { html += `<div class="hm-colhead">${y}</div>`; });
@@ -523,7 +532,7 @@
       label: self.scheme_name,
       data: [{ x: self.vol, y: self["return"], r: 8, name: self.scheme_name,
                code: self.amfi_scheme_code, aum: self.aum }],
-      backgroundColor: "rgba(26,115,232,.85)", borderColor: "#fff", borderWidth: 1.5,
+      backgroundColor: "rgba(26,115,232,.85)", borderColor: cssVar("--chart-fill-border"), borderWidth: 1.5,
     }] : [];
     if (rmChart) rmChart.destroy();
     rmChart = new Chart($("rmchart"), {
@@ -546,10 +555,10 @@
             (d.aum != null ? ` · ₹${Math.round(d.aum).toLocaleString("en-IN")} cr` : "");
         } } } },
         scales: {
-          x: { title: { display: true, text: "Annualised volatility (%)", color: "#5f6368", font: { size: 11 } },
-               ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
-          y: { title: { display: true, text: "CAGR (%)", color: "#5f6368", font: { size: 11 } },
-               ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" } },
+          x: { title: { display: true, text: "Annualised volatility (%)", color: cssVar("--chart-tick"), font: { size: 11 } },
+               ticks: { color: cssVar("--chart-tick"), callback: (v) => v + "%" }, grid: { color: cssVar("--chart-grid") } },
+          y: { title: { display: true, text: "CAGR (%)", color: cssVar("--chart-tick"), font: { size: 11 } },
+               ticks: { color: cssVar("--chart-tick"), callback: (v) => v + "%" }, grid: { color: cssVar("--chart-grid") } },
         },
       },
     });
@@ -627,8 +636,8 @@
       options: { responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false },
           tooltip: { callbacks: { label: (c) => " ₹" + fmtInt(Math.round(c.parsed.y)) + " after " + c.label + " yr" } } },
-        scales: { x: { grid: { display: false }, title: { display: true, text: "Years", color: "#5f6368" } },
-          y: { ticks: { color: "#5f6368", callback: (v) => "₹" + (v >= 1e7 ? (v / 1e7).toFixed(1) + "cr" : v >= 1e5 ? (v / 1e5).toFixed(1) + "L" : Math.round(v)) }, grid: { color: "#eef0f2" } } } },
+        scales: { x: { grid: { display: false }, title: { display: true, text: "Years", color: cssVar("--chart-tick") } },
+          y: { ticks: { color: cssVar("--chart-tick"), callback: (v) => "₹" + (v >= 1e7 ? (v / 1e7).toFixed(1) + "cr" : v >= 1e5 ? (v / 1e5).toFixed(1) + "L" : Math.round(v)) }, grid: { color: cssVar("--chart-grid") } } } },
     });
   }
 
@@ -676,9 +685,9 @@
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
         plugins: { legend: { display: false },
           tooltip: { callbacks: { label: (c) => " " + (c.parsed.y >= 0 ? "+" : "") + c.parsed.y.toFixed(2) + "%" } } },
-        scales: { x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
-          y: { ticks: { color: "#5f6368", callback: (v) => v + "%" }, grid: { color: "#eef0f2" },
-               title: { display: true, text: `${rollingWindow}Y annualised`, color: "#5f6368" } } } },
+        scales: { x: { ticks: { maxTicksLimit: 8, color: cssVar("--chart-tick") }, grid: { display: false } },
+          y: { ticks: { color: cssVar("--chart-tick"), callback: (v) => v + "%" }, grid: { color: cssVar("--chart-grid") },
+               title: { display: true, text: `${rollingWindow}Y annualised`, color: cssVar("--chart-tick") } } } },
     });
   }
   async function renderRolling() {
@@ -725,7 +734,13 @@
   ["sip-amt", "sip-yrs", "sip-rate", "sip-lump"].forEach((id) => $(id).addEventListener("input", renderSIP));
   renderSIP();
 
-  (async () => {
+  // Full page (re)load. Called once on start and again on theme change so
+  // every chart is rebuilt with the current --chart-* colors. Pencil marks
+  // (module-level `marks`) survive a rebuild.
+  async function init() {
+    [erChart, acChart, secChart, chart, yrChart, rmChart, sipChart, rollingChart]
+      .forEach((c) => { if (c) c.destroy(); });
+    erChart = acChart = secChart = chart = yrChart = rmChart = sipChart = rollingChart = null;
     try {
       const fund = await api(`/api/funds/${code}`);
       renderHead(fund, null);
@@ -755,5 +770,7 @@
     } catch (e) {
       $("head").innerHTML = `<div class="error">${esc(e.message)}</div>`;
     }
-  })();
+  }
+  window.__mfdThemeChanged = () => init();
+  init();
 })();

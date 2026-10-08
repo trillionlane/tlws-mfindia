@@ -166,8 +166,14 @@ GET /api/funds/batch?ids=            mixed AMFI codes + ISINs, max 50 per reques
 GET /api/funds/{code}                full detail (identity, latest NAV, facts, variants)
 GET /api/funds/{code}/nav?years=     NAV series for the chart
 GET /api/funds/{code}/returns        returns computed from our own NAV series
+GET /api/movers?period=&direction=&limit=   global top gainers/losers
+GET /api/movers/categories?period=&limit=   top-5 gainers AND losers per family
 GET /api/amcs · /api/categories · /api/options
 ```
+
+The web UI (index / fund / compare pages) has a **dark mode** toggle in the
+top bar: it follows the OS preference by default and persists your choice
+(`localStorage`), so all three pages stay in sync.
 
 ## Tests
 

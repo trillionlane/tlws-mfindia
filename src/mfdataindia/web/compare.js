@@ -10,6 +10,11 @@
   }
   function fmt(v, d) { return v == null ? "—" : Number(v).toLocaleString("en-IN", { maximumFractionDigits: d == null ? 2 : d }); }
   async function api(p) { const r = await fetch(p); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+  // Charts bake colors in at build time, so axis/grid chrome is read from the
+  // current CSS theme at draw time (see the --chart-* vars in style.css).
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
 
   // ---- autocomplete to add funds ----
   let sugTimer, sugItems = [], sugActive = -1;
@@ -143,11 +148,11 @@
       options: {
         responsive: true, maintainAspectRatio: true,
         interaction: { mode: "index", intersect: false },
-        plugins: { legend: { position: "top", labels: { color: "#5f6368", boxWidth: 10 } },
+        plugins: { legend: { position: "top", labels: { color: cssVar("--chart-tick"), boxWidth: 10 } },
           tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y == null ? "—" : c.parsed.y.toFixed(2)}` } } },
         scales: {
-          x: { ticks: { maxTicksLimit: 8, color: "#5f6368" }, grid: { display: false } },
-          y: { ticks: { color: "#5f6368" }, grid: { color: "#eef0f2" } },
+          x: { ticks: { maxTicksLimit: 8, color: cssVar("--chart-tick") }, grid: { display: false } },
+          y: { ticks: { color: cssVar("--chart-tick") }, grid: { color: cssVar("--chart-grid") } },
         },
       },
     });
@@ -222,4 +227,7 @@
     const cart = MFDCompare.get();
     if (cart.length) selectCodes(cart);
   }
+
+  // Theme toggle: re-render so the chart picks up the new --chart-* colors.
+  window.__mfdThemeChanged = () => { if (state.selected.length) refresh(); };
 })();

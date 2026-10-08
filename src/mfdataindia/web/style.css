@@ -5,12 +5,43 @@
   --text: #202124;
   --muted: #5f6368;
   --accent: #1a73e8;
+  --accent-bg: #e8f0fe;
   --up: #188038;
   --down: #d93025;
   --up-bg: #e6f4ea;
   --down-bg: #fce8e6;
+  --warn: #b06000;
+  --warn-bg: #fef7e0;
+  --aging: #e8710a;
+  --chart-grid: #eef0f2;
+  --chart-tick: #5f6368;
+  --chart-fill-border: #ffffff;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(60, 64, 67, .12);
+}
+
+/* Dark theme. Every consumer reads the variables, so this one block retints
+   the whole app; the canvas charts read --chart-* at build time and are
+   rebuilt on toggle (window.__mfdThemeChanged). */
+:root[data-theme="dark"] {
+  --bg: #121417;
+  --panel: #1a1d21;
+  --border: #2b3036;
+  --text: #e8eaed;
+  --muted: #9aa0a6;
+  --accent: #8ab4f8;
+  --accent-bg: #1c2c47;
+  --up: #81c995;
+  --down: #f28b82;
+  --up-bg: #1d3227;
+  --down-bg: #3a2422;
+  --warn: #fdd663;
+  --warn-bg: #3a3120;
+  --aging: #fcad70;
+  --chart-grid: #2b3036;
+  --chart-tick: #9aa0a6;
+  --chart-fill-border: #121417;
+  --shadow: 0 1px 3px rgba(0, 0, 0, .5);
 }
 
 * { box-sizing: border-box; }
@@ -55,7 +86,7 @@ a:hover { text-decoration: underline; }
 }
 .grouptoggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; padding: 8px 4px; }
 .grouptoggle input { cursor: pointer; accent-color: var(--accent); }
-.vcount { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; background:#e8f0fe; color:var(--accent); font-size:11px; font-weight:600; }
+.vcount { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; background:var(--accent-bg); color:var(--accent); font-size:11px; font-weight:600; }
 
 .card {
   background: var(--bg); border: 1px solid var(--border);
@@ -77,8 +108,8 @@ table.fundlist td.nav, table.fundlist td.num { text-align: right; font-variant-n
 
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
 .badge.regular { background: var(--up-bg); color: var(--up); border-color: transparent; }
-.badge.direct { background: #e8f0fe; color: var(--accent); border-color: transparent; }
-.badge.idcw { background: #fef7e0; color: #b06000; border-color: transparent; }
+.badge.direct { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+.badge.idcw { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
 .badge.defunct { background: var(--down-bg); color: var(--down); border-color: transparent; }
 
 .chip { display:inline-block; padding:4px 10px; border-radius:16px; font-size:13px; font-weight:600; }
@@ -166,7 +197,7 @@ table.cmp td.txt { text-align:left; }
 
 /* --- fund list: NAV freshness + expense ratio --- */
 .navage.fresh { color:var(--up); }
-.navage.aging { color:#e8710a; }
+.navage.aging { color:var(--aging); }
 .navage.stale { color:var(--down); }
 
 /* --- shared compare cart badge --- */
@@ -250,5 +281,25 @@ table.cmp td.txt { text-align:left; }
 .sip-field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(26,115,232,.12); }
 .sip-mode { display:flex; gap:8px; }
 .sip-mode button { flex:1; padding:8px 10px; font-size:13px; border:1px solid var(--border); border-radius:18px; background:var(--bg); color:var(--muted); cursor:pointer; }
-.sip-mode button.active { background:#e8f0fe; color:var(--accent); border-color:transparent; font-weight:600; }
+.sip-mode button.active { background:var(--accent-bg); color:var(--accent); border-color:transparent; font-weight:600; }
 .sip-out .sip-chart { position:relative; height:200px; margin-top:12px; }
+
+/* --- front page: top movers by category --- */
+.catgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:14px; padding:14px 16px 16px; }
+.cat-tile { border:1px solid var(--border); border-radius:8px; background:var(--panel); overflow:hidden; }
+.cat-head { display:flex; justify-content:space-between; align-items:baseline; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--bg); }
+.cat-head .nm { font-size:14px; font-weight:600; }
+.cat-head .ct { font-size:11px; color:var(--muted); }
+.cat-cols { display:grid; grid-template-columns:1fr 1fr; }
+.cat-col { padding:4px 0 6px; }
+.cat-col + .cat-col { border-left:1px solid var(--border); }
+.cat-col h4 { margin:0; padding:2px 12px 6px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+.cat-col h4.up { color:var(--up); }
+.cat-col h4.down { color:var(--down); }
+.mini-row { display:flex; justify-content:space-between; gap:8px; padding:4px 12px; font-size:12.5px; cursor:pointer; }
+.mini-row:hover { background:var(--bg); }
+.mini-row .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mini-row .pct { flex:none; font-weight:600; font-variant-numeric:tabular-nums; }
+.mini-row .pct.up { color:var(--up); }
+.mini-row .pct.down { color:var(--down); }
+.mini-none { padding:4px 12px; font-size:12px; color:var(--muted); }

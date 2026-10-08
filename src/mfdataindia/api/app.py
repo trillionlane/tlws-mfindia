@@ -232,6 +232,15 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             conn = get_conn()
             return queries.movers(conn, period=period, direction=direction, limit=limit)
 
+    @app.get("/api/movers/categories")
+    def api_movers_categories(
+        period: str = Query("1m"),
+        limit: int = Query(5, ge=1, le=20),
+    ) -> dict[str, Any]:
+        with lock:
+            conn = get_conn()
+            return queries.category_movers(conn, period=period, limit=limit)
+
     @app.get("/api/compare")
     def api_compare(
         codes: str = Query(...),
