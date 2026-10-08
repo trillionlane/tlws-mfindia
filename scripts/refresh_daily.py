@@ -64,10 +64,14 @@ def integrity_manifest(store: PostgresStore) -> dict[str, Any]:
             """
             SELECT
                 (SELECT count(*) FROM mf.funds) AS funds,
+                (SELECT count(*) FROM mf.funds WHERE in_scope) AS in_scope_total,
                 (SELECT count(*) FROM mf.funds WHERE in_scope AND NOT is_defunct) AS in_scope_live,
+                (SELECT count(DISTINCT amc_id) FROM mf.funds) AS amcs,
+                (SELECT count(DISTINCT scheme_category) FROM mf.funds) AS categories,
                 (SELECT count(*) FROM mf.nav_history) AS nav_rows,
                 (SELECT min(nav_date) FROM mf.nav_history) AS nav_min_date,
                 (SELECT max(nav_date) FROM mf.nav_history) AS nav_max_date,
+                (SELECT facts_pct FROM mf.v_enrichment_coverage) AS enrichment_pct,
                 (SELECT count(*) FROM mf.fund_family) AS fund_families,
                 (SELECT count(*) FROM (
                     SELECT DISTINCT group_key FROM mf.fund_variants
@@ -91,6 +95,34 @@ def parse_report_payload(report: ParseReport) -> dict[str, Any]:
     directly so the original string-keyed counters remain JSON mappings.
     """
     return {field.name: getattr(report, field.name) for field in fields(report)}
+
+
+def validate_dataset_summary(
+    summary: dict[str, Any],
+    manifest: dict[str, Any],
+    *,
+    source_content_hash: str,
+) -> None:
+    """Fail closed if the persisted API summary differs from committed data."""
+    expected = {
+        "schemes_total": manifest["funds"],
+        "in_scope_total": manifest["in_scope_total"],
+        "in_scope_live": manifest["in_scope_live"],
+        "amcs": manifest["amcs"],
+        "categories": manifest["categories"],
+        "nav_rows": manifest["nav_rows"],
+        "nav_first": manifest["nav_min_date"],
+        "nav_last": manifest["nav_max_date"],
+        "enrichment_pct": manifest["enrichment_pct"],
+        "source_content_hash": source_content_hash,
+    }
+    mismatches = {
+        key: {"expected": expected_value, "actual": summary.get(key)}
+        for key, expected_value in expected.items()
+        if summary.get(key) != expected_value
+    }
+    if mismatches:
+        raise RuntimeError(f"dataset summary mismatch: {mismatches!r}")
 
 
 def main() -> int:
@@ -119,38 +151,51 @@ def main() -> int:
     store = PostgresStore(dsn)
     with store:
         before = integrity_manifest(store)
-        load_report = load_parsed_amfi(
-            store,
-            schemes,
-            source_date=feed_date,
-            include_nav=False,
-        )
-        load_report["nav"] = store.upsert_nav(nav_rows(in_scope_schemes)).as_dict()
-        family_report = build_fund_family(store)
-        store.record_fetch(
-            fetched.as_source_metadata("AMFI", SOURCE_ENTITY_KIND, feed_date.isoformat())
-            | {
-                "records_in": len(schemes),
-                "records_ok": len(schemes),
-                "records_quarantined": parse_report.quarantined,
-                "duration_ms": fetched.duration_ms,
-            }
-        )
-        after = integrity_manifest(store)
+        # One outer transaction makes data, provenance, family identity, exact
+        # summary and integrity validation a single success-or-rollback unit.
+        with store.transaction():
+            load_report = load_parsed_amfi(
+                store,
+                schemes,
+                source_date=feed_date,
+                include_nav=False,
+            )
+            load_report["nav"] = store.upsert_nav(nav_rows(in_scope_schemes)).as_dict()
+            family_report = build_fund_family(store)
+            store.record_fetch(
+                fetched.as_source_metadata("AMFI", SOURCE_ENTITY_KIND, feed_date.isoformat())
+                | {
+                    "records_in": len(schemes),
+                    "records_ok": len(schemes),
+                    "records_quarantined": parse_report.quarantined,
+                    "duration_ms": fetched.duration_ms,
+                }
+            )
+            after = integrity_manifest(store)
 
-    if int(after["funds"]) < int(before["funds"]):
-        raise RuntimeError("fund count decreased during refresh")
-    if int(after["nav_rows"]) < int(before["nav_rows"]):
-        raise RuntimeError("NAV row count decreased during refresh")
-    if after["nav_max_date"] < before["nav_max_date"]:
-        raise RuntimeError("maximum NAV date regressed during refresh")
-    if after["nav_max_date"] < feed_date:
-        raise RuntimeError("loaded NAV maximum is older than the fetched feed")
-    if any(
-        int(after[key]) != 0
-        for key in ("missing_families", "orphan_families", "default_partition_rows")
-    ):
-        raise RuntimeError(f"post-refresh integrity checks failed: {after!r}")
+            if int(after["funds"]) < int(before["funds"]):
+                raise RuntimeError("fund count decreased during refresh")
+            if int(after["nav_rows"]) < int(before["nav_rows"]):
+                raise RuntimeError("NAV row count decreased during refresh")
+            if after["nav_max_date"] < before["nav_max_date"]:
+                raise RuntimeError("maximum NAV date regressed during refresh")
+            if after["nav_max_date"] < feed_date:
+                raise RuntimeError("loaded NAV maximum is older than the fetched feed")
+            if any(
+                int(after[key]) != 0
+                for key in ("missing_families", "orphan_families", "default_partition_rows")
+            ):
+                raise RuntimeError(f"post-refresh integrity checks failed: {after!r}")
+
+            summary = store.refresh_dataset_summary(
+                "daily_amfi_refresh",
+                source_content_hash=fetched.content_sha256,
+            )
+            validate_dataset_summary(
+                summary,
+                after,
+                source_content_hash=fetched.content_sha256,
+            )
 
     output = {
         "status": "DAILY_REFRESH_OK",
@@ -165,6 +210,7 @@ def main() -> int:
         "parse": parse_report_payload(parse_report),
         "load": load_report,
         "fund_family": family_report,
+        "dataset_summary": summary,
         "before": before,
         "after": after,
     }

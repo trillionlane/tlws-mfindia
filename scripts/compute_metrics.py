@@ -51,6 +51,8 @@ def main() -> int:
         rep = compute_fund_metrics(store, codes=codes, dry_run=args.dry_run,
                                    max_funds=args.max_funds,
                                    min_points=args.min_points)
+        if not args.dry_run:
+            store.refresh_dataset_summary("computed_metrics")
     print("COMPUTE REPORT:", rep)
     return 0
 

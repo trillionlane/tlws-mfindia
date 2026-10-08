@@ -16,6 +16,7 @@ MF_TEST_DSN at a scratch database only.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import replace
 from datetime import date
@@ -147,6 +148,7 @@ def test_migrations_are_idempotent(store, repo_root):
     # key operational views exist
     assert "v_enrichment_coverage" in views
     assert "v_fund_data_status" in views
+    assert "dataset_summary" in tables
 
     ledger = cur.execute(
         "SELECT migration_name FROM mf.schema_migrations ORDER BY migration_name"
@@ -176,6 +178,67 @@ def test_reload_is_idempotent(store, sample_schemes):
     assert res["nav"]["updated"] == 0
     assert res["variants"]["inserted"] == 0
     assert res["variants"]["updated"] == 0
+
+
+def test_dataset_summary_is_exact_versioned_and_request_query_is_constant_time(
+    store, sample_schemes
+):
+    load_parsed_amfi(store, sample_schemes, source_date=date(2024, 12, 27))
+    source_hash = "a" * 64
+
+    first = store.refresh_dataset_summary(
+        "integration_test",
+        source_content_hash=source_hash,
+    )
+    result = queries.stats(store.connect())
+    exact = store.connect().execute(
+        """
+        SELECT
+            (SELECT count(*) FROM mf.funds) AS schemes_total,
+            (SELECT count(*) FROM mf.funds WHERE in_scope) AS in_scope_total,
+            (SELECT count(*) FROM mf.funds WHERE in_scope AND NOT is_defunct)
+                AS in_scope_live,
+            (SELECT count(*) FROM mf.nav_history) AS nav_rows,
+            (SELECT min(nav_date) FROM mf.nav_history) AS nav_first,
+            (SELECT max(nav_date) FROM mf.nav_history) AS nav_last
+        """
+    ).fetchone()
+
+    for field in ("schemes_total", "in_scope_total", "in_scope_live", "nav_rows"):
+        assert result[field] == exact[field]
+    assert result["nav_first"] == exact["nav_first"].isoformat()
+    assert result["nav_last"] == exact["nav_last"].isoformat()
+    assert result["dataset_version"] == first["dataset_version"]
+    assert result["source_content_hash"] == source_hash
+    assert result["dataset_refreshed_at"] == first["refreshed_at"].isoformat()
+
+    second = store.refresh_dataset_summary("integration_test_repeat")
+    assert second["dataset_version"] == first["dataset_version"] + 1
+    assert second["source_content_hash"] == source_hash
+
+    plan = store.connect().execute(
+        "EXPLAIN (FORMAT JSON) " + queries._STATS_SQL
+    ).fetchone()["QUERY PLAN"]
+    plan_text = json.dumps(plan)
+    assert "dataset_summary" in plan_text
+    assert "nav_history" not in plan_text
+
+
+def test_dataset_summary_refresh_rolls_back_with_outer_transaction(store):
+    before = store.connect().execute(
+        "SELECT dataset_version FROM mf.dataset_summary WHERE singleton"
+    ).fetchone()["dataset_version"]
+
+    with pytest.raises(RuntimeError, match="force rollback"):
+        with store.transaction():
+            refreshed = store.refresh_dataset_summary("rollback_test")
+            assert refreshed["dataset_version"] == before + 1
+            raise RuntimeError("force rollback")
+
+    after = store.connect().execute(
+        "SELECT dataset_version FROM mf.dataset_summary WHERE singleton"
+    ).fetchone()["dataset_version"]
+    assert after == before
 
 
 def test_in_scope_is_generated_correctly(store):

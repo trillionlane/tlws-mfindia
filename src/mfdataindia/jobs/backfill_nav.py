@@ -144,4 +144,6 @@ def backfill_nav_history(
                 raise
 
     log.info("backfill complete: %s", report.as_dict())
+    if report.nav_inserted or report.nav_updated:
+        store.refresh_dataset_summary("nav_history_backfill")
     return report

@@ -36,29 +36,41 @@ _SORT_FAMILY = {
     "return_5y": "ff.return_5year DESC NULLS LAST",
 }
 
+_STATS_SQL = """
+    SELECT schemes_total, in_scope_total, in_scope_live, amcs, categories,
+           nav_rows, nav_first, nav_last, enrichment_pct, dataset_version,
+           source_content_hash, refreshed_at
+    FROM mf.dataset_summary
+    WHERE singleton
+"""
+
 
 def _f(v: Any) -> Optional[float]:
     return None if v is None else float(v)
 
 
 def stats(conn) -> dict[str, Any]:
-    """Coverage summary for the header bar."""
-    cov = conn.execute("SELECT * FROM mf.v_coverage").fetchone()
-    span = conn.execute(
-        "SELECT count(*) AS rows, min(nav_date) AS first_nav_date, "
-        "max(nav_date) AS last_nav_date, count(DISTINCT amfi_scheme_code) AS schemes "
-        "FROM mf.nav_history").fetchone()
-    enr = conn.execute("SELECT * FROM mf.v_enrichment_coverage").fetchone()
+    """Exact persisted coverage summary; never aggregate NAV on request."""
+    summary = conn.execute(_STATS_SQL).fetchone()
+    if summary is None:
+        raise RuntimeError("mf.dataset_summary is not initialized")
     return {
-        "schemes_total": cov["schemes_total"],
-        "in_scope_total": cov["in_scope_total"],
-        "in_scope_live": cov["in_scope_live"],
-        "amcs": cov["amcs"],
-        "categories": cov["categories"],
-        "nav_rows": span["rows"],
-        "nav_first": span["first_nav_date"].isoformat() if span["first_nav_date"] else None,
-        "nav_last": span["last_nav_date"].isoformat() if span["last_nav_date"] else None,
-        "enrichment_pct": float(enr["facts_pct"]) if enr["facts_pct"] is not None else None,
+        "schemes_total": summary["schemes_total"],
+        "in_scope_total": summary["in_scope_total"],
+        "in_scope_live": summary["in_scope_live"],
+        "amcs": summary["amcs"],
+        "categories": summary["categories"],
+        "nav_rows": summary["nav_rows"],
+        "nav_first": summary["nav_first"].isoformat() if summary["nav_first"] else None,
+        "nav_last": summary["nav_last"].isoformat() if summary["nav_last"] else None,
+        "enrichment_pct": (
+            float(summary["enrichment_pct"])
+            if summary["enrichment_pct"] is not None
+            else None
+        ),
+        "dataset_version": summary["dataset_version"],
+        "source_content_hash": summary["source_content_hash"],
+        "dataset_refreshed_at": summary["refreshed_at"].isoformat(),
     }
 
 

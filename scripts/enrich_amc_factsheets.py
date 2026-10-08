@@ -119,6 +119,7 @@ def main() -> int:
                 "records_ok": rep["matched"],
                 "notes": {"dry_run": False, "report": rep},
             })
+            store.refresh_dataset_summary("amc_factsheet_enrichment")
     print("FACTSHEET REPORT:", rep)
     return 0
 

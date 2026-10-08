@@ -68,3 +68,38 @@ latencies are directional only; Cloud Run logs remain the server-side baseline.
 
 Post-deployment measurements are deliberately deferred to the separately
 approved deployment gate.
+
+## API-PERF-02 exact statistics contract
+
+Migration `015_dataset_summary.sql` moves the exact aggregates used by
+`/api/stats` out of the request path. It creates one constrained singleton row
+and refreshes it after repository-owned dataset mutations. The migration itself
+performs the initial full scan; later daily refreshes perform the scan after the
+bounded ingestion work, never during an API request.
+
+The summary carries a monotonic `dataset_version`, the latest authoritative AMFI
+content hash when available, the refresh reason and timestamp. The API adds the
+version, hash and timestamp while preserving every existing response field.
+These values are the invalidation input for the later response-cache sprint.
+
+The governed daily refresh wraps scheme/NAV writes, family construction,
+provenance, summary refresh and post-write validation in one outer transaction.
+Any failed invariant therefore rolls the entire refresh back. Other supported
+write commands refresh the same version after successful mutations; dry runs do
+not change it.
+
+### API-PERF-02 repository acceptance
+
+- The persisted row exactly equals direct counts and NAV date bounds in
+  PostgreSQL integration tests.
+- Repeated refreshes increment `dataset_version` and retain the last known AMFI
+  content hash when no replacement hash is supplied.
+- A summary refresh nested in a failed outer transaction is rolled back.
+- `EXPLAIN (FORMAT JSON)` for the API query references `dataset_summary` and not
+  `nav_history`.
+- The full PostgreSQL 18 suite, lint, dependency audit, credential scan and both
+  production image builds pass before merge review.
+
+Migration execution and live latency certification remain separate approval
+gates. The live target is a warm `/api/stats` p95 below 250 ms without changing
+the exact values returned.

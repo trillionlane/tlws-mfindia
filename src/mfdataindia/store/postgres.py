@@ -57,6 +57,7 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "012_drop_aggregator_identity.sql",
     "013_purge_aggregator_references.sql",
     "014_ingest_role_privileges.sql",
+    "015_dataset_summary.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
@@ -867,6 +868,30 @@ class PostgresStore:
         """Scheme-level coverage summary from mf.v_coverage."""
         with self.connect().cursor() as cur:
             return cur.execute("SELECT * FROM mf.v_coverage").fetchone()
+
+    def refresh_dataset_summary(
+        self,
+        reason: str,
+        *,
+        source_content_hash: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Refresh and return the exact singleton used by ``/api/stats``.
+
+        The database function performs the expensive aggregate once after a
+        governed write. Nested use participates in the caller's outer
+        transaction, so a later integrity failure rolls the summary back with
+        the data mutation.
+        """
+        if not reason or len(reason.strip()) > 100:
+            raise ValueError("reason must contain 1..100 characters")
+        with self.transaction() as conn:
+            row = conn.execute(
+                "SELECT * FROM mf.refresh_dataset_summary(%s, %s)",
+                (reason, source_content_hash),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("dataset summary refresh returned no row")
+        return row
 
     def partition_health(self) -> list[dict[str, Any]]:
         """nav_history partition sizes; nav_history_default should be empty."""

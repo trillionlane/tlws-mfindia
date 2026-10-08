@@ -43,6 +43,8 @@ def main() -> int:
     store = PostgresStore(dsn, use_copy=use_copy)
     with store:
         rep = build_fund_family(store, dry_run=args.dry_run)
+        if not args.dry_run:
+            store.refresh_dataset_summary("fund_family_build")
     print("FUND_FAMILY REPORT:", rep)
     return 0
 
