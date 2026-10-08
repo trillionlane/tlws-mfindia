@@ -158,3 +158,12 @@ GET /api/amcs · /api/categories · /api/options
 make test                                 # unit + parsers
 MF_TEST_DSN=… pytest -m postgres          # + PostgreSQL integration
 ```
+
+## Roadmap
+
+Planned improvements live in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) —
+led by the **AMC monthly-portfolio parser** (the official source for full
+holdings, which unblocks retiring the Scripbox/Groww aggregators) and extending
+the AMC factsheet parser (risk metrics) to the other 52 AMCs. The governing
+decision: **official sources only in prod** (AMFI + AMC disclosures);
+aggregators are dev-only, diff-pushed whenever needed.
