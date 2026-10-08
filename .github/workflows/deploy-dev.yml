@@ -25,6 +25,10 @@ env:
   IMAGE_NAME: mfdataindia
   SERVICE_NAME: tlws-mf-data-dev
   MIGRATION_JOB: tlws-mf-data-migrate-dev
+  PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
+  INSIGHTS_RUNTIME_SERVICE_ACCOUNT: trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
+  VPC_NETWORK: tl-dev-vpc
+  VPC_SUBNET: tl-dev-mumbai
 
 jobs:
   deploy:
@@ -63,6 +67,9 @@ jobs:
           test "$REGION" = "$EXPECTED_REGION"
           test "$ARTIFACT_REPOSITORY" = "tlws-mf-data-dev"
           test "$CLOUD_SQL_INSTANCE" = "trillionlane-dev:asia-south1:tlws-mf-data-dev"
+          test "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" = "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com"
+          test "$VPC_NETWORK" = "tl-dev-vpc"
+          test "$VPC_SUBNET" = "tl-dev-mumbai"
           test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
           test "$GITHUB_REPOSITORY_ID" = "$EXPECTED_REPOSITORY_ID"
           test "$GITHUB_REF" = "refs/heads/main"
@@ -89,6 +96,7 @@ jobs:
           test "${CLOUDSDK_CORE_PROJECT:-}" = "$EXPECTED_PROJECT"
           test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
           test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
+          gcloud iam service-accounts describe "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" >/dev/null
 
       - name: Configure Artifact Registry
         run: gcloud auth configure-docker "$EXPECTED_REGION-docker.pkg.dev" --quiet
@@ -135,7 +143,7 @@ jobs:
             --wait \
             --quiet
 
-      - name: Deploy public read-only service
+      - name: Deploy private read-only service
         shell: bash
         run: |
           set -euo pipefail
@@ -145,8 +153,8 @@ jobs:
             --image="${{ steps.image.outputs.uri }}" \
             --service-account="${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
             --execution-environment=gen2 \
-            --ingress=all \
-            --allow-unauthenticated \
+            --ingress=internal \
+            --no-allow-unauthenticated \
             --add-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-runtime-dsn-dev:latest \
             --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$GITHUB_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
@@ -159,36 +167,91 @@ jobs:
             --labels=product=mfdataindia,environment=dev,managed-by=github-actions \
             --quiet
 
-      - name: Smoke test and reconcile immutable revision
+      - name: Reconcile private invoker policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run services add-iam-policy-binding "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --member="serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
+            --role=roles/run.invoker \
+            --condition=None \
+            --quiet >/dev/null
+          gcloud run services add-iam-policy-binding "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --member="serviceAccount:${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
+            --role=roles/run.invoker \
+            --condition=None \
+            --quiet >/dev/null
+          policy="$(gcloud run services get-iam-policy "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --format=json)"
+          if jq -e '[.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | index("allUsers") != null' <<<"$policy" >/dev/null; then
+            gcloud run services remove-iam-policy-binding "$SERVICE_NAME" \
+              --project="$EXPECTED_PROJECT" \
+              --region="$EXPECTED_REGION" \
+              --member="allUsers" \
+              --role=roles/run.invoker \
+              --condition=None \
+              --quiet >/dev/null
+          fi
+
+      - name: Deploy and execute the internal zero-retry smoke job
         shell: bash
         run: |
           set -euo pipefail
           service_url="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.url)')"
           test -n "$service_url"
-          for attempt in {1..24}; do
-            if health="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/health")"; then
-              jq -e '.ok == true and (.db | startswith("PostgreSQL 18."))' <<<"$health" >/dev/null
-              break
-            fi
-            test "$attempt" -lt 24 || exit 1
-            sleep 5
-          done
-          stats="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/stats")"
-          jq -e '.schemes_total > 0 and .in_scope_live > 0 and .nav_rows > 0 and .nav_first < .nav_last' <<<"$stats" >/dev/null
-          search="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/funds?q=360&per_page=1")"
-          jq -e '.total > 0 and (.results | length) == 1' <<<"$search" >/dev/null
-          fund_code="$(jq -er '.results[0].amfi_scheme_code' <<<"$search")"
-          detail="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/funds/$fund_code")"
-          jq -e --argjson code "$fund_code" '.amfi_scheme_code == $code and .family.tlws_mf_id != null' <<<"$detail" >/dev/null
-          nav="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/funds/$fund_code/nav?years=1")"
-          jq -e --argjson code "$fund_code" '.code == $code and .count > 0 and (.points | length) > 0' <<<"$nav" >/dev/null
-          curl --fail --silent --show-error --max-time 20 "$service_url/" | grep -F '<title>MFDataIndia</title>' >/dev/null
-          curl --fail --silent --show-error --max-time 20 "$service_url/fund/$fund_code" | grep -F '<title>' >/dev/null
-          deployed_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
+          gcloud run jobs deploy "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
+            --network="$VPC_NETWORK" \
+            --subnet="$VPC_SUBNET" \
+            --vpc-egress=all-traffic \
+            --set-env-vars="MFDATAINDIA_PRIVATE_BASE_URL=$service_url,MFDATAINDIA_PRIVATE_AUDIENCE=$service_url" \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/smoke_private_api.py \
+            --tasks=1 \
+            --max-retries=0 \
+            --task-timeout=2m \
+            --labels=product=mfdataindia,component=private-smoke,environment=dev,managed-by=github-actions \
+            --quiet
+          gcloud run jobs execute "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --wait \
+            --quiet
+
+      - name: Reconcile private service and immutable revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_json="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          service_url="$(jq -er '.status.url' <<<"$service_json")"
+          test -n "$service_url"
+          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$service_json" >/dev/null
+          jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$service_json" >/dev/null
+          jq -e '.status.traffic | length == 1 and .[0].percent == 100' <<<"$service_json" >/dev/null
+          policy="$(gcloud run services get-iam-policy "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          jq -e \
+            --arg insights "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
+            --arg runtime "serviceAccount:${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
+            '([.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | sort) == ([$insights, $runtime] | sort)' \
+            <<<"$policy" >/dev/null
+          external_status="$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$service_url/api/health" || true)"
+          case "$external_status" in
+            2*) echo "MFDataIndia unexpectedly reachable from the public runner: HTTP $external_status" >&2; exit 1 ;;
+          esac
+          deployed_image="$(jq -er '.spec.template.spec.containers[0].image' <<<"$service_json")"
           case "$deployed_image" in
             *"@${{ steps.image.outputs.digest }}") ;;
             *) echo "Unexpected deployed image: $deployed_image" >&2; exit 1 ;;
           esac
-          deployed_sha="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json | jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value')"
+          deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
           test "$deployed_sha" = "$GITHUB_SHA"
-          echo "MFDataIndia DEV verified at $service_url"
+          echo "MFDataIndia private DEV deployment reconciled"

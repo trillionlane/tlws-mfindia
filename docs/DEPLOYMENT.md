@@ -15,7 +15,9 @@ out of scope.
 | GCP project | `trillionlane-dev` |
 | GCP region | `asia-south1` |
 | Database engine | Dedicated Cloud SQL for PostgreSQL 18 |
-| Application | Public, read-only Cloud Run API and UI in DEV |
+| Application | Private, read-only Cloud Run API in DEV; internal ingress only |
+| API consumer | Trillion Insights backend through VPC egress and Google-signed OIDC |
+| Browser access | No direct MFDataIndia access; the Insights UI uses its own backend |
 | Production | Out of scope until the production gate is approved |
 
 Provisional resource names are `tlws-mf-data-dev` for the Cloud Run service,
@@ -59,8 +61,11 @@ The repository keeps these operations separate:
    no cloud credentials.
 2. `deploy-dev.yml` authenticates with GitHub OIDC, validates the exact project,
    region, deployer, repository and branch, publishes one SHA-tagged image, runs
-   only pending forward migrations with `maxRetries=0`, deploys Cloud Run, and
-   verifies the deployed digest and source SHA. Automatic deployment remains
+   only pending forward migrations with `maxRetries=0`, deploys Cloud Run with
+   internal ingress and authentication required, reconciles its exact invoker
+   policy, and verifies the deployed digest and source SHA. Functional smoke
+   requests run from a zero-retry Cloud Run job attached to the approved VPC;
+   the public GitHub runner must not reach the service. Automatic deployment remains
    disabled unless `MFDATAINDIA_DEV_AUTO_DEPLOY=true`; supervised manual dispatch
    is the first-deployment path.
 3. `restore-dev-snapshot.yml` is manual-only and requires typed project,
@@ -78,7 +83,12 @@ The repository keeps these operations separate:
 - The GitHub deploy identity may publish images and update the declared DEV
   service/jobs, but cannot read the database password.
 - The runtime identity may connect to only the MFDataIndia database and read only
-  its runtime DSN secret.
+  its runtime DSN secret. It may invoke the MFDataIndia service only to run the
+  bounded private deployment smoke.
+- The Trillion Insights runtime identity may invoke the MFDataIndia service. It
+  receives no database, migration, ingestion or secret access from this project.
+- No `allUsers` Cloud Run invoker binding is permitted. MFDataIndia uses internal
+  ingress, and callers authenticate with short-lived Google-signed OIDC tokens.
 - The migration identity owns schema changes but is not used by the API.
 - The restore identity may read only the approved snapshot bucket/object and the
   restore DSN secret.
@@ -98,7 +108,9 @@ Before the first DEV deployment, evidence must include:
 - restored table/partition counts and NAV-date range manifest;
 - non-empty, orphan-free `mf.fund_family` coverage;
 - zero active MFAPI or Scripbox configuration;
-- Cloud Run health, stats, search, fund detail, NAV and browser smoke tests;
+- internal Cloud Run health, stats, search, fund detail and NAV smoke tests;
+- external access rejected, exact private invoker policy, and no API key or
+  long-lived client/service-account secret;
 - deployed image digest and `DEPLOYMENT_GIT_SHA` reconciliation;
 - a documented database backup and revision rollback path.
 

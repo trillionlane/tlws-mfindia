@@ -103,3 +103,27 @@ not change it.
 Migration execution and live latency certification remain separate approval
 gates. The live target is a warm `/api/stats` p95 below 250 ms without changing
 the exact values returned.
+
+## API-PERF-03 private Insights integration
+
+MFDataIndia is an internal data service for the Trillion Insights backend. Its
+Cloud Run ingress is `internal`, unauthenticated invocation is disabled, and the
+service-level invoker policy contains only the Trillion Insights runtime and the
+MFDataIndia runtime used by the bounded private smoke job. Browser code never
+calls MFDataIndia directly.
+
+The caller routes through `tl-dev-vpc` / `tl-dev-mumbai` and supplies a
+short-lived Google-signed OIDC token whose audience exactly matches the service
+origin. No API key, client secret or user-managed service-account key is part of
+the contract.
+
+The GitHub deployment runner cannot perform functional HTTP smoke requests after
+the service becomes private. Instead, the deployment updates and executes one
+zero-retry Cloud Run smoke job on the approved VPC, then reconciles the service
+ingress, exact invoker set, image digest and source SHA. A request from the public
+runner must not receive a successful response. Rollback may disable the Insights
+consumer or restore an earlier private revision; it must never restore public
+ingress or `allUsers` invocation.
+
+Repository work, network-readiness verification, IAM activation, DEV deployment,
+Insights activation and production remain separate gates.
