@@ -9,7 +9,7 @@ YEARS ?= 1
 # Indian market data: "today" always means today in IST.
 TODAY := $(shell TZ=Asia/Kolkata date +%F)
 
-.PHONY: help install up api bootstrap backfill nav-today enrich-scripbox enrich-groww enrich-groww-all status test clean
+.PHONY: help install up api bootstrap backfill nav-today compute enrich-scripbox enrich-groww enrich-groww-all status test clean
 
 help:
 	@echo "make install           — install Python deps"
@@ -18,6 +18,7 @@ help:
 	@echo "make bootstrap YEARS=1 — load NAVAll + NAV window + bundled evidence"
 	@echo "make backfill          — full 5-year NAV window (resumable)"
 	@echo "make nav-today         — fetch today's NAV (IST; run after ~18:30 IST)"
+	@echo "make compute           — fill NULL sharpe/vol/return fields from our NAV series"
 	@echo "make enrich-scripbox   — Scripbox facts crawl (reliable core, resumable)"
 	@echo "make enrich-groww      — Groww gaps backfill (run after Scripbox)"
 	@echo "make enrich-groww-all  — Groww for ALL funds (benchmark, manager, expense history)"
@@ -42,6 +43,9 @@ backfill:
 
 nav-today:
 	$(PY) scripts/backfill_nav.py --from-date $(TODAY) --to-date $(TODAY) --min-delay 1.0
+
+compute:
+	$(PY) scripts/compute_metrics.py
 
 enrich-scripbox:
 	$(PY) scripts/enrich_scripbox.py

@@ -95,6 +95,27 @@ market holidays it is a safe no-op (AMFI publishes nothing, 0 rows inserted).
   delete only that day's checkpoints and re-run:
   `DELETE FROM mf.ingest_checkpoints WHERE source='AMFI_HISTORY' AND entity_kind='NAV_HISTORY' AND entity_key LIKE '%:YYYY-MM-DD:YYYY-MM-DD';`
 
+## Computed metrics (fill-if-missing)
+
+Where the enrichment sources (Scripbox/Groww) have no value, `make compute`
+derives it from our own AMFI NAV series — compute, don't scrape:
+
+- `sharpe_ratio` (ratio) and `std_deviation` (percent): daily log returns over
+  the fund's full history, annualised ×252 / ×√252, 6.5% risk-free rate
+- `return_1day` … `return_10year`: NAV at or just before the horizon
+  (30.44-day months); young funds stay NULL where no base NAV exists
+- `return_since_launch`: only where the source-known inception falls inside
+  our NAV data (a fund that started before 2008 would be mislabelled)
+
+Conventions are identical to the API's on-the-fly analytics
+(`/api/funds/{code}/analytics`, `/returns`), so a stored value always equals
+the on-the-fly value. **Fill-if-missing only**: existing values are never
+touched (`SET col = COALESCE(col, …)`; funds with no facts row get a
+`source='COMPUTED'` row carrying only computed fields). Every fill is logged
+in `mf.computed_fields_log` (method, window, as-of NAV date). Re-runs are
+idempotent and pick up newly-published NAVs. `beta` is deliberately not
+computed yet — it needs benchmark index history (see the status report).
+
 ## API
 
 ```
