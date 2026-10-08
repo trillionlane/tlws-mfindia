@@ -109,10 +109,12 @@ gcloud artifacts repositories add-iam-policy-binding "$REPOSITORY" \
 
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/run.admin
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudsql.viewer
+ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudscheduler.admin
 for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA"; do
   ensure_project_role "serviceAccount:$account" roles/cloudsql.client
   ensure_act_as "$account"
 done
+ensure_act_as "$SCHEDULER_SA"
 
 if ! gcloud iam workload-identity-pools providers describe "$WIF_PROVIDER" \
   --project="$PROJECT_ID" \

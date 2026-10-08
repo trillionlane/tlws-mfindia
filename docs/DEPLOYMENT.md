@@ -68,8 +68,10 @@ The repository keeps these operations separate:
    object checksums, refuses a non-empty database, uses PostgreSQL 18 tooling and
    a dedicated restore identity, validates the restored data manifest, records
    the verified migration baseline, and runs with `maxRetries=0`.
-4. The NAV refresh job and scheduler will remain disabled until one supervised
-   job execution has passed its data-integrity checks.
+4. `refresh-nav-dev.yml` deploys the exact live image as a zero-retry ingestion
+   job and performs one supervised refresh. `enable-nav-schedule-dev.yml` refuses
+   activation until that execution succeeded, then creates the weekday 19:30
+   `Asia/Kolkata` schedule with a dedicated invoker identity.
 
 ## Identity boundaries
 

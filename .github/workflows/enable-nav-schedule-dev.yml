@@ -1,0 +1,99 @@
+name: Enable MFDataIndia NAV Schedule DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_schedule:
+        description: "Type 30 19 * * 1-5"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-enable-nav-schedule-dev
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  REFRESH_JOB: tlws-mf-data-nav-refresh-dev
+  SCHEDULER_JOB: tlws-mf-data-nav-refresh-dev
+  SCHEDULE: "30 19 * * 1-5"
+
+jobs:
+  enable:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Validate activation contract
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+          test "${{ inputs.confirm_schedule }}" = "$SCHEDULE"
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REPOSITORY_ID" = "1403671867"
+          test "$GITHUB_REF" = "refs/heads/main"
+
+      - name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Require a successful supervised refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(gcloud run jobs executions list --job="$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --limit=1 --format='value(metadata.name)')"
+          test -n "$latest"
+          test "$(gcloud run jobs executions describe "$latest" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.conditions[0].status)')" = "True"
+
+      - name: Enable weekday 19:30 IST schedule
+        shell: bash
+        run: |
+          set -euo pipefail
+          scheduler_sa="${{ vars.GCP_TLWS_MF_DATA_SCHEDULER_SERVICE_ACCOUNT }}"
+          gcloud run jobs add-iam-policy-binding "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --member="serviceAccount:$scheduler_sa" \
+            --role=roles/run.invoker \
+            --condition=None \
+            --quiet >/dev/null
+          uri="https://run.googleapis.com/v2/projects/$EXPECTED_PROJECT/locations/$EXPECTED_REGION/jobs/$REFRESH_JOB:run"
+          if gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" >/dev/null 2>&1; then
+            action=update
+          else
+            action=create
+          fi
+          gcloud scheduler jobs "$action" http "$SCHEDULER_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --location="$EXPECTED_REGION" \
+            --schedule="$SCHEDULE" \
+            --time-zone=Asia/Kolkata \
+            --uri="$uri" \
+            --http-method=POST \
+            --oauth-service-account-email="$scheduler_sa" \
+            --oauth-token-scope=https://www.googleapis.com/auth/cloud-platform \
+            --max-retry-attempts=0 \
+            --description="MFDataIndia authoritative AMFI NAV refresh; weekdays 19:30 IST; zero retry" \
+            --quiet
+          test "$(gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(state)')" = "ENABLED"
+          test "$(gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(schedule)')" = "$SCHEDULE"
+          test "$(gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(timeZone)')" = "Asia/Kolkata"
