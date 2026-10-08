@@ -1,5 +1,13 @@
 # API performance programme
 
+## Versioned API contract
+
+`contracts/mfdataindia-openapi-v1.json` is the reviewed machine-readable contract for all 19
+private JSON GET endpoints. `scripts/export_openapi.py --check` fails CI when the FastAPI route or
+parameter schema changes without a reviewed contract refresh. TrillionInsights pins this artifact;
+MFDataIndia remains the source of truth and does not expose its legacy HTML routes through the
+platform integration.
+
 This document records the measured DEV baseline and the finite acceptance gates
 for API performance work. It is not a production-readiness claim.
 
