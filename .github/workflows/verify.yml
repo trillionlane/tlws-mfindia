@@ -1,0 +1,73 @@
+name: Verify
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test, audit, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_DB: mfdataindia_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mfdataindia_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      MF_TEST_DSN: postgresql://postgres:postgres@127.0.0.1:5432/mfdataindia_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check uv==0.11.3
+          uv sync --frozen --all-extras
+
+      - name: Lint
+        run: uv run ruff check src scripts tests
+
+      - name: Test against PostgreSQL 18
+        run: uv run pytest tests/ -q
+
+      - name: Audit Python dependencies
+        run: uv run pip-audit
+
+      - name: Scan tracked files for credential material
+        run: ./scripts/scan_tracked_secrets.sh
+
+      - name: Build production image
+        run: docker build --tag tlws-mf-data:${{ github.sha }} .
+
+      - name: Verify production image contents and user
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; import mfdataindia; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/sql/000_schema_migrations.sql").is_file()'

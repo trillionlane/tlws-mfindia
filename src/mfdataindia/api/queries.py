@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -108,17 +108,6 @@ def list_funds(
         WHERE {where_sql}
     """
     total = conn.execute(f"SELECT count(*) AS n {count_base}", params).fetchone()["n"]
-    base = f"""
-        FROM mf.funds f
-        JOIN mf.amcs a ON a.amc_id = f.amc_id
-        LEFT JOIN LATERAL (
-            SELECT n.nav, n.nav_date FROM mf.nav_history n
-            WHERE n.amfi_scheme_code = f.amfi_scheme_code
-            ORDER BY n.nav_date DESC LIMIT 1
-        ) lt ON true
-        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
-        WHERE {where_sql}
-    """
     params["per"] = per_page
     params["off"] = (page - 1) * per_page
 

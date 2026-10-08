@@ -55,7 +55,7 @@ from collections import Counter
 from dataclasses import dataclass, field, asdict
 from datetime import date, datetime
 from pathlib import Path
-from typing import Iterable, Iterator, Optional
+from typing import Optional
 
 #: The three legal SEBI scheme types AMFI uses as section headers.
 SCHEME_TYPES = ("Open Ended Schemes", "Close Ended Schemes", "Interval Fund Schemes")

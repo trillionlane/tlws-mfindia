@@ -9,12 +9,13 @@ YEARS ?= 1
 # Indian market data: "today" always means today in IST.
 TODAY := $(shell TZ=Asia/Kolkata date +%F)
 
-.PHONY: help install up api bootstrap backfill nav-today compute enrich-factsheet build-family status test clean
+.PHONY: help install up api migrate bootstrap backfill nav-today compute enrich-factsheet build-family status test clean
 
 help:
 	@echo "make install           — install Python deps"
 	@echo "make up                — start local stack (docker compose Postgres + API + UI)"
 	@echo "make api               — start only the API (assumes Postgres already up)"
+	@echo "make migrate           — apply pending checksummed forward migrations"
 	@echo "make bootstrap YEARS=1 — load NAVAll + NAV window + bundled evidence"
 	@echo "make backfill          — full 5-year NAV window (resumable)"
 	@echo "make nav-today         — fetch today's NAV (IST; run after ~18:30 IST)"
@@ -33,6 +34,9 @@ up:
 
 api:
 	./scripts/up.sh --api-only
+
+migrate:
+	$(PY) scripts/migrate.py
 
 bootstrap:
 	$(PY) scripts/bootstrap_local.py --years $(YEARS)

@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Optional
 
-from mfdataindia.ingest.amfi_client import AmfiClient, FetchResult
+from mfdataindia.ingest.amfi_client import AmfiClient
 from mfdataindia.ingest.amfi_nav_history import parse_nav_history_report
 from mfdataindia.load.amfi_to_store import nav_rows
 from mfdataindia.store.postgres import PostgresStore
@@ -97,7 +97,7 @@ def backfill_nav_history(
 
     report = BackfillReport()
     chunk_count = 0
-    for chunk_from, chunk_to, tp, fetched in client.iter_nav_history(
+    for chunk_from, chunk_to, tp in client.iter_nav_history_ranges(
             from_date, to_date, chunk_days=chunk_days):
         key = _checkpoint_key(chunk_from, chunk_to, tp)
         if not store.checkpoint_should_run(SOURCE, KIND, key):
@@ -111,6 +111,7 @@ def backfill_nav_history(
 
         store.checkpoint_start(SOURCE, KIND, key)
         try:
+            fetched = client.fetch_nav_history(chunk_from, chunk_to, tp)
             rows, _ = parse_nav_history_report(fetched.text)
             if scope_codes is not None:
                 rows = [
