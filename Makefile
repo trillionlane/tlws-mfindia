@@ -9,7 +9,7 @@ YEARS ?= 1
 # Indian market data: "today" always means today in IST.
 TODAY := $(shell TZ=Asia/Kolkata date +%F)
 
-.PHONY: help install up api bootstrap backfill nav-today compute enrich-scripbox enrich-groww enrich-groww-all status test clean
+.PHONY: help install up api bootstrap backfill nav-today compute enrich-factsheet status test clean
 
 help:
 	@echo "make install           — install Python deps"
@@ -20,9 +20,6 @@ help:
 	@echo "make nav-today         — fetch today's NAV (IST; run after ~18:30 IST)"
 	@echo "make compute           — fill NULL sharpe/vol/return fields from our NAV series"
 	@echo "make enrich-factsheet  — fill NULL beta/Sharpe/std-dev from AMC monthly factsheets"
-	@echo "make enrich-scripbox   — Scripbox facts crawl (reliable core, resumable)"
-	@echo "make enrich-groww      — Groww gaps backfill (run after Scripbox)"
-	@echo "make enrich-groww-all  — Groww for ALL funds (benchmark, manager, expense history)"
 	@echo "make status            — coverage + backfill + enrichment progress"
 	@echo "make test              — unit tests (integration needs MF_TEST_DSN)"
 	@echo "make clean             — remove caches and stop docker compose"
@@ -50,15 +47,6 @@ compute:
 
 enrich-factsheet:
 	$(PY) scripts/enrich_amc_factsheets.py
-
-enrich-scripbox:
-	$(PY) scripts/enrich_scripbox.py
-
-enrich-groww:
-	$(PY) scripts/enrich_groww.py
-
-enrich-groww-all:
-	$(PY) scripts/enrich_groww.py --all
 
 status:
 	$(PY) scripts/status.py

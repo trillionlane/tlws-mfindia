@@ -215,10 +215,10 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                return_1day, return_3month, return_6month, return_1year, return_3year,
                return_5year, return_10year, return_since_launch,
                min_initial_investment_amount, min_subsequent_investment_amount,
-               is_sip_allowed, status, transaction_status, scripbox_fund_id, fund_slug,
+               is_sip_allowed, status, transaction_status, fund_slug,
                benchmark, benchmark_name, fund_manager_name, risk_level,
                base_expense_ratio, registrar_agent, expense_ratio_history,
-               groww_rating, crisil_rating, sub_type, exit_load_value, exit_load,
+               crisil_rating, sub_type, exit_load_value, exit_load,
                lock_in_period, portfolio_turnover, return_1week, return_1month, return_9month,
                sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis,
                holdings_maturity, category_return

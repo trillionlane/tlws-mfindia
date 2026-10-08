@@ -77,16 +77,21 @@ carries turnover too, so it is likely closable via P1. Decide per field:
 (a) close via the AMC factsheet, (b) keep a **thin, dev-only** Groww fetch +
 diff-push, or (c) drop the column.
 
-## P3 — Retire Groww/Scripbox from the running pipeline
+## P3 — Retire Groww/Scripbox
 
-**Only after P0 + P1 land.** Steps:
-1. Stop scheduling the Scripbox/Groww crawlers (dev and prod).
-2. Keep the code in the repo as **dev-only fetchers** for the diff-push
-   pattern (document the procedure in README).
-3. Confirm `fund_holdings` is now refreshed by the AMC-portfolio parser (P0)
-   and the remaining aggregator-only fields (P2) are resolved.
-4. `groww_rating` is already decided for **removal** (delete the column
-   during cleanup).
+**Done (2026-10-08):**
+- Connectors **archived** under `archived/aggregators/` (scripts, jobs,
+  clients, loaders, test) so they cannot be accidentally triggered. The
+  `make enrich-scripbox` / `enrich-groww` / `enrich-groww-all` targets are
+  removed, and `bootstrap_local.py` no longer loads bundled Scripbox evidence.
+- **Aggregator-identity fields dropped** (compliance: we do not hold or
+  disseminate the aggregator's own id/slug/rating): `scripbox_fund_id`,
+  `groww_slug`, `groww_rating` — removed from the DB (migration 012), the
+  API (`/api/funds/{code}` facts) and the UI.
+
+**Remaining (depends on P0):** replace the aggregator *refresh* of
+`fund_holdings` with the AMC monthly-portfolio parser, so the archived
+crawlers are no longer the only thing keeping full holdings current.
 
 ---
 

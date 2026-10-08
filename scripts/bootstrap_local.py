@@ -5,7 +5,6 @@ Order of operations (each step is idempotent, so re-running is safe):
 1. Fetch today's ``NAVAll.txt`` and load funds / variants / quality flags.
 2. Backfill NAV history for ``--years`` back from today (resumable via
    ``mf.ingest_checkpoints``).
-3. Load any Scripbox factsheet payloads already present in research/evidence.
 
 Usage::
 
@@ -20,7 +19,6 @@ Environment:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import sys
@@ -33,30 +31,10 @@ from mfdataindia.ingest.amfi_client import AmfiClient
 from mfdataindia.ingest.amfi_navall import parse_navall
 from mfdataindia.jobs.backfill_nav import backfill_nav_history
 from mfdataindia.load.amfi_to_store import load_parsed_amfi
-from mfdataindia.load.scripbox_to_store import load_factsheets
 from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn
 from mfdataindia.store.postgres import PostgresStore
 
 log = logging.getLogger("bootstrap")
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-
-
-def _load_scripbox_evidence(store: PostgresStore) -> None:
-    """Load any factsheetData payloads bundled under research/evidence (demo)."""
-    evdir = REPO_ROOT / "research" / "evidence"
-    factsheets = []
-    for f in sorted(evdir.glob("scripbox_fund_detail_*.json")):
-        try:
-            pp = json.loads(f.read_text()).get("pageProps", {})
-            fs = pp.get("factsheetData")
-            if isinstance(fs, dict):
-                factsheets.append(fs)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("skipping %s: %s", f.name, exc)
-    if factsheets:
-        res = load_factsheets(store, factsheets)
-        log.info("scripbox evidence: %s", res)
 
 
 def main() -> int:
@@ -117,9 +95,6 @@ def main() -> int:
                 chunk_days=args.chunk_days, strict=False)
             log.info("backfill: %s", rep.as_dict())
             log.info("nav_span: %s", store.nav_span())
-
-        log.info("=== step 3: Scripbox enrichment (bundled evidence) ===")
-        _load_scripbox_evidence(store)
 
     log.info("bootstrap complete")
     return 0

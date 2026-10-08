@@ -92,7 +92,6 @@
       ["SIP allowed", fx.is_sip_allowed == null ? "—" : fx.is_sip_allowed ? "Yes" : "No"],
       ["ISIN (growth/payout)", f.isin_growth_or_div_payout || "—"],
       ["ISIN (reinvest)", f.isin_div_reinvest || "—"],
-      ["Groww rating", fx.groww_rating != null ? fmt(fx.groww_rating, 1) : "—"],
       ["Sub-type", fx.sub_type || "—"],
       ["Lock-in", fx.lock_in_period || "—"],
       ["Exit load", fx.exit_load_value || "—"],
