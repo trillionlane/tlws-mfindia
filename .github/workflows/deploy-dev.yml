@@ -165,20 +165,30 @@ jobs:
           set -euo pipefail
           service_url="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.url)')"
           test -n "$service_url"
-          for path in /api/health /api/stats /; do
-            for attempt in {1..24}; do
-              if curl --fail --silent --show-error --max-time 20 "$service_url$path" >/dev/null; then
-                break
-              fi
-              test "$attempt" -lt 24 || exit 1
-              sleep 5
-            done
+          for attempt in {1..24}; do
+            if health="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/health")"; then
+              jq -e '.ok == true and (.db | startswith("PostgreSQL 18."))' <<<"$health" >/dev/null
+              break
+            fi
+            test "$attempt" -lt 24 || exit 1
+            sleep 5
           done
+          stats="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/stats")"
+          jq -e '.schemes_total > 0 and .in_scope_live > 0 and .nav_rows > 0 and .nav_first < .nav_last' <<<"$stats" >/dev/null
+          search="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/funds?q=360&per_page=1")"
+          jq -e '.total > 0 and (.results | length) == 1' <<<"$search" >/dev/null
+          fund_code="$(jq -er '.results[0].amfi_scheme_code' <<<"$search")"
+          detail="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/funds/$fund_code")"
+          jq -e --argjson code "$fund_code" '.amfi_scheme_code == $code and .family.tlws_mf_id != null' <<<"$detail" >/dev/null
+          nav="$(curl --fail --silent --show-error --max-time 20 "$service_url/api/funds/$fund_code/nav?years=1")"
+          jq -e --argjson code "$fund_code" '.code == $code and .count > 0 and (.points | length) > 0' <<<"$nav" >/dev/null
+          curl --fail --silent --show-error --max-time 20 "$service_url/" | grep -F '<title>MFDataIndia</title>' >/dev/null
+          curl --fail --silent --show-error --max-time 20 "$service_url/fund/$fund_code" | grep -F '<title>' >/dev/null
           deployed_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
           case "$deployed_image" in
             *"@${{ steps.image.outputs.digest }}") ;;
             *) echo "Unexpected deployed image: $deployed_image" >&2; exit 1 ;;
           esac
-          deployed_sha="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].env[?name=DEPLOYMENT_GIT_SHA].value)')"
+          deployed_sha="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json | jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value')"
           test "$deployed_sha" = "$GITHUB_SHA"
           echo "MFDataIndia DEV verified at $service_url"
