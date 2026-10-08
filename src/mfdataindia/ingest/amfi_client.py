@@ -203,12 +203,36 @@ class AmfiClient:
         ``mf.ingest_checkpoints`` so an interrupted 5-year backfill restarts
         mid-way rather than from zero.
         """
+        for chunk_from, chunk_to, tp in self.iter_nav_history_ranges(
+            from_date, to_date, chunk_days=chunk_days, tps=tps
+        ):
+            result = self.fetch_nav_history(chunk_from, chunk_to, tp)
+            yield chunk_from, chunk_to, tp, result
+
+    @staticmethod
+    def iter_nav_history_ranges(
+        from_date: date,
+        to_date: date,
+        *,
+        chunk_days: int = 90,
+        tps: tuple[int, ...] = (1, 2, 3),
+    ) -> Iterator[tuple[date, date, int]]:
+        """Yield fetch coordinates without making a network request.
+
+        Jobs use this form so they can consult the durable checkpoint before
+        fetching a completed chunk. ``iter_nav_history`` remains the convenient
+        fetch-all interface for callers that do not use checkpoints.
+        """
+        if chunk_days < 1:
+            raise ValueError("chunk_days must be at least 1")
+        invalid_tps = [tp for tp in tps if tp not in SCHEME_TYPES]
+        if invalid_tps:
+            raise ValueError(f"tp must be one of {sorted(SCHEME_TYPES)}, got {invalid_tps[0]}")
         if from_date > to_date:
             return
         chunk_from = from_date
         while chunk_from <= to_date:
             chunk_to = min(chunk_from + timedelta(days=chunk_days - 1), to_date)
             for tp in tps:
-                result = self.fetch_nav_history(chunk_from, chunk_to, tp)
-                yield chunk_from, chunk_to, tp, result
+                yield chunk_from, chunk_to, tp
             chunk_from = chunk_to + timedelta(days=1)

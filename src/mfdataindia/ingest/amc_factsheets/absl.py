@@ -33,7 +33,7 @@ Notes
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime
 from typing import Iterable, Iterator, List, Optional
 
 from .base import (
@@ -81,7 +81,7 @@ def _norm_index(s: Optional[str]) -> Optional[str]:
 def _parse_date(v: str) -> Optional[date]:
     for fmt in ("%d %B %Y", "%B %d, %Y", "%B %d %Y"):
         try:
-            return date.strptime(v, fmt)
+            return datetime.strptime(v, fmt).date()
         except ValueError:
             continue
     return None

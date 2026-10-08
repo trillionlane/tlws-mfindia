@@ -23,7 +23,6 @@ import logging
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional, Sequence
 
@@ -34,6 +33,7 @@ log = logging.getLogger(__name__)
 
 #: Migration files, in dependency order.
 DEFAULT_MIGRATIONS: tuple[str, ...] = (
+    "000_schema_migrations.sql",
     "001_core_schema.sql",
     "002_nav_and_views.sql",
     "003_enrichment_recon.sql",
@@ -250,14 +250,46 @@ class PostgresStore:
         sql_dir: str | Path,
         files: Sequence[str] = DEFAULT_MIGRATIONS,
     ) -> list[str]:
-        """Execute schema files in order. All are idempotent (IF NOT EXISTS)."""
+        """Apply each forward migration once and verify its immutable checksum.
+
+        An existing ``mf`` application schema without the migration ledger is a
+        restore/baseline case and fails closed. Its historical migrations must be
+        recorded only after a separate schema-manifest verification; blindly
+        replaying the one-way purge migrations is not supported.
+        """
         sql_dir = Path(sql_dir)
         applied: list[str] = []
         conn = self.connect()
+        has_ledger = conn.execute(
+            "SELECT to_regclass('mf.schema_migrations') IS NOT NULL AS present"
+        ).fetchone()["present"]
+        has_application_schema = conn.execute(
+            "SELECT to_regclass('mf.funds') IS NOT NULL AS present"
+        ).fetchone()["present"]
+        if has_application_schema and not has_ledger:
+            raise RuntimeError(
+                "existing mf schema has no migration ledger; verify and baseline "
+                "the restored schema before applying forward migrations"
+            )
+
         for name in files:
             path = sql_dir / name
             if not path.exists():
                 raise FileNotFoundError(f"migration not found: {path}")
+            sql = path.read_text(encoding="utf-8")
+            checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+            if has_ledger:
+                row = conn.execute(
+                    "SELECT content_sha256 FROM mf.schema_migrations "
+                    "WHERE migration_name = %s",
+                    (name,),
+                ).fetchone()
+                if row:
+                    if row["content_sha256"] != checksum:
+                        raise RuntimeError(
+                            f"applied migration checksum mismatch: {name}"
+                        )
+                    continue
             # Each file carries its own BEGIN/COMMIT, so run it in autocommit.
             # connect() issued a SET search_path, which leaves the connection
             # INTRANS; psycopg forbids changing autocommit in that state, so
@@ -267,7 +299,19 @@ class PostgresStore:
             prev_autocommit = conn.autocommit
             conn.autocommit = True
             try:
-                conn.execute(path.read_text(encoding="utf-8"))
+                conn.execute(sql)
+                has_ledger = conn.execute(
+                    "SELECT to_regclass('mf.schema_migrations') IS NOT NULL AS present"
+                ).fetchone()["present"]
+                if not has_ledger:
+                    raise RuntimeError(
+                        f"migration {name} did not create mf.schema_migrations"
+                    )
+                conn.execute(
+                    "INSERT INTO mf.schema_migrations (migration_name, content_sha256) "
+                    "VALUES (%s, %s)",
+                    (name, checksum),
+                )
             finally:
                 conn.autocommit = prev_autocommit
             applied.append(name)
@@ -1106,4 +1150,3 @@ class PostgresStore:
                 tuple(meta[c] for c in present),
             )
             return int(cur.fetchone()["fetch_id"])
-

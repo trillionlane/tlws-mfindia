@@ -1,22 +1,22 @@
 # MFDataIndia
 
 Indian **Regular Plan** mutual fund dataset: scheme identity, variants, ISIN/AMFI codes,
-metadata, and NAV history (last-5-years window), sourced **entirely from AMFI**
-(the authoritative source) and enriched with Scripbox facts.
+metadata, and NAV history. AMFI is authoritative for identity and NAV; official AMC
+disclosures and metrics computed from the NAV series provide enrichment.
 
 `api.mfapi.in` is intentionally **not** used for NAV (unreliable). AMFI is reachable
 globally via `portal.amfiindia.com` — no India server required.
 
 ## Quickstart (local)
 
-Requires Python 3.11+ and Docker (PostgreSQL is the system of record).
+Requires Python 3.11+ and Docker (PostgreSQL 18 is the system of record).
 
 ```bash
 # 1. install Python deps
 python3 -m pip install -e .[dev]
 
 # 2. start PostgreSQL (system of record); the sql/ migrations auto-apply on first boot
-docker compose up -d            # postgres:16 on 127.0.0.1:5432
+docker compose up -d            # PostgreSQL 18 on 127.0.0.1:5432
 
 # 3. point the app at it — required; there is no built-in default DSN
 export MFDATAINDIA_DSN="host=127.0.0.1 port=5432 dbname=mfdataindia user=mfdata password=…"
@@ -39,7 +39,7 @@ Stop the database with `docker compose down` (add `-v` to also drop the `pgdata`
 
 | Piece | Path | Notes |
 |---|---|---|
-| Schema | `sql/001…003` | 12 tables, 5 views, 2 functions, yearly `nav_history` partitions. Idempotent. |
+| Schema | `sql/000…013` | Forward-only ledger, core tables/views/functions, and yearly `nav_history` partitions. |
 | AMFI client | `src/mfdataindia/ingest/amfi_client.py` | `fetch_navall()` + chunked `fetch_nav_history()`; retry/throttle/sha256 provenance. |
 | Parsers | `src/mfdataindia/ingest/amfi_navall.py`, `amfi_nav_history.py` | both NAVAll layouts (6-col archive, 8-col current) + the history report. |
 | Store | `src/mfdataindia/store/postgres.py` | COPY bulk load + batched-INSERT fallback, set-based upserts, checkpoints. |
@@ -47,18 +47,19 @@ Stop the database with `docker compose down` (add `-v` to also drop the `pgdata`
 | Enrichment | `src/mfdataindia/ingest/amc_factsheets/` | AMC monthly factsheet → risk metrics (fill-if-missing). |
 | API | `src/mfdataindia/api/` | FastAPI: funds / search / NAV / returns / amcs / categories. |
 | UI | `src/mfdataindia/web/` | Google-Finance-style fund browser + detail page with NAV chart. |
-| Database | `docker-compose.yml` | PostgreSQL 16 — system of record; `sql/` migrations auto-applied on first boot. |
+| Database | `docker-compose.yml` | PostgreSQL 18 — system of record; canonical migrations recorded on first boot. |
 
 ## Database
 
-**PostgreSQL is the system of record.** `docker compose up -d` starts PostgreSQL 16
-and applies the numbered `sql/` migrations automatically on first boot (they are
-idempotent, so re-applying later with `psql -f` is also safe). The app has **no
+**PostgreSQL is the system of record.** `docker compose up -d` starts PostgreSQL 18
+and applies the canonical numbered `sql/` migrations through a checksum ledger on
+first boot. Later changes use the forward migration runner; historical purge
+migrations are never replayed against a restored schema. The app has **no
 built-in default DSN** — set `MFDATAINDIA_DSN` so the API, ingest, and enrichment all
 target the same server:
 
 ```bash
-docker compose up -d          # postgres:16; applies sql/ migrations on first boot
+docker compose up -d          # PostgreSQL 18; applies and records migrations on first boot
 export MFDATAINDIA_DSN="host=127.0.0.1 port=5432 dbname=mfdataindia user=mfdata password=…"
 ```
 
@@ -77,10 +78,11 @@ Stop with `docker compose down` (add `-v` to drop the volume).
 > make build-family    # idempotent upsert from mf.fund_variants (group_key)
 > ```
 >
-> So the **prod migration** sequence is: pg_dump → `compose up` (migrations
-> 001–013) → restore → **`make build-family`** → start API. Re-run any time
-> AMFI adds new fund families (new schemes land via the daily NAV refresh;
-> the builder picks them up on the next run).
+> For the approved DEV snapshot, restore schema and data into an empty PostgreSQL
+> 18 database, verify and record its 001–013 baseline, then run
+> **`make build-family`** before starting the API. Do not replay historical
+> migrations against that restored schema. Re-run the family builder any time
+> AMFI adds new fund families; it is an idempotent upsert.
 
 ## Daily NAV refresh
 
@@ -113,7 +115,7 @@ market holidays it is a safe no-op (AMFI publishes nothing, 0 rows inserted).
 
 ## Computed metrics (fill-if-missing)
 
-Where the enrichment sources (Scripbox/Groww) have no value, `make compute`
+Where the stored enrichment snapshot has no value, `make compute`
 derives it from our own AMFI NAV series — compute, don't scrape:
 
 - `sharpe_ratio` (ratio) and `std_deviation` (percent): daily log returns over
@@ -204,3 +206,6 @@ identity in `mf.fund_family` — `tlws_mf_id` (deterministic UUIDv5), `slug` and
 returned as `family` on `/api/funds/{code}`). References to *Groww as a fund
 house* (its funds, holdings of its funds, its benchmark indices) are legitimate
 data and remain.
+
+The approved DEV deployment contract, snapshot baseline, identity boundaries and
+release gates are documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).

@@ -11,7 +11,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 API_PORT="${MF_API_PORT:-8000}"
-export MFDATAINDIA_DSN="${MFDATAINDIA_DSN:-postgres://mfdataindia:mfdataindia@localhost:5432/mfdataindia}"
+DB_NAME="${POSTGRES_DB:-mfdataindia}"
+DB_USER="${POSTGRES_USER:-mfdata}"
+DB_PASSWORD="${POSTGRES_PASSWORD:-mfdata}"
+DB_PORT="${POSTGRES_PORT:-5432}"
+export MFDATAINDIA_DSN="${MFDATAINDIA_DSN:-postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/${DB_NAME}}"
 
 API_ONLY=0
 [ "${1:-}" = "--api-only" ] && API_ONLY=1
@@ -21,16 +25,16 @@ if [ "$API_ONLY" -eq 0 ]; then
   docker compose up -d
   echo -n "[up] waiting for postgres "
   for _ in $(seq 1 60); do
-    if docker compose exec -T db pg_isready -U mfdataindia >/dev/null 2>&1; then
+    if docker compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then
       echo " ok"; break
     fi
     echo -n "."; sleep 1
   done
-  docker compose exec -T db pg_isready -U mfdataindia >/dev/null 2>&1 || {
+  docker compose exec -T postgres pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1 || {
     echo " ERROR: postgres did not become ready"; exit 1; }
 fi
 
-echo "[up] DSN: $MFDATAINDIA_DSN"
+echo "[up] database: ${DB_NAME} on 127.0.0.1:${DB_PORT} as ${DB_USER}"
 echo "[up] starting API on http://127.0.0.1:${API_PORT}"
 echo "[up] open  http://127.0.0.1:${API_PORT}"
 echo "[up] stop everything with: docker compose down"

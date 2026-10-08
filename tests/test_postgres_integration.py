@@ -23,17 +23,29 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
-from mfdataindia.load.amfi_to_store import fund_rows, load_parsed_amfi
 from mfdataindia.api import queries
+from mfdataindia.api.app import create_app
 from mfdataindia.api.queries import FAMILY_ORDER
-from mfdataindia.store.postgres import PostgresStore
+from mfdataindia.load.amfi_to_store import fund_rows, load_parsed_amfi
+from mfdataindia.store.postgres import DEFAULT_MIGRATIONS, PostgresStore
 
 pytestmark = pytest.mark.postgres
 
 _TABLES_TO_CLEAR = (
     "ingest_checkpoints", "quality_flags", "fund_variants", "nav_history", "funds", "amcs",
 )
+
+
+def test_api_health_uses_the_postgres_pool(pg_dsn):
+    if not pg_dsn:
+        pytest.skip("MF_TEST_DSN not set")
+    with TestClient(create_app(pg_dsn)) as client:
+        response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+    assert "PostgreSQL 18" in response.json()["db"]
 
 
 @pytest.fixture(scope="module")
@@ -135,6 +147,13 @@ def test_migrations_are_idempotent(store, repo_root):
     # key operational views exist
     assert "v_enrichment_coverage" in views
     assert "v_fund_data_status" in views
+
+    ledger = cur.execute(
+        "SELECT migration_name FROM mf.schema_migrations ORDER BY migration_name"
+    ).fetchall()
+    assert [row["migration_name"] for row in ledger] == sorted(DEFAULT_MIGRATIONS)
+    # A second runner pass verifies checksums and performs no schema replay.
+    assert store.apply_migrations(Path(repo_root) / "sql") == []
 
 
 def test_load_populates_every_table(store, sample_schemes):
@@ -353,13 +372,16 @@ def test_category_movers_groups_by_family(store, scheme_factory):
     for fam in ("Equity", "Debt", "Hybrid", "Index", "ETF"):
         assert fam in fams, fam
     g = {c["category"]: [f["amfi_scheme_code"] for f in c["gainers"]] for c in res["categories"]}
-    l = {c["category"]: [f["amfi_scheme_code"] for f in c["losers"]] for c in res["categories"]}
+    losers = {
+        c["category"]: [f["amfi_scheme_code"] for f in c["losers"]]
+        for c in res["categories"]
+    }
     # 300001 (+10%) is the best equity mover; 300002 (-10%) the worst.
     assert g["Equity"][0] == 300001
-    assert l["Equity"][0] == 300002
+    assert losers["Equity"][0] == 300002
     assert g["Debt"][0] == 300003
     assert g["Hybrid"][0] == 300004
-    assert l["Index"][0] == 300005
+    assert losers["Index"][0] == 300005
     assert g["ETF"][0] == 300006
     # pct_change is computed, not stored
     eq_gainer = next(f for f in fams["Equity"]["gainers"] if f["amfi_scheme_code"] == 300001)

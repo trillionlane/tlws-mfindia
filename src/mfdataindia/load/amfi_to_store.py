@@ -20,7 +20,7 @@ from mfdataindia.load.normalise import (
     normalise_amc,
     to_decimal_nav,
 )
-from mfdataindia.store.postgres import FUND_COLUMNS, LoadResult
+from mfdataindia.store.postgres import LoadResult
 
 __all__ = [
     "SCHEME_TYPE_MAP",
