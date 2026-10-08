@@ -93,8 +93,12 @@ jobs:
           image="$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia-restore:$GITHUB_SHA"
           docker build --file Dockerfile.restore --tag "$image" .
           docker push "$image"
-          digest="$(gcloud artifacts docker images describe "$image" --format='value(image_summary.digest)')"
-          test -n "$digest"
+          pushed_ref="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
+          case "$pushed_ref" in
+            "$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia-restore@sha256:"*) ;;
+            *) echo "Unexpected pushed image reference: $pushed_ref" >&2; exit 1 ;;
+          esac
+          digest="${pushed_ref##*@}"
           echo "uri=$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia-restore@$digest" >> "$GITHUB_OUTPUT"
 
       - name: Deploy zero-retry restore job
