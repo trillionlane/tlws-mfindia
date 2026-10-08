@@ -19,7 +19,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mfdataindia}
       POSTGRES_USER: ${POSTGRES_USER:-mfdata}
-      POSTGRES_PASSWORD: ${POST…WORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mfdata}
       # Indian market data: keep timestamps unambiguous.
       TZ: Asia/Kolkata
     ports:
