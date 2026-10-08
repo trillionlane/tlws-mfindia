@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -70,3 +71,22 @@ def test_validate_feed_rejects_truncated_payload():
 def test_refresh_uses_allowed_latest_nav_provenance_kind():
     refresh = _module()
     assert refresh.SOURCE_ENTITY_KIND == "LATEST_NAV"
+
+
+def test_parse_report_payload_is_json_safe():
+    refresh = _module()
+    report = ParseReport(
+        data_rows=3,
+        plan_class_source=Counter({"COLUMN": 3}),
+        option_class_source=Counter({"COLUMN": 2, "NAME": 1}),
+        quarantine_reasons=Counter({"bad_row": 1}),
+        plan_types=Counter({"REGULAR": 2, "DIRECT": 1}),
+        options=Counter({"GROWTH": 3}),
+        scheme_types=Counter({"Open Ended Schemes": 3}),
+    )
+
+    payload = refresh.parse_report_payload(report)
+
+    assert payload["plan_types"] == {"REGULAR": 2, "DIRECT": 1}
+    assert payload["option_class_source"] == {"COLUMN": 2, "NAME": 1}
+    assert json.loads(json.dumps(payload, sort_keys=True))["options"] == {"GROWTH": 3}
