@@ -66,6 +66,35 @@ Compose credentials come from `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWO
 (defaults `mfdataindia` / `mfdata` / `mfdata`); data persists in the `pgdata` volume.
 Stop with `docker compose down` (add `-v` to drop the volume).
 
+## Daily NAV refresh
+
+The dataset is kept current with an incremental backfill of the last trading day.
+Unlike the multi-hour full backfill, this fetches AMFI's bulk NAV history report
+for a single day — 3 requests (open-ended / close-ended / interval slices), a few
+seconds of runtime, ~3.8k new rows on a trading day.
+
+```bash
+make nav-today    # fetches today's NAV (IST) — run after ~18:30 IST, once AMFI has published
+```
+
+Equivalent explicit form:
+
+```bash
+PYTHONPATH=src python3 scripts/backfill_nav.py --from-date 2026-10-08 --to-date 2026-10-08
+```
+
+**Automated**: a scheduled agent task (`MFDataIndia daily NAV refresh`) runs the same
+incremental backfill automatically at **19:30 IST, Mon–Fri** — AMFI publishes the day's
+NAV around 18:30 IST, so this catches the freshest published data. On weekends and
+market holidays it is a safe no-op (AMFI publishes nothing, 0 rows inserted).
+
+- Idempotent and resumable: each (day × scheme-type) chunk is checkpointed in
+  `mf.ingest_checkpoints`; re-runs skip DONE chunks and never duplicate rows.
+- Run it only **after** NAV publication (~18:30 IST). An early run marks the day's
+  chunks DONE with no data, and later same-day runs will skip them. To recover,
+  delete only that day's checkpoints and re-run:
+  `DELETE FROM mf.ingest_checkpoints WHERE source='AMFI_HISTORY' AND entity_kind='NAV_HISTORY' AND entity_key LIKE '%:YYYY-MM-DD:YYYY-MM-DD';`
+
 ## API
 
 ```

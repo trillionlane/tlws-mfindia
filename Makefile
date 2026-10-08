@@ -6,8 +6,10 @@
 SHELL := /bin/bash
 PY    := PYTHONPATH=src python3
 YEARS ?= 1
+# Indian market data: "today" always means today in IST.
+TODAY := $(shell TZ=Asia/Kolkata date +%F)
 
-.PHONY: help install up api bootstrap backfill enrich-scripbox enrich-groww enrich-groww-all status test clean
+.PHONY: help install up api bootstrap backfill nav-today enrich-scripbox enrich-groww enrich-groww-all status test clean
 
 help:
 	@echo "make install           — install Python deps"
@@ -15,6 +17,7 @@ help:
 	@echo "make api               — start only the API (assumes Postgres already up)"
 	@echo "make bootstrap YEARS=1 — load NAVAll + NAV window + bundled evidence"
 	@echo "make backfill          — full 5-year NAV window (resumable)"
+	@echo "make nav-today         — fetch today's NAV (IST; run after ~18:30 IST)"
 	@echo "make enrich-scripbox   — Scripbox facts crawl (reliable core, resumable)"
 	@echo "make enrich-groww      — Groww gaps backfill (run after Scripbox)"
 	@echo "make enrich-groww-all  — Groww for ALL funds (benchmark, manager, expense history)"
@@ -36,6 +39,9 @@ bootstrap:
 
 backfill:
 	$(PY) scripts/backfill_nav.py --years 5 --min-delay 0.8
+
+nav-today:
+	$(PY) scripts/backfill_nav.py --from-date $(TODAY) --to-date $(TODAY) --min-delay 1.0
 
 enrich-scripbox:
 	$(PY) scripts/enrich_scripbox.py
