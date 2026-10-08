@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import sys
-from dataclasses import asdict
+from dataclasses import fields
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Sequence
@@ -33,9 +33,7 @@ IST = ZoneInfo("Asia/Kolkata")
 SOURCE_ENTITY_KIND = "LATEST_NAV"
 
 
-def validate_feed(
-    schemes: Sequence[AmfiScheme], report: ParseReport, *, as_of: date
-) -> date:
+def validate_feed(schemes: Sequence[AmfiScheme], report: ParseReport, *, as_of: date) -> date:
     if report.format not in {"NAVALL_8COL", "NAVALL_6COL"}:
         raise RuntimeError(f"unexpected NAVAll format: {report.format}")
     if report.data_rows < 1_000 or len(schemes) < 1_000 or report.distinct_amcs < 20:
@@ -82,6 +80,17 @@ def integrity_manifest(store: PostgresStore) -> dict[str, Any]:
                 (SELECT count(*) FROM mf.nav_history_default) AS default_partition_rows
             """
         ).fetchone()
+
+
+def parse_report_payload(report: ParseReport) -> dict[str, Any]:
+    """Return a JSON-safe representation of a NAVAll parse report.
+
+    ``dataclasses.asdict`` reconstructs ``Counter`` values from an iterable of
+    ``(key, value)`` pairs. ``Counter`` interprets those pairs as keys, leaving
+    tuple keys that the JSON encoder rejects. Read the slotted dataclass fields
+    directly so the original string-keyed counters remain JSON mappings.
+    """
+    return {field.name: getattr(report, field.name) for field in fields(report)}
 
 
 def main() -> int:
@@ -153,7 +162,7 @@ def main() -> int:
             "content_bytes": fetched.content_bytes,
             "duration_ms": fetched.duration_ms,
         },
-        "parse": asdict(parse_report),
+        "parse": parse_report_payload(parse_report),
         "load": load_report,
         "fund_family": family_report,
         "before": before,
