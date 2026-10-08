@@ -65,3 +65,8 @@ def test_validate_feed_rejects_truncated_payload():
     schemes, report = _feed(date(2026, 10, 8), count=999)
     with pytest.raises(RuntimeError):
         refresh.validate_feed(schemes, report, as_of=date(2026, 10, 8))
+
+
+def test_refresh_uses_allowed_latest_nav_provenance_kind():
+    refresh = _module()
+    assert refresh.SOURCE_ENTITY_KIND == "LATEST_NAV"

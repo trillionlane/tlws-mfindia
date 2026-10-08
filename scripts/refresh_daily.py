@@ -30,6 +30,7 @@ from mfdataindia.store.postgres import PostgresStore  # noqa: E402
 
 log = logging.getLogger("daily_refresh")
 IST = ZoneInfo("Asia/Kolkata")
+SOURCE_ENTITY_KIND = "LATEST_NAV"
 
 
 def validate_feed(
@@ -118,7 +119,7 @@ def main() -> int:
         load_report["nav"] = store.upsert_nav(nav_rows(in_scope_schemes)).as_dict()
         family_report = build_fund_family(store)
         store.record_fetch(
-            fetched.as_source_metadata("AMFI", "NAVALL", feed_date.isoformat())
+            fetched.as_source_metadata("AMFI", SOURCE_ENTITY_KIND, feed_date.isoformat())
             | {
                 "records_in": len(schemes),
                 "records_ok": len(schemes),
