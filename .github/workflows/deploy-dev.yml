@@ -1,0 +1,180 @@
+name: Deploy MFDataIndia DEV
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev to confirm the DEV target"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-deploy-dev
+  cancel-in-progress: false
+
+env:
+  EXPECTED_REPOSITORY: trillionlane/tlws-mfindia
+  EXPECTED_REPOSITORY_ID: "1403671867"
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  IMAGE_NAME: mfdataindia
+  SERVICE_NAME: tlws-mf-data-dev
+  MIGRATION_JOB: tlws-mf-data-migrate-dev
+
+jobs:
+  deploy:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'trillionlane/tlws-mfindia' &&
+      github.repository_id == '1403671867' &&
+      (github.event_name == 'workflow_dispatch' || vars.MFDATAINDIA_DEV_AUTO_DEPLOY == 'true')
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate immutable deployment contract
+        shell: bash
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: ${{ vars.GCP_REGION }}
+          ARTIFACT_REPOSITORY: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+          WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}
+          MIGRATE_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}
+          CLOUD_SQL_INSTANCE: ${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}
+        run: |
+          set -euo pipefail
+          for name in PROJECT_ID REGION ARTIFACT_REPOSITORY WORKLOAD_IDENTITY_PROVIDER DEPLOY_SERVICE_ACCOUNT RUNTIME_SERVICE_ACCOUNT MIGRATE_SERVICE_ACCOUNT CLOUD_SQL_INSTANCE; do
+            test -n "${!name:-}" || { echo "Missing mf-data-dev variable: $name" >&2; exit 1; }
+          done
+          test "$PROJECT_ID" = "$EXPECTED_PROJECT"
+          test "$REGION" = "$EXPECTED_REGION"
+          test "$ARTIFACT_REPOSITORY" = "tlws-mf-data-dev"
+          test "$CLOUD_SQL_INSTANCE" = "trillionlane-dev:asia-south1:tlws-mf-data-dev"
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$GITHUB_REPOSITORY_ID" = "$EXPECTED_REPOSITORY_ID"
+          test "$GITHUB_REF" = "refs/heads/main"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+          fi
+
+      - id: auth
+        name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Google Cloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Verify authenticated target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${CLOUDSDK_CORE_PROJECT:-}" = "$EXPECTED_PROJECT"
+          test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
+          test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
+
+      - name: Configure Artifact Registry
+        run: gcloud auth configure-docker "$EXPECTED_REGION-docker.pkg.dev" --quiet
+
+      - name: Build and publish immutable image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME:$GITHUB_SHA"
+          docker build --tag "$image" .
+          docker push "$image"
+          digest="$(gcloud artifacts docker images describe "$image" --format='value(image_summary.digest)')"
+          test -n "$digest"
+          echo "uri=$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME@$digest" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy and execute the zero-retry migration job
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$MIGRATION_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-admin-dsn-dev:latest \
+            --set-env-vars=DEPLOYMENT_GIT_SHA=$GITHUB_SHA \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/migrate.py \
+            --tasks=1 \
+            --max-retries=0 \
+            --task-timeout=10m \
+            --labels=product=mfdataindia,environment=dev,managed-by=github-actions \
+            --quiet
+          gcloud run jobs execute "$MIGRATION_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --wait \
+            --quiet
+
+      - name: Deploy public read-only service
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run deploy "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
+            --execution-environment=gen2 \
+            --ingress=all \
+            --allow-unauthenticated \
+            --add-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-runtime-dsn-dev:latest \
+            --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$GITHUB_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
+            --cpu=1 \
+            --memory=512Mi \
+            --concurrency=40 \
+            --min=0 \
+            --max=3 \
+            --timeout=60 \
+            --labels=product=mfdataindia,environment=dev,managed-by=github-actions \
+            --quiet
+
+      - name: Smoke test and reconcile immutable revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          service_url="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.url)')"
+          test -n "$service_url"
+          for path in /api/health /api/stats /; do
+            for attempt in {1..24}; do
+              if curl --fail --silent --show-error --max-time 20 "$service_url$path" >/dev/null; then
+                break
+              fi
+              test "$attempt" -lt 24 || exit 1
+              sleep 5
+            done
+          done
+          deployed_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
+          case "$deployed_image" in
+            *"@${{ steps.image.outputs.digest }}") ;;
+            *) echo "Unexpected deployed image: $deployed_image" >&2; exit 1 ;;
+          esac
+          deployed_sha="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].env[?name=DEPLOYMENT_GIT_SHA].value)')"
+          test "$deployed_sha" = "$GITHUB_SHA"
+          echo "MFDataIndia DEV verified at $service_url"

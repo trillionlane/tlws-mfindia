@@ -57,9 +57,12 @@ The repository keeps these operations separate:
 1. `verify.yml` runs lint, the complete unit and PostgreSQL 18 integration suite,
    dependency audit, credential-pattern scan, and production-image build. It has
    no cloud credentials.
-2. `deploy-dev.yml` will authenticate with GitHub OIDC, validate the exact project,
-   region, deployer, repository and branch, publish one SHA-tagged image, run only
-   pending forward migrations, deploy Cloud Run, and verify the deployed digest.
+2. `deploy-dev.yml` authenticates with GitHub OIDC, validates the exact project,
+   region, deployer, repository and branch, publishes one SHA-tagged image, runs
+   only pending forward migrations with `maxRetries=0`, deploys Cloud Run, and
+   verifies the deployed digest and source SHA. Automatic deployment remains
+   disabled unless `MFDATAINDIA_DEV_AUTO_DEPLOY=true`; supervised manual dispatch
+   is the first-deployment path.
 3. `restore-dev-snapshot.yml` will be manual-only and will require typed project,
    database, object and generation confirmation. It will use a dedicated restore
    identity, `maxRetries=0`, and will not run from an ordinary push or deployment.
