@@ -167,3 +167,12 @@ holdings, which unblocks retiring the Scripbox/Groww aggregators) and extending
 the AMC factsheet parser (risk metrics) to the other 52 AMCs. The governing
 decision: **official sources only in prod** (AMFI + AMC disclosures);
 aggregators are dev-only, diff-pushed whenever needed.
+
+Aggregator identity is fully purged from the DB (migration 013): no
+`scripbox*`/`groww_*` columns, no `SCRIPBOX`/`GROWW` source values, and no
+aggregator opinions table. In their place, each fund family has **its own**
+identity in `mf.fund_family` — `tlws_mf_id` (deterministic UUIDv5), `slug` and
+`tags` — for related-news retrieval and stable URLs (`make build-family`;
+returned as `family` on `/api/funds/{code}`). References to *Groww as a fund
+house* (its funds, holdings of its funds, its benchmark indices) are legitimate
+data and remain.

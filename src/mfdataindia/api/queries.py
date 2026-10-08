@@ -215,7 +215,7 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
                return_1day, return_3month, return_6month, return_1year, return_3year,
                return_5year, return_10year, return_since_launch,
                min_initial_investment_amount, min_subsequent_investment_amount,
-               is_sip_allowed, status, transaction_status, fund_slug,
+               is_sip_allowed, status, transaction_status,
                benchmark, benchmark_name, fund_manager_name, risk_level,
                base_expense_ratio, registrar_agent, expense_ratio_history,
                crisil_rating, sub_type, exit_load_value, exit_load,
@@ -280,6 +280,18 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
         out["facts"] = facts
     else:
         out["facts"] = None
+    # Our own fund identity (tlws_mf_id / slug / tags) — per fund family, the
+    # entity for related-news retrieval and stable URLs.
+    family = conn.execute(
+        """
+        SELECT ff.tlws_mf_id, ff.slug, ff.tags
+        FROM mf.fund_variants v
+        JOIN mf.fund_family ff ON ff.group_key = v.group_key
+        WHERE v.amfi_scheme_code = %(code)s
+        """,
+        {"code": code},
+    ).fetchone()
+    out["family"] = dict(family) if family else None
     out["siblings"] = siblings
     for h in holdings:
         if isinstance(h.get("weight_pct"), Decimal):

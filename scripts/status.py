@@ -49,8 +49,8 @@ def main() -> int:
               f"{span['first_nav_date']} -> {span['last_nav_date']}")
 
         for label, table in (("fund_facts", "fund_facts"),
-                             ("fund_opinions", "fund_opinions"),
-                             ("fund_holdings", "fund_holdings")):
+                             ("fund_holdings", "fund_holdings"),
+                             ("fund_family", "fund_family")):
             n = cur.execute(f"SELECT count(*) AS n FROM mf.{table}").fetchone()["n"]
             print(f"{label:17}: {n:,} rows")
 
@@ -59,7 +59,7 @@ def main() -> int:
             print(f"enrichment       : {enr['with_facts']}/{enr['in_scope_live']} "
                   f"in-scope funds with facts ({enr['facts_pct']}%)")
 
-        for source in ("AMFI_HISTORY", "SCRIPBOX", "AMFI"):
+        for source in ("AMFI_HISTORY", "AMC", "AMFI"):
             rows = _checkpoint_summary(store, source)
             if rows:
                 print(f"\n--- {source} checkpoints ---")

@@ -19,6 +19,7 @@ __all__ = [
     "fold",
     "normalise_amc",
     "base_scheme_key",
+    "slugify",
     "to_decimal_nav",
 ]
 
@@ -56,6 +57,16 @@ def fold(text: Optional[str]) -> str:
     decomposed = unicodedata.normalize("NFKD", str(text))
     ascii_only = "".join(c for c in decomposed if not unicodedata.combining(c))
     return _FOLD_STRIP.sub(" ", ascii_only.upper()).strip()
+
+
+def slugify(text: Optional[str]) -> str:
+    """URL / search slug: fold(), lowercase, hyphen-separated.
+
+    "Aditya Birla Sun Life Banking & PSU Debt Fund"
+      -> "aditya-birla-sun-life-banking-psu-debt-fund"
+    Used for mf.fund_family.slug and tag facets (related-news retrieval).
+    """
+    return fold(text).lower().replace(" ", "-")
 
 
 def normalise_amc(name: Optional[str]) -> str:

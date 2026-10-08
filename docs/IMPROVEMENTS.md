@@ -84,10 +84,26 @@ diff-push, or (c) drop the column.
   clients, loaders, test) so they cannot be accidentally triggered. The
   `make enrich-scripbox` / `enrich-groww` / `enrich-groww-all` targets are
   removed, and `bootstrap_local.py` no longer loads bundled Scripbox evidence.
-- **Aggregator-identity fields dropped** (compliance: we do not hold or
-  disseminate the aggregator's own id/slug/rating): `scripbox_fund_id`,
-  `groww_slug`, `groww_rating` — removed from the DB (migration 012), the
-  API (`/api/funds/{code}` facts) and the UI.
+- **Aggregator references purged from the DB** (migration 013, compliance —
+  we do not hold/disseminate the aggregator's own identity/provenance):
+  - dropped `fund_facts` cols: `scripbox_fund_id`, `groww_slug`,
+    `groww_rating`, `groww_return_stats`, `groww_fetched_at`,
+    `groww_source_mode`, `groww_inherited_from`, `raw_payload`, `fund_slug`,
+    `fund_variant` (superseded by AMFI-derived `mf.fund_variants`)
+  - `fund_facts.source` `SCRIPBOX`/`GROWW` → neutral `LEGACY` (3,943 rows)
+  - dropped `mf.fund_opinions` (aggregator editorial artifact; not in API/UI)
+  - purged 13,943 dead `GROWW`/`SCRIPBOX` `ingest_checkpoints` rows
+  - stripped the `"source":"GROWW"` key from `holdings_analysis` jsonb;
+    rebuilt `fund_facts`/`source_metadata`/`funds` CHECKs without aggregator
+    names; recreated `v_fund_data_status` + `v_enrichment_coverage` cleanly
+- **Our own fund identity** `mf.fund_family` (1,906 families): `tlws_mf_id`
+  (deterministic UUIDv5 of `group_key`), `slug`, `tags` — for related-news
+  retrieval and stable URLs. Built by `scripts/build_fund_family.py`
+  (`make build-family`, idempotent), returned as `family` on
+  `/api/funds/{code}`.
+- Verified: zero `scripbox` strings in any `mf` table/column/value/constraint;
+  `groww` remains only as a **fund house** (its 217 funds, holdings of its
+  funds, its benchmark indices, manager bios) — legitimate data, kept.
 
 **Remaining (depends on P0):** replace the aggregator *refresh* of
 `fund_holdings` with the AMC monthly-portfolio parser, so the archived

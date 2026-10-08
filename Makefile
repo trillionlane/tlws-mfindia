@@ -9,7 +9,7 @@ YEARS ?= 1
 # Indian market data: "today" always means today in IST.
 TODAY := $(shell TZ=Asia/Kolkata date +%F)
 
-.PHONY: help install up api bootstrap backfill nav-today compute enrich-factsheet status test clean
+.PHONY: help install up api bootstrap backfill nav-today compute enrich-factsheet build-family status test clean
 
 help:
 	@echo "make install           — install Python deps"
@@ -20,6 +20,7 @@ help:
 	@echo "make nav-today         — fetch today's NAV (IST; run after ~18:30 IST)"
 	@echo "make compute           — fill NULL sharpe/vol/return fields from our NAV series"
 	@echo "make enrich-factsheet  — fill NULL beta/Sharpe/std-dev from AMC monthly factsheets"
+	@echo "make build-family      — build mf.fund_family (own tlws_mf_id / slug / tags)"
 	@echo "make status            — coverage + backfill + enrichment progress"
 	@echo "make test              — unit tests (integration needs MF_TEST_DSN)"
 	@echo "make clean             — remove caches and stop docker compose"
@@ -47,6 +48,9 @@ compute:
 
 enrich-factsheet:
 	$(PY) scripts/enrich_amc_factsheets.py
+
+build-family:
+	$(PY) scripts/build_fund_family.py
 
 status:
 	$(PY) scripts/status.py
