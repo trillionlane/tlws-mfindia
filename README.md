@@ -116,6 +116,31 @@ in `mf.computed_fields_log` (method, window, as-of NAV date). Re-runs are
 idempotent and pick up newly-published NAVs. `beta` is deliberately not
 computed yet — it needs benchmark index history (see the status report).
 
+## AMC factsheet enrichment (official source for beta/Sharpe/std-dev)
+
+`make enrich-factsheet` fills the remaining NULL risk metrics from each AMC's
+own monthly factsheet PDF — the **official** source of record, and the
+intended standing source for these fields going forward (new funds included,
+since every factsheet lists every live scheme).
+
+- Source: ABSL today (parser pluggable per AMC:
+  `mfdataindia/ingest/amc_factsheets/`, one parser class per AMC layout).
+  ABSL's factsheet is one consolidated PDF per month, discovered through
+  their Sitecore API (never hardcoded URLs).
+- Fills `beta`, `sharpe_ratio`, `std_deviation` (v1 field set) for the
+  Regular Growth variant — the variant the factsheet states its figures are
+  for. **Fill-if-missing only**: a populated field is never overwritten.
+- **Published NA is a value, not a gap**: ABSL publishes NA beta/Sharpe/
+  std-dev for its debt and money-market funds. Those are recorded as
+  "not fillable from this source" (honest coverage), never fabricated.
+  `alpha` is not published by any AMC layout to date (finding, not a gap).
+- Provenance: every fill is logged in `mf.factsheet_fields_log` (AMC,
+  document period, NAV as-of date, PDF page, URL) and the fetch in
+  `source_metadata` (source `AMC`, entity_kind `FACTSHEET`).
+- Names: AMFI's "Banking & PSU" matches the factsheet's "Banking and PSU"
+  via exact-fold + AND-normalised matching; spelling disambiguates, and
+  unmatched names are counted, never guessed.
+
 ## API
 
 ```

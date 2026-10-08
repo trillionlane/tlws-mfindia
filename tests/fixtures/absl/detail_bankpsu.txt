@@ -1,0 +1,171 @@
+Scheme Riskometer
+Benchmark Riskometer
+Major Risk Factors
+1 Risk Factors associated with investments in 
+Fixed Income Securities
+2 Risks Factors Associated with Creation of 
+Segregated Portfolio
+3 Risk Factors Associated with Investments in 
+Derivatives
+4 Risks Factors Associated with Investments in 
+Securitised Debt
+*with a detailed explanation in the Important Link 
+Section
+QuantitativeMeasures/Risk Measures* 
+(as applicable)
+1. Portfolio Turnover Ratio (Annualized)
+a) Equity NA
+b) Gross Exposure Turnover 3.49
+(Equity + Debt + Derivatives)
+2. Average Maturity (years): 3.07
+3. Macaulay Duration (years): 2.42
+4. Modified Duration (years): 2.28
+5. Annualized Portfolio Yield: NA
+6. Yield to Maturity (%): 7.28
+*Please refer to the next page for detail description in
+tabular format
+NA stands for “Not Applicable”
+Top 10 Holdings % of Net 
+Assets
+1 National Bank for Agri & Rural Develop 7.48% 
+15SEP28 NCD (Series 25G) 5.23%
+2 Indian Railway Finance Corporation Ltd. 6.58% 
+30MAY30 NCD 2.24%
+3 Rural Electrification Corporation Ltd.7.56% 
+31AUG27 NCD 2.19%
+4 HDFC Bank 8% 27JUL32 NCD 2.09%
+5 REC Ltd. 7.17% 01JUL31 NCD 1.97%
+6 Indian Railway Finance Corporation Ltd. 6.78% 
+30APR30 NCD 1.83%
+7 State Bank of India 7.42% 29AUG39 NCD 1.82%
+8 Power Finance Corporation Ltd. 7.6% 13APR29 
+NCD 1.72%
+9 Shivshakti Securitisation Trust 28SEP2029 PTC 1.62%
+10 SIDBI 7.34% 26FEB29 NCD 1.43%
+Portfolio Data
+Absolute Returns
+Past Performance is not an indicator or guarantee of future results
+Detailed Investment in Securities
+Allocation of Net Asset by Sectors
+Allocation of Net Asset by Asset Class
+Allocation of Net Assets by Credit Rating
+Allocation of Net Assets by region/country
+Additional Information pertaining to Portfolio of the scheme
+Click here
+Click here
+Click here
+Click here
+Click here
+Click here
+Click here
+Click here
+Click here
+Click here
+Fund Details
+Date of Inception / Allotment 19 April 2002
+Benchmark Name Nifty Banking & PSU 
+Debt Index A-II
+NAV as on August 31, 2026
+Regular Plan - Growth Option ₹ 387.4003
+Regular Plan - Daily IDCW Option ₹ 112.0118
+Regular Plan - Fortnightly IDCW 
+Option ₹ 149.5435
+Regular Plan - Monthly IDCW Option ₹ 102.4592
+Direct Plan - Growth Option ₹ 403.6599
+Direct Plan - Monthly IDCW Option ₹ 116.7570
+Direct Plan - Quarterly IDCW Option ₹ 104.9172
+Direct Plan - Annual IDCW Option ₹ 106.8849
+AUM as on August 31, 2026 8,682.46
+AAUM as on August 31, 2026 8,779.52
+Fund Manager  Details
+Name of Fund Managers
+• Mr. Kaustubh Gupta
+• Mr. Harshil Suvarnkar
+Total Experience 21 / 16
+Managing since September 29,2009 / 
+March 22,2021
+Minimum Additional Investment
+Lumpsum ₹ 1,000 (plus in multiplies of 1)
+SIP ₹ Monthly: Minimum 1000/-
+Load Structure
+Exit Load: NIL
+Expense Ratio
+Regular Plan: BER 0.62%
+Direct Plan: BER 0.33%
+Quantitative Measures*
+1 Standard Deviation (%) NA
+2 Beta NA
+3 Tracking Error (%)
+1 year NA
+3 years NA
+4 Sharpe Ratio (%) NA
+5 Tracking Difference (%)
+1 year NA
+3 years NA
+5 Years NA
+Since Inception NA
+6 Information Ratio NA
+*Please refer to the next page for detail
+description in tabular format
+NA stands for “Not Applicable”
+Aditya Birla Sun Life Banking and PSU Debt Fund
+Type of Scheme: An open ended debt scheme predominantly investing in debt instruments of banks, Public Sector 
+Undertakings, Public Financial Institutions and Municipal Bonds. A relatively high interest rate risk 
+and moderate credit risk.
+Product labelling : • Generation of reasonable returns and liquidity over short term
+• Investment primarily in securities issued by Banks, Public Sector Undertakings and Public 
+Financial Institutions in India
+Fund Performance
+Compounded
+Annualised
+Returns
+Scheme 
+Returns %-
+Regular
+Scheme
+Returns %
+- Direct
+Benchmark
+Returns %
+Returns for last 1 
+year 4.89 5.24 4.87
+Returns for last 3 
+years 6.72 7.08 6.69
+Returns for last 5 
+years 5.89 6.25 5.63
+Returns since
+inception 7.66 8.20 7.59
+Aditya Birla Sun Life Banking and PSU Debt Fund
+Nifty Banking & PSU Debt Index A-II
+Performance as on August 31, 2026. Returns since inception in benchmark 
+returns column is of Regular plan.
+Absolute Returns for each F.Y. for last 5 years.
+August 2026
+4.69
+4.32
+7.25
+8.17
+5.19
+5.04
+4.69
+7.63
+8.54
+5.55
+4.54
+3.31
+7.22
+7.80
+5.61
+0.00
+1.00
+2.00
+3.00
+4.00
+5.00
+6.00
+7.00
+8.00
+9.00
+FY 21-22 FY 22-23 FY 23-24 FY 24-25 FY 25-26
+Regular Direct Benchmark
+147

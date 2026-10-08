@@ -19,6 +19,7 @@ help:
 	@echo "make backfill          — full 5-year NAV window (resumable)"
 	@echo "make nav-today         — fetch today's NAV (IST; run after ~18:30 IST)"
 	@echo "make compute           — fill NULL sharpe/vol/return fields from our NAV series"
+	@echo "make enrich-factsheet  — fill NULL beta/Sharpe/std-dev from AMC monthly factsheets"
 	@echo "make enrich-scripbox   — Scripbox facts crawl (reliable core, resumable)"
 	@echo "make enrich-groww      — Groww gaps backfill (run after Scripbox)"
 	@echo "make enrich-groww-all  — Groww for ALL funds (benchmark, manager, expense history)"
@@ -46,6 +47,9 @@ nav-today:
 
 compute:
 	$(PY) scripts/compute_metrics.py
+
+enrich-factsheet:
+	$(PY) scripts/enrich_amc_factsheets.py
 
 enrich-scripbox:
 	$(PY) scripts/enrich_scripbox.py
