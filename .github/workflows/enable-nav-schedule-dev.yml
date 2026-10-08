@@ -74,7 +74,6 @@ jobs:
             --region="$EXPECTED_REGION" \
             --member="serviceAccount:$scheduler_sa" \
             --role=roles/run.invoker \
-            --condition=None \
             --quiet >/dev/null
           uri="https://run.googleapis.com/v2/projects/$EXPECTED_PROJECT/locations/$EXPECTED_REGION/jobs/$REFRESH_JOB:run"
           if gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" >/dev/null 2>&1; then
@@ -94,6 +93,29 @@ jobs:
             --max-retry-attempts=0 \
             --description="MFDataIndia authoritative AMFI NAV refresh; weekdays 19:30 IST; zero retry" \
             --quiet
-          test "$(gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(state)')" = "ENABLED"
-          test "$(gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(schedule)')" = "$SCHEDULE"
-          test "$(gcloud scheduler jobs describe "$SCHEDULER_JOB" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(timeZone)')" = "Asia/Kolkata"
+          member="serviceAccount:$scheduler_sa"
+          policy="$(gcloud run jobs get-iam-policy "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --format=json)"
+          jq -e --arg member "$member" '
+            any(.bindings[]?;
+              .role == "roles/run.invoker" and
+              any(.members[]?; . == $member))
+          ' <<<"$policy" >/dev/null
+          scheduler="$(gcloud scheduler jobs describe "$SCHEDULER_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --location="$EXPECTED_REGION" \
+            --format=json)"
+          jq -e \
+            --arg schedule "$SCHEDULE" \
+            --arg uri "$uri" \
+            --arg scheduler_sa "$scheduler_sa" '
+            .state == "ENABLED" and
+            .schedule == $schedule and
+            .timeZone == "Asia/Kolkata" and
+            .httpTarget.uri == $uri and
+            .httpTarget.httpMethod == "POST" and
+            .httpTarget.oauthToken.serviceAccountEmail == $scheduler_sa and
+            ((.retryConfig.maxRetryAttempts // 0) == 0)
+          ' <<<"$scheduler" >/dev/null
