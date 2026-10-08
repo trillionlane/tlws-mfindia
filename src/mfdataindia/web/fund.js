@@ -144,13 +144,25 @@
 
     let logHtml;
     if (changes.length) {
-      logHtml = `<div class="erlog">` + changes.map((r) =>
+      // Newest first (a revision log, like git log); only the 5 most recent are
+      // visible by default — funds that revise their ER often would otherwise
+      // get a very long list under the chart.
+      const MAX_VISIBLE = 5;
+      const rowsAll = [...changes].reverse();
+      const rowsShown = rowsAll.slice(0, MAX_VISIBLE);
+      const rowsHidden = rowsAll.slice(MAX_VISIBLE);
+      const rowHtml = (r) =>
         `<div class="erlog-row"><span class="when">${fmtD(r.date)}</span>` +
         `<span class="vals">${r.from.toFixed(2)}% → <b>${r.to.toFixed(2)}%</b></span>` +
         (r.to < r.from
           ? '<span class="badge regular">reduced</span>'
           : '<span class="badge" style="background:var(--down-bg);color:var(--down);border-color:transparent">increased</span>') +
-        `</div>`).join("") + `</div>`;
+        `</div>`;
+      logHtml = `<div class="erlog">` + rowsShown.map(rowHtml).join("") +
+        (rowsHidden.length
+          ? `<div id="erlog-hidden" style="display:none">` + rowsHidden.map(rowHtml).join("") + `</div>` +
+            `<button type="button" class="erlog-toggle" id="erlog-toggle">Show all ${changes.length} revisions</button>`
+          : "") + `</div>`;
     } else if (last) {
       logHtml = `<div style="color:var(--muted);font-size:13px">No revisions in the available history — ` +
         `${last.to.toFixed(2)}% throughout (since ${fmtD(revs[0].date)}).</div>`;
@@ -161,6 +173,15 @@
     $("erhist-card").style.display = "";
     $("erhist").innerHTML =
       `<div style="height:130px;position:relative"><canvas id="erchart"></canvas></div>` + logHtml;
+    const erlogTgl = $("erlog-toggle");
+    if (erlogTgl) {
+      erlogTgl.addEventListener("click", () => {
+        const hid = $("erlog-hidden");
+        const open = hid.style.display !== "none";
+        hid.style.display = open ? "none" : "";
+        erlogTgl.textContent = open ? `Show all ${changes.length} revisions` : "Collapse";
+      });
+    }
     if (erChart) erChart.destroy();
     erChart = new Chart($("erchart"), {
       type: "line",

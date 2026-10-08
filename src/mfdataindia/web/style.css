@@ -212,6 +212,8 @@ table.cmp td.txt { text-align:left; }
 .erlog-row { display:flex; align-items:center; gap:12px; font-size:13px; }
 .erlog-row .when { color:var(--muted); width:96px; flex:none; }
 .erlog-row .vals { font-variant-numeric:tabular-nums; }
+.erlog-toggle { justify-self:start; margin-top:2px; padding:6px 12px; font-size:12px; border:1px solid var(--border); border-radius:16px; background:var(--bg); color:var(--accent); cursor:pointer; }
+.erlog-toggle:hover { background:var(--panel); }
 
 /* --- fund detail: holdings analysis doughnut charts, side by side --- */
 .ac-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 28px; align-items:start; }
