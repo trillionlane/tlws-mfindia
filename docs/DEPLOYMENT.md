@@ -70,8 +70,8 @@ The repository keeps these operations separate:
    the verified migration baseline, and runs with `maxRetries=0`.
 4. `refresh-nav-dev.yml` deploys the exact live image as a zero-retry ingestion
    job and performs one supervised refresh. `enable-nav-schedule-dev.yml` refuses
-   activation until that execution succeeded, then creates the weekday 19:30
-   `Asia/Kolkata` schedule with a dedicated invoker identity.
+   activation until that execution succeeded, then creates the temporary
+   six-hour `Asia/Kolkata` schedule with a dedicated invoker identity.
 
 ## Identity boundaries
 
@@ -102,5 +102,8 @@ Before the first DEV deployment, evidence must include:
 - deployed image digest and `DEPLOYMENT_GIT_SHA` reconciliation;
 - a documented database backup and revision rollback path.
 
-Daily scheduling is a later gate. The job must run at 19:30 `Asia/Kolkata`,
-Monday–Friday, with `maxRetries=0`; market holidays are valid zero-row outcomes.
+Scheduling is a later gate. During the initial DEV observation period, the job
+runs every six hours in `Asia/Kolkata` with `maxRetries=0`; valid unchanged-feed
+executions are safe zero-row outcomes. The intended steady-state cadence remains
+19:30 `Asia/Kolkata`, Monday–Friday, and requires a separately reviewed schedule
+change.
