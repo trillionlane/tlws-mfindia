@@ -34,9 +34,21 @@ ensure_service_account() {
   local display_name="$2"
   local email="$account_id@$PROJECT_ID.iam.gserviceaccount.com"
   if ! gcloud iam service-accounts describe "$email" --project="$PROJECT_ID" >/dev/null 2>&1; then
-    gcloud iam service-accounts create "$account_id" \
-      --project="$PROJECT_ID" \
-      --display-name="$display_name"
+    local attempt output
+    for attempt in 1 2 3; do
+      if output="$(gcloud iam service-accounts create "$account_id" \
+        --project="$PROJECT_ID" \
+        --display-name="$display_name" 2>&1)"; then
+        printf '%s\n' "$output"
+        return
+      fi
+      printf '%s\n' "$output" >&2
+      if [[ "$output" != *"RESOURCE_EXHAUSTED"* || "$attempt" -eq 3 ]]; then
+        return 1
+      fi
+      echo "Service-account creation quota reached; retrying after 60 seconds" >&2
+      sleep 60
+    done
   fi
 }
 
