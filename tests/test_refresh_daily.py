@@ -90,3 +90,64 @@ def test_parse_report_payload_is_json_safe():
     assert payload["plan_types"] == {"REGULAR": 2, "DIRECT": 1}
     assert payload["option_class_source"] == {"COLUMN": 2, "NAME": 1}
     assert json.loads(json.dumps(payload, sort_keys=True))["options"] == {"GROWTH": 3}
+
+
+def test_validate_dataset_summary_accepts_exact_manifest():
+    refresh = _module()
+    source_hash = "a" * 64
+    manifest = {
+        "funds": 14_369,
+        "in_scope_total": 4_345,
+        "in_scope_live": 4_291,
+        "amcs": 55,
+        "categories": 101,
+        "nav_rows": 4_219_608,
+        "nav_min_date": date(2008, 10, 2),
+        "nav_max_date": date(2026, 10, 7),
+        "enrichment_pct": 98.79,
+    }
+    summary = {
+        "schemes_total": 14_369,
+        "in_scope_total": 4_345,
+        "in_scope_live": 4_291,
+        "amcs": 55,
+        "categories": 101,
+        "nav_rows": 4_219_608,
+        "nav_first": date(2008, 10, 2),
+        "nav_last": date(2026, 10, 7),
+        "enrichment_pct": 98.79,
+        "source_content_hash": source_hash,
+    }
+
+    refresh.validate_dataset_summary(summary, manifest, source_content_hash=source_hash)
+
+
+def test_validate_dataset_summary_rejects_stale_row_count():
+    refresh = _module()
+    source_hash = "b" * 64
+    manifest = {
+        "funds": 10,
+        "in_scope_total": 9,
+        "in_scope_live": 8,
+        "amcs": 2,
+        "categories": 3,
+        "nav_rows": 101,
+        "nav_min_date": date(2024, 1, 1),
+        "nav_max_date": date(2024, 1, 2),
+        "enrichment_pct": 75.0,
+    }
+    summary = {
+        "schemes_total": 10,
+        "in_scope_total": 9,
+        "in_scope_live": 8,
+        "amcs": 2,
+        "categories": 3,
+        "nav_rows": 100,
+        "nav_first": date(2024, 1, 1),
+        "nav_last": date(2024, 1, 2),
+        "enrichment_pct": 75.0,
+        "source_content_hash": source_hash,
+    }
+
+    with pytest.raises(RuntimeError, match="dataset summary mismatch"):
+        refresh.validate_dataset_summary(summary, manifest, source_content_hash=source_hash)

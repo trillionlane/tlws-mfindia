@@ -96,6 +96,10 @@ def main() -> int:
             log.info("backfill: %s", rep.as_dict())
             log.info("nav_span: %s", store.nav_span())
 
+        # backfill_nav_history refreshes this itself; the explicit refresh also
+        # covers --skip-history and gives the completed bootstrap one version.
+        store.refresh_dataset_summary("local_bootstrap")
+
     log.info("bootstrap complete")
     return 0
 

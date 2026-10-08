@@ -105,6 +105,7 @@ def main() -> int:
                     refreshed_at = now()
             """, out)
         log.info("upserted %d rows into mf.fund_risk_profile", len(out))
+        store.refresh_dataset_summary("risk_profile_refresh")
     return 0
 
 
