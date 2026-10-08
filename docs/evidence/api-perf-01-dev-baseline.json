@@ -1,0 +1,17 @@
+{
+  "base_url": "https://tlws-mf-data-dev-kazxufb4wa-el.a.run.app",
+  "generated_at": "2026-10-08T14:05:28.592599+00:00",
+  "results": [
+    {"content_encoding": "identity", "endpoint": "/api/stats", "max_bytes": 184, "min_bytes": 184, "p50_ms": 1777.5, "p95_ms": 2049.4, "requested_encoding": "identity", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/stats", "max_bytes": 184, "min_bytes": 184, "p50_ms": 1447.9, "p95_ms": 1452.5, "requested_encoding": "gzip", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/funds?per_page=50", "max_bytes": 20081, "min_bytes": 20081, "p50_ms": 582.3, "p95_ms": 660.1, "requested_encoding": "identity", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/funds?per_page=50", "max_bytes": 20081, "min_bytes": 20081, "p50_ms": 609.2, "p95_ms": 1031.8, "requested_encoding": "gzip", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/funds/100033", "max_bytes": 149876, "min_bytes": 149876, "p50_ms": 1784.5, "p95_ms": 5325.8, "requested_encoding": "identity", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/funds/100033", "max_bytes": 149876, "min_bytes": 149876, "p50_ms": 1400.7, "p95_ms": 1789.1, "requested_encoding": "gzip", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/funds/100033/nav?years=20", "max_bytes": 43142, "min_bytes": 43142, "p50_ms": 1201.5, "p95_ms": 1703.0, "requested_encoding": "identity", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/funds/100033/nav?years=20", "max_bytes": 43142, "min_bytes": 43142, "p50_ms": 753.0, "p95_ms": 767.4, "requested_encoding": "gzip", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/movers/categories?period=1m&limit=5", "max_bytes": 20231, "min_bytes": 20231, "p50_ms": 907.7, "p95_ms": 1016.2, "requested_encoding": "identity", "samples": 3},
+    {"content_encoding": "identity", "endpoint": "/api/movers/categories?period=1m&limit=5", "max_bytes": 20231, "min_bytes": 20231, "p50_ms": 924.0, "p95_ms": 1397.6, "requested_encoding": "gzip", "samples": 3}
+  ],
+  "warmups": 1
+}
