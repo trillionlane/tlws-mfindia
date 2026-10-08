@@ -108,6 +108,23 @@
     $("facts").innerHTML = cells.map(([k, v]) => `<div class="cell"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
   }
 
+  // Compact headline-facts strip shown at the top of Overview. The full 24-field
+  // grid lives in the (collapsed) Details section; this surfaces the six a
+  // reader wants first without scrolling.
+  function renderFactsStrip(f) {
+    const fx = f.facts || {};
+    const items = [
+      ["AUM", fx.aum != null ? "₹" + fmtInt(fx.aum) + " cr" : "—"],
+      ["Expense ratio", fx.expense_ratio != null ? fmt(fx.expense_ratio, 2) + "%" : "—"],
+      ["Benchmark", fx.benchmark_name || fx.benchmark || "—"],
+      ["Fund manager", fx.fund_manager_name || "—"],
+      ["Inception", fx.inception_date || fx.launch_date || "—"],
+      ["Risk", fx.risk_level || "—"],
+    ];
+    $("facts-strip").innerHTML = items.map(([k, v]) =>
+      `<div class="fs-cell" title="${esc(v)}"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
+  }
+
   // ---- expense ratio history (from the Groww re-enrichment) ----
   let erChart = null;
   function renderErHistory(f) {
@@ -755,6 +772,54 @@
   ["sip-amt", "sip-yrs", "sip-rate", "sip-lump"].forEach((id) => $(id).addEventListener("input", renderSIP));
   renderSIP();
 
+  // ---- section nav (sticky) + scroll spy + Details collapse ----------------
+  // The page is organised into five sections; the sticky nav highlights the
+  // section in view and jumps on click (CSS smooth-scroll + scroll-margin-top
+  // handle the offset, so no click handler is needed for navigation).
+  const NAV_OFFSET = 118; // topbar (66) + fund nav (~44) + breathing room
+  function setupFundNav() {
+    const links = Array.from(document.querySelectorAll("#fund-nav a"));
+    const sections = links.map((a) => document.querySelector(a.getAttribute("href")));
+    function setActive(id) {
+      links.forEach((a) => a.classList.toggle("active", a.getAttribute("href") === "#" + id));
+    }
+    function onScroll() {
+      let current = sections[0] ? sections[0].id : null;
+      for (const s of sections) {
+        if (s && s.getBoundingClientRect().top <= NAV_OFFSET + 2) current = s.id;
+      }
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 2 && sections.length) {
+        current = sections[sections.length - 1].id;
+      }
+      if (current) setActive(current);
+    }
+    let ticking = false;
+    window.addEventListener("scroll", () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(() => { onScroll(); ticking = false; }); }
+    }, { passive: true });
+    onScroll();
+  }
+  function setupDetailsToggle() {
+    const btn = $("details-toggle");
+    const body = $("details-body");
+    if (!btn || !body) return;
+    btn.addEventListener("click", () => {
+      const open = body.hasAttribute("hidden");
+      if (open) {
+        body.removeAttribute("hidden");
+        btn.setAttribute("aria-expanded", "true");
+        // The SIP + ER charts were created while this section was hidden (0
+        // width); re-measure them now that it is visible.
+        requestAnimationFrame(() => { if (sipChart) sipChart.resize(); if (erChart) erChart.resize(); });
+      } else {
+        body.setAttribute("hidden", "");
+        btn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+  setupFundNav();
+  setupDetailsToggle();
+
   // Full page (re)load. Called once on start and again on theme change so
   // every chart is rebuilt with the current --chart-* colors. Pencil marks
   // (module-level `marks`) survive a rebuild.
@@ -766,6 +831,7 @@
       const fund = await api(`/api/funds/${code}`);
       renderHead(fund, null);
       renderFacts(fund);
+      renderFactsStrip(fund);
       renderFactsNote(fund);
       renderErHistory(fund);
       renderAnalysis(fund);

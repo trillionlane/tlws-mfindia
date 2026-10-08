@@ -305,3 +305,44 @@ table.cmp td.txt { text-align:left; }
 .mini-row .pct.up { color:var(--up); }
 .mini-row .pct.down { color:var(--down); }
 .mini-none { padding:14px 12px; font-size:12px; color:var(--muted); }
+
+/* --- fund detail: section nav + sections + key-facts strip --- */
+html { scroll-behavior: smooth; }
+.fund-nav {
+  position: sticky; top: 66px; z-index: 9;
+  display: flex; gap: 4px; overflow-x: auto;
+  margin-bottom: 18px; padding: 6px 2px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+.fund-nav::-webkit-scrollbar { display: none; }
+.fund-nav a {
+  flex: none; padding: 7px 14px; font-size: 13px; font-weight: 500;
+  color: var(--muted); border-radius: 18px; text-decoration: none; white-space: nowrap;
+}
+.fund-nav a:hover { color: var(--text); background: var(--panel); text-decoration: none; }
+.fund-nav a.active { color: var(--accent); background: var(--accent-bg); font-weight: 600; }
+.fund-sec { scroll-margin-top: 118px; }
+.sec-label {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); margin: 28px 2px 12px; padding-top: 18px; border-top: 1px solid var(--border);
+}
+/* key facts strip (Overview) */
+.card.facts-strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px; background: var(--border); overflow: hidden;
+}
+.facts-strip .fs-cell { background: var(--bg); padding: 12px 16px; }
+.facts-strip .fs-cell .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.facts-strip .fs-cell .v { font-size: 15px; font-weight: 600; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Details & tools collapse */
+.sec-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; font-size: 14px; font-weight: 600; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; box-shadow: var(--shadow);
+}
+.sec-toggle:hover { background: var(--bg); }
+.sec-toggle .chev { color: var(--muted); transition: transform .15s; }
+.sec-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.sec-body { margin-top: 18px; }

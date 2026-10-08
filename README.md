@@ -175,6 +175,11 @@ The web UI (index / fund / compare pages) has a **dark mode** toggle in the
 top bar: it follows the OS preference by default and persists your choice
 (`localStorage`), so all three pages stay in sync.
 
+The fund-detail page is organised into five labelled sections — **Overview**
+(key-facts strip + NAV chart + returns), **Performance**, **Risk & Peers**,
+**Holdings**, and **Details & tools** (collapsed by default) — with a sticky
+section nav that highlights the section in view and jumps on click.
+
 ## Tests
 
 ```bash

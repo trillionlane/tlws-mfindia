@@ -139,6 +139,37 @@ crawlers are no longer the only thing keeping full holdings current.
   FMPs show their NAV reset-to-par at maturity as a large "loser" (e.g. an HDFC
   FMP that matured within the window).
 
+## UI: fund-detail page reorganized into sections (done, 2026-10-08)
+
+The fund page was one flat column of 15 equal-weight cards (~5,167px tall) with
+no way to jump, and the most basic facts (AUM, expense ratio, benchmark,
+manager, inception, risk) were buried ~75% down, *below* the SIP calculator and
+two returns charts. Reorganized into **five labelled sections** with a **sticky
+section nav** (all 15 components kept):
+
+- **Overview** — a compact **key-facts strip** (AUM, expense ratio, benchmark,
+  fund manager, inception, risk) moved to the top, then the NAV chart (hero)
+  and the 1M–5Y returns chips.
+- **Performance** — returns breakdown (calendar-year bars + month-by-year
+  heatmap) and rolling returns.
+- **Risk & Peers** — risk & behaviour (drawdown/volatility/Sharpe/Sortino/
+  Calmar/win-rate), category standing, category risk-reward map, debt profile.
+- **Holdings** — holdings analysis (asset-class + sector donuts) and top
+  holdings.
+- **Details & tools** — **collapsed by default** behind a toggle: the full
+  24-field key-facts grid, the SIP/lumpsum projection calculator, expense-ratio
+  history, and plan variants.
+
+Mechanics: the nav is `position: sticky` under the topbar (offset 66px) and
+highlights the section in view via a scroll-spy (`fund.js#setupFundNav`); nav
+links jump using CSS `scroll-behavior: smooth` + `scroll-margin-top` on each
+section (no click handler needed). Because the SIP + expense-ratio charts are
+created while their section is `hidden` (0 width), `setupDetailsToggle` calls
+`chart.resize()` on expand so they render at full size. Verified headlessly:
+nav/sections/strip present, scroll-spy tracks Overview→Risk→Holdings, nav
+click scrolls, Details collapse/expand resizes the charts, and dark mode is
+clean. Default page height drops 5,167px → 3,853px (Details collapsed).
+
 ## API: batch fund lookup (done, 2026-10-08)
 
 - `GET /api/funds/batch?ids=100033,INF209K01LV0,999999` — one comma-separated

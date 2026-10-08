@@ -27,126 +27,163 @@
   <div class="container">
     <div class="detail-head" id="head"><div class="loading">Loading…</div></div>
 
-    <div class="card chart-wrap">
-      <div class="chart-head">
-        <div class="range-btns" id="ranges">
-          <button data-y="0.083">1M</button>
-          <button data-y="0.5">6M</button>
-          <button data-y="1">1Y</button>
-          <button data-y="3">3Y</button>
-          <button data-y="5" class="active">5Y</button>
-          <button data-y="">MAX</button>
-        </div>
-        <div class="range-btns" id="chartmode">
-          <button data-m="line" class="active">Line</button>
-          <button data-m="candles">Candles</button>
-        </div>
-      </div>
-      <canvas id="chart" height="110"></canvas>
-      <div id="marks" class="marks" style="display:none"></div>
-      <div class="chart-hint">Tip: click the chart to drop up to 2 pencil marks and read the return between them. Candle bodies span the previous day’s NAV — NAV is a daily close, so there are no intraday wicks.</div>
-    </div>
+    <nav class="fund-nav" id="fund-nav" aria-label="Fund sections">
+      <a href="#sec-overview" class="active">Overview</a>
+      <a href="#sec-performance">Performance</a>
+      <a href="#sec-risk">Risk &amp; Peers</a>
+      <a href="#sec-holdings">Holdings</a>
+      <a href="#sec-details">Details</a>
+    </nav>
 
-    <div class="card">
-      <div class="ret-grid" id="returns"><div class="loading">Loading…</div></div>
-    </div>
+    <!-- 1 · Overview: headline facts, NAV chart, returns -->
+    <section id="sec-overview" class="fund-sec">
+      <div class="card facts-strip" id="facts-strip"></div>
 
-    <div class="card" id="sip-card">
-      <div class="card-title">Projection calculator <span class="card-title-sub">illustrative, not a forecast</span></div>
-      <div class="sip-grid">
-        <div class="sip-inputs">
-          <label class="sip-field" id="sip-amt-wrap"><span>Monthly investment (₹)</span><input id="sip-amt" type="number" min="100" step="100" value="10000"></label>
-          <label class="sip-field"><span>Years</span><input id="sip-yrs" type="number" min="1" max="40" step="1" value="10"></label>
-          <label class="sip-field"><span>Expected return (% p.a.)</span><input id="sip-rate" type="number" min="0" max="30" step="0.5" value="12"></label>
-          <div class="sip-mode" id="sip-mode">
-            <button data-mode="sip" class="active" type="button">SIP</button>
-            <button data-mode="lumpsum" type="button">Lumpsum</button>
+      <div class="card chart-wrap">
+        <div class="chart-head">
+          <div class="range-btns" id="ranges">
+            <button data-y="0.083">1M</button>
+            <button data-y="0.5">6M</button>
+            <button data-y="1">1Y</button>
+            <button data-y="3">3Y</button>
+            <button data-y="5" class="active">5Y</button>
+            <button data-y="">MAX</button>
           </div>
-          <label class="sip-field" id="sip-lump-wrap" style="display:none"><span>One-time investment (₹)</span><input id="sip-lump" type="number" min="1000" step="1000" value="100000"></label>
+          <div class="range-btns" id="chartmode">
+            <button data-m="line" class="active">Line</button>
+            <button data-m="candles">Candles</button>
+          </div>
         </div>
-        <div class="sip-out">
-          <div class="grid" id="sip-result"></div>
-          <div class="sip-chart"><canvas id="sipcanvas"></canvas></div>
+        <canvas id="chart" height="110"></canvas>
+        <div id="marks" class="marks" style="display:none"></div>
+        <div class="chart-hint">Tip: click the chart to drop up to 2 pencil marks and read the return between them. Candle bodies span the previous day’s NAV — NAV is a daily close, so there are no intraday wicks.</div>
+      </div>
+
+      <div class="card">
+        <div class="ret-grid" id="returns"><div class="loading">Loading…</div></div>
+      </div>
+    </section>
+
+    <!-- 2 · Performance -->
+    <section id="sec-performance" class="fund-sec">
+      <div class="sec-label">Performance</div>
+
+      <div class="card" id="breakdown-card" style="display:none">
+        <div class="card-title">Returns breakdown</div>
+        <div class="bd-grid">
+          <div>
+            <div class="bd-sub">Calendar year</div>
+            <div class="bd-chart"><canvas id="yrcanvas"></canvas></div>
+          </div>
+          <div>
+            <div class="bd-sub">Month by year</div>
+            <div id="heatmap" class="hm-wrap"></div>
+          </div>
         </div>
       </div>
-      <div class="card-note" id="sip-note"></div>
-    </div>
 
-    <div class="card" id="risk-card" style="display:none">
-      <div class="card-title">Risk &amp; behaviour</div>
-      <div class="grid" id="risk"></div>
-      <div class="card-note" id="risk-note"></div>
-    </div>
-
-    <div class="card" id="breakdown-card" style="display:none">
-      <div class="card-title">Returns breakdown</div>
-      <div class="bd-grid">
-        <div>
-          <div class="bd-sub">Calendar year</div>
-          <div class="bd-chart"><canvas id="yrcanvas"></canvas></div>
+      <div class="card" id="rolling-card" style="display:none">
+        <div class="chart-head" style="padding:16px 16px 0">
+          <div class="card-title" style="padding:0">Rolling returns <span class="card-title-sub" id="rolling-sub"></span></div>
+          <div class="range-btns" id="rolling-range">
+            <button data-w="1" class="active" type="button">1Y</button>
+            <button data-w="3" type="button">3Y</button>
+          </div>
         </div>
-        <div>
-          <div class="bd-sub">Month by year</div>
-          <div id="heatmap" class="hm-wrap"></div>
+        <div class="bd-chart" style="padding:10px 16px 0"><canvas id="rollingcanvas"></canvas></div>
+        <div class="card-note" id="rolling-note"></div>
+      </div>
+    </section>
+
+    <!-- 3 · Risk & Peers -->
+    <section id="sec-risk" class="fund-sec">
+      <div class="sec-label">Risk &amp; Peers</div>
+
+      <div class="card" id="risk-card" style="display:none">
+        <div class="card-title">Risk &amp; behaviour</div>
+        <div class="grid" id="risk"></div>
+        <div class="card-note" id="risk-note"></div>
+      </div>
+
+      <div class="card" id="peers-card" style="display:none">
+        <div class="card-title">Category standing <span class="card-title-sub" id="peers-cat"></span></div>
+        <div id="peers"></div>
+        <div class="card-note" id="peers-note"></div>
+      </div>
+
+      <div class="card" id="riskmap-card" style="display:none">
+        <div class="card-title">Category risk-reward map <span class="card-title-sub" id="riskmap-cat"></span></div>
+        <div class="rm-wrap"><canvas id="rmchart" height="110"></canvas></div>
+        <div class="card-note" id="riskmap-note"></div>
+      </div>
+
+      <div class="card" id="debt-card" style="display:none">
+        <div class="card-title">Debt profile</div>
+        <div class="grid" id="debt"></div>
+        <div class="card-note" id="debt-note"></div>
+      </div>
+    </section>
+
+    <!-- 4 · Holdings -->
+    <section id="sec-holdings" class="fund-sec">
+      <div class="sec-label">Holdings</div>
+
+      <div class="card" id="analysis-card" style="display:none">
+        <div style="padding:16px 16px 4px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Holdings analysis</div>
+        <div id="analysis" style="padding:6px 16px 16px"></div>
+      </div>
+
+      <div class="card" id="holdings-card" style="display:none">
+        <div style="padding:16px 16px 4px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Top holdings</div>
+        <div id="holdings"></div>
+      </div>
+    </section>
+
+    <!-- 5 · Details & tools (collapsed by default) -->
+    <section id="sec-details" class="fund-sec">
+      <button type="button" class="sec-toggle" id="details-toggle" aria-expanded="false" aria-controls="details-body">
+        <span>Details &amp; tools</span><span class="chev" aria-hidden="true">▸</span>
+      </button>
+      <div class="sec-body" id="details-body" hidden>
+        <div class="card">
+          <div class="card-title">Key facts</div>
+          <div class="grid" id="facts"></div>
+          <div class="card-note" id="facts-note" style="display:none"></div>
+        </div>
+
+        <div class="card" id="sip-card">
+          <div class="card-title">Projection calculator <span class="card-title-sub">illustrative, not a forecast</span></div>
+          <div class="sip-grid">
+            <div class="sip-inputs">
+              <label class="sip-field" id="sip-amt-wrap"><span>Monthly investment (₹)</span><input id="sip-amt" type="number" min="100" step="100" value="10000"></label>
+              <label class="sip-field"><span>Years</span><input id="sip-yrs" type="number" min="1" max="40" step="1" value="10"></label>
+              <label class="sip-field"><span>Expected return (% p.a.)</span><input id="sip-rate" type="number" min="0" max="30" step="0.5" value="12"></label>
+              <div class="sip-mode" id="sip-mode">
+                <button data-mode="sip" class="active" type="button">SIP</button>
+                <button data-mode="lumpsum" type="button">Lumpsum</button>
+              </div>
+              <label class="sip-field" id="sip-lump-wrap" style="display:none"><span>One-time investment (₹)</span><input id="sip-lump" type="number" min="1000" step="1000" value="100000"></label>
+            </div>
+            <div class="sip-out">
+              <div class="grid" id="sip-result"></div>
+              <div class="sip-chart"><canvas id="sipcanvas"></canvas></div>
+            </div>
+          </div>
+          <div class="card-note" id="sip-note"></div>
+        </div>
+
+        <div class="card" id="erhist-card" style="display:none">
+          <div class="card-title">Expense ratio history</div>
+          <div class="erchart-wrap"><canvas id="erchart"></canvas></div>
+          <div id="erhist" style="padding:6px 16px 16px"></div>
+        </div>
+
+        <div class="card" id="siblings-card" style="display:none">
+          <div style="padding:16px 16px 8px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Plan variants of this scheme</div>
+          <div id="siblings" style="padding:0 8px 12px"></div>
         </div>
       </div>
-    </div>
-
-    <div class="card" id="rolling-card" style="display:none">
-      <div class="chart-head" style="padding:16px 16px 0">
-        <div class="card-title" style="padding:0">Rolling returns <span class="card-title-sub" id="rolling-sub"></span></div>
-        <div class="range-btns" id="rolling-range">
-          <button data-w="1" class="active" type="button">1Y</button>
-          <button data-w="3" type="button">3Y</button>
-        </div>
-      </div>
-      <div class="bd-chart" style="padding:10px 16px 0"><canvas id="rollingcanvas"></canvas></div>
-      <div class="card-note" id="rolling-note"></div>
-    </div>
-
-    <div class="card" id="peers-card" style="display:none">
-      <div class="card-title">Category standing <span class="card-title-sub" id="peers-cat"></span></div>
-      <div id="peers"></div>
-      <div class="card-note" id="peers-note"></div>
-    </div>
-
-    <div class="card" id="riskmap-card" style="display:none">
-      <div class="card-title">Category risk-reward map <span class="card-title-sub" id="riskmap-cat"></span></div>
-      <div class="rm-wrap"><canvas id="rmchart" height="110"></canvas></div>
-      <div class="card-note" id="riskmap-note"></div>
-    </div>
-
-    <div class="card" id="debt-card" style="display:none">
-      <div class="card-title">Debt profile</div>
-      <div class="grid" id="debt"></div>
-      <div class="card-note" id="debt-note"></div>
-    </div>
-
-    <div class="card">
-      <div class="grid" id="facts"></div>
-      <div class="card-note" id="facts-note" style="display:none"></div>
-    </div>
-
-    <div class="card" id="erhist-card" style="display:none">
-      <div class="card-title">Expense ratio history</div>
-      <div class="erchart-wrap"><canvas id="erchart"></canvas></div>
-      <div id="erhist" style="padding:6px 16px 16px"></div>
-    </div>
-
-    <div class="card" id="analysis-card" style="display:none">
-      <div style="padding:16px 16px 4px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Holdings analysis</div>
-      <div id="analysis" style="padding:6px 16px 16px"></div>
-    </div>
-
-    <div class="card" id="holdings-card" style="display:none">
-      <div style="padding:16px 16px 4px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Top holdings</div>
-      <div id="holdings"></div>
-    </div>
-
-    <div class="card" id="siblings-card" style="display:none">
-      <div style="padding:16px 16px 8px; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em;">Plan variants of this scheme</div>
-      <div id="siblings" style="padding:0 8px 12px"></div>
-    </div>
+    </section>
   </div>
 
   <script src="/static/compare-cart.js"></script>
