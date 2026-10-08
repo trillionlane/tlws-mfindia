@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from mfdataindia.load.amfi_to_store import fund_rows, load_parsed_amfi
+from mfdataindia.api import queries
 from mfdataindia.store.postgres import PostgresStore
 
 pytestmark = pytest.mark.postgres
@@ -100,10 +101,39 @@ def sample_schemes(scheme_factory):
 
 
 def test_migrations_are_idempotent(store, repo_root):
-    """Re-applying every migration must not error (IF NOT EXISTS everywhere)."""
-    assert store.apply_migrations(Path(repo_root) / "sql") == [
-        "001_core_schema.sql", "002_nav_and_views.sql", "003_enrichment_recon.sql",
-    ]
+    """A fresh apply_migrations must yield the complete, post-purge schema.
+
+    012/013 are one-way destructive purges, so re-running the *entire* set is not
+    a supported operation (a real restore brings schema+data together, and a new
+    DB applies each migration exactly once). What we DO guarantee is that a fresh
+    apply ends in the complete schema: our own fund_family identity table present,
+    every aggregator-identity column/table purged, and the key views in place.
+    This is exactly the regression the compliance purge + fund_family work targets.
+    """
+    cur = store.connect().cursor()
+    fact_cols = {r["column_name"] for r in cur.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema='mf' AND table_name='fund_facts'").fetchall()}
+    tables = {r["table_name"] for r in cur.execute(
+        "SELECT table_name FROM information_schema.tables "
+        "WHERE table_schema='mf'").fetchall()}
+    views = {r["table_name"] for r in cur.execute(
+        "SELECT table_name FROM information_schema.views "
+        "WHERE table_schema='mf'").fetchall()}
+
+    # our own identity table is present (populated by `make build-family`)
+    assert "fund_family" in tables
+    # aggregator identity / provenance is fully purged from fund_facts
+    for purged in ("scripbox_fund_id", "groww_slug", "groww_rating",
+                   "raw_payload", "fund_slug", "fund_variant",
+                   "groww_return_stats", "groww_fetched_at",
+                   "groww_source_mode", "groww_inherited_from"):
+        assert purged not in fact_cols, f"{purged} should be purged"
+    # the aggregator editorial table is gone
+    assert "fund_opinions" not in tables
+    # key operational views exist
+    assert "v_enrichment_coverage" in views
+    assert "v_fund_data_status" in views
 
 
 def test_load_populates_every_table(store, sample_schemes):
@@ -232,3 +262,55 @@ def test_unregistered_amc_is_rejected(store, sample_schemes):
     ]
     with pytest.raises(ValueError, match="absent from mf.amcs"):
         store.load_funds(fund_rows(rogue))
+
+
+def test_funds_batch_mixed_codes_and_isins(store, scheme_factory):
+    """Batch lookup: mixed AMFI codes + ISINs, de-dup, and not-found handling."""
+    today = date(2024, 12, 27)
+    base = dict(amc="Test Mutual Fund", scheme_type="Open Ended Schemes",
+                scheme_category="Equity Scheme - Large Cap", nav_date=today)
+    schemes = [
+        scheme_factory(amfi_scheme_code="200001", plan_type="REGULAR", option="GROWTH",
+                       scheme_name="Batch Alpha Fund - Regular Plan - Growth",
+                       nav=100.0, isin_div_payout_or_growth="INFBTCHALPHA", **base),
+        scheme_factory(amfi_scheme_code="200002", plan_type="REGULAR", option="IDCW",
+                       scheme_name="Batch Beta Fund - Regular Plan - IDCW Option",
+                       nav=50.0, isin_div_payout_or_growth="INFBTCHBETAP",
+                       isin_div_reinvestment="INFBTCHBETAR", **base),
+    ]
+    load_parsed_amfi(store, schemes, source_date=today)
+
+    # code + its own growth ISIN (same fund) + a second-column ISIN + 2 misses
+    res = queries.funds_batch(
+        store.connect(), ["200001", "INFBTCHALPHA", "INFBTCHBETAR", "999999", "BADISIN"])
+
+    assert res["found"] == 2
+    assert set(res["not_found"]) == {"999999", "BADISIN"}
+    assert [f["amfi_scheme_code"] for f in res["funds"]] == [200001, 200002]
+    # the code and its ISIN collapse to one fund, tagged with both inputs
+    assert res["funds"][0]["matched_by"] == ["200001", "INFBTCHALPHA"]
+    # the reinvestment ISIN (second column) still resolves
+    assert res["funds"][1]["matched_by"] == ["INFBTCHBETAR"]
+
+
+def test_funds_batch_returns_latest_nav(store, scheme_factory):
+    """Each batch result carries the fund's latest NAV from nav_history."""
+    today = date(2024, 12, 27)
+    base = dict(amc="Test Mutual Fund", scheme_type="Open Ended Schemes",
+                scheme_category="Equity Scheme - Large Cap")
+    schemes = [
+        scheme_factory(amfi_scheme_code="200010", plan_type="REGULAR", option="GROWTH",
+                       scheme_name="Batch Nav Fund - Regular Plan - Growth",
+                       nav=10.0, nav_date=date(2024, 12, 25),
+                       isin_div_payout_or_growth="INFBTCHNAV01", **base),
+        scheme_factory(amfi_scheme_code="200011", plan_type="REGULAR", option="GROWTH",
+                       scheme_name="Batch Nav Fund 2 - Regular Plan - Growth",
+                       nav=20.0, nav_date=date(2024, 12, 26),
+                       isin_div_payout_or_growth="INFBTCHNAV02", **base),
+    ]
+    load_parsed_amfi(store, schemes, source_date=today)
+    res = queries.funds_batch(store.connect(), ["200010", "200011"])
+    by_code = {f["amfi_scheme_code"]: f for f in res["funds"]}
+    assert by_code[200010]["latest_nav"] == 10.0
+    assert by_code[200010]["latest_nav_date"] == "2024-12-25"
+    assert by_code[200011]["latest_nav"] == 20.0

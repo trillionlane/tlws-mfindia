@@ -132,6 +132,21 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
                 conn, q=q, amc=amc, category=category, option=option,
                 live=live, page=page, per_page=per_page, sort=sort)
 
+    # NOTE: registered BEFORE /api/funds/{code} — "batch" is not an int, so the
+    # {code} route would 422 this path first otherwise.
+    @app.get("/api/funds/batch")
+    def api_funds_batch(ids: str = Query(...)) -> dict[str, Any]:
+        parts = [p.strip() for p in ids.split(",") if p.strip()]
+        if not parts:
+            raise HTTPException(
+                status_code=422,
+                detail="ids must be a comma-separated list of AMFI codes and/or ISINs")
+        if len(parts) > 50:
+            raise HTTPException(status_code=422, detail="at most 50 ids per request")
+        with lock:
+            conn = get_conn()
+            return queries.funds_batch(conn, parts)
+
     @app.get("/api/funds/{code}")
     def api_fund(code: int) -> dict[str, Any]:
         with lock:

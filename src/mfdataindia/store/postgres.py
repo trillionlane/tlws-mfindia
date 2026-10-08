@@ -40,11 +40,22 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "004_groww_enrichment.sql",
     "005_groww_deep_enrichment.sql",
     "006_groww_provenance.sql",
+    # 007 is superseded by 008 (same view, rebuilt), so only 008 is applied.
+    "008_fund_data_status_v2.sql",
     # Derived table (idempotent CREATE TABLE) required by the /api/funds/
     # {code}/risk-reward endpoint, so it is a core migration rather than a
     # manually-applied reporting view like 007/008. Populated by
     # scripts/refresh_risk_profile.py.
     "009_fund_risk_profile.sql",
+    "010_computed_metrics.sql",
+    "011_amc_factsheets.sql",
+    # Compliance purge: drop aggregator-derived identity/provenance columns, the
+    # fund_opinions table, and aggregator checkpoint/source values, and add our
+    # own fund_family identity table. A DB built via apply_migrations must end in
+    # the same post-purge schema as a fresh compose boot (whose initdb runs every
+    # file in sql/), so the purge migrations are core, not optional.
+    "012_drop_aggregator_identity.sql",
+    "013_purge_aggregator_references.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.

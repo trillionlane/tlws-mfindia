@@ -111,6 +111,35 @@ crawlers are no longer the only thing keeping full holdings current.
 
 ---
 
+## API: batch fund lookup (done, 2026-10-08)
+
+- `GET /api/funds/batch?ids=100033,INF209K01LV0,999999` — one comma-separated
+  list mixing **AMFI scheme codes and ISINs**, max **50** per request (51+ →
+  422, empty → 422). Numeric inputs are codes; anything else is upper-cased and
+  matched against either ISIN column. Returns funds in request order,
+  de-duplicated, each tagged with `matched_by` (every input that resolved to it)
+  plus a `not_found` list of inputs that resolved to nothing. Per fund: identity
+  + `isin_primary`, latest NAV + date, AUM / expense ratio / 5y return / sharpe
+  / beta / risk level / manager / benchmark, `in_scope`, `is_defunct`.
+- Registered **before** `/api/funds/{code}` — FastAPI matches in registration
+  order and "batch" would 422 the int `{code}` parameter otherwise.
+
+## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
+
+- `DEFAULT_MIGRATIONS` was missing 008 and 010–013, so any DB built via
+  `apply_migrations` (the integration-test path) lacked `mf.fund_family` and
+  still carried the purged aggregator columns + `fund_opinions` — i.e.
+  non-compliant. All current migrations (except superseded 007) are now core,
+  so any such DB ends in exactly the same schema as a fresh compose boot
+  (whose initdb runs every file in `sql/`).
+- The stale `test_migrations_are_idempotent` (hardcoded 3-file list; a full
+  re-apply is not a supported operation once the one-way purges 012/013 exist)
+  was replaced with a test that a fresh apply yields the complete post-purge
+  schema (fund_family present, every aggregator column/table gone, key views
+  intact).
+
+---
+
 ## Cross-cutting (not source-specific)
 
 - **CI:** GitHub Actions running the unit suite on push (none today).

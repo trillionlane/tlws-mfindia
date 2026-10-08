@@ -162,6 +162,7 @@ since every factsheet lists every live scheme).
 ```
 GET /api/stats                       coverage summary
 GET /api/funds?q=&amc=&category=&option=&page=&per_page=&sort=
+GET /api/funds/batch?ids=            mixed AMFI codes + ISINs, max 50 per request
 GET /api/funds/{code}                full detail (identity, latest NAV, facts, variants)
 GET /api/funds/{code}/nav?years=     NAV series for the chart
 GET /api/funds/{code}/returns        returns computed from our own NAV series

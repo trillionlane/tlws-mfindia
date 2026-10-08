@@ -586,6 +586,113 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
             "points": points, "refreshed": bool(points)}
 
 
+def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
+    """Batch fetch: a mixed list of up to 50 AMFI codes and/or ISINs -> summaries.
+
+    Numeric inputs are AMFI scheme codes; anything else is treated as an ISIN and
+    matched against either ISIN column (an ISIN is a unique scheme identifier, so
+    the match is unambiguous). Returns the matched funds in request order
+    (de-duplicated, each tagged with every input that resolved to it) plus the
+    inputs that resolved to nothing.
+    """
+    codes: list[int] = []
+    isins: list[str] = []
+    for i in ids:
+        if i.isdigit():
+            codes.append(int(i))
+        else:
+            isins.append(i.upper())
+    codes = list(dict.fromkeys(codes))
+    isins = list(dict.fromkeys(isins))
+
+    rows = conn.execute(
+        """
+        SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
+               f.scheme_category, f.isin_primary, f.isin_growth_or_div_payout,
+               f.isin_div_reinvest, f.in_scope, f.is_defunct,
+               a.amfi_amc_name,
+               ff.aum, ff.expense_ratio, ff.base_expense_ratio, ff.return_5year,
+               ff.sharpe_ratio, ff.beta, ff.risk_level, ff.fund_manager_name,
+               ff.benchmark_name, ff.inception_date,
+               lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
+        FROM mf.funds f
+        JOIN mf.amcs a ON a.amc_id = f.amc_id
+        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
+        LEFT JOIN LATERAL (
+            SELECT n.nav, n.nav_date FROM mf.nav_history n
+            WHERE n.amfi_scheme_code = f.amfi_scheme_code
+            ORDER BY n.nav_date DESC LIMIT 1
+        ) lt ON true
+        WHERE f.amfi_scheme_code = ANY(%(codes)s::int[])
+           OR f.isin_growth_or_div_payout = ANY(%(isins)s::text[])
+           OR f.isin_div_reinvest = ANY(%(isins)s::text[])
+        """,
+        {"codes": codes, "isins": isins},
+    ).fetchall()
+
+    by_code = {r["amfi_scheme_code"]: r for r in rows}
+    by_isin: dict[str, int] = {}
+    for r in rows:
+        for col in ("isin_growth_or_div_payout", "isin_div_reinvest"):
+            v = r[col]
+            if v:
+                by_isin.setdefault(v.upper(), r["amfi_scheme_code"])
+
+    # Resolve each input (request order) to a scheme code; track matched_by.
+    code_inputs: dict[int, list[str]] = {}
+    order: list[int] = []
+    not_found: list[str] = []
+    for i in ids:
+        if i.isdigit():
+            code = int(i)
+            resolved = code if code in by_code else None
+        else:
+            resolved = by_isin.get(i.upper())
+        if resolved is None:
+            if i not in not_found:
+                not_found.append(i)
+            continue
+        if resolved not in code_inputs:
+            code_inputs[resolved] = []
+            order.append(resolved)
+        if i not in code_inputs[resolved]:
+            code_inputs[resolved].append(i)
+
+    funds: list[dict[str, Any]] = []
+    for code in order:
+        r = by_code[code]
+        fund = {
+            "amfi_scheme_code": code,
+            "matched_by": code_inputs[code],
+            "scheme_name": r["scheme_name"],
+            "plan_type": r["plan_type"],
+            "option_type": r["option_type"],
+            "scheme_category": r["scheme_category"],
+            "amfi_amc_name": r["amfi_amc_name"],
+            "isin_primary": r["isin_primary"],
+            "in_scope": r["in_scope"],
+            "is_defunct": r["is_defunct"],
+        }
+        for k in ("aum", "expense_ratio", "base_expense_ratio", "return_5year",
+                  "sharpe_ratio", "beta", "latest_nav"):
+            if r.get(k) is not None:
+                fund[k] = float(r[k])
+        for k in ("inception_date", "latest_nav_date"):
+            if r.get(k):
+                fund[k] = r[k].isoformat()
+        fund["fund_manager_name"] = r["fund_manager_name"]
+        fund["benchmark_name"] = r["benchmark_name"]
+        fund["risk_level"] = r["risk_level"]
+        funds.append(fund)
+
+    return {
+        "requested": len(dict.fromkeys(ids)),
+        "found": len(funds),
+        "not_found": not_found,
+        "funds": funds,
+    }
+
+
 def holdings_overlap(conn, codes: list[int]) -> dict[str, Any]:
     """Pairwise top-holdings overlap for the compare page.
 
