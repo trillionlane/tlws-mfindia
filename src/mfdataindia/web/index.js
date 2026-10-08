@@ -209,16 +209,53 @@
 
   // ---- top movers by category ----
   const mstate = { period: "1m" };
+  let catData = [];   // cached last response, so per-card toggling is instant
   function miniRow(f) {
     const up = (f.pct_change || 0) >= 0;
-    return `<div class="mini-row" data-code="${f.amfi_scheme_code}">
-      <span class="nm" title="${esc(f.scheme_name)}">${esc(f.scheme_name)}</span>
+    const parts = [];
+    if (f.option_type && f.option_type !== "UNKNOWN") parts.push(esc(f.option_type));
+    if (f.variants > 1) parts.push(`×${f.variants} variants`);
+    const sub = parts.join(" · ");
+    return `<div class="mini-row" data-code="${f.amfi_scheme_code}"${sub ? ` title="${sub}"` : ""}>
+      <div class="mini-main">
+        <span class="nm" title="${esc(f.scheme_name)}">${esc(f.scheme_name)}</span>
+        ${sub ? `<span class="mini-opt">${sub}</span>` : ""}
+      </div>
       <span class="pct ${up ? "up" : "down"}">${up ? "▲" : "▼"} ${Math.abs(f.pct_change || 0).toFixed(2)}%</span>
     </div>`;
   }
-  function miniCol(title, cls, items) {
-    const body = items.length ? items.map(miniRow).join("") : '<div class="mini-none">—</div>';
-    return `<div class="cat-col"><h4 class="${cls}">${title}</h4>${body}</div>`;
+  function listFor(c, dir) {
+    const items = dir === "losers" ? c.losers : c.gainers;
+    return items.length ? items.map(miniRow).join("") : '<div class="mini-none">—</div>';
+  }
+  function wireRows(scope) {
+    scope.querySelectorAll(".mini-row").forEach((el) =>
+      el.addEventListener("click", () => (location.href = "/fund/" + el.dataset.code)));
+  }
+  function renderCatGrid() {
+    const box = $("catmovers");
+    box.innerHTML = '<div class="catgrid">' + catData.map((c) => `
+      <div class="cat-tile" data-cat="${esc(c.category)}">
+        <div class="cat-head">
+          <span class="nm">${esc(c.category)} <span class="ct">${c.funds} funds</span></span>
+          <div class="range-btns cat-toggle">
+            <button data-d="gainers" class="active">Gainers</button>
+            <button data-d="losers">Losers</button>
+          </div>
+        </div>
+        <div class="cat-list">${listFor(c, "gainers")}</div>
+      </div>`).join("") + "</div>";
+    wireRows(box);
+    box.querySelectorAll(".cat-tile").forEach((tile) => {
+      tile.querySelectorAll(".cat-toggle button").forEach((b) =>
+        b.addEventListener("click", () => {
+          tile.querySelectorAll(".cat-toggle button").forEach((x) => x.classList.remove("active"));
+          b.classList.add("active");
+          const c = catData.find((x) => x.category === tile.dataset.cat);
+          tile.querySelector(".cat-list").innerHTML = listFor(c, b.dataset.d);
+          wireRows(tile);
+        }));
+    });
   }
   async function loadMovers() {
     const box = $("catmovers");
@@ -226,16 +263,8 @@
     try {
       const data = await api(`/api/movers/categories?period=${mstate.period}&limit=5`);
       if (!data.categories.length) { box.innerHTML = '<div class="empty">No data.</div>'; return; }
-      box.innerHTML = '<div class="catgrid">' + data.categories.map((c) => `
-        <div class="cat-tile">
-          <div class="cat-head"><span class="nm">${esc(c.category)}</span><span class="ct">${c.funds} funds</span></div>
-          <div class="cat-cols">
-            ${miniCol("Top 5 gainers", "up", c.gainers)}
-            ${miniCol("Top 5 losers", "down", c.losers)}
-          </div>
-        </div>`).join("") + "</div>";
-      box.querySelectorAll(".mini-row").forEach((el) =>
-        el.addEventListener("click", () => (location.href = "/fund/" + el.dataset.code)));
+      catData = data.categories;
+      renderCatGrid();
     } catch (e) { box.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
   }
   document.querySelectorAll("#movers-period button").forEach((b) =>

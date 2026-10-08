@@ -889,6 +889,13 @@ def category_movers(
     Same period logic as ``movers`` (latest NAV vs the NAV at/just before the
     period start), but grouped by fund family so the front page can show one
     compact tile per family. One window scan; grouping/slicing in Python.
+
+    Variants of one scheme (GROWTH/IDCW, and multiple IDCW payout periodicities
+    — each is its own AMFI scheme code) move identically, so they would
+    otherwise stack up the list. They are collapsed onto one row per
+    ``mf.fund_variants`` family: the variant with the biggest absolute move is
+    the representative, and its ``variants`` count tells the UI how many plan/
+    option variants of that scheme were in the window.
     """
     days = _MOVER_DAYS.get(period, 30)
     ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
@@ -899,21 +906,23 @@ def category_movers(
         """
         SELECT f.amfi_scheme_code, f.scheme_name, f.scheme_category, f.option_type,
                a.amfi_amc_name,
+               coalesce(fv.group_key, CAST(f.amfi_scheme_code AS text)) AS fam_key,
                (array_agg(n.nav ORDER BY n.nav_date DESC))[1] AS latest_nav,
                (array_agg(n.nav ORDER BY n.nav_date ASC))[1]  AS prev_nav,
                max(n.nav_date) AS latest_nav_date
         FROM mf.nav_history n
         JOIN mf.funds f ON f.amfi_scheme_code = n.amfi_scheme_code
         JOIN mf.amcs a ON a.amc_id = f.amc_id
+        LEFT JOIN mf.fund_variants fv ON fv.amfi_scheme_code = f.amfi_scheme_code
         WHERE n.nav_date >= %(cutoff)s
           AND f.in_scope AND NOT f.is_defunct
         GROUP BY f.amfi_scheme_code, f.scheme_name, f.scheme_category,
-                 f.option_type, a.amfi_amc_name
+                 f.option_type, a.amfi_amc_name, fv.group_key
         """,
         {"cutoff": cutoff},
     ).fetchall()
 
-    def item(r) -> dict[str, Any]:
+    def item(r) -> dict[str, Any] | None:
         latest, prev = r["latest_nav"], r["prev_nav"]
         if not (latest and prev) or float(prev) <= 0:
             return None
@@ -928,12 +937,30 @@ def category_movers(
             "pct_change": round((float(latest) / float(prev) - 1.0) * 100.0, 2),
         }
 
-    by_family: dict[str, list[dict[str, Any]]] = {}
+    # Collapse variants onto one row per scheme family.
+    families: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
         it = item(r)
         if it is None:
             continue
-        by_family.setdefault(fund_family(r["scheme_category"]), []).append(it)
+        families.setdefault(r["fam_key"], []).append(it)
+
+    per_family: list[dict[str, Any]] = []
+    for fam in families.values():
+        # Biggest absolute move represents the family; prefer GROWTH/REGULAR on
+        # ties so the row matches the fund's canonical variant elsewhere in the UI.
+        rep = sorted(
+            fam,
+            key=lambda x: (-abs(x["pct_change"]), x["option_type"] != "GROWTH",
+                           x["amfi_scheme_code"]),
+        )[0]
+        rep = dict(rep)
+        rep["variants"] = len(fam)
+        per_family.append(rep)
+
+    by_family: dict[str, list[dict[str, Any]]] = {}
+    for it in per_family:
+        by_family.setdefault(fund_family(it["scheme_category"]), []).append(it)
 
     categories = []
     for fam in FAMILY_ORDER:

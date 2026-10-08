@@ -285,21 +285,21 @@ table.cmp td.txt { text-align:left; }
 .sip-out .sip-chart { position:relative; height:200px; margin-top:12px; }
 
 /* --- front page: top movers by category --- */
-.catgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:14px; padding:14px 16px 16px; }
+.catgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; padding:14px 16px 16px; }
 .cat-tile { border:1px solid var(--border); border-radius:8px; background:var(--panel); overflow:hidden; }
-.cat-head { display:flex; justify-content:space-between; align-items:baseline; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--bg); }
+.cat-head { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--bg); }
 .cat-head .nm { font-size:14px; font-weight:600; }
-.cat-head .ct { font-size:11px; color:var(--muted); }
-.cat-cols { display:grid; grid-template-columns:1fr 1fr; }
-.cat-col { padding:4px 0 6px; }
-.cat-col + .cat-col { border-left:1px solid var(--border); }
-.cat-col h4 { margin:0; padding:2px 12px 6px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
-.cat-col h4.up { color:var(--up); }
-.cat-col h4.down { color:var(--down); }
-.mini-row { display:flex; justify-content:space-between; gap:8px; padding:4px 12px; font-size:12.5px; cursor:pointer; }
+.cat-head .ct { font-size:11px; color:var(--muted); font-weight:400; margin-left:4px; }
+.cat-toggle { margin:0; gap:6px; }
+.cat-toggle button { padding:3px 10px; font-size:11px; }
+.cat-list { padding:2px 0 4px; }
+.mini-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 12px; font-size:13px; cursor:pointer; border-top:1px solid var(--border); }
+.mini-row:first-child { border-top:none; }
 .mini-row:hover { background:var(--bg); }
-.mini-row .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mini-main { min-width:0; display:flex; flex-direction:column; gap:1px; }
+.mini-row .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+.mini-opt { font-size:10px; color:var(--muted); }
 .mini-row .pct { flex:none; font-weight:600; font-variant-numeric:tabular-nums; }
 .mini-row .pct.up { color:var(--up); }
 .mini-row .pct.down { color:var(--down); }
-.mini-none { padding:4px 12px; font-size:12px; color:var(--muted); }
+.mini-none { padding:14px 12px; font-size:12px; color:var(--muted); }

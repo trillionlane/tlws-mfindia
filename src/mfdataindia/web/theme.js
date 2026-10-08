@@ -16,8 +16,10 @@
       (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   }
 
-  function paint() {
-    const t = current();
+  function paint(t) {
+    // Explicit theme when toggling; without one, re-derive from the current
+    // attribute / OS preference (initial paint).
+    t = t || current();
     root.dataset.theme = t;
     document.querySelectorAll("#theme-toggle").forEach((b) => {
       b.textContent = t === "dark" ? "☀️" : "🌙";
@@ -31,7 +33,7 @@
     if (!btn) return;
     const next = current() === "dark" ? "light" : "dark";
     try { localStorage.setItem(KEY, next); } catch (_) { /* private mode */ }
-    paint();
+    paint(next);
     if (typeof window.__mfdThemeChanged === "function") window.__mfdThemeChanged(next);
   });
 })();

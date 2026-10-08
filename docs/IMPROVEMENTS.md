@@ -122,11 +122,19 @@ crawlers are no longer the only thing keeping full holdings current.
   `--chart-fill-border` at draw time and re-run their init on toggle
   (`window.__mfdThemeChanged`).
 - **Front page** now leads with **Top movers by category**: one tile per broad
-  family (Equity, Debt, Hybrid, Index, ETF, FoF, Solution) showing top-5
-  gainers and top-5 losers for the selected period (1D/1W/1M/3M/1Y), above the
-  existing filters. Backed by `GET /api/movers/categories` — one window scan
-  (same semantics as `/api/movers`), grouped in Python by `queries.fund_family()`
-  which maps AMFI's mixed current/legacy `scheme_category` strings to families.
+  family (Equity, Debt, Hybrid, Index, ETF, FoF, Solution) with a per-tile
+  **Gainers/Losers toggle (default Gainers)** showing top-5 for the selected
+  period (1D/1W/1M/3M/1Y), above the existing filters. Backed by
+  `GET /api/movers/categories` — one window scan (same semantics as
+  `/api/movers`), grouped in Python by `queries.fund_family()` which maps
+  AMFI's mixed current/legacy `scheme_category` strings to families.
+- **Variant collapsing:** plan/option variants of one scheme (GROWTH/IDCW, and
+  multiple IDCW payout periodicities — each its own AMFI code) move
+  identically and would stack the list (e.g. 3× "BANK OF INDIA ARBITRAGE
+  FUND"). `category_movers` collapses them onto one row per
+  `mf.fund_variants` family: the biggest absolute mover is the representative
+  (GROWTH wins ties), with a `variants` count rendered as a "×N variants"
+  badge. Tile fund counts are distinct schemes (Hybrid 444 → 189).
 - Known data artifact (pre-existing, same in `/api/movers`): matured close-ended
   FMPs show their NAV reset-to-par at maturity as a large "loser" (e.g. an HDFC
   FMP that matured within the window).

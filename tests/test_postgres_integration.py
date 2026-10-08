@@ -374,3 +374,49 @@ def test_category_movers_groups_by_family(store, scheme_factory):
     order = [c["category"] for c in res["categories"]]
     for a, b in zip(order, order[1:]):
         assert FAMILY_ORDER.index(a) <= FAMILY_ORDER.index(b)
+
+
+def test_category_movers_collapses_variants(store, scheme_factory):
+    """GROWTH + IDCW variants of one scheme collapse to a single row.
+
+    The variant with the biggest absolute move is the representative; its
+    ``variants`` count reports how many plan/option variants were in the window.
+    """
+    day1, day2 = date(2024, 12, 1), date(2024, 12, 27)
+    base = dict(amc="Test Mutual Fund", scheme_type="Open Ended Schemes",
+                scheme_category="Hybrid Scheme - Arbitrage Fund")
+    # Same base scheme, two plan/option variants (collapses onto one group_key).
+    load_parsed_amfi(store, [
+        scheme_factory(amfi_scheme_code="400001", plan_type="REGULAR", option="GROWTH",
+                       scheme_name="Variant Collapsing Fund - Regular Plan - Growth",
+                       nav=100.0, nav_date=day1, **base),
+        scheme_factory(amfi_scheme_code="400002", plan_type="REGULAR", option="IDCW",
+                       scheme_name="Variant Collapsing Fund - Regular Plan - IDCW Option",
+                       nav=100.0, nav_date=day1, **base),
+    ], source_date=day1)
+    load_parsed_amfi(store, [
+        scheme_factory(amfi_scheme_code="400001", plan_type="REGULAR", option="GROWTH",
+                       scheme_name="Variant Collapsing Fund - Regular Plan - Growth",
+                       nav=101.0, nav_date=day2, **base),   # +1%
+        scheme_factory(amfi_scheme_code="400002", plan_type="REGULAR", option="IDCW",
+                       scheme_name="Variant Collapsing Fund - Regular Plan - IDCW Option",
+                       nav=102.0, nav_date=day2, **base),   # +2%
+    ], source_date=day2)
+
+    res = queries.category_movers(store.connect(), period="1m", limit=5)
+    hybrid = next(c for c in res["categories"] if c["category"] == "Hybrid")
+    # Small universe: with <5 funds a fund can land in BOTH the top gainers and
+    # top losers lists, so de-duplicate by code across both.
+    seen = {}
+    for f in hybrid["gainers"] + hybrid["losers"]:
+        if f["amfi_scheme_code"] in (400001, 400002):
+            seen[f["amfi_scheme_code"]] = f
+    # Exactly one row for the scheme (collapsed), not one per variant
+    assert list(seen) == [400002]
+    rep = seen[400002]
+    # Biggest absolute move (the +2% IDCW variant) represents the family
+    assert rep["pct_change"] == 2.0
+    assert rep["variants"] == 2
+    # The scheme counts once, not twice: Hybrid has exactly two distinct
+    # families in this module (300004 from the grouping test + this one).
+    assert hybrid["funds"] == 2
