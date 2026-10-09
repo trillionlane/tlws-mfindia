@@ -49,6 +49,136 @@ def _f(v: Any) -> Optional[float]:
     return None if v is None else float(v)
 
 
+#: Fund-level factsheet fields. A facts row is "usable" — i.e. the scheme code
+#: actually has factsheet data of its own — when at least one of these is set.
+#: Everything else (returns, Sharpe, exit load, ...) is per-code enrichment and
+#: does not count as evidence that the factsheet covered this code.
+_FACTS_IDENTITY_FIELDS = (
+    "aum",
+    "expense_ratio",
+    "benchmark",
+    "fund_manager_name",
+    "inception_date",
+)
+
+#: Full facts row as served by /api/funds/{code}; shared with the sibling
+#: fallback so both paths return the identical field set.
+_FACTS_SELECT = """
+    SELECT aum, expense_ratio, face_value, inception_date, sebi_category_name,
+           asset_class, sub_asset_class, taxability,
+           return_1day, return_3month, return_6month, return_1year, return_3year,
+           return_5year, return_10year, return_since_launch,
+           min_initial_investment_amount, min_subsequent_investment_amount,
+           is_sip_allowed, status, transaction_status,
+           benchmark, benchmark_name, fund_manager_name, risk_level,
+           base_expense_ratio, registrar_agent, expense_ratio_history,
+           crisil_rating, sub_type, exit_load_value, exit_load,
+           lock_in_period, portfolio_turnover, return_1week, return_1month, return_9month,
+           sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis,
+           holdings_maturity, category_return
+    FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
+"""
+
+#: Best facts-bearing sibling in the same variant group. The ordering mirrors
+#: list_fund_families' representative rule (GROWTH/REGULAR first, lowest AMFI
+#: code) so the fallback and the family listing agree on the canonical variant.
+_SIBLING_SOURCE_SQL = """
+    SELECT f.amfi_scheme_code AS source_code
+    FROM mf.fund_variants v1
+    JOIN mf.fund_variants v2 ON v2.group_key = v1.group_key
+    JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
+    JOIN mf.fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
+    WHERE v1.amfi_scheme_code = %(code)s
+      AND v2.amfi_scheme_code <> %(code)s
+      AND (ff.aum IS NOT NULL OR ff.expense_ratio IS NOT NULL
+           OR ff.benchmark IS NOT NULL OR ff.fund_manager_name IS NOT NULL
+           OR ff.inception_date IS NOT NULL)
+    ORDER BY (f.option_type = 'GROWTH') DESC, (f.plan_type = 'REGULAR') DESC,
+             f.amfi_scheme_code
+    LIMIT 1
+"""
+
+#: Batched variant of _SIBLING_SOURCE_SQL: one best source per requested code.
+_BATCH_SIBLING_SOURCE_SQL = """
+    SELECT for_code, source_code FROM (
+        SELECT v1.amfi_scheme_code AS for_code,
+               f.amfi_scheme_code AS source_code,
+               row_number() OVER (PARTITION BY v1.amfi_scheme_code
+                  ORDER BY (f.option_type = 'GROWTH') DESC,
+                           (f.plan_type = 'REGULAR') DESC,
+                           f.amfi_scheme_code) AS rn
+        FROM mf.fund_variants v1
+        JOIN mf.fund_variants v2 ON v2.group_key = v1.group_key
+        JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
+        JOIN mf.fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
+        WHERE v1.amfi_scheme_code = ANY(%(codes)s::int[])
+          AND v2.amfi_scheme_code <> v1.amfi_scheme_code
+          AND (ff.aum IS NOT NULL OR ff.expense_ratio IS NOT NULL
+               OR ff.benchmark IS NOT NULL OR ff.fund_manager_name IS NOT NULL
+               OR ff.inception_date IS NOT NULL)
+    ) t WHERE rn = 1
+"""
+
+
+#: Facts columns served by /api/funds/batch; the fallback fills exactly these.
+_BATCH_FACTS_KEYS = (
+    "aum", "expense_ratio", "base_expense_ratio", "return_5year", "sharpe_ratio",
+    "beta", "risk_level", "fund_manager_name", "benchmark_name", "inception_date",
+)
+
+
+def _facts_are_usable(facts: Optional[dict]) -> bool:
+    """True when a facts row carries at least one fund-identity field."""
+    if not facts:
+        return False
+    return any(facts.get(k) is not None for k in _FACTS_IDENTITY_FIELDS)
+
+
+def _facts_from_sibling(conn, code: int) -> tuple[Optional[dict], Optional[int]]:
+    """Resolve facts for a code that has none of its own.
+
+    Schemes sharing a ``mf.fund_variants.group_key`` are re-issues of one
+    portfolio (plan/option tranches, or new AMFI codes under the same scheme
+    name). AMC factsheets only attribute facts to some of the codes in a
+    group, so a code without fund-level facts borrows the group's canonical
+    variant (GROWTH/REGULAR, lowest AMFI code — same rule as
+    :func:`list_fund_families`) restricted to variants whose facts are
+    actually populated.
+
+    Returns ``(facts_row, source_code)``; both ``None`` when the code has no
+    variant group, or the group holds no usable facts.
+    """
+    src = conn.execute(_SIBLING_SOURCE_SQL, {"code": code}).fetchone()
+    if not src:
+        return None, None
+    source_code = int(src["source_code"])
+    row = conn.execute(_FACTS_SELECT, {"code": source_code}).fetchone()
+    return dict(row) if row else None, source_code
+
+
+def _serialize_facts(facts: Optional[dict]) -> Optional[dict]:
+    """Render a facts row for JSON: dates -> ISO, Decimal -> float, jsonb as object."""
+    if not facts:
+        return None
+    facts = dict(facts)
+    for k, v in facts.items():
+        if v is None:
+            continue
+        if hasattr(v, "isoformat"):
+            facts[k] = v.isoformat()
+        elif isinstance(v, Decimal):
+            facts[k] = float(v)
+    # jsonb arrives as a dict via psycopg; guard the (rare) string case so the
+    # API always emits an object, not a JSON string.
+    ha = facts.get("holdings_analysis")
+    if isinstance(ha, str):
+        try:
+            facts["holdings_analysis"] = json.loads(ha)
+        except ValueError:
+            facts["holdings_analysis"] = None
+    return facts
+
+
 def stats(conn) -> dict[str, Any]:
     """Exact persisted coverage summary; never aggregate NAV on request."""
     summary = conn.execute(_STATS_SQL).fetchone()
@@ -209,24 +339,24 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
         {"code": code},
     ).fetchone()
 
-    facts = conn.execute(
-        """
-        SELECT aum, expense_ratio, face_value, inception_date, sebi_category_name,
-               asset_class, sub_asset_class, taxability,
-               return_1day, return_3month, return_6month, return_1year, return_3year,
-               return_5year, return_10year, return_since_launch,
-               min_initial_investment_amount, min_subsequent_investment_amount,
-               is_sip_allowed, status, transaction_status,
-               benchmark, benchmark_name, fund_manager_name, risk_level,
-               base_expense_ratio, registrar_agent, expense_ratio_history,
-               crisil_rating, sub_type, exit_load_value, exit_load,
-               lock_in_period, portfolio_turnover, return_1week, return_1month, return_9month,
-               sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis,
-               holdings_maturity, category_return
-        FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
-        """,
-        {"code": code},
-    ).fetchone()
+    facts = conn.execute(_FACTS_SELECT, {"code": code}).fetchone()
+    facts = dict(facts) if facts else None
+    # The AMC factsheet attributes fund-level data to only some codes of a
+    # variant group (e.g. a recent AMFI re-issue under the same scheme name
+    # has none of its own). Borrow the group's canonical variant's facts and
+    # disclose the source so the page is never blank and never silently mixed.
+    facts_source_code: Optional[int] = None
+    if facts is None or not _facts_are_usable(facts):
+        sibling_facts, source_code = _facts_from_sibling(conn, code)
+        if sibling_facts is not None:
+            facts_source_code = source_code
+            if facts is not None:
+                # Keep this code's own per-code enrichment over the borrowed
+                # fund-level row.
+                for k, v in facts.items():
+                    if v is not None:
+                        sibling_facts[k] = v
+            facts = sibling_facts
 
     holdings = conn.execute(
         """
@@ -261,26 +391,8 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
     else:
         out["latest_nav"] = None
         out["latest_nav_date"] = None
-    if facts:
-        facts = dict(facts)
-        for k, v in facts.items():
-            if v is None:
-                continue
-            if hasattr(v, "isoformat"):
-                facts[k] = v.isoformat()
-            elif isinstance(v, Decimal):
-                facts[k] = float(v)
-        # jsonb arrives as a dict via psycopg; guard the (rare) string case so the
-        # API always emits an object, not a JSON string.
-        ha = facts.get("holdings_analysis")
-        if isinstance(ha, str):
-            try:
-                facts["holdings_analysis"] = json.loads(ha)
-            except ValueError:
-                facts["holdings_analysis"] = None
-        out["facts"] = facts
-    else:
-        out["facts"] = None
+    out["facts"] = _serialize_facts(facts)
+    out["facts_source_code"] = facts_source_code
     # Our own fund identity (tlws_mf_id / slug / tags) — per fund family, the
     # entity for related-news retrieval and stable URLs.
     family = conn.execute(
@@ -659,9 +771,42 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         if i not in code_inputs[resolved]:
             code_inputs[resolved].append(i)
 
+    # Variant-group facts fallback (same rule as fund_detail): codes whose own
+    # fund_facts row is empty borrow the family's canonical variant facts, so
+    # batch summaries match what the detail page shows.
+    missing = [
+        code for code in order
+        if all(by_code[code][k] is None
+               for k in ("aum", "expense_ratio", "benchmark_name",
+                         "fund_manager_name", "inception_date"))
+    ]
+    facts_source: dict[int, int] = {}
+    source_facts: dict[int, dict[str, Any]] = {}
+    if missing:
+        picked = conn.execute(_BATCH_SIBLING_SOURCE_SQL, {"codes": missing}).fetchall()
+        facts_source = {int(r["for_code"]): int(r["source_code"]) for r in picked}
+        if facts_source:
+            source_facts = {
+                int(r["amfi_scheme_code"]): dict(r)
+                for r in conn.execute(
+                    "SELECT amfi_scheme_code, aum, expense_ratio, base_expense_ratio,"
+                    " return_5year, sharpe_ratio, beta, risk_level, fund_manager_name,"
+                    " benchmark_name, inception_date"
+                    " FROM mf.fund_facts WHERE amfi_scheme_code = ANY(%(codes)s::int[])",
+                    {"codes": sorted(set(facts_source.values()))},
+                ).fetchall()
+            }
+
     funds: list[dict[str, Any]] = []
     for code in order:
         r = by_code[code]
+        source_code = facts_source.get(code)
+        if source_code is not None:
+            borrowed = source_facts.get(source_code, {})
+            r = dict(r)
+            for k in _BATCH_FACTS_KEYS:
+                if r.get(k) is None and borrowed.get(k) is not None:
+                    r[k] = borrowed[k]
         fund = {
             "amfi_scheme_code": code,
             "matched_by": code_inputs[code],
@@ -684,6 +829,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         fund["fund_manager_name"] = r["fund_manager_name"]
         fund["benchmark_name"] = r["benchmark_name"]
         fund["risk_level"] = r["risk_level"]
+        fund["facts_source_code"] = source_code
         funds.append(fund)
 
     return {
