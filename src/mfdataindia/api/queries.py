@@ -77,32 +77,55 @@ def _facts_usable_sql(alias: str) -> str:
     """
     return " OR ".join(f"{alias}.{k} IS NOT NULL" for k in _FACTS_IDENTITY_FIELDS)
 
-#: Full facts row as served by /api/funds/{code}; shared with the sibling
-#: fallback so both paths return the identical field set.
-_FACTS_SELECT = """
-    SELECT aum, expense_ratio, face_value, inception_date, sebi_category_name,
-           asset_class, sub_asset_class, taxability,
-           return_1day, return_3month, return_6month, return_1year, return_3year,
-           return_5year, return_10year, return_since_launch,
-           min_initial_investment_amount, min_subsequent_investment_amount,
-           is_sip_allowed, status, transaction_status,
-           benchmark, benchmark_name, fund_manager_name, risk_level,
-           base_expense_ratio, registrar_agent, expense_ratio_history,
-           crisil_rating, sub_type, exit_load_value, exit_load,
-           lock_in_period, portfolio_turnover, return_1week, return_1month, return_9month,
-           sharpe_ratio, beta, std_deviation, risk_rating, holdings_analysis,
-           holdings_maturity, category_return
-    FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
-"""
+#: Every fund_facts column served by fund_detail. Single source of truth for the
+#: column set so the SELECT, the "all fields" shape, and the family-safe
+#: allowlist can never drift apart.
+_ALL_FACTS_FIELDS = (
+    "aum", "expense_ratio", "face_value", "inception_date", "sebi_category_name",
+    "asset_class", "sub_asset_class", "taxability",
+    "return_1day", "return_3month", "return_6month", "return_1year", "return_3year",
+    "return_5year", "return_10year", "return_since_launch",
+    "min_initial_investment_amount", "min_subsequent_investment_amount",
+    "is_sip_allowed", "status", "transaction_status",
+    "benchmark", "benchmark_name", "fund_manager_name", "risk_level",
+    "base_expense_ratio", "registrar_agent", "expense_ratio_history",
+    "crisil_rating", "sub_type", "exit_load_value", "exit_load",
+    "lock_in_period", "portfolio_turnover", "return_1week", "return_1month",
+    "return_9month", "sharpe_ratio", "beta", "std_deviation", "risk_rating",
+    "holdings_analysis", "holdings_maturity", "category_return",
+)
+
+_FACTS_SELECT = (
+    "SELECT " + ", ".join(_ALL_FACTS_FIELDS)
+    + " FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s"
+)
+
+#: Fields safe to borrow from a sibling. These are the fund-level factsheet
+#: attributes that are invariant across a scheme family (AUM, expense ratio,
+#: benchmark, manager, inception, classification, ratings, holdings profile).
+#: Deliberately EXCLUDED are per-scheme fields that can differ even between
+#: same-plan re-issues: SIP eligibility (is_sip_allowed), status /
+#: transaction_status, exit load (exit_load, exit_load_value, lock_in_period),
+#: published returns (return_*, category_return), risk ratios (sharpe_ratio,
+#: beta, std_deviation, risk_rating), and expense_ratio_history. A borrowing
+#: code keeps its own values for those and inherits only this allowlist.
+_FAMILY_SAFE_FACTS_FIELDS = (
+    "aum", "expense_ratio", "face_value", "inception_date",
+    "sebi_category_name", "asset_class", "sub_asset_class", "taxability",
+    "min_initial_investment_amount", "min_subsequent_investment_amount",
+    "benchmark", "benchmark_name", "fund_manager_name", "risk_level",
+    "base_expense_ratio", "registrar_agent", "crisil_rating", "sub_type",
+    "portfolio_turnover", "holdings_analysis", "holdings_maturity",
+)
 
 #: Best facts-bearing sibling of the requested scheme. A sibling must be a
-#: re-issue of the *same* plan/option within the *same* AMC and scheme
-#: classification, not merely share ``group_key``: the key is a documented
-#: heuristic (see load.normalise.base_scheme_key) and can collide across AMCs,
-#: and borrowing across plan/option would leak plan-specific facts (a Regular
-#: expense ratio or GROWTH minimum investment shown on a Direct/IDCW scheme).
-#: Among qualifying re-issues the lowest AMFI code (oldest tranche) is
-#: canonical.
+#: re-issue of the *same* plan/option/periodicity within the *same* AMC and
+#: scheme classification, not merely share ``group_key``: the key is a
+#: documented heuristic (see load.normalise.base_scheme_key) and can collide
+#: across AMCs, and borrowing across plan/option/periodicity would leak
+#: variant-specific facts (a Regular expense ratio shown on a Direct scheme,
+#: or Monthly IDCW data shown on a Quarterly scheme). Among qualifying
+#: re-issues the lowest AMFI code (oldest tranche) is canonical.
 _SIBLING_SOURCE_SQL = f"""
     SELECT f.amfi_scheme_code AS source_code
     FROM mf.fund_variants v1
@@ -118,6 +141,7 @@ _SIBLING_SOURCE_SQL = f"""
       AND f.amc_id = f1.amc_id
       AND f.scheme_type = f1.scheme_type
       AND f.scheme_category = f1.scheme_category
+      AND f.periodicity IS NOT DISTINCT FROM f1.periodicity
       AND ({_facts_usable_sql("ff")})
     ORDER BY f.amfi_scheme_code
     LIMIT 1
@@ -143,6 +167,7 @@ _BATCH_SIBLING_SOURCE_SQL = f"""
           AND f.amc_id = f1.amc_id
           AND f.scheme_type = f1.scheme_type
           AND f.scheme_category = f1.scheme_category
+          AND f.periodicity IS NOT DISTINCT FROM f1.periodicity
           AND ({_facts_usable_sql("ff")})
     ) t WHERE rn = 1
 """
@@ -168,12 +193,13 @@ def _facts_from_sibling(conn, code: int) -> tuple[Optional[dict], Optional[int]]
     Schemes sharing a ``mf.fund_variants.group_key`` are re-issues of one
     portfolio. AMC factsheets only attribute facts to some of the codes in a
     group, so a code without fund-level facts borrows a sibling's facts. A
-    sibling qualifies only if it is a re-issue of the same plan/option within
-    the same AMC and scheme classification (``group_key`` alone is a heuristic
-    and can collide across AMCs, and cross-plan/option borrowing would leak
-    plan-specific facts). Among qualifying re-issues the lowest AMFI code is
-    canonical. The borrowing code's own non-NULL facts always win over the
-    borrowed row (see :func:`fund_detail`).
+    sibling qualifies only if it is a re-issue of the same plan/option/
+    periodicity within the same AMC and scheme classification (``group_key``
+    alone is a heuristic and can collide across AMCs, and cross-plan/option/
+    periodicity borrowing would leak variant-specific facts). Among qualifying
+    re-issues the lowest AMFI code is canonical. Only the family-safe fields
+    (see :data:`_FAMILY_SAFE_FACTS_FIELDS`) are returned for borrowing; the
+    code's own non-NULL facts always win in :func:`fund_detail`.
 
     Returns ``(facts_row, source_code)``; both ``None`` when no qualifying
     sibling carries usable facts.
@@ -380,13 +406,19 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
         sibling_facts, source_code = _facts_from_sibling(conn, code)
         if sibling_facts is not None:
             facts_source_code = source_code
-            if facts is not None:
-                # Keep this code's own per-code enrichment over the borrowed
-                # fund-level row.
-                for k, v in facts.items():
-                    if v is not None:
-                        sibling_facts[k] = v
-            facts = sibling_facts
+            # Keep the full facts shape. Every field starts as the code's own
+            # value (null when the code has none), and only the family-safe
+            # fund-level fields are then filled from the sibling where the code
+            # has no value. Per-scheme fields — SIP eligibility, transaction
+            # status, exit load, published returns, risk ratios, expense
+            # history — are NEVER taken from the sibling; they stay as the
+            # code's own (usually null), even when the sibling has them set.
+            own = facts or {}
+            borrowed: dict[str, Any] = {k: own.get(k) for k in _ALL_FACTS_FIELDS}
+            for k in _FAMILY_SAFE_FACTS_FIELDS:
+                if borrowed.get(k) is None and sibling_facts.get(k) is not None:
+                    borrowed[k] = sibling_facts.get(k)
+            facts = borrowed
 
     holdings = conn.execute(
         """
@@ -1214,9 +1246,13 @@ def list_fund_families(
 ) -> dict[str, Any]:
     """One row per scheme family (base scheme), collapsing plan/option variants.
 
-    The representative row is the Regular Growth variant where one exists, else
-    the first in-scope variant. `variant_count` reports how many in-scope
-    variants the family has. Funds with no variant group are their own family.
+    A family's identity is the base-scheme key (``group_key``) plus AMC and
+    scheme classification: ``group_key`` alone is a documented heuristic that
+    can collide across AMCs (same-named funds from different AMCs), so the AMC
+    and scheme type/category are part of the identity and ``variant_count``
+    never mixes AMCs. The representative row is the Regular Growth variant
+    where one exists, else the first in-scope variant. Funds with no variant
+    group are their own family.
     """
     order = _SORT_FAMILY.get(sort, "s.scheme_name")
     where = ["f.in_scope"]
@@ -1249,10 +1285,13 @@ def list_fund_families(
             WHERE {where_sql}
         ), picked AS (
             SELECT *,
-                row_number() OVER (PARTITION BY fam_key
+                row_number() OVER (
+                    PARTITION BY fam_key, amc_id, scheme_type, scheme_category
                     ORDER BY (option_type = 'GROWTH') DESC, (plan_type = 'REGULAR') DESC,
                              amfi_scheme_code) AS rn,
-                count(*) OVER (PARTITION BY fam_key) AS variant_count
+                count(*) OVER (
+                    PARTITION BY fam_key, amc_id, scheme_type, scheme_category
+                ) AS variant_count
             FROM scoped
         )
         SELECT * FROM picked
@@ -1260,7 +1299,8 @@ def list_fund_families(
     # Count distinct families cheaply — no window functions, no per-row joins.
     total = conn.execute(
         f"""
-        SELECT count(DISTINCT coalesce(fv.group_key, CAST(f.amfi_scheme_code AS text))) AS n
+        SELECT count(DISTINCT (coalesce(fv.group_key, CAST(f.amfi_scheme_code AS text)),
+                               f.amc_id, f.scheme_type, f.scheme_category)) AS n
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
         LEFT JOIN mf.fund_variants fv ON fv.amfi_scheme_code = f.amfi_scheme_code

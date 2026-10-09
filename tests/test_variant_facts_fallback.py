@@ -8,15 +8,20 @@ touching real rows. Skipped unless ``MF_TEST_DSN`` is set.
 
 Covers:
   * exact-code facts are returned unchanged (facts_source_code is None);
-  * a code with no facts of its own borrows a same-plan/option re-issue's
-    facts (lowest AMFI code) and discloses facts_source_code;
-  * borrowing is restricted to the same plan/option within the same AMC and
-    scheme category — a Direct/IDCW scheme never exposes Regular/Growth values;
+  * a code with no facts of its own borrows a same plan/option/periodicity
+    re-issue's facts (lowest AMFI code) and discloses facts_source_code;
+  * borrowing is restricted to the same plan/option/periodicity within the same
+    AMC and scheme category — a Direct/IDCW scheme never exposes Regular/Growth
+    values, and a Monthly IDCW never borrows a Quarterly sibling's facts;
+  * only family-safe fields are borrowed — per-scheme fields (SIP, transaction
+    status, exit load, published returns, risk ratios) are never inherited;
   * a facts row that is all-NULL is treated as "no facts";
   * a sibling usable via expense_ratio alone still qualifies;
   * the borrowing code's own per-code facts (e.g. Sharpe) survive the borrow;
   * codes with no variant group and no facts stay blank (graceful);
-  * /api/funds/batch applies the same fallback as the detail endpoint.
+  * /api/funds/batch applies the same fallback as the detail endpoint;
+  * the family view keeps same-named funds from different AMCs as separate
+    families (group_key alone is a heuristic).
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from mfdataindia.api import queries
 pytestmark = pytest.mark.postgres
 
 _TEST_AMC_ID = 900000
+_TEST_AMC_ID_2 = 900001
 _TEST_CODES = (
     900001, 900002, 900003, 900004, 900009,
     900005, 900006,
@@ -37,6 +43,9 @@ _TEST_CODES = (
     900010, 900011, 900012, 900013,
     900030, 900031,
     900040, 900041,
+    900050, 900051,
+    900060, 900061, 900062,
+    900070, 900071,
 )
 _CAT = "Debt Scheme - Liquid Fund"
 _INCEPTION = date(2001, 1, 1)
@@ -51,6 +60,15 @@ def _insert_fixture(cur) -> None:
         VALUES (%s, 'Variant Fallback Test AMC', 'variant fallback test amc')
         """,
         (_TEST_AMC_ID,),
+    )
+    # Second AMC for the cross-AMC family-collision test (G8).
+    cur.execute(
+        """
+        INSERT INTO mf.amcs (amc_id, amfi_amc_name, normalised_name)
+        OVERRIDING SYSTEM VALUE
+        VALUES (%s, 'Variant Fallback Test AMC Two', 'variant fallback test amc two')
+        """,
+        (_TEST_AMC_ID_2,),
     )
     funds = [
         # (code, name, plan, option, group)
@@ -154,6 +172,84 @@ def _insert_fixture(cur) -> None:
         (900040,),
     )
 
+    # G6: code-specific isolation. 900051 (REG/GROWTH) carries BOTH family-safe
+    # and code-specific facts; 900050 (REG/GROWTH, no facts) borrows only the
+    # family-safe subset and must NOT inherit 900051's sharpe / SIP / exit load
+    # / transaction status.
+    for code, name in ((900050, "Variant Fallback G6 - Regular Plan - Growth"),
+                       (900051, "Variant Fallback G6 - Regular Plan - Growth (re-issue)")):
+        cur.execute(
+            """
+            INSERT INTO mf.funds
+                (amfi_scheme_code, scheme_name, scheme_name_norm, amc_id, scheme_type,
+                 scheme_category, plan_type, option_type)
+            VALUES (%s, %s, %s, %s, 'OPEN_ENDED', %s, 'REGULAR', 'GROWTH')
+            """,
+            (code, name, name.upper(), _TEST_AMC_ID, _CAT),
+        )
+        cur.execute(
+            "INSERT INTO mf.fund_variants (amfi_scheme_code, group_key, base_scheme_name)"
+            " VALUES (%s, 'VFALLBACK-G6', %s)",
+            (code, name.split(" - ")[0]),
+        )
+    cur.execute(full, (900051, "77", _INCEPTION))
+    # 900051's code-specific fields (deliberately outside the family-safe list).
+    cur.execute(
+        """
+        UPDATE mf.fund_facts
+        SET sharpe_ratio = 2.0, is_sip_allowed = true, exit_load_value = 1.5,
+            transaction_status = 'ACTIVE'
+        WHERE amfi_scheme_code = %s
+        """,
+        (900051,),
+    )
+
+    # G7: IDCW periodicity isolation. 900060 (MONTHLY, no facts) must borrow
+    # 900062 (MONTHLY), not the lower-code 900061 (QUARTERLY).
+    for code, name, period in (
+        (900060, "Variant Fallback G7 - Regular Plan - IDCW", "MONTHLY"),
+        (900061, "Variant Fallback G7 - Regular Plan - IDCW (quarterly)", "QUARTERLY"),
+        (900062, "Variant Fallback G7 - Regular Plan - IDCW (monthly re-issue)", "MONTHLY"),
+    ):
+        cur.execute(
+            """
+            INSERT INTO mf.funds
+                (amfi_scheme_code, scheme_name, scheme_name_norm, amc_id, scheme_type,
+                 scheme_category, plan_type, option_type, periodicity)
+            VALUES (%s, %s, %s, %s, 'OPEN_ENDED', %s, 'REGULAR', 'IDCW', %s)
+            """,
+            (code, name, name.upper(), _TEST_AMC_ID, _CAT, period),
+        )
+        cur.execute(
+            "INSERT INTO mf.fund_variants (amfi_scheme_code, group_key, base_scheme_name)"
+            " VALUES (%s, 'VFALLBACK-G7', %s)",
+            (code, name.split(" - ")[0]),
+        )
+    cur.execute(full, (900061, "11", _INCEPTION))
+    cur.execute(full, (900062, "22", _INCEPTION))
+
+    # G8: cross-AMC family collision. 900070 (AMC 900000) and 900071 (AMC 900001)
+    # share a base name -> the same group_key, but different AMCs. They must stay
+    # two separate families in list_fund_families rather than merge into one.
+    for code, name, amc in (
+        (900070, "Variant Fallback G8 - Regular Plan - Growth", _TEST_AMC_ID),
+        (900071, "Variant Fallback G8 - Regular Plan - Growth", _TEST_AMC_ID_2),
+    ):
+        cur.execute(
+            """
+            INSERT INTO mf.funds
+                (amfi_scheme_code, scheme_name, scheme_name_norm, amc_id, scheme_type,
+                 scheme_category, plan_type, option_type)
+            VALUES (%s, %s, %s, %s, 'OPEN_ENDED', %s, 'REGULAR', 'GROWTH')
+            """,
+            (code, name, name.upper(), amc, _CAT),
+        )
+        cur.execute(
+            "INSERT INTO mf.fund_variants (amfi_scheme_code, group_key, base_scheme_name)"
+            " VALUES (%s, 'VFALLBACK-G8', %s)",
+            (code, name.split(" - ")[0]),
+        )
+
 
 @pytest.fixture
 def fallback_db(pg_dsn):
@@ -175,13 +271,16 @@ def fallback_db(pg_dsn):
             (list(_TEST_CODES),),
         )
         preexisting = [r["amfi_scheme_code"] for r in cur.fetchall()]
-        cur.execute("SELECT 1 FROM mf.amcs WHERE amc_id = %s", (_TEST_AMC_ID,))
-        amc_preexisting = cur.fetchone() is not None
+        cur.execute(
+            "SELECT amc_id FROM mf.amcs WHERE amc_id = ANY(%s::int[])",
+            ([_TEST_AMC_ID, _TEST_AMC_ID_2],),
+        )
+        amc_preexisting = [r["amc_id"] for r in cur.fetchall()]
         if preexisting or amc_preexisting:
             conn.rollback()
             pytest.fail(
                 "synthetic identifiers already exist "
-                f"(funds: {preexisting}, amc 900000 present: {amc_preexisting}); "
+                f"(funds: {preexisting}, amcs: {amc_preexisting}); "
                 "refusing to run against a database containing these codes"
             )
         _insert_fixture(cur)
@@ -252,6 +351,54 @@ def test_own_per_code_facts_survive_borrow(fallback_db):
     assert float(d["facts"]["sharpe_ratio"]) == 3.3  # its own, not 900030's
 
 
+def test_code_specific_fields_not_borrowed(fallback_db):
+    # 900050 has no facts and borrows from 900051. It must inherit the
+    # family-safe fields (aum, benchmark, manager, inception) but NOT the
+    # per-scheme fields 900051 carries (sharpe, SIP, exit load, txn status).
+    d = queries.fund_detail(fallback_db, 900050)
+    assert d is not None
+    assert d["facts_source_code"] == 900051
+    f = d["facts"]
+    # family-safe fields ARE borrowed
+    assert float(f["aum"]) == 77.0
+    assert f["benchmark_name"] == "TEST BENCHMARK"
+    assert f["fund_manager_name"] == "Test Manager"
+    assert f["inception_date"] == _INCEPTION.isoformat()
+    # code-specific fields are NOT inherited (stay null)
+    assert f.get("sharpe_ratio") is None
+    assert f.get("is_sip_allowed") is None
+    assert f.get("exit_load_value") is None
+    assert f.get("transaction_status") is None
+
+
+def test_periodicity_isolates_idcw_variants_detail(fallback_db):
+    # 900060 (MONTHLY, no facts) must borrow the MONTHLY re-issue 900062, not
+    # the lower-code QUARTERLY 900061.
+    d = queries.fund_detail(fallback_db, 900060)
+    assert d is not None
+    assert d["facts_source_code"] == 900062
+    assert float(d["facts"]["aum"]) == 22.0
+
+
+def test_periodicity_isolates_idcw_variants_batch(fallback_db):
+    res = queries.funds_batch(fallback_db, ["900060"])
+    f = res["funds"][0]
+    assert f["facts_source_code"] == 900062
+    assert float(f["aum"]) == 22.0
+
+
+def test_cross_amc_same_name_stays_separate_families(fallback_db):
+    # 900070 and 900071 share a base name (same group_key) but belong to
+    # different AMCs; the family view must keep them as two families, not merge
+    # them into one and inflate a single variant_count.
+    res = queries.list_fund_families(fallback_db, q="Variant Fallback G8")
+    assert res["total"] == 2
+    codes = {r["amfi_scheme_code"] for r in res["results"]}
+    assert codes == {900070, 900071}
+    for r in res["results"]:
+        assert r["variant_count"] == 1
+
+
 def test_no_group_and_no_facts_stays_blank(fallback_db):
     d = queries.fund_detail(fallback_db, 900005)
     assert d is not None
@@ -305,7 +452,10 @@ def test_rollback_leaves_no_rows(pg_dsn):
             (list(_TEST_CODES),),
         )
         assert cur.fetchone()[0] == 0
-        cur.execute("SELECT count(*) FROM mf.amcs WHERE amc_id = %s", (_TEST_AMC_ID,))
+        cur.execute(
+            "SELECT count(*) FROM mf.amcs WHERE amc_id = ANY(%s::int[])",
+            ([_TEST_AMC_ID, _TEST_AMC_ID_2],),
+        )
         assert cur.fetchone()[0] == 0
     finally:
         conn.close()
