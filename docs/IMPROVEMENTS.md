@@ -208,6 +208,12 @@ itself was fully enriched. The fund list also showed all 13 rows.
   window-function query (no N+1); each fund gains `facts_source_code`. The
   "has its own facts" test is one shared predicate (`_FACTS_IDENTITY_FIELDS`)
   across detail, batch, and both sibling SQL filters, so the endpoints agree.
+  The batch borrow is restricted to the family-safe subset of its fact keys
+  (`_BATCH_BORROW_FACTS_KEYS`), so `return_5year`/`sharpe_ratio`/`beta` —
+  per-code NAV-series metrics — are never inherited; and `benchmark_name` is
+  projected as `COALESCE(benchmark_name, benchmark)` (own row and borrowed
+  row), so a raw-benchmark-only row is treated as complete AND still surfaces
+  its benchmark.
 - Fund list defaults to scheme-family grouping: the index page now uses
   `/api/fund-families` by default (one row per family, `+N variants` badge,
   representative = GROWTH/REGULAR lowest code). The family identity is
@@ -233,8 +239,10 @@ itself was fully enriched. The fund list also showed all 13 rows.
   returns) never inherited, all-NULL row treated as missing, sibling usable via
   expense_ratio alone, own per-code Sharpe survives the borrow, Monthly IDCW
   never borrows a Quarterly sibling (detail + batch), same-named funds from
-  different AMCs stay separate families, no-group no-facts stays blank,
-  rollback leaves no rows.
+  different AMCs stay separate families, batch never inherits per-scheme
+  performance (Sharpe/return_5year/beta), a raw-benchmark-only row is treated
+  as complete and surfaced via benchmark_name (COALESCE) in batch, no-group
+  no-facts stays blank, rollback leaves no rows.
 
 ## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
 

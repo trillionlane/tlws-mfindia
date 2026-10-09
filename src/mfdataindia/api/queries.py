@@ -173,10 +173,18 @@ _BATCH_SIBLING_SOURCE_SQL = f"""
 """
 
 
-#: Facts columns served by /api/funds/batch; the fallback fills exactly these.
+#: Facts columns served by /api/funds/batch from a fund's OWN row.
 _BATCH_FACTS_KEYS = (
     "aum", "expense_ratio", "base_expense_ratio", "return_5year", "sharpe_ratio",
     "beta", "risk_level", "fund_manager_name", "benchmark_name", "inception_date",
+)
+
+#: What the batch fallback may actually BORROW from a sibling: the family-safe
+#: subset of _BATCH_FACTS_KEYS — the same policy fund_detail applies. Per-
+#: scheme performance metrics (return_5year, sharpe_ratio, beta) are computed
+#: from each code's own NAV series and are never inherited.
+_BATCH_BORROW_FACTS_KEYS = tuple(
+    k for k in _BATCH_FACTS_KEYS if k in _FAMILY_SAFE_FACTS_FIELDS
 )
 
 
@@ -788,7 +796,9 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
                a.amfi_amc_name,
                ff.aum, ff.expense_ratio, ff.base_expense_ratio, ff.return_5year,
                ff.sharpe_ratio, ff.beta, ff.risk_level, ff.fund_manager_name,
-               ff.benchmark, ff.benchmark_name, ff.inception_date,
+               ff.benchmark,
+               COALESCE(ff.benchmark_name, ff.benchmark) AS benchmark_name,
+               ff.inception_date,
                lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
@@ -849,12 +859,15 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         picked = conn.execute(_BATCH_SIBLING_SOURCE_SQL, {"codes": missing}).fetchall()
         facts_source = {int(r["for_code"]): int(r["source_code"]) for r in picked}
         if facts_source:
+            # Fetch only what the fallback is allowed to borrow (family-safe
+            # fields); benchmark_name is COALESCEd from the raw benchmark
+            # column, mirroring the main projection.
             source_facts = {
                 int(r["amfi_scheme_code"]): dict(r)
                 for r in conn.execute(
                     "SELECT amfi_scheme_code, aum, expense_ratio, base_expense_ratio,"
-                    " return_5year, sharpe_ratio, beta, risk_level, fund_manager_name,"
-                    " benchmark_name, inception_date"
+                    " COALESCE(benchmark_name, benchmark) AS benchmark_name,"
+                    " risk_level, fund_manager_name, inception_date"
                     " FROM mf.fund_facts WHERE amfi_scheme_code = ANY(%(codes)s::int[])",
                     {"codes": sorted(set(facts_source.values()))},
                 ).fetchall()
@@ -867,7 +880,10 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         if source_code is not None:
             borrowed = source_facts.get(source_code, {})
             r = dict(r)
-            for k in _BATCH_FACTS_KEYS:
+            # Same policy as fund_detail: only family-safe fields are borrowed;
+            # per-scheme performance (return_5year, sharpe_ratio, beta) stays
+            # the code's own value.
+            for k in _BATCH_BORROW_FACTS_KEYS:
                 if r.get(k) is None and borrowed.get(k) is not None:
                     r[k] = borrowed[k]
         fund = {

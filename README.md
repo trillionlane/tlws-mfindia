@@ -198,7 +198,10 @@ shown on a Direct scheme, a Monthly IDCW's data on a Quarterly one). Only the
 **family-safe fund-level fields** (AUM, expense ratio, benchmark, manager,
 inception, classification, ratings) are borrowed; per-scheme fields (SIP,
 transaction status, exit load, published returns, risk ratios) always stay the
-code's own. Among qualifying re-issues the lowest AMFI code is canonical.
+code's own — in both endpoints, including the batch's `return_5year`/`sharpe_ratio`/
+`beta`. Among qualifying re-issues the lowest AMFI code is canonical. In the
+batch response, `benchmark_name` is coalesced from the raw `benchmark` column
+so a benchmark-only row still renders.
 
 The web UI (index / fund / compare pages) has a **dark mode** toggle in the
 top bar: it follows the OS preference by default and persists your choice

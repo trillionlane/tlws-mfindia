@@ -21,7 +21,10 @@ Covers:
   * codes with no variant group and no facts stay blank (graceful);
   * /api/funds/batch applies the same fallback as the detail endpoint;
   * the family view keeps same-named funds from different AMCs as separate
-    families (group_key alone is a heuristic).
+    families (group_key alone is a heuristic);
+  * batch applies the same safe-field policy as detail (never inherits
+    per-scheme performance) and surfaces a raw-only benchmark via
+    benchmark_name.
 """
 
 from __future__ import annotations
@@ -46,6 +49,7 @@ _TEST_CODES = (
     900050, 900051,
     900060, 900061, 900062,
     900070, 900071,
+    900090,
 )
 _CAT = "Debt Scheme - Liquid Fund"
 _INCEPTION = date(2001, 1, 1)
@@ -250,6 +254,26 @@ def _insert_fixture(cur) -> None:
             (code, name.split(" - ")[0]),
         )
 
+    # G9: benchmark-only row. 900090 (standalone, no variant group) has only the
+    # raw `benchmark` column set — benchmark_name is NULL. It counts as having
+    # its own facts (no fallback), and batch must still surface the benchmark
+    # via benchmark_name (COALESCE).
+    cur.execute(
+        """
+        INSERT INTO mf.funds
+            (amfi_scheme_code, scheme_name, scheme_name_norm, amc_id, scheme_type,
+             scheme_category, plan_type, option_type)
+        VALUES (%s, 'Variant Fallback G9 - Regular Plan - Growth',
+                'VARIANT FALLBACK G9 - REGULAR PLAN - GROWTH', %s, 'OPEN_ENDED',
+                %s, 'REGULAR', 'GROWTH')
+        """,
+        (900090, _TEST_AMC_ID, _CAT),
+    )
+    cur.execute(
+        "INSERT INTO mf.fund_facts (amfi_scheme_code, benchmark, source)"
+        " VALUES (900090, 'RAW BENCH', 'AMC')",
+    )
+
 
 @pytest.fixture
 def fallback_db(pg_dsn):
@@ -369,6 +393,45 @@ def test_code_specific_fields_not_borrowed(fallback_db):
     assert f.get("is_sip_allowed") is None
     assert f.get("exit_load_value") is None
     assert f.get("transaction_status") is None
+
+
+def test_batch_does_not_borrow_code_specific_fields(fallback_db):
+    # 900050 (no facts) borrows 900051's family-safe facts. The batch endpoint
+    # must apply the SAME safe-field policy as fund_detail: 900051's Sharpe
+    # (2.0) is per-scheme and must not be inherited.
+    res = queries.funds_batch(fallback_db, ["900050"])
+    f = res["funds"][0]
+    assert f["facts_source_code"] == 900051
+    # family-safe fields ARE borrowed
+    assert float(f["aum"]) == 77.0
+    assert f["fund_manager_name"] == "Test Manager"
+    # per-scheme performance is not present (own value is null, not inherited)
+    assert f.get("sharpe_ratio") is None
+    assert "return_5year" not in f
+    assert "beta" not in f
+
+
+def test_batch_exposes_raw_benchmark_via_name(fallback_db):
+    # 900090 has only the raw benchmark column (benchmark_name NULL). It is
+    # treated as having its own facts (no fallback), and batch must still
+    # surface the benchmark via benchmark_name (COALESCE).
+    res = queries.funds_batch(fallback_db, ["900090"])
+    f = res["funds"][0]
+    assert f["facts_source_code"] is None
+    assert f["benchmark_name"] == "RAW BENCH"
+    assert "aum" not in f
+
+
+def test_detail_treats_raw_benchmark_as_own_facts(fallback_db):
+    # Detail side of the same case: raw-only benchmark makes the row usable
+    # (no fallback). Detail exposes both benchmark and benchmark_name raw, so
+    # no data is hidden.
+    d = queries.fund_detail(fallback_db, 900090)
+    assert d is not None
+    assert d["facts_source_code"] is None
+    assert d["facts"]["benchmark"] == "RAW BENCH"
+    assert d["facts"]["benchmark_name"] is None
+    assert d["facts"]["aum"] is None
 
 
 def test_periodicity_isolates_idcw_variants_detail(fallback_db):
