@@ -193,15 +193,20 @@ tranche, so `/fund/139889` rendered a blank facts sheet even though the fund
 itself was fully enriched. The fund list also showed all 13 rows.
 
 - `GET /api/funds/{code}`: when the exact code has no usable fund-level facts
-  (no row, or a row where AUM / expense ratio / benchmark / manager /
-  inception are all NULL), the facts are borrowed from the family's canonical
-  variant — GROWTH then REGULAR, then lowest AMFI code (same rule as
-  `list_fund_families`) — restricted to siblings with populated facts. The
-  response gains `facts_source_code` (borrowed code, `null` when the code has
-  its own facts). The code's own NAV/returns and any of its own non-NULL
-  fact fields always take precedence over borrowed values.
+  (no row, or a row where AUM / expense ratio / benchmark / benchmark_name /
+  manager / inception are all NULL), the facts are borrowed from a sibling
+  restricted to re-issues of the **same plan/option within the same AMC and
+  scheme category** (lowest AMFI code among those). `group_key` alone is not
+  trusted: it is a documented heuristic that can collide across AMCs, and
+  cross-plan/option borrowing would leak plan-specific facts (e.g. a Regular
+  expense ratio shown on a Direct scheme). The response gains
+  `facts_source_code` (borrowed code, `null` when the code has its own facts).
+  The code's own NAV/returns and any of its own non-NULL fact fields always
+  take precedence over borrowed values.
 - `GET /api/funds/batch`: same fallback per code, resolved in one batched
-  window-function query (no N+1); each fund gains `facts_source_code`.
+  window-function query (no N+1); each fund gains `facts_source_code`. The
+  "has its own facts" test is one shared predicate (`_FACTS_IDENTITY_FIELDS`)
+  across detail, batch, and both sibling SQL filters, so the endpoints agree.
 - Fund list defaults to scheme-family grouping: the index page now uses
   `/api/fund-families` by default (one row per family, `+N variants` badge,
   representative = GROWTH/REGULAR lowest code). The "Group by scheme family"
@@ -210,14 +215,16 @@ itself was fully enriched. The fund list also showed all 13 rows.
 - Fund detail shows a disclosure note in the Details section when facts are
   borrowed: "Fund-level facts are shown from sibling scheme #… (same fund
   family)".
-- Verified: `/fund/139889` now shows AUM ₹6,082 cr, ER 0.20%, benchmark,
-  manager, inception, risk (from `100538`) with its own NAV (₹18.10);
-  family list collapses 13 rows → 1 + 1 (separate Institutional scheme);
-  headless light/dark, no console errors.
-- Tests: `tests/test_variant_facts_fallback.py` — additive/safe on populated
-  DBs (900xxx code range, cleaned after): exact-code unchanged, canonical
-  variant picked (GROWTH/REGULAR, lowest code), all-NULL row treated as
-  missing, no-group no-facts stays blank, batch matches detail.
+- Verified: `/fund/139889` (REG/GROWTH) shows AUM ₹6,082 cr, ER 0.20%,
+  benchmark, manager, inception, risk (borrowed from `100538`, a same
+  plan/option re-issue) with its own NAV (₹18.10); a Direct plan of the same
+  family does **not** borrow Regular-plan facts.
+- Tests: `tests/test_variant_facts_fallback.py` — safe on populated DBs
+  (900xxx code range, single always-rolled-back transaction, fails if the
+  identifiers pre-exist): exact-code unchanged, same-plan/option re-issue
+  picked, Direct never borrows Regular (detail + batch), all-NULL row treated
+  as missing, sibling usable via expense_ratio alone, own per-code Sharpe
+  survives the borrow, no-group no-facts stays blank, rollback leaves no rows.
 
 ## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
 

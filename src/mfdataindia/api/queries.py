@@ -52,14 +52,30 @@ def _f(v: Any) -> Optional[float]:
 #: Fund-level factsheet fields. A facts row is "usable" — i.e. the scheme code
 #: actually has factsheet data of its own — when at least one of these is set.
 #: Everything else (returns, Sharpe, exit load, ...) is per-code enrichment and
-#: does not count as evidence that the factsheet covered this code.
+#: does not count as evidence that the factsheet covered this code. Both
+#: benchmark representations are listed so the detail and batch endpoints apply
+#: the identical "has its own facts" predicate (see :func:`_facts_usable_sql`
+#: and :func:`_facts_are_usable`) — previously detail checked ``benchmark``
+#: while batch checked ``benchmark_name`` and could disagree on a row carrying
+#: only one representation.
 _FACTS_IDENTITY_FIELDS = (
     "aum",
     "expense_ratio",
     "benchmark",
+    "benchmark_name",
     "fund_manager_name",
     "inception_date",
 )
+
+
+def _facts_usable_sql(alias: str) -> str:
+    """SQL fragment true when a facts row has at least one identity field.
+
+    Generated from ``_FACTS_IDENTITY_FIELDS`` so every endpoint (detail and
+    batch) shares one definition of "this scheme code has factsheet data of its
+    own". Never string-interpolated from user input.
+    """
+    return " OR ".join(f"{alias}.{k} IS NOT NULL" for k in _FACTS_IDENTITY_FIELDS)
 
 #: Full facts row as served by /api/funds/{code}; shared with the sibling
 #: fallback so both paths return the identical field set.
@@ -79,43 +95,55 @@ _FACTS_SELECT = """
     FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s
 """
 
-#: Best facts-bearing sibling in the same variant group. The ordering mirrors
-#: list_fund_families' representative rule (GROWTH/REGULAR first, lowest AMFI
-#: code) so the fallback and the family listing agree on the canonical variant.
-_SIBLING_SOURCE_SQL = """
+#: Best facts-bearing sibling of the requested scheme. A sibling must be a
+#: re-issue of the *same* plan/option within the *same* AMC and scheme
+#: classification, not merely share ``group_key``: the key is a documented
+#: heuristic (see load.normalise.base_scheme_key) and can collide across AMCs,
+#: and borrowing across plan/option would leak plan-specific facts (a Regular
+#: expense ratio or GROWTH minimum investment shown on a Direct/IDCW scheme).
+#: Among qualifying re-issues the lowest AMFI code (oldest tranche) is
+#: canonical.
+_SIBLING_SOURCE_SQL = f"""
     SELECT f.amfi_scheme_code AS source_code
     FROM mf.fund_variants v1
-    JOIN mf.fund_variants v2 ON v2.group_key = v1.group_key
+    JOIN mf.funds f1 ON f1.amfi_scheme_code = v1.amfi_scheme_code
+    JOIN mf.fund_variants v2
+         ON v2.group_key = v1.group_key
+        AND v2.amfi_scheme_code <> v1.amfi_scheme_code
     JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
     JOIN mf.fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
     WHERE v1.amfi_scheme_code = %(code)s
-      AND v2.amfi_scheme_code <> %(code)s
-      AND (ff.aum IS NOT NULL OR ff.expense_ratio IS NOT NULL
-           OR ff.benchmark IS NOT NULL OR ff.fund_manager_name IS NOT NULL
-           OR ff.inception_date IS NOT NULL)
-    ORDER BY (f.option_type = 'GROWTH') DESC, (f.plan_type = 'REGULAR') DESC,
-             f.amfi_scheme_code
+      AND f.plan_type = f1.plan_type
+      AND f.option_type = f1.option_type
+      AND f.amc_id = f1.amc_id
+      AND f.scheme_type = f1.scheme_type
+      AND f.scheme_category = f1.scheme_category
+      AND ({_facts_usable_sql("ff")})
+    ORDER BY f.amfi_scheme_code
     LIMIT 1
 """
 
 #: Batched variant of _SIBLING_SOURCE_SQL: one best source per requested code.
-_BATCH_SIBLING_SOURCE_SQL = """
+_BATCH_SIBLING_SOURCE_SQL = f"""
     SELECT for_code, source_code FROM (
         SELECT v1.amfi_scheme_code AS for_code,
                f.amfi_scheme_code AS source_code,
                row_number() OVER (PARTITION BY v1.amfi_scheme_code
-                  ORDER BY (f.option_type = 'GROWTH') DESC,
-                           (f.plan_type = 'REGULAR') DESC,
-                           f.amfi_scheme_code) AS rn
+                  ORDER BY f.amfi_scheme_code) AS rn
         FROM mf.fund_variants v1
-        JOIN mf.fund_variants v2 ON v2.group_key = v1.group_key
+        JOIN mf.funds f1 ON f1.amfi_scheme_code = v1.amfi_scheme_code
+        JOIN mf.fund_variants v2
+             ON v2.group_key = v1.group_key
+            AND v2.amfi_scheme_code <> v1.amfi_scheme_code
         JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
         JOIN mf.fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
         WHERE v1.amfi_scheme_code = ANY(%(codes)s::int[])
-          AND v2.amfi_scheme_code <> v1.amfi_scheme_code
-          AND (ff.aum IS NOT NULL OR ff.expense_ratio IS NOT NULL
-               OR ff.benchmark IS NOT NULL OR ff.fund_manager_name IS NOT NULL
-               OR ff.inception_date IS NOT NULL)
+          AND f.plan_type = f1.plan_type
+          AND f.option_type = f1.option_type
+          AND f.amc_id = f1.amc_id
+          AND f.scheme_type = f1.scheme_type
+          AND f.scheme_category = f1.scheme_category
+          AND ({_facts_usable_sql("ff")})
     ) t WHERE rn = 1
 """
 
@@ -138,15 +166,17 @@ def _facts_from_sibling(conn, code: int) -> tuple[Optional[dict], Optional[int]]
     """Resolve facts for a code that has none of its own.
 
     Schemes sharing a ``mf.fund_variants.group_key`` are re-issues of one
-    portfolio (plan/option tranches, or new AMFI codes under the same scheme
-    name). AMC factsheets only attribute facts to some of the codes in a
-    group, so a code without fund-level facts borrows the group's canonical
-    variant (GROWTH/REGULAR, lowest AMFI code — same rule as
-    :func:`list_fund_families`) restricted to variants whose facts are
-    actually populated.
+    portfolio. AMC factsheets only attribute facts to some of the codes in a
+    group, so a code without fund-level facts borrows a sibling's facts. A
+    sibling qualifies only if it is a re-issue of the same plan/option within
+    the same AMC and scheme classification (``group_key`` alone is a heuristic
+    and can collide across AMCs, and cross-plan/option borrowing would leak
+    plan-specific facts). Among qualifying re-issues the lowest AMFI code is
+    canonical. The borrowing code's own non-NULL facts always win over the
+    borrowed row (see :func:`fund_detail`).
 
-    Returns ``(facts_row, source_code)``; both ``None`` when the code has no
-    variant group, or the group holds no usable facts.
+    Returns ``(facts_row, source_code)``; both ``None`` when no qualifying
+    sibling carries usable facts.
     """
     src = conn.execute(_SIBLING_SOURCE_SQL, {"code": code}).fetchone()
     if not src:
@@ -726,7 +756,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
                a.amfi_amc_name,
                ff.aum, ff.expense_ratio, ff.base_expense_ratio, ff.return_5year,
                ff.sharpe_ratio, ff.beta, ff.risk_level, ff.fund_manager_name,
-               ff.benchmark_name, ff.inception_date,
+               ff.benchmark, ff.benchmark_name, ff.inception_date,
                lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
@@ -773,12 +803,13 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
 
     # Variant-group facts fallback (same rule as fund_detail): codes whose own
     # fund_facts row is empty borrow the family's canonical variant facts, so
-    # batch summaries match what the detail page shows.
+    # batch summaries match what the detail page shows. The "is it empty" test
+    # uses the same _FACTS_IDENTITY_FIELDS the detail endpoint uses (and the
+    # sibling SQL filters on), so both endpoints agree on what counts as "has
+    # its own facts".
     missing = [
         code for code in order
-        if all(by_code[code][k] is None
-               for k in ("aum", "expense_ratio", "benchmark_name",
-                         "fund_manager_name", "inception_date"))
+        if all(by_code[code][k] is None for k in _FACTS_IDENTITY_FIELDS)
     ]
     facts_source: dict[int, int] = {}
     source_facts: dict[int, dict[str, Any]] = {}

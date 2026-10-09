@@ -186,11 +186,15 @@ rows for programmatic consumers.
 
 **Variant-group facts fallback.** AMC factsheets attribute fund-level facts to
 only some codes of a family (e.g. a recent re-issue has none of its own).
-`/api/funds/{code}` and `/api/funds/batch` then borrow the family's canonical
-variant's facts — GROWTH/REGULAR, lowest AMFI code, restricted to variants
-with populated facts — and set `facts_source_code` to the borrowed code
-(`null` when the code has facts of its own). The fund's own NAV/returns and
-its own per-code enrichment always win over borrowed values.
+`/api/funds/{code}` and `/api/funds/batch` then borrow a sibling's facts, set
+`facts_source_code` to the borrowed code (`null` when the code has facts of
+its own), and always let the fund's own NAV/returns and per-code enrichment
+win over borrowed values. A sibling qualifies only if it is a re-issue of the
+**same plan/option within the same AMC and scheme category** — `group_key`
+alone is a heuristic (it can collide across AMCs) and cross-plan/option
+borrowing would leak plan-specific facts (e.g. a Regular expense ratio shown
+on a Direct scheme). Among qualifying re-issues the lowest AMFI code is
+canonical.
 
 The web UI (index / fund / compare pages) has a **dark mode** toggle in the
 top bar: it follows the OS preference by default and persists your choice
