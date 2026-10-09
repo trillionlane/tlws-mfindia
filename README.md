@@ -166,6 +166,7 @@ since every factsheet lists every live scheme).
 ```
 GET /api/stats                       coverage summary
 GET /api/funds?q=&amc=&category=&option=&page=&per_page=&sort=
+GET /api/fund-families?q=&amc=...    one row per scheme family (variants collapsed)
 GET /api/funds/batch?ids=            mixed AMFI codes + ISINs, max 50 per request
 GET /api/funds/{code}                full detail (identity, latest NAV, facts, variants)
 GET /api/funds/{code}/nav?years=     NAV series for the chart
@@ -174,6 +175,22 @@ GET /api/movers?period=&direction=&limit=   global top gainers/losers
 GET /api/movers/categories?period=&limit=   top-5 gainers AND losers per family
 GET /api/amcs · /api/categories · /api/options
 ```
+
+**Scheme-family de-duplication.** Same-named schemes often exist under several
+AMFI codes (plan/option tranches, new ISIN re-issues). `/api/fund-families`
+collapses each `fund_variants.group_key` into one row — the representative is
+the GROWTH/REGULAR variant with the lowest AMFI code — with a `variant_count`
+column. The web UI defaults to family mode (`?family=0` on the index page
+opts back into per-variant rows). `/api/funds` keeps serving exact per-code
+rows for programmatic consumers.
+
+**Variant-group facts fallback.** AMC factsheets attribute fund-level facts to
+only some codes of a family (e.g. a recent re-issue has none of its own).
+`/api/funds/{code}` and `/api/funds/batch` then borrow the family's canonical
+variant's facts — GROWTH/REGULAR, lowest AMFI code, restricted to variants
+with populated facts — and set `facts_source_code` to the borrowed code
+(`null` when the code has facts of its own). The fund's own NAV/returns and
+its own per-code enrichment always win over borrowed values.
 
 The web UI (index / fund / compare pages) has a **dark mode** toggle in the
 top bar: it follows the OS preference by default and persists your choice

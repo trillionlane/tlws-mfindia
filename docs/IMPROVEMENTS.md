@@ -183,6 +183,42 @@ clean. Default page height drops 5,167px → 3,853px (Details collapsed).
 - Registered **before** `/api/funds/{code}` — FastAPI matches in registration
   order and "batch" would 422 the int `{code}` parameter otherwise.
 
+## API: variant-group facts fallback + family default (done, 2026-10-09)
+
+**Why:** same-named schemes exist under multiple AMFI codes (re-issues), and
+AMC factsheets attribute fund-level facts to only *some* of the codes in a
+`fund_variants` group. E.g. "Franklin India Liquid Fund" has 13 codes; facts
+live on `100538`/`100546`/`100547`/`100548` but not on the newer `139889`
+tranche, so `/fund/139889` rendered a blank facts sheet even though the fund
+itself was fully enriched. The fund list also showed all 13 rows.
+
+- `GET /api/funds/{code}`: when the exact code has no usable fund-level facts
+  (no row, or a row where AUM / expense ratio / benchmark / manager /
+  inception are all NULL), the facts are borrowed from the family's canonical
+  variant — GROWTH then REGULAR, then lowest AMFI code (same rule as
+  `list_fund_families`) — restricted to siblings with populated facts. The
+  response gains `facts_source_code` (borrowed code, `null` when the code has
+  its own facts). The code's own NAV/returns and any of its own non-NULL
+  fact fields always take precedence over borrowed values.
+- `GET /api/funds/batch`: same fallback per code, resolved in one batched
+  window-function query (no N+1); each fund gains `facts_source_code`.
+- Fund list defaults to scheme-family grouping: the index page now uses
+  `/api/fund-families` by default (one row per family, `+N variants` badge,
+  representative = GROWTH/REGULAR lowest code). The "Group by scheme family"
+  toggle and `?family=0` opt back into per-variant rows. `/api/funds` itself
+  is unchanged — de-dup is served at the API level, not the UI.
+- Fund detail shows a disclosure note in the Details section when facts are
+  borrowed: "Fund-level facts are shown from sibling scheme #… (same fund
+  family)".
+- Verified: `/fund/139889` now shows AUM ₹6,082 cr, ER 0.20%, benchmark,
+  manager, inception, risk (from `100538`) with its own NAV (₹18.10);
+  family list collapses 13 rows → 1 + 1 (separate Institutional scheme);
+  headless light/dark, no console errors.
+- Tests: `tests/test_variant_facts_fallback.py` — additive/safe on populated
+  DBs (900xxx code range, cleaned after): exact-code unchanged, canonical
+  variant picked (GROWTH/REGULAR, lowest code), all-NULL row treated as
+  missing, no-group no-facts stays blank, batch matches detail.
+
 ## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
 
 - `DEFAULT_MIGRATIONS` was missing 008 and 010–013, so any DB built via
