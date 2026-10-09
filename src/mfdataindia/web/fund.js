@@ -621,10 +621,18 @@
   function renderFactsNote(f) {
     const fx = f.facts || {};
     const el = $("facts-note");
+    const notes = [];
+    if (f.facts_source_code) {
+      notes.push(
+        `Fund-level facts are shown from sibling scheme #${f.facts_source_code} `
+        + "(same fund family) — this scheme code has no factsheet of its own."
+      );
+    }
     const note = fx.exit_load && fx.exit_load.note ? fx.exit_load.note : "";
-    if (!note) { el.style.display = "none"; return; }
+    if (note) notes.push("Exit load note: " + note + (fx.exit_load.as_on_date ? ` (as of ${fx.exit_load.as_on_date})` : ""));
+    if (!notes.length) { el.style.display = "none"; return; }
     el.style.display = "";
-    el.textContent = "Exit load note: " + note + (fx.exit_load && fx.exit_load.as_on_date ? ` (as of ${fx.exit_load.as_on_date})` : "");
+    el.textContent = notes.join(" ");
   }
 
   // ---- projection calculator (SIP / lumpsum) ------------------------------

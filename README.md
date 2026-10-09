@@ -166,6 +166,7 @@ since every factsheet lists every live scheme).
 ```
 GET /api/stats                       coverage summary
 GET /api/funds?q=&amc=&category=&option=&page=&per_page=&sort=
+GET /api/fund-families?q=&amc=...    one row per scheme family (variants collapsed)
 GET /api/funds/batch?ids=            mixed AMFI codes + ISINs, max 50 per request
 GET /api/funds/{code}                full detail (identity, latest NAV, facts, variants)
 GET /api/funds/{code}/nav?years=     NAV series for the chart
@@ -174,6 +175,33 @@ GET /api/movers?period=&direction=&limit=   global top gainers/losers
 GET /api/movers/categories?period=&limit=   top-5 gainers AND losers per family
 GET /api/amcs · /api/categories · /api/options
 ```
+
+**Scheme-family de-duplication.** Same-named schemes often exist under several
+AMFI codes (plan/option tranches, new ISIN re-issues). `/api/fund-families`
+collapses each scheme family into one row — the family identity is the
+`fund_variants.group_key` **plus AMC and scheme classification** (the key alone
+is a heuristic that can collide across AMCs, so `variant_count` never mixes
+AMCs) — with the representative being the GROWTH/REGULAR variant of the lowest
+AMFI code. The web UI defaults to family mode (`?family=0` on the index page
+opts back into per-variant rows). `/api/funds` keeps serving exact per-code
+rows for programmatic consumers.
+
+**Variant-group facts fallback.** AMC factsheets attribute fund-level facts to
+only some codes of a family (e.g. a recent re-issue has none of its own).
+`/api/funds/{code}` and `/api/funds/batch` then borrow a sibling's facts and
+set `facts_source_code` to the borrowed code (`null` when the code has facts of
+its own). A sibling qualifies only if it is a re-issue of the **same
+plan/option/periodicity within the same AMC and scheme category** — `group_key`
+alone is a heuristic (it can collide across AMCs) and cross-plan/option/
+periodicity borrowing would leak variant-specific facts (a Regular expense ratio
+shown on a Direct scheme, a Monthly IDCW's data on a Quarterly one). Only the
+**family-safe fund-level fields** (AUM, expense ratio, benchmark, manager,
+inception, classification, ratings) are borrowed; per-scheme fields (SIP,
+transaction status, exit load, published returns, risk ratios) always stay the
+code's own — in both endpoints, including the batch's `return_5year`/`sharpe_ratio`/
+`beta`. Among qualifying re-issues the lowest AMFI code is canonical. In the
+batch response, `benchmark_name` is coalesced from the raw `benchmark` column
+so a benchmark-only row still renders.
 
 The web UI (index / fund / compare pages) has a **dark mode** toggle in the
 top bar: it follows the OS preference by default and persists your choice

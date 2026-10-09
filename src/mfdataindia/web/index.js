@@ -1,6 +1,6 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  const state = { q: "", amc: "", category: "", option: "", sort: "name", page: 1, per_page: 50, family: false };
+  const state = { q: "", amc: "", category: "", option: "", sort: "name", page: 1, per_page: 50, family: true };
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g,
@@ -52,7 +52,10 @@
     if (SORT_KEYS.includes(p.get("sort"))) state.sort = p.get("sort");
     const page = parseInt(p.get("page"), 10);
     if (page >= 1) state.page = page;
-    state.family = p.get("family") === "1";
+    // Family grouping (one row per scheme family) is the default; ?family=0
+    // opts back into per-variant rows.
+    const fp = p.get("family");
+    state.family = fp === null ? true : fp === "1";
   }
   function syncUrl() {
     const p = new URLSearchParams();
@@ -62,7 +65,7 @@
     if (state.option) p.set("opt", state.option);
     if (state.sort !== "name") p.set("sort", state.sort);
     if (state.page > 1) p.set("page", state.page);
-    if (state.family) p.set("family", "1");
+    p.set("family", state.family ? "1" : "0");
     const qs = p.toString();
     history.replaceState(null, "", qs ? "?" + qs : location.pathname);
   }
@@ -93,7 +96,7 @@
     if (state.category) $("f-cat").value = state.category;
     if (state.option) $("f-opt").value = state.option;
     if (state.sort !== "name") $("f-sort").value = state.sort;
-    if (state.family) $("f-family").checked = true;
+    $("f-family").checked = state.family;
     if (state.q) $("q").value = state.q;
   }
 

@@ -183,6 +183,67 @@ clean. Default page height drops 5,167px → 3,853px (Details collapsed).
 - Registered **before** `/api/funds/{code}` — FastAPI matches in registration
   order and "batch" would 422 the int `{code}` parameter otherwise.
 
+## API: variant-group facts fallback + family default (done, 2026-10-09)
+
+**Why:** same-named schemes exist under multiple AMFI codes (re-issues), and
+AMC factsheets attribute fund-level facts to only *some* of the codes in a
+`fund_variants` group. E.g. "Franklin India Liquid Fund" has 13 codes; facts
+live on `100538`/`100546`/`100547`/`100548` but not on the newer `139889`
+tranche, so `/fund/139889` rendered a blank facts sheet even though the fund
+itself was fully enriched. The fund list also showed all 13 rows.
+
+- `GET /api/funds/{code}`: when the exact code has no usable fund-level facts
+  (no row, or a row where AUM / expense ratio / benchmark / benchmark_name /
+  manager / inception are all NULL), the facts are borrowed from a sibling
+  restricted to re-issues of the **same plan/option/periodicity within the same
+  AMC and scheme category** (lowest AMFI code among those). `group_key` alone
+  is not trusted: it is a documented heuristic that can collide across AMCs,
+  and cross-plan/option/periodicity borrowing would leak variant-specific
+  facts. Only the **family-safe fund-level fields** (AUM, expense ratio,
+  benchmark, manager, inception, classification, ratings) are borrowed; per-
+  scheme fields (SIP, transaction status, exit load, published returns, risk
+  ratios) always stay the code's own. The response gains `facts_source_code`
+  (borrowed code, `null` when the code has its own facts).
+- `GET /api/funds/batch`: same fallback per code, resolved in one batched
+  window-function query (no N+1); each fund gains `facts_source_code`. The
+  "has its own facts" test is one shared predicate (`_FACTS_IDENTITY_FIELDS`)
+  across detail, batch, and both sibling SQL filters, so the endpoints agree.
+  The batch borrow is restricted to the family-safe subset of its fact keys
+  (`_BATCH_BORROW_FACTS_KEYS`), so `return_5year`/`sharpe_ratio`/`beta` —
+  per-code NAV-series metrics — are never inherited; and `benchmark_name` is
+  projected as `COALESCE(benchmark_name, benchmark)` (own row and borrowed
+  row), so a raw-benchmark-only row is treated as complete AND still surfaces
+  its benchmark.
+- Fund list defaults to scheme-family grouping: the index page now uses
+  `/api/fund-families` by default (one row per family, `+N variants` badge,
+  representative = GROWTH/REGULAR lowest code). The family identity is
+  `group_key` **plus AMC and scheme classification**, so same-named funds from
+  different AMCs stay separate and `variant_count` never mixes AMCs. The
+  "Group by scheme family" toggle and `?family=0` opt back into per-variant
+  rows. `/api/funds` itself is unchanged — de-dup is served at the API level,
+  not the UI.
+- Fund detail shows a disclosure note in the Details section when facts are
+  borrowed: "Fund-level facts are shown from sibling scheme #… (same fund
+  family)".
+- Verified: `/fund/139889` (REG/GROWTH) shows AUM ₹6,082 cr, ER 0.20%,
+  benchmark, manager, inception, risk (borrowed from `100538`, a same
+  plan/option re-issue) while keeping its **own** Sharpe and returns and
+  **not** inheriting `100538`'s exit load / SIP; a Direct plan of the same
+  family does **not** borrow Regular-plan facts; a Monthly IDCW does **not**
+  borrow a Quarterly sibling's facts.
+- Tests: `tests/test_variant_facts_fallback.py` — safe on populated DBs
+  (900xxx code range, single always-rolled-back transaction, fails if the
+  identifiers pre-exist; verified zero row-count change on the 14,368-scheme
+  dev DB): exact-code unchanged, same-plan/option re-issue picked, Direct never
+  borrows Regular (detail + batch), code-specific fields (SIP / exit load /
+  returns) never inherited, all-NULL row treated as missing, sibling usable via
+  expense_ratio alone, own per-code Sharpe survives the borrow, Monthly IDCW
+  never borrows a Quarterly sibling (detail + batch), same-named funds from
+  different AMCs stay separate families, batch never inherits per-scheme
+  performance (Sharpe/return_5year/beta), a raw-benchmark-only row is treated
+  as complete and surfaced via benchmark_name (COALESCE) in batch, no-group
+  no-facts stays blank, rollback leaves no rows.
+
 ## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
 
 - `DEFAULT_MIGRATIONS` was missing 008 and 010–013, so any DB built via
