@@ -59,3 +59,47 @@ def test_private_network_preflight_is_read_only_and_non_deploying() -> None:
     assert "gcloud run deploy" not in script
     assert "gcloud run jobs execute" not in script
     assert "roles/run.invoker" not in script
+
+
+def test_association_writer_is_separate_private_and_default_off() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
+
+    assert "ASSOCIATION_SERVICE_NAME: tlws-mf-data-association-writer-dev" in workflow
+    assert "tlws-mf-data-association-writer-dsn-dev:latest" in workflow
+    assert "mfdataindia.api.association_app:create_association_app" in workflow
+    assert "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=false" in workflow
+    assert "--ingress=internal" in workflow
+    assert "--no-allow-unauthenticated" in workflow
+    assert "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" in workflow
+    assert "([$insights] | sort)" in workflow
+
+
+def test_association_activation_is_manual_exact_sha_bound() -> None:
+    workflow = (
+        ROOT / ".github" / "workflows" / "enable-association-writes-dev.yml"
+    ).read_text()
+
+    assert "workflow_dispatch:" in workflow
+    assert "push:" not in workflow
+    assert "confirm_git_sha" in workflow
+    assert "ENABLE_ASSOCIATION_WRITES" in workflow
+    assert "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=true" in workflow
+    assert "--allow-unauthenticated" not in workflow
+    assert 'test "$deployed_sha" = "${{ inputs.confirm_git_sha }}"' in workflow
+
+
+def test_association_writer_gets_dedicated_identity_and_database_principal() -> None:
+    provision = (ROOT / "scripts" / "provision_dev_infra.sh").read_text()
+    migration = (ROOT / "sql" / "018_fund_family_association_tags.sql").read_text()
+
+    assert "tlws-mf-data-association-writer-dev" in provision
+    assert "mfdata_association_writer" in provision
+    assert "tlws-mf-data-association-writer-dsn-dev" in provision
+    assert "GRANT SELECT ON mf.fund_family TO mfdata_association_writer" in migration
+    assert "GRANT SELECT, INSERT ON mf.fund_family_association_tags" in migration
+    assert "DELETE ON mf.fund_family_association_tags" not in migration
+
+
+def test_supervised_refresh_is_explicitly_a_full_snapshot_candidate() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "refresh-nav-dev.yml").read_text()
+    assert "MFDATAINDIA_SNAPSHOT_SCOPE=FULL" in workflow

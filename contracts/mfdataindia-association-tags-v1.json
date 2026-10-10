@@ -1,0 +1,351 @@
+{
+  "components": {
+    "schemas": {
+      "AssociationConflict": {
+        "properties": {
+          "current_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "AssociationConflict",
+        "type": "object"
+      },
+      "AssociationTag": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "const": "trillion-insights",
+            "title": "Source",
+            "type": "string"
+          },
+          "type": {
+            "const": "scheme_alias",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "type",
+          "source"
+        ],
+        "title": "AssociationTag",
+        "type": "object"
+      },
+      "AssociationTagMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/AssociationTag"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_version",
+          "tags"
+        ],
+        "title": "AssociationTagMutation",
+        "type": "object"
+      },
+      "AssociationTagMutationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "added": {
+            "items": {
+              "$ref": "#/components/schemas/AssociationTag"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "previous_version": {
+            "minimum": 0.0,
+            "title": "Previous Version",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/AssociationTag"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tlws_mf_id": {
+            "title": "Tlws Mf Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tlws_mf_id",
+          "version",
+          "tags",
+          "previous_version",
+          "added"
+        ],
+        "title": "AssociationTagMutationResponse",
+        "type": "object"
+      },
+      "AssociationTagState": {
+        "additionalProperties": false,
+        "properties": {
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/AssociationTag"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tlws_mf_id": {
+            "title": "Tlws Mf Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tlws_mf_id",
+          "version",
+          "tags"
+        ],
+        "title": "AssociationTagState",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "MFDataIndia Association Tags",
+    "version": "1.0.0",
+    "x-contract-id": "mfdataindia-association-tags-v1",
+    "x-contract-version": 1
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/fund-families/{tlws_mf_id}/association-tags": {
+      "get": {
+        "operationId": "get_association_tags_api_fund_families__tlws_mf_id__association_tags_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tlws_mf_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tlws Mf Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssociationTagState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Association Tags"
+      },
+      "post": {
+        "operationId": "post_association_tags_api_fund_families__tlws_mf_id__association_tags_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tlws_mf_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tlws Mf Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssociationTagMutation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssociationTagMutationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssociationConflict"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "Association writes are disabled"
+          }
+        },
+        "summary": "Post Association Tags"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Api Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    }
+  },
+  "x-mfdata-authentication": "google-oidc-workload-identity",
+  "x-mfdata-browser-access": false,
+  "x-mfdata-private": true
+}

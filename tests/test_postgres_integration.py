@@ -28,6 +28,7 @@ from fastapi.testclient import TestClient
 
 from mfdataindia.api import queries
 from mfdataindia.api.app import create_app
+from mfdataindia.api.association_app import create_association_app
 from mfdataindia.api.queries import FAMILY_ORDER
 from mfdataindia.load.amfi_to_store import fund_rows, load_parsed_amfi
 from mfdataindia.store.postgres import DEFAULT_MIGRATIONS, PostgresStore
@@ -35,7 +36,18 @@ from mfdataindia.store.postgres import DEFAULT_MIGRATIONS, PostgresStore
 pytestmark = pytest.mark.postgres
 
 _TABLES_TO_CLEAR = (
-    "ingest_checkpoints", "quality_flags", "fund_variants", "nav_history", "funds", "amcs",
+    "association_tag_idempotency",
+    "fund_family_association_tags",
+    "fund_family_association_state",
+    "fund_family",
+    "source_snapshot_runs",
+    "source_metadata",
+    "ingest_checkpoints",
+    "quality_flags",
+    "fund_variants",
+    "nav_history",
+    "funds",
+    "amcs",
 )
 
 
@@ -47,6 +59,186 @@ def test_api_health_uses_the_postgres_pool(pg_dsn):
     assert response.status_code == 200
     assert response.json()["ok"] is True
     assert "PostgreSQL 18" in response.json()["db"]
+
+
+def test_private_association_writer_is_idempotent_and_versioned(pg_dsn, repo_root):
+    if not pg_dsn:
+        pytest.skip("MF_TEST_DSN not set")
+    with PostgresStore(pg_dsn) as setup:
+        setup.apply_migrations(Path(repo_root) / "sql")
+        with setup.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO mf.fund_family
+                    (tlws_mf_id, group_key, base_scheme_name, slug, tags)
+                VALUES ('11111111-1111-1111-1111-111111111111', 'API-11-GROUP', 'API 11 Fund',
+                        'api-11-fund', ARRAY['equity'])
+                ON CONFLICT (tlws_mf_id) DO NOTHING
+                """
+            )
+
+    payload = {
+        "expected_version": 0,
+        "tags": [
+            {
+                "value": "Nippon India Taiwan Equity Fund",
+                "type": "scheme_alias",
+                "source": "trillion-insights",
+            }
+        ],
+    }
+    try:
+        with TestClient(create_association_app(pg_dsn, writes_enabled=True)) as client:
+            first = client.post(
+                "/api/fund-families/11111111-1111-1111-1111-111111111111/association-tags",
+                headers={"Idempotency-Key": "api-11-stable-001"},
+                json=payload,
+            )
+            assert first.status_code == 201
+            assert first.json() == {
+                "tlws_mf_id": "11111111-1111-1111-1111-111111111111",
+                "previous_version": 0,
+                "version": 1,
+                "added": [
+                    {
+                        "value": "nippon-india-taiwan-equity-fund",
+                        "type": "scheme_alias",
+                        "source": "trillion-insights",
+                    }
+                ],
+                "tags": [
+                    {
+                        "value": "nippon-india-taiwan-equity-fund",
+                        "type": "scheme_alias",
+                        "source": "trillion-insights",
+                    }
+                ],
+            }
+
+            replay = client.post(
+                "/api/fund-families/11111111-1111-1111-1111-111111111111/association-tags",
+                headers={"Idempotency-Key": "api-11-stable-001"},
+                json=payload,
+            )
+            assert replay.status_code == 201
+            assert replay.json() == first.json()
+
+            current = client.get(
+                "/api/fund-families/11111111-1111-1111-1111-111111111111/association-tags"
+            )
+            assert current.status_code == 200
+            assert current.json()["version"] == 1
+
+            no_op_payload = dict(payload, expected_version=1)
+            no_op = client.post(
+                "/api/fund-families/11111111-1111-1111-1111-111111111111/association-tags",
+                headers={"Idempotency-Key": "api-11-stable-002"},
+                json=no_op_payload,
+            )
+            assert no_op.status_code == 200
+            assert no_op.json()["version"] == 1
+            assert no_op.json()["added"] == []
+
+            stale = client.post(
+                "/api/fund-families/11111111-1111-1111-1111-111111111111/association-tags",
+                headers={"Idempotency-Key": "api-11-stable-003"},
+                json=payload,
+            )
+            assert stale.status_code == 409
+            assert stale.json()["current_version"] == 1
+
+            reused = client.post(
+                "/api/fund-families/11111111-1111-1111-1111-111111111111/association-tags",
+                headers={"Idempotency-Key": "api-11-stable-001"},
+                json={
+                    "expected_version": 1,
+                    "tags": [
+                        {
+                            "value": "different-alias",
+                            "type": "scheme_alias",
+                            "source": "trillion-insights",
+                        }
+                    ],
+                },
+            )
+            assert reused.status_code == 409
+    finally:
+        with PostgresStore(pg_dsn) as cleanup, cleanup.transaction() as conn:
+            conn.execute(
+                "DELETE FROM mf.association_tag_idempotency WHERE idempotency_key LIKE 'api-11-stable-%'"
+            )
+            conn.execute(
+                "DELETE FROM mf.fund_family_association_tags WHERE tlws_mf_id = '11111111-1111-1111-1111-111111111111'"
+            )
+            conn.execute(
+                "DELETE FROM mf.fund_family_association_state WHERE tlws_mf_id = '11111111-1111-1111-1111-111111111111'"
+            )
+            conn.execute(
+                "DELETE FROM mf.fund_family WHERE tlws_mf_id = '11111111-1111-1111-1111-111111111111'"
+            )
+
+
+def test_association_writer_migration_grants_only_required_privileges(pg_dsn, repo_root):
+    if not pg_dsn:
+        pytest.skip("MF_TEST_DSN not set")
+    psycopg = pytest.importorskip("psycopg")
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    admin = psycopg.connect(pg_dsn, autocommit=True)
+    role = "mfdata_association_writer"
+    dbname = f"mfdata_association_privileges_{os.getpid()}"
+    preexisting = admin.execute(
+        "SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)
+    ).fetchone()
+    if preexisting:
+        admin.close()
+        pytest.skip(f"role {role} already exists; refusing to alter shared cluster state")
+    admin.execute(f'CREATE ROLE "{role}" NOLOGIN')
+    admin.execute(f'CREATE DATABASE "{dbname}"')
+    params = conninfo_to_dict(pg_dsn)
+    params["dbname"] = dbname
+    scratch_dsn = make_conninfo(**params)
+    try:
+        with PostgresStore(scratch_dsn) as scratch:
+            scratch.apply_migrations(Path(repo_root) / "sql")
+            conn = scratch.connect()
+            checks = conn.execute(
+                """
+                SELECT
+                    has_table_privilege(%s, 'mf.fund_family', 'SELECT') AS family_select,
+                    has_table_privilege(%s, 'mf.fund_family', 'UPDATE') AS family_update,
+                    has_table_privilege(%s, 'mf.fund_family_association_state', 'SELECT') AS state_select,
+                    has_table_privilege(%s, 'mf.fund_family_association_state', 'INSERT') AS state_insert,
+                    has_column_privilege(%s, 'mf.fund_family_association_state', 'version', 'UPDATE') AS version_update,
+                    has_column_privilege(%s, 'mf.fund_family_association_state', 'tlws_mf_id', 'UPDATE') AS id_update,
+                    has_table_privilege(%s, 'mf.fund_family_association_tags', 'INSERT') AS tag_insert,
+                    has_table_privilege(%s, 'mf.fund_family_association_tags', 'DELETE') AS tag_delete,
+                    has_table_privilege(%s, 'mf.association_tag_idempotency', 'INSERT') AS key_insert,
+                    has_table_privilege(%s, 'mf.association_tag_idempotency', 'UPDATE') AS key_update
+                """,
+                (role,) * 10,
+            ).fetchone()
+        assert checks == {
+            "family_select": True,
+            "family_update": False,
+            "state_select": True,
+            "state_insert": True,
+            "version_update": True,
+            "id_update": False,
+            "tag_insert": True,
+            "tag_delete": False,
+            "key_insert": True,
+            "key_update": False,
+        }
+    finally:
+        admin.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = %s AND pid <> pg_backend_pid()",
+            (dbname,),
+        )
+        admin.execute(f'DROP DATABASE IF EXISTS "{dbname}"')
+        admin.execute(f'DROP ROLE IF EXISTS "{role}"')
+        admin.close()
 
 
 @pytest.fixture(scope="module")
@@ -156,6 +348,53 @@ def test_migrations_are_idempotent(store, repo_root):
     assert [row["migration_name"] for row in ledger] == sorted(DEFAULT_MIGRATIONS)
     # A second runner pass verifies checksums and performs no schema replay.
     assert store.apply_migrations(Path(repo_root) / "sql") == []
+
+
+def test_snapshot_run_is_linked_to_exact_fetch_and_preserves_notes(store):
+    fetch_id = store.record_fetch(
+        {
+            "source": "AMFI",
+            "endpoint": "fixture://snapshot-run",
+            "entity_kind": "LATEST_NAV",
+            "entity_key": "2026-10-10",
+            "acquisition": "FIXTURE",
+            "content_hash": "c" * 64,
+            "records_in": 1_000,
+            "records_ok": 1_000,
+            "records_quarantined": 0,
+            "notes": {
+                "snapshot_scope": "FULL",
+                "snapshot_date": "2026-10-10",
+                "latest_nav_date": "2026-10-11",
+            },
+        }
+    )
+    snapshot = store.record_snapshot_run(
+        source_fetch_id=fetch_id,
+        source="AMFI",
+        snapshot_scope="FULL",
+        snapshot_date=date(2026, 10, 10),
+        latest_nav_date=date(2026, 10, 11),
+        content_hash="c" * 64,
+        records_in=1_000,
+        records_ok=1_000,
+        records_quarantined=0,
+        distinct_amcs=25,
+        distinct_categories=40,
+    )
+    assert snapshot["source_fetch_id"] == fetch_id
+    assert store.latest_full_snapshot()["snapshot_date"] == date(2026, 10, 10)
+    notes = store.connect().execute(
+        "SELECT notes FROM mf.source_metadata WHERE fetch_id = %s", (fetch_id,)
+    ).fetchone()["notes"]
+    assert notes == {
+        "snapshot_scope": "FULL",
+        "snapshot_date": "2026-10-10",
+        "latest_nav_date": "2026-10-11",
+    }
+    with store.transaction() as conn:
+        conn.execute("DELETE FROM mf.source_snapshot_runs WHERE source_fetch_id = %s", (fetch_id,))
+        conn.execute("DELETE FROM mf.source_metadata WHERE fetch_id = %s", (fetch_id,))
 
 
 def test_load_populates_every_table(store, sample_schemes):

@@ -171,9 +171,10 @@ def baseline_migrations(*, env: dict[str, str]) -> None:
 def apply_runtime_grants(*, env: dict[str, str]) -> None:
     grants = """
 BEGIN;
-GRANT CONNECT ON DATABASE mfdataindia TO mfdata_app, mfdata_ingest;
-GRANT USAGE ON SCHEMA mf TO mfdata_app, mfdata_ingest;
+GRANT CONNECT ON DATABASE mfdataindia TO mfdata_app, mfdata_ingest, mfdata_association_writer;
+GRANT USAGE ON SCHEMA mf TO mfdata_app, mfdata_ingest, mfdata_association_writer;
 GRANT SELECT ON ALL TABLES IN SCHEMA mf TO mfdata_app;
+GRANT SELECT ON mf.fund_family TO mfdata_association_writer;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA mf TO mfdata_ingest;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA mf TO mfdata_ingest;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mf TO mfdata_app, mfdata_ingest;

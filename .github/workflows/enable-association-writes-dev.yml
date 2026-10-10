@@ -1,0 +1,101 @@
+name: Enable MFDataIndia Association Writes DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_service:
+        description: "Type tlws-mf-data-association-writer-dev"
+        required: true
+        type: string
+      confirm_git_sha:
+        description: "Type the deployed full Git SHA"
+        required: true
+        type: string
+      confirm_enable:
+        description: "Type ENABLE_ASSOCIATION_WRITES"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-association-writer-dev
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  SERVICE_NAME: tlws-mf-data-association-writer-dev
+  WRITER_SERVICE_ACCOUNT: tlws-mf-data-association-writer-dev@trillionlane-dev.iam.gserviceaccount.com
+  INSIGHTS_RUNTIME_SERVICE_ACCOUNT: trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
+
+jobs:
+  enable:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Validate explicit activation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+          test "${{ inputs.confirm_service }}" = "$SERVICE_NAME"
+          test "${{ inputs.confirm_enable }}" = "ENABLE_ASSOCIATION_WRITES"
+          [[ "${{ inputs.confirm_git_sha }}" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REPOSITORY_ID" = "1403671867"
+          test "$GITHUB_REF" = "refs/heads/main"
+
+      - id: auth
+        name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Enable the exact deployed writer revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ vars.GCP_PROJECT_ID }}" = "$EXPECTED_PROJECT"
+          test "${{ vars.GCP_REGION }}" = "$EXPECTED_REGION"
+          before="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$before")"
+          test "$deployed_sha" = "${{ inputs.confirm_git_sha }}"
+          test "$(jq -er '.spec.template.spec.serviceAccountName' <<<"$before")" = "$WRITER_SERVICE_ACCOUNT"
+          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$before" >/dev/null
+          gcloud run services update "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --update-env-vars=MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=true \
+            --quiet
+          after="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED") | .value' <<<"$after")" = "true"
+          test "$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$after")" = "$deployed_sha"
+          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$after" >/dev/null
+          jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$after" >/dev/null
+          policy="$(gcloud run services get-iam-policy "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          jq -e --arg insights "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
+            '([.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | sort) == ([$insights] | sort)' \
+            <<<"$policy" >/dev/null
+          service_url="$(jq -er '.status.url' <<<"$after")"
+          external_status="$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$service_url/api/health" || true)"
+          case "$external_status" in
+            2*) echo "Association writer unexpectedly reachable from public runner: HTTP $external_status" >&2; exit 1 ;;
+          esac
+          echo "Association writes enabled for deployed SHA $deployed_sha"

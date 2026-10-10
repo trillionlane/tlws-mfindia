@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sys
 from dataclasses import fields
@@ -32,6 +33,16 @@ log = logging.getLogger("daily_refresh")
 IST = ZoneInfo("Asia/Kolkata")
 SOURCE_ENTITY_KIND = "LATEST_NAV"
 NEXT_DAY_NAV_CATEGORIES = frozenset({"LIQUID FUND", "OVERNIGHT FUND"})
+FULL_SNAPSHOT_PRIOR_RATIO = 0.98
+FULL_SNAPSHOT_INITIAL_RATIO = 0.90
+
+
+def snapshot_scope() -> str:
+    """Return the explicitly configured lifecycle scope for this run."""
+    value = os.environ.get("MFDATAINDIA_SNAPSHOT_SCOPE", "FULL").strip().upper()
+    if value not in {"FULL", "PARTIAL"}:
+        raise RuntimeError("MFDATAINDIA_SNAPSHOT_SCOPE must be FULL or PARTIAL")
+    return value
 
 
 def permits_next_day_nav(scheme: AmfiScheme, *, as_of: date) -> bool:
@@ -102,6 +113,57 @@ def validate_feed(schemes: Sequence[AmfiScheme], report: ParseReport, *, as_of: 
         )
 
     return max(scheme.nav_date for scheme in dated_schemes)
+
+
+def validate_full_snapshot_completeness(
+    schemes: Sequence[AmfiScheme],
+    report: ParseReport,
+    *,
+    before: dict[str, Any],
+    previous_full: dict[str, Any] | None,
+) -> dict[str, int | float]:
+    """Fail closed when a purported FULL feed looks materially truncated.
+
+    The first governed run is checked against the restored database manifest.
+    Once a FULL run has committed, its observed coverage becomes the tighter
+    baseline.  This is a truncation guard, not a promise that every historical
+    database row must appear forever.
+    """
+    current = {
+        "records_ok": len(schemes),
+        "distinct_amcs": int(report.distinct_amcs),
+        "distinct_categories": int(report.distinct_categories),
+    }
+    if previous_full:
+        baseline = {
+            "records_ok": int(previous_full["records_ok"]),
+            "distinct_amcs": int(previous_full["distinct_amcs"]),
+            "distinct_categories": int(previous_full["distinct_categories"]),
+        }
+        ratio = FULL_SNAPSHOT_PRIOR_RATIO
+    else:
+        baseline = {
+            "records_ok": int(before["funds"]),
+            "distinct_amcs": int(before["amcs"]),
+            "distinct_categories": int(before["categories"]),
+        }
+        ratio = FULL_SNAPSHOT_INITIAL_RATIO
+
+    shortfalls = {
+        key: {
+            "actual": current[key],
+            "minimum": max(1, math.ceil(baseline[key] * ratio)),
+            "baseline": baseline[key],
+        }
+        for key in current
+        if current[key] < max(1, math.ceil(baseline[key] * ratio))
+    }
+    if shortfalls:
+        raise RuntimeError(
+            "purported FULL AMFI snapshot failed completeness guard: "
+            f"ratio={ratio} shortfalls={shortfalls!r}"
+        )
+    return {**current, "baseline_ratio": ratio}
 
 
 def integrity_manifest(store: PostgresStore) -> dict[str, Any]:
@@ -185,6 +247,7 @@ def main() -> int:
         if os.environ.get("REFRESH_AS_OF_DATE")
         else datetime.now(IST).date()
     )
+    run_scope = snapshot_scope()
 
     client = AmfiClient(min_delay=0.0, max_retries=0, timeout=120.0)
     fetched = client.fetch_navall()
@@ -197,24 +260,41 @@ def main() -> int:
     store = PostgresStore(dsn)
     with store:
         before = integrity_manifest(store)
+        previous_full = store.latest_full_snapshot()
+        completeness = None
+        if run_scope == "FULL":
+            completeness = validate_full_snapshot_completeness(
+                schemes,
+                parse_report,
+                before=before,
+                previous_full=previous_full,
+            )
         # One outer transaction makes data, provenance, family identity, exact
         # summary and integrity validation a single success-or-rollback unit.
         with store.transaction():
             load_report = load_parsed_amfi(
                 store,
                 schemes,
-                source_date=feed_date,
+                # Presence is observed on the IST fetch date. It is not the
+                # maximum NAV date: AMFI legitimately includes tomorrow-dated
+                # liquid/overnight NAVs in today's snapshot.
+                source_date=as_of,
                 include_nav=False,
             )
             load_report["nav"] = store.upsert_nav(nav_rows(in_scope_schemes)).as_dict()
             family_report = build_fund_family(store)
-            store.record_fetch(
-                fetched.as_source_metadata("AMFI", SOURCE_ENTITY_KIND, feed_date.isoformat())
+            source_fetch_id = store.record_fetch(
+                fetched.as_source_metadata("AMFI", SOURCE_ENTITY_KIND, as_of.isoformat())
                 | {
                     "records_in": len(schemes),
                     "records_ok": len(schemes),
                     "records_quarantined": parse_report.quarantined,
                     "duration_ms": fetched.duration_ms,
+                    "notes": {
+                        "snapshot_scope": run_scope,
+                        "snapshot_date": as_of.isoformat(),
+                        "latest_nav_date": feed_date.isoformat(),
+                    },
                 }
             )
             after = integrity_manifest(store)
@@ -233,6 +313,20 @@ def main() -> int:
             ):
                 raise RuntimeError(f"post-refresh integrity checks failed: {after!r}")
 
+            snapshot_run = store.record_snapshot_run(
+                source_fetch_id=source_fetch_id,
+                source="AMFI",
+                snapshot_scope=run_scope,
+                snapshot_date=as_of,
+                latest_nav_date=feed_date,
+                content_hash=fetched.content_sha256,
+                records_in=parse_report.data_rows,
+                records_ok=len(schemes),
+                records_quarantined=parse_report.quarantined,
+                distinct_amcs=parse_report.distinct_amcs,
+                distinct_categories=parse_report.distinct_categories,
+            )
+
             summary = store.refresh_dataset_summary(
                 "daily_amfi_refresh",
                 source_content_hash=fetched.content_sha256,
@@ -247,6 +341,10 @@ def main() -> int:
         "status": "DAILY_REFRESH_OK",
         "as_of": as_of,
         "feed_date": feed_date,
+        "snapshot_scope": run_scope,
+        "snapshot_date": as_of,
+        "snapshot_run": snapshot_run,
+        "completeness": completeness,
         "fetch": {
             "http_status": fetched.http_status,
             "content_sha256": fetched.content_sha256,

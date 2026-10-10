@@ -24,6 +24,8 @@ env:
   EXPECTED_REGION: asia-south1
   IMAGE_NAME: mfdataindia
   SERVICE_NAME: tlws-mf-data-dev
+  ASSOCIATION_SERVICE_NAME: tlws-mf-data-association-writer-dev
+  ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-association-writer-dev@trillionlane-dev.iam.gserviceaccount.com
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
@@ -57,11 +59,12 @@ jobs:
           WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
           RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}
+          ASSOCIATION_WRITER_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_ASSOCIATION_WRITER_SERVICE_ACCOUNT }}
           MIGRATE_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}
           CLOUD_SQL_INSTANCE: ${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}
         run: |
           set -euo pipefail
-          for name in PROJECT_ID REGION ARTIFACT_REPOSITORY WORKLOAD_IDENTITY_PROVIDER DEPLOY_SERVICE_ACCOUNT RUNTIME_SERVICE_ACCOUNT MIGRATE_SERVICE_ACCOUNT CLOUD_SQL_INSTANCE; do
+          for name in PROJECT_ID REGION ARTIFACT_REPOSITORY WORKLOAD_IDENTITY_PROVIDER DEPLOY_SERVICE_ACCOUNT RUNTIME_SERVICE_ACCOUNT ASSOCIATION_WRITER_SERVICE_ACCOUNT MIGRATE_SERVICE_ACCOUNT CLOUD_SQL_INSTANCE; do
             test -n "${!name:-}" || { echo "Missing mf-data-dev variable: $name" >&2; exit 1; }
           done
           test "$PROJECT_ID" = "$EXPECTED_PROJECT"
@@ -69,6 +72,7 @@ jobs:
           test "$ARTIFACT_REPOSITORY" = "tlws-mf-data-dev"
           test "$CLOUD_SQL_INSTANCE" = "trillionlane-dev:asia-south1:tlws-mf-data-dev"
           test "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" = "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com"
+          test "$ASSOCIATION_WRITER_SERVICE_ACCOUNT" = "$ASSOCIATION_RUNTIME_SERVICE_ACCOUNT"
           test "$VPC_NETWORK" = "tl-dev-vpc"
           test "$VPC_SUBNET" = "tl-dev-mumbai"
           test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
@@ -168,6 +172,54 @@ jobs:
             --labels=product=mfdataindia,environment=dev,managed-by=github-actions \
             --quiet
 
+      - name: Deploy private association writer disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run deploy "$ASSOCIATION_SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="$ASSOCIATION_RUNTIME_SERVICE_ACCOUNT" \
+            --execution-environment=gen2 \
+            --ingress=internal \
+            --no-allow-unauthenticated \
+            --add-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-association-writer-dsn-dev:latest \
+            --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$GITHUB_SHA,MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=false \
+            --command=/app/.venv/bin/uvicorn \
+            --args=mfdataindia.api.association_app:create_association_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
+            --cpu=1 \
+            --memory=512Mi \
+            --concurrency=20 \
+            --min=0 \
+            --max=2 \
+            --timeout=60 \
+            --labels=product=mfdataindia,component=association-writer,environment=dev,managed-by=github-actions \
+            --quiet
+
+      - name: Reconcile private association-writer invoker policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          policy="$(gcloud run services get-iam-policy "$ASSOCIATION_SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          while IFS= read -r member; do
+            test -z "$member" && continue
+            if [[ "$member" != "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" ]]; then
+              gcloud run services remove-iam-policy-binding "$ASSOCIATION_SERVICE_NAME" \
+                --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+                --member="$member" --role=roles/run.invoker --condition=None --quiet >/dev/null
+            fi
+          done < <(jq -r '.bindings[]? | select(.role == "roles/run.invoker") | .members[]?' <<<"$policy")
+          gcloud run services add-iam-policy-binding "$ASSOCIATION_SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --member="serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
+            --role=roles/run.invoker \
+            --condition=None \
+            --quiet >/dev/null
+
       - name: Reconcile private invoker policy
         shell: bash
         run: |
@@ -255,4 +307,18 @@ jobs:
           esac
           deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
           test "$deployed_sha" = "$GITHUB_SHA"
+          writer_json="$(gcloud run services describe "$ASSOCIATION_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$writer_json" >/dev/null
+          jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$writer_json" >/dev/null
+          writer_image="$(jq -er '.spec.template.spec.containers[0].image' <<<"$writer_json")"
+          case "$writer_image" in
+            *"@${{ steps.image.outputs.digest }}") ;;
+            *) echo "Unexpected association writer image: $writer_image" >&2; exit 1 ;;
+          esac
+          writer_enabled="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED") | .value' <<<"$writer_json")"
+          test "$writer_enabled" = "false"
+          writer_policy="$(gcloud run services get-iam-policy "$ASSOCIATION_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          jq -e --arg insights "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
+            '([.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | sort) == ([$insights] | sort)' \
+            <<<"$writer_policy" >/dev/null
           echo "MFDataIndia private DEV deployment reconciled"
