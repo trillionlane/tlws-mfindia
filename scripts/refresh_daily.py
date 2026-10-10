@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 from dataclasses import fields
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Sequence
 from zoneinfo import ZoneInfo
@@ -31,6 +31,21 @@ from mfdataindia.store.postgres import PostgresStore  # noqa: E402
 log = logging.getLogger("daily_refresh")
 IST = ZoneInfo("Asia/Kolkata")
 SOURCE_ENTITY_KIND = "LATEST_NAV"
+NEXT_DAY_NAV_CATEGORIES = frozenset({"LIQUID FUND", "OVERNIGHT FUND"})
+
+
+def permits_next_day_nav(scheme: AmfiScheme, *, as_of: date) -> bool:
+    """Return whether AMFI may legitimately publish this scheme for tomorrow.
+
+    AMFI can publish next-calendar-day NAVs for liquid and overnight funds. Keep
+    this exception exact: one day only, and based on the category leaf rather
+    than a loose substring match.
+    """
+    if scheme.nav_date != as_of + timedelta(days=1):
+        return False
+    category = " ".join((scheme.scheme_category or "").upper().split())
+    category_leaf = category.rsplit(" - ", maxsplit=1)[-1]
+    return category_leaf in NEXT_DAY_NAV_CATEGORIES
 
 
 def validate_feed(schemes: Sequence[AmfiScheme], report: ParseReport, *, as_of: date) -> date:
@@ -46,16 +61,47 @@ def validate_feed(schemes: Sequence[AmfiScheme], report: ParseReport, *, as_of: 
         raise RuntimeError(
             f"NAVAll quarantine count {report.quarantined} exceeds {quarantine_limit}"
         )
-    nav_dates = [scheme.nav_date for scheme in schemes if scheme.nav_date is not None]
-    if not nav_dates:
+    dated_schemes = [scheme for scheme in schemes if scheme.nav_date is not None]
+    if not dated_schemes:
         raise RuntimeError("NAVAll feed contains no parsed NAV dates")
-    feed_date = max(nav_dates)
-    age_days = (as_of - feed_date).days
-    if age_days < 0 or age_days > 7:
-        raise RuntimeError(
-            f"NAVAll feed date {feed_date.isoformat()} is not within 0..7 days of {as_of}"
+
+    future_schemes = [scheme for scheme in dated_schemes if scheme.nav_date > as_of]
+    disallowed_future = [
+        scheme for scheme in future_schemes if not permits_next_day_nav(scheme, as_of=as_of)
+    ]
+    if disallowed_future:
+        future_dates = sorted({scheme.nav_date.isoformat() for scheme in disallowed_future})
+        future_categories = sorted(
+            {scheme.scheme_category or "<missing>" for scheme in disallowed_future}
         )
-    return feed_date
+        raise RuntimeError(
+            "NAVAll feed contains disallowed future NAV rows: "
+            f"count={len(disallowed_future)} dates={future_dates} "
+            f"categories={future_categories} as_of={as_of.isoformat()}"
+        )
+
+    non_future_dates = [
+        scheme.nav_date for scheme in dated_schemes if scheme.nav_date <= as_of
+    ]
+    if not non_future_dates:
+        raise RuntimeError("NAVAll feed contains no current or historical NAV dates")
+    latest_non_future_date = max(non_future_dates)
+    age_days = (as_of - latest_non_future_date).days
+    if age_days > 7:
+        raise RuntimeError(
+            "NAVAll latest non-future date "
+            f"{latest_non_future_date.isoformat()} is not within 0..7 days of {as_of}"
+        )
+
+    if future_schemes:
+        log.warning(
+            "accepting %d next-day liquid/overnight NAV rows dated %s for as_of=%s",
+            len(future_schemes),
+            (as_of + timedelta(days=1)).isoformat(),
+            as_of.isoformat(),
+        )
+
+    return max(scheme.nav_date for scheme in dated_schemes)
 
 
 def integrity_manifest(store: PostgresStore) -> dict[str, Any]:

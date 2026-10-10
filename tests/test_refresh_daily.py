@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -20,23 +20,24 @@ def _module():
     return module
 
 
+def _scheme(index: int, nav_date: date, *, category: str | None = "Equity") -> AmfiScheme:
+    return AmfiScheme(
+        amfi_scheme_code=str(100_000 + index),
+        scheme_name=f"Fund {index}",
+        nav=10.0,
+        nav_date=nav_date,
+        scheme_type="OPEN_ENDED",
+        scheme_category=category,
+        amc=f"AMC {index % 25}",
+        isin_div_payout_or_growth=None,
+        isin_div_reinvestment=None,
+        plan_type="REGULAR",
+        in_scope=True,
+    )
+
+
 def _feed(feed_date: date, count: int = 1_000):
-    schemes = [
-        AmfiScheme(
-            amfi_scheme_code=str(100_000 + index),
-            scheme_name=f"Fund {index}",
-            nav=10.0,
-            nav_date=feed_date,
-            scheme_type="OPEN_ENDED",
-            scheme_category="Equity",
-            amc=f"AMC {index % 25}",
-            isin_div_payout_or_growth=None,
-            isin_div_reinvestment=None,
-            plan_type="REGULAR",
-            in_scope=True,
-        )
-        for index in range(count)
-    ]
+    schemes = [_scheme(index, feed_date) for index in range(count)]
     report = ParseReport(
         total_lines=count,
         data_rows=count,
@@ -59,6 +60,63 @@ def test_validate_feed_rejects_stale_or_future_dates(feed_date):
     schemes, report = _feed(feed_date)
     with pytest.raises(RuntimeError):
         refresh.validate_feed(schemes, report, as_of=date(2026, 10, 8))
+
+
+def test_validate_feed_accepts_one_day_ahead_liquid_and_overnight_rows():
+    refresh = _module()
+    as_of = date(2026, 10, 10)
+    schemes, report = _feed(as_of - timedelta(days=1))
+    schemes.extend(
+        [
+            _scheme(
+                1_001,
+                as_of + timedelta(days=1),
+                category="Debt Scheme - Liquid Fund",
+            ),
+            _scheme(
+                1_002,
+                as_of + timedelta(days=1),
+                category="Income/Debt Oriented Schemes - Overnight Fund",
+            ),
+        ]
+    )
+    report.data_rows = len(schemes)
+
+    assert refresh.validate_feed(schemes, report, as_of=as_of) == as_of + timedelta(days=1)
+
+
+@pytest.mark.parametrize(
+    ("future_days", "category"),
+    [
+        (1, "Equity Scheme - Large Cap Fund"),
+        (2, "Debt Scheme - Liquid Fund"),
+        (2, "Debt Scheme - Overnight Fund"),
+        (1, "Debt Scheme - Non-Liquid Fund"),
+        (1, None),
+    ],
+)
+def test_validate_feed_rejects_unapproved_future_rows(future_days, category):
+    refresh = _module()
+    as_of = date(2026, 10, 10)
+    schemes, report = _feed(as_of - timedelta(days=1))
+    schemes.append(
+        _scheme(1_001, as_of + timedelta(days=future_days), category=category)
+    )
+    report.data_rows = len(schemes)
+
+    with pytest.raises(RuntimeError, match="disallowed future NAV rows"):
+        refresh.validate_feed(schemes, report, as_of=as_of)
+
+
+def test_validate_feed_rejects_feed_with_only_next_day_rows():
+    refresh = _module()
+    as_of = date(2026, 10, 10)
+    schemes, report = _feed(as_of + timedelta(days=1))
+    for scheme in schemes:
+        scheme.scheme_category = "Debt Scheme - Liquid Fund"
+
+    with pytest.raises(RuntimeError, match="no current or historical NAV dates"):
+        refresh.validate_feed(schemes, report, as_of=as_of)
 
 
 def test_validate_feed_rejects_truncated_payload():
