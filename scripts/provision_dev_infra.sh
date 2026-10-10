@@ -28,6 +28,7 @@ MIGRATE_SA="tlws-mf-data-migrate-dev@$PROJECT_ID.iam.gserviceaccount.com"
 RESTORE_SA="tlws-mf-data-restore-dev@$PROJECT_ID.iam.gserviceaccount.com"
 INGEST_SA="tlws-mf-data-ingest-dev@$PROJECT_ID.iam.gserviceaccount.com"
 SCHEDULER_SA="tlws-mf-data-scheduler-dev@$PROJECT_ID.iam.gserviceaccount.com"
+ASSOCIATION_WRITER_SA="tlws-mf-assoc-writer-dev@$PROJECT_ID.iam.gserviceaccount.com"
 
 ensure_service_account() {
   local account_id="$1"
@@ -89,6 +90,7 @@ ensure_service_account tlws-mf-data-migrate-dev "MFDataIndia DEV migration runne
 ensure_service_account tlws-mf-data-restore-dev "MFDataIndia DEV snapshot restore runner"
 ensure_service_account tlws-mf-data-ingest-dev "MFDataIndia DEV ingestion runner"
 ensure_service_account tlws-mf-data-scheduler-dev "MFDataIndia DEV scheduler invoker"
+ensure_service_account tlws-mf-assoc-writer-dev "MFDataIndia DEV association writer"
 
 if ! gcloud artifacts repositories describe "$REPOSITORY" \
   --project="$PROJECT_ID" --location="$REGION" >/dev/null 2>&1; then
@@ -110,7 +112,7 @@ gcloud artifacts repositories add-iam-policy-binding "$REPOSITORY" \
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/run.admin
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudsql.viewer
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudscheduler.admin
-for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA"; do
+for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA" "$ASSOCIATION_WRITER_SA"; do
   ensure_project_role "serviceAccount:$account" roles/cloudsql.client
   ensure_act_as "$account"
 done
@@ -207,11 +209,24 @@ create_database_principal() {
 create_database_principal mfdata_app tlws-mf-data-runtime-dsn-dev
 create_database_principal mfdata_admin tlws-mf-data-admin-dsn-dev
 create_database_principal mfdata_ingest tlws-mf-data-ingest-dsn-dev
+create_database_principal mfdata_association_writer tlws-mf-data-association-writer-dsn-dev
+
+# Cloud SQL grants cloudsqlsuperuser to built-in users by default. Remove every
+# inherited database role immediately; migration 018 also clears the user's
+# CREATEROLE/CREATEDB attributes before the writer service can be deployed.
+gcloud sql users assign-roles mfdata_association_writer \
+  --instance="$SQL_INSTANCE" \
+  --project="$PROJECT_ID" \
+  --type=BUILT_IN \
+  --database-roles= \
+  --revoke-existing-roles \
+  --quiet
 
 ensure_secret_access tlws-mf-data-runtime-dsn-dev "$RUNTIME_SA"
 ensure_secret_access tlws-mf-data-admin-dsn-dev "$MIGRATE_SA"
 ensure_secret_access tlws-mf-data-admin-dsn-dev "$RESTORE_SA"
 ensure_secret_access tlws-mf-data-ingest-dsn-dev "$INGEST_SA"
+ensure_secret_access tlws-mf-data-association-writer-dsn-dev "$ASSOCIATION_WRITER_SA"
 
 gcloud storage buckets add-iam-policy-binding gs://tlws_mf_data_source \
   --member="serviceAccount:$RESTORE_SA" \

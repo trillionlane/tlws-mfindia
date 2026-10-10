@@ -52,8 +52,10 @@ jobs:
       - name: Lint
         run: uv run ruff check src scripts tests
 
-      - name: Verify versioned OpenAPI contract
-        run: uv run python scripts/export_openapi.py --check
+      - name: Verify versioned OpenAPI contracts
+        run: |
+          uv run python scripts/export_openapi.py --check
+          uv run python scripts/export_association_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -73,7 +75,7 @@ jobs:
           image="tlws-mf-data:${{ github.sha }}"
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
           docker run --rm --entrypoint python "$image" -c \
-            'from pathlib import Path; import mfdataindia; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/scripts/smoke_private_api.py").is_file(); assert Path("/app/sql/000_schema_migrations.sql").is_file()'
+            'from pathlib import Path; import mfdataindia; from mfdataindia.api.association_app import create_association_app; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert callable(create_association_app); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/scripts/smoke_private_api.py").is_file(); assert Path("/app/sql/018_fund_family_association_tags.sql").is_file()'
 
       - name: Build and verify PostgreSQL 18 restore image
         run: |

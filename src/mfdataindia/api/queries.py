@@ -167,14 +167,22 @@ def _comparison_eligible_predicate(alias: str = "f") -> str:
     return f"{alias}.option_type = '{_COMPARISON_ELIGIBLE_OPTION}'"
 
 
-def _latest_source_date(conn) -> Optional[date]:
-    """The latest successful source snapshot date recorded in mf.funds.
+def _latest_full_source_date(conn) -> Optional[date]:
+    """The latest successfully committed FULL AMFI snapshot date.
 
-    After the ingest fix, every scheme present in the most recent successful
-    AMFI refresh carries ``last_seen_in_source`` = that refresh's source
-    date, so the column maximum IS the latest snapshot date.
+    Never infer this from the fund rows: a newer partial payload may advance a
+    subset of ``last_seen_in_source`` dates without proving absence for every
+    scheme it did not contain.
     """
-    row = conn.execute("SELECT max(last_seen_in_source) AS d FROM mf.funds").fetchone()
+    row = conn.execute(
+        """
+        SELECT snapshot_date AS d
+          FROM mf.source_snapshot_runs
+         WHERE source = 'AMFI' AND snapshot_scope = 'FULL'
+         ORDER BY snapshot_date DESC, snapshot_run_id DESC
+         LIMIT 1
+        """
+    ).fetchone()
     return row["d"] if row else None
 
 
@@ -205,8 +213,8 @@ def _lifecycle(
     elif last_seen_in_source is None:
         state, evidence = "unknown", "insufficient_evidence"
     else:
-        latest = _latest_source_date(conn)
-        if latest is not None and last_seen_in_source == latest:
+        latest = _latest_full_source_date(conn)
+        if latest is not None and last_seen_in_source >= latest:
             state, evidence = "active", "amfi_current_feed"
         else:
             state, evidence = "unknown", "not_seen_in_latest_feed"

@@ -15,15 +15,20 @@ out of scope.
 | GCP project | `trillionlane-dev` |
 | GCP region | `asia-south1` |
 | Database engine | Dedicated Cloud SQL for PostgreSQL 18 |
-| Application | Private, read-only Cloud Run API in DEV; internal ingress only |
+| Application | Private read-only API plus a separate default-off association writer; internal ingress only |
 | API consumer | Trillion Insights backend through VPC egress and Google-signed OIDC |
 | Browser access | No direct MFDataIndia access; the Insights UI uses its own backend |
 | Production | Out of scope until the production gate is approved |
 
-Provisional resource names are `tlws-mf-data-dev` for the Cloud Run service,
+Provisional resource names are `tlws-mf-data-dev` for the read Cloud Run service,
+`tlws-mf-data-association-writer-dev` for the private writer,
 `tlws-mf-data-nav-refresh-dev` for the scheduled job, and
 `tlws-mf-data-restore-dev` for the one-shot restore job. Provisioning must first
 confirm that none of the names already exists.
+
+The writer Cloud Run service uses the distinct, length-safe service account
+`tlws-mf-assoc-writer-dev@trillionlane-dev.iam.gserviceaccount.com`; the service
+and service-account names are intentionally not identical.
 
 ## Snapshot baseline
 
@@ -77,6 +82,8 @@ The repository keeps these operations separate:
    job and performs one supervised refresh. `enable-nav-schedule-dev.yml` refuses
    activation until that execution succeeded, then creates the temporary
    six-hour `Asia/Kolkata` schedule with a dedicated invoker identity.
+5. `enable-association-writes-dev.yml` is manual-only, exact-SHA-bound and
+   changes only the already-deployed private writer's default-off runtime flag.
 
 ## Identity boundaries
 
@@ -87,6 +94,12 @@ The repository keeps these operations separate:
   bounded private deployment smoke.
 - The Trillion Insights runtime identity may invoke the MFDataIndia service. It
   receives no database, migration, ingestion or secret access from this project.
+- The association-writer runtime has a separate DSN and may only read family
+  identity plus select/insert/update the normalized association state. It has
+  no generated-family, NAV, ingest, migration or DELETE privilege.
+- Provisioning explicitly removes Cloud SQL's automatic `cloudsqlsuperuser`
+  membership from the writer principal. Migration 018 clears `CREATEROLE` and
+  `CREATEDB` before granting only the object privileges listed above.
 - No `allUsers` Cloud Run invoker binding is permitted. MFDataIndia uses internal
   ingress, and callers authenticate with short-lived Google-signed OIDC tokens.
 - The migration identity owns schema changes but is not used by the API.
@@ -94,6 +107,9 @@ The repository keeps these operations separate:
   restore DSN secret.
 - The scheduler identity may invoke only the NAV refresh job.
 - No user-managed service-account keys are permitted.
+- The writer admits only the TrillionInsights runtime as invoker and uses the
+  same short-lived Google-signed OIDC boundary; no API key or shared secret is
+  introduced.
 
 ## Deployment gates
 

@@ -43,6 +43,7 @@ def _feed(feed_date: date, count: int = 1_000):
         data_rows=count,
         format="NAVALL_8COL",
         distinct_amcs=25,
+        distinct_categories=40,
         plan_types=Counter({"REGULAR": count}),
     )
     return schemes, report
@@ -129,6 +130,56 @@ def test_validate_feed_rejects_truncated_payload():
 def test_refresh_uses_allowed_latest_nav_provenance_kind():
     refresh = _module()
     assert refresh.SOURCE_ENTITY_KIND == "LATEST_NAV"
+
+
+def test_snapshot_scope_defaults_full_and_rejects_unknown(monkeypatch):
+    refresh = _module()
+    monkeypatch.delenv("MFDATAINDIA_SNAPSHOT_SCOPE", raising=False)
+    assert refresh.snapshot_scope() == "FULL"
+    monkeypatch.setenv("MFDATAINDIA_SNAPSHOT_SCOPE", "partial")
+    assert refresh.snapshot_scope() == "PARTIAL"
+    monkeypatch.setenv("MFDATAINDIA_SNAPSHOT_SCOPE", "incremental")
+    with pytest.raises(RuntimeError, match="FULL or PARTIAL"):
+        refresh.snapshot_scope()
+
+
+def test_first_full_snapshot_is_guarded_against_restored_manifest():
+    refresh = _module()
+    schemes, report = _feed(date(2026, 10, 10), count=9_100)
+    result = refresh.validate_full_snapshot_completeness(
+        schemes,
+        report,
+        before={"funds": 10_000, "amcs": 25, "categories": 40},
+        previous_full=None,
+    )
+    assert result["records_ok"] == 9_100
+    assert result["baseline_ratio"] == 0.90
+
+
+def test_partial_payload_cannot_be_accepted_as_next_full_snapshot():
+    refresh = _module()
+    schemes, report = _feed(date(2026, 10, 10), count=1_500)
+    report.distinct_amcs = 20
+    report.distinct_categories = 25
+    with pytest.raises(RuntimeError, match="failed completeness guard"):
+        refresh.validate_full_snapshot_completeness(
+            schemes,
+            report,
+            before={"funds": 14_000, "amcs": 45, "categories": 80},
+            previous_full={"records_ok": 14_000, "distinct_amcs": 45, "distinct_categories": 80},
+        )
+
+
+def test_next_full_snapshot_uses_tighter_previous_full_baseline():
+    refresh = _module()
+    schemes, report = _feed(date(2026, 10, 10), count=9_700)
+    with pytest.raises(RuntimeError, match="records_ok"):
+        refresh.validate_full_snapshot_completeness(
+            schemes,
+            report,
+            before={"funds": 10_000, "amcs": 25, "categories": 40},
+            previous_full={"records_ok": 10_000, "distinct_amcs": 25, "distinct_categories": 40},
+        )
 
 
 def test_parse_report_payload_is_json_safe():

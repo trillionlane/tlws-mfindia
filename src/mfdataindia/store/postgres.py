@@ -28,6 +28,7 @@ from typing import Any, Iterable, Iterator, Optional, Sequence
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +62,10 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     # Durable NAV-quality assessments (additive table only; the governed
     # audit scripts/audit_nav_integrity.py is the sole writer).
     "016_nav_quality_assessments.sql",
+    # Full-vs-partial AMFI snapshot truth for lifecycle classification.
+    "017_source_snapshot_runs.sql",
+    # Partner-authored family associations, isolated from generated tags.
+    "018_fund_family_association_tags.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
@@ -920,6 +925,78 @@ class PostgresStore:
             raise RuntimeError("dataset summary refresh returned no row")
         return row
 
+    # -- authoritative source snapshots -----------------------------------
+
+    def latest_full_snapshot(self, *, source: str = "AMFI") -> Optional[dict[str, Any]]:
+        """Return the latest committed FULL source snapshot, if one exists.
+
+        This must not be inferred from ``max(funds.last_seen_in_source)``: a
+        newer partial payload may advance a subset without proving that every
+        omitted scheme is absent.
+        """
+        with self.connect().cursor() as cur:
+            row = cur.execute(
+                """
+                SELECT snapshot_run_id, source_fetch_id, source, snapshot_scope, snapshot_date,
+                       latest_nav_date, content_hash, records_in, records_ok,
+                       records_quarantined, distinct_amcs, distinct_categories,
+                       completed_at
+                  FROM mf.source_snapshot_runs
+                 WHERE source = %s AND snapshot_scope = 'FULL'
+                 ORDER BY snapshot_date DESC, snapshot_run_id DESC
+                 LIMIT 1
+                """,
+                (source,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def record_snapshot_run(
+        self,
+        *,
+        source_fetch_id: int,
+        source: str,
+        snapshot_scope: str,
+        snapshot_date: date,
+        latest_nav_date: date,
+        content_hash: str,
+        records_in: int,
+        records_ok: int,
+        records_quarantined: int,
+        distinct_amcs: int,
+        distinct_categories: int,
+    ) -> dict[str, Any]:
+        """Record one successful source snapshot in the caller's transaction."""
+        with self.connect().cursor() as cur:
+            row = cur.execute(
+                """
+                INSERT INTO mf.source_snapshot_runs (
+                    source_fetch_id, source, snapshot_scope, snapshot_date, latest_nav_date,
+                    content_hash, records_in, records_ok, records_quarantined,
+                    distinct_amcs, distinct_categories
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING snapshot_run_id, source_fetch_id, source, snapshot_scope, snapshot_date,
+                          latest_nav_date, content_hash, records_in, records_ok,
+                          records_quarantined, distinct_amcs, distinct_categories,
+                          completed_at
+                """,
+                (
+                    source_fetch_id,
+                    source,
+                    snapshot_scope,
+                    snapshot_date,
+                    latest_nav_date,
+                    content_hash,
+                    records_in,
+                    records_ok,
+                    records_quarantined,
+                    distinct_amcs,
+                    distinct_categories,
+                ),
+            ).fetchone()
+        if row is None:
+            raise RuntimeError("snapshot run insert returned no row")
+        return dict(row)
+
     def partition_health(self) -> list[dict[str, Any]]:
         """nav_history partition sizes; nav_history_default should be empty."""
         with self.connect().cursor() as cur:
@@ -1192,14 +1269,15 @@ class PostgresStore:
             "source", "endpoint", "entity_kind", "entity_key", "http_status",
             "content_type", "content_hash", "content_bytes", "acquisition",
             "wayback_ts", "user_agent", "request_url", "records_in", "records_ok",
-            "records_quarantined", "duration_ms", "error",
+            "records_quarantined", "duration_ms", "error", "notes",
         )
         present = [c for c in cols if meta.get(c) is not None]
         placeholders = ", ".join(["%s"] * len(present))
+        values = tuple(Jsonb(meta[c]) if c == "notes" else meta[c] for c in present)
         with self.transaction() as conn, conn.cursor() as cur:
             cur.execute(
                 f"INSERT INTO mf.source_metadata ({', '.join(present)}) "
                 f"VALUES ({placeholders}) RETURNING fetch_id",
-                tuple(meta[c] for c in present),
+                values,
             )
             return int(cur.fetchone()["fetch_id"])

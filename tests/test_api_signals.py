@@ -220,6 +220,53 @@ def _seed(dsn: str) -> None:
     nav(MOVER_BONUS, [(_NAV_REF - timedelta(days=10), 100.0), (_NAV_REF, 140.0)])
     nav(MOVER_UNKNOWN, [(_NAV_REF - timedelta(days=10), 100.0), (_NAV_REF, 150.0)])
 
+    # Lifecycle presence is anchored only to a committed FULL snapshot. A
+    # newer PARTIAL row must not replace that dataset-wide reference.
+    full_fetch = cur.execute(
+        """
+        INSERT INTO mf.source_metadata (
+            source, endpoint, entity_kind, entity_key, acquisition,
+            content_hash, records_in, records_ok, records_quarantined
+        ) VALUES ('AMFI', 'fixture://full', 'LATEST_NAV', %s, 'FIXTURE',
+                  %s, 14000, 14000, 0)
+        RETURNING fetch_id
+        """,
+        (_SNAPSHOT.isoformat(), "a" * 64),
+    ).fetchone()["fetch_id"]
+    partial_date = _SNAPSHOT + timedelta(days=3)
+    partial_fetch = cur.execute(
+        """
+        INSERT INTO mf.source_metadata (
+            source, endpoint, entity_kind, entity_key, acquisition,
+            content_hash, records_in, records_ok, records_quarantined
+        ) VALUES ('AMFI', 'fixture://partial', 'LATEST_NAV', %s, 'FIXTURE',
+                  %s, 1400, 1400, 0)
+        RETURNING fetch_id
+        """,
+        (partial_date.isoformat(), "b" * 64),
+    ).fetchone()["fetch_id"]
+    cur.execute(
+        """
+        INSERT INTO mf.source_snapshot_runs (
+            source_fetch_id, source, snapshot_scope, snapshot_date, latest_nav_date,
+            content_hash, records_in, records_ok, records_quarantined,
+            distinct_amcs, distinct_categories
+        ) VALUES
+            (%s, 'AMFI', 'FULL', %s, %s, %s, 14000, 14000, 0, 45, 80),
+            (%s, 'AMFI', 'PARTIAL', %s, %s, %s, 1400, 1400, 0, 20, 30)
+        """,
+        (
+            full_fetch,
+            _SNAPSHOT,
+            _NAV_REF,
+            "a" * 64,
+            partial_fetch,
+            partial_date,
+            _NAV_REF + timedelta(days=3),
+            "b" * 64,
+        ),
+    )
+
     # legacy facts: ACT/ALL must stay a passive fact, never a buyability signal
     cur.execute(
         """

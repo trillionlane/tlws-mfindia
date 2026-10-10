@@ -76,6 +76,7 @@ jobs:
             --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
+            --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
             --command=/app/.venv/bin/python \
             --args=/app/scripts/refresh_daily.py \
             --tasks=1 \

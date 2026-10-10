@@ -24,8 +24,9 @@ Rules (precedence top-down):
    ingest writes when AMFI marks an ISIN column `REDEEMED`).
 2. `defunct` — the existing defunct evidence (`mf.funds.is_defunct`:
    NAV 0/N.A. or Defunct naming).
-3. `active` — presence in the **latest successful source snapshot**:
-   `last_seen_in_source` equals the maximum recorded snapshot date.
+3. `active` — presence at or after the **latest successful FULL source
+   snapshot** recorded in `mf.source_snapshot_runs`. A newer PARTIAL payload
+   cannot replace this dataset-wide lifecycle reference.
 4. `unknown` — anything else, with the evidence that got us there
    (`not_seen_in_latest_feed` when a last-seen date exists but predates the
    latest snapshot; `insufficient_evidence` when none is recorded).
@@ -35,9 +36,17 @@ close-ended scheme type **alone never produce `redeemed`/`defunct`**. There is
 no top-level `matured` boolean anywhere in the contract; absence from a feed
 preserves the last-seen evidence and classifies conservatively.
 
-`last_seen_in_source` advances for **every** scheme present in a successful
-AMFI refresh, even when all other metadata is unchanged (presence is
-lifecycle evidence). Schemes absent from a feed keep their previous date.
+`last_seen_in_source` advances to the IST observation date for **every** scheme
+present in a successful AMFI refresh, even when all other metadata is unchanged
+(presence is lifecycle evidence). It is deliberately not the maximum NAV date:
+today's AMFI payload can contain tomorrow-dated liquid/overnight NAVs. Schemes
+absent from a feed keep their previous date.
+
+A `FULL` run must pass coverage checks against the restored manifest (first
+run) or the last committed full run (later runs). A `PARTIAL` run is retained
+as provenance and may update included schemes, but never advances the full-run
+reference. With no committed full reference, lifecycle fails closed to
+`unknown`.
 
 ## 2. Fund detail: `nav_freshness`
 
