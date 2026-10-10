@@ -58,6 +58,9 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "013_purge_aggregator_references.sql",
     "014_ingest_role_privileges.sql",
     "015_dataset_summary.sql",
+    # Durable NAV-quality assessments (additive table only; the governed
+    # audit scripts/audit_nav_integrity.py is the sole writer).
+    "016_nav_quality_assessments.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
