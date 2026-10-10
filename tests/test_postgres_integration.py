@@ -462,10 +462,11 @@ def test_category_movers_groups_by_family(store, scheme_factory):
 
 
 def test_category_movers_collapses_variants(store, scheme_factory):
-    """GROWTH + IDCW variants of one scheme collapse to a single row.
+    """Category movers collapse only comparison-eligible variants.
 
-    The variant with the biggest absolute move is the representative; its
-    ``variants`` count reports how many plan/option variants were in the window.
+    IDCW NAV change excludes distributions and is therefore not eligible for
+    the ranking.  The Growth variant represents the family and ``variants``
+    counts only comparison-eligible variants in the window.
     """
     day1, day2 = date(2024, 12, 1), date(2024, 12, 27)
     base = dict(amc="Test Mutual Fund", scheme_type="Open Ended Schemes",
@@ -496,12 +497,12 @@ def test_category_movers_collapses_variants(store, scheme_factory):
     for f in hybrid["gainers"] + hybrid["losers"]:
         if f["amfi_scheme_code"] in (400001, 400002):
             seen[f["amfi_scheme_code"]] = f
-    # Exactly one row for the scheme (collapsed), not one per variant
-    assert list(seen) == [400002]
-    rep = seen[400002]
-    # Biggest absolute move (the +2% IDCW variant) represents the family
-    assert rep["pct_change"] == 2.0
-    assert rep["variants"] == 2
+    # Exactly one eligible row for the scheme; the larger IDCW NAV move is
+    # deliberately excluded because it is not a total-return comparison.
+    assert list(seen) == [400001]
+    rep = seen[400001]
+    assert rep["pct_change"] == 1.0
+    assert rep["variants"] == 1
     # The scheme counts once, not twice: Hybrid has exactly two distinct
     # families in this module (300004 from the grouping test + this one).
     assert hybrid["funds"] == 2
