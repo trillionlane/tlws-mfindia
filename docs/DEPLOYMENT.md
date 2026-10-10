@@ -26,6 +26,10 @@ Provisional resource names are `tlws-mf-data-dev` for the read Cloud Run service
 `tlws-mf-data-restore-dev` for the one-shot restore job. Provisioning must first
 confirm that none of the names already exists.
 
+The writer Cloud Run service uses the distinct, length-safe service account
+`tlws-mf-assoc-writer-dev@trillionlane-dev.iam.gserviceaccount.com`; the service
+and service-account names are intentionally not identical.
+
 ## Snapshot baseline
 
 The approved base snapshot is immutable by object generation, not just by name:
@@ -93,6 +97,9 @@ The repository keeps these operations separate:
 - The association-writer runtime has a separate DSN and may only read family
   identity plus select/insert/update the normalized association state. It has
   no generated-family, NAV, ingest, migration or DELETE privilege.
+- Provisioning explicitly removes Cloud SQL's automatic `cloudsqlsuperuser`
+  membership from the writer principal. Migration 018 clears `CREATEROLE` and
+  `CREATEDB` before granting only the object privileges listed above.
 - No `allUsers` Cloud Run invoker binding is permitted. MFDataIndia uses internal
   ingress, and callers authenticate with short-lived Google-signed OIDC tokens.
 - The migration identity owns schema changes but is not used by the API.

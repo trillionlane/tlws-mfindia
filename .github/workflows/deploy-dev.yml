@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tlws-mf-data-deploy-dev
+  group: tlws-mf-data-dev-mutations
   cancel-in-progress: false
 
 env:
@@ -25,7 +25,7 @@ env:
   IMAGE_NAME: mfdataindia
   SERVICE_NAME: tlws-mf-data-dev
   ASSOCIATION_SERVICE_NAME: tlws-mf-data-association-writer-dev
-  ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-association-writer-dev@trillionlane-dev.iam.gserviceaccount.com
+  ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-assoc-writer-dev@trillionlane-dev.iam.gserviceaccount.com
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
@@ -196,6 +196,13 @@ jobs:
             --max=2 \
             --timeout=60 \
             --labels=product=mfdataindia,component=association-writer,environment=dev,managed-by=github-actions \
+            --quiet
+          # Activation promotes a named revision, so deployment must explicitly
+          # restore the default contract: the latest, disabled revision serves.
+          gcloud run services update-traffic "$ASSOCIATION_SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --to-latest \
             --quiet
 
       - name: Reconcile private association-writer invoker policy

@@ -72,6 +72,8 @@ def test_association_writer_is_separate_private_and_default_off() -> None:
     assert "--no-allow-unauthenticated" in workflow
     assert "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" in workflow
     assert "([$insights] | sort)" in workflow
+    assert "ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-assoc-writer-dev@" in workflow
+    assert "--to-latest" in workflow
 
 
 def test_association_activation_is_manual_exact_sha_bound() -> None:
@@ -86,15 +88,28 @@ def test_association_activation_is_manual_exact_sha_bound() -> None:
     assert "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=true" in workflow
     assert "--allow-unauthenticated" not in workflow
     assert 'test "$deployed_sha" = "${{ inputs.confirm_git_sha }}"' in workflow
+    assert "group: tlws-mf-data-dev-mutations" in workflow
+    assert "--no-traffic" in workflow
+    assert '--to-revisions="$candidate_revision=100"' in workflow
+    assert '--to-revisions="$before_revision=100"' in workflow
+
+    deploy = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
+    assert "group: tlws-mf-data-dev-mutations" in deploy
 
 
 def test_association_writer_gets_dedicated_identity_and_database_principal() -> None:
     provision = (ROOT / "scripts" / "provision_dev_infra.sh").read_text()
     migration = (ROOT / "sql" / "018_fund_family_association_tags.sql").read_text()
 
-    assert "tlws-mf-data-association-writer-dev" in provision
+    assert "tlws-mf-assoc-writer-dev@" in provision
+    assert "tlws-mf-data-association-writer-dev@" not in provision
     assert "mfdata_association_writer" in provision
     assert "tlws-mf-data-association-writer-dsn-dev" in provision
+    assert "gcloud sql users assign-roles mfdata_association_writer" in provision
+    assert "--database-roles=" in provision
+    assert "--revoke-existing-roles" in provision
+    assert "REVOKE cloudsqlsuperuser FROM mfdata_association_writer" in migration
+    assert "ALTER ROLE mfdata_association_writer NOCREATEROLE NOCREATEDB" in migration
     assert "GRANT SELECT ON mf.fund_family TO mfdata_association_writer" in migration
     assert "GRANT SELECT, INSERT ON mf.fund_family_association_tags" in migration
     assert "DELETE ON mf.fund_family_association_tags" not in migration

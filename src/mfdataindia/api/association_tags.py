@@ -41,20 +41,37 @@ def _tags(conn: Connection, tlws_mf_id: str) -> list[dict[str, str]]:
 
 
 def get_state(conn: Connection, tlws_mf_id: str) -> dict[str, Any]:
-    family = conn.execute(
-        "SELECT 1 AS present FROM mf.fund_family WHERE tlws_mf_id = %s",
-        (tlws_mf_id,),
-    ).fetchone()
-    if family is None:
-        raise FamilyNotFoundError(tlws_mf_id)
     row = conn.execute(
-        "SELECT version FROM mf.fund_family_association_state WHERE tlws_mf_id = %s",
+        """
+        SELECT family.tlws_mf_id,
+               COALESCE(state.version, 0) AS version,
+               COALESCE(
+                   jsonb_agg(
+                       jsonb_build_object(
+                           'value', tag.value,
+                           'type', tag.tag_type,
+                           'source', tag.source
+                       )
+                       ORDER BY tag.tag_type, tag.value, tag.source
+                   ) FILTER (WHERE tag.tlws_mf_id IS NOT NULL),
+                   '[]'::jsonb
+               ) AS tags
+          FROM mf.fund_family AS family
+          LEFT JOIN mf.fund_family_association_state AS state
+            ON state.tlws_mf_id = family.tlws_mf_id
+          LEFT JOIN mf.fund_family_association_tags AS tag
+            ON tag.tlws_mf_id = family.tlws_mf_id
+         WHERE family.tlws_mf_id = %s
+         GROUP BY family.tlws_mf_id, state.version
+        """,
         (tlws_mf_id,),
     ).fetchone()
+    if row is None:
+        raise FamilyNotFoundError(tlws_mf_id)
     return {
         "tlws_mf_id": tlws_mf_id,
-        "version": int(row["version"]) if row else 0,
-        "tags": _tags(conn, tlws_mf_id),
+        "version": int(row["version"]),
+        "tags": list(row["tags"]),
     }
 
 

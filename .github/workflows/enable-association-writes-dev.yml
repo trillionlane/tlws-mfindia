@@ -24,14 +24,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: tlws-mf-data-association-writer-dev
+  group: tlws-mf-data-dev-mutations
   cancel-in-progress: false
 
 env:
   EXPECTED_PROJECT: trillionlane-dev
   EXPECTED_REGION: asia-south1
   SERVICE_NAME: tlws-mf-data-association-writer-dev
-  WRITER_SERVICE_ACCOUNT: tlws-mf-data-association-writer-dev@trillionlane-dev.iam.gserviceaccount.com
+  WRITER_SERVICE_ACCOUNT: tlws-mf-assoc-writer-dev@trillionlane-dev.iam.gserviceaccount.com
   INSIGHTS_RUNTIME_SERVICE_ACCOUNT: trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
 
 jobs:
@@ -75,27 +75,77 @@ jobs:
           test "${{ vars.GCP_PROJECT_ID }}" = "$EXPECTED_PROJECT"
           test "${{ vars.GCP_REGION }}" = "$EXPECTED_REGION"
           before="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
-          deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$before")"
+          before_revision="$(jq -er '
+            [.status.traffic[] | select(.percent == 100)]
+            | if length == 1 and .[0].revisionName then .[0].revisionName
+              else error("expected one 100-percent serving revision") end
+          ' <<<"$before")"
+          before_revision_json="$(gcloud run revisions describe "$before_revision" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          deployed_sha="$(jq -er '.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$before_revision_json")"
+          deployed_image="$(jq -er '.spec.containers[0].image' <<<"$before_revision_json")"
           test "$deployed_sha" = "${{ inputs.confirm_git_sha }}"
-          test "$(jq -er '.spec.template.spec.serviceAccountName' <<<"$before")" = "$WRITER_SERVICE_ACCOUNT"
+          test "$(jq -er '.spec.containers[0].env[] | select(.name == "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED") | .value' <<<"$before_revision_json")" = "false"
+          test "$(jq -er '.spec.serviceAccountName' <<<"$before_revision_json")" = "$WRITER_SERVICE_ACCOUNT"
           jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$before" >/dev/null
+
+          revision_suffix="enable-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           gcloud run services update "$SERVICE_NAME" \
             --project="$EXPECTED_PROJECT" \
             --region="$EXPECTED_REGION" \
             --update-env-vars=MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=true \
+            --revision-suffix="$revision_suffix" \
+            --no-traffic \
             --quiet
-          after="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
-          test "$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED") | .value' <<<"$after")" = "true"
-          test "$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$after")" = "$deployed_sha"
-          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$after" >/dev/null
-          jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$after" >/dev/null
+
+          staged_service="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          candidate_revision="$(jq -er '.status.latestCreatedRevisionName' <<<"$staged_service")"
+          test "$candidate_revision" = "$SERVICE_NAME-$revision_suffix"
+          candidate="$(gcloud run revisions describe "$candidate_revision" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.containers[0].env[] | select(.name == "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED") | .value' <<<"$candidate")" = "true"
+          test "$(jq -er '.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$candidate")" = "$deployed_sha"
+          test "$(jq -er '.spec.containers[0].image' <<<"$candidate")" = "$deployed_image"
+          test "$(jq -er '.spec.serviceAccountName' <<<"$candidate")" = "$WRITER_SERVICE_ACCOUNT"
+          jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$candidate" >/dev/null
+          jq -e --arg revision "$candidate_revision" \
+            '[.status.traffic[]? | select(.revisionName == $revision and (.percent // 0) > 0)] | length == 0' \
+            <<<"$staged_service" >/dev/null
+          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$staged_service" >/dev/null
+
           policy="$(gcloud run services get-iam-policy "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
           jq -e --arg insights "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
             '([.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | sort) == ([$insights] | sort)' \
             <<<"$policy" >/dev/null
+
+          promoted=false
+          rollback_on_error() {
+            rc=$?
+            if [[ "$promoted" == "true" ]]; then
+              gcloud run services update-traffic "$SERVICE_NAME" \
+                --project="$EXPECTED_PROJECT" \
+                --region="$EXPECTED_REGION" \
+                --to-revisions="$before_revision=100" \
+                --quiet || true
+            fi
+            exit "$rc"
+          }
+          trap rollback_on_error ERR
+
+          promoted=true
+          gcloud run services update-traffic "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --to-revisions="$candidate_revision=100" \
+            --quiet
+          after="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          jq -e --arg revision "$candidate_revision" \
+            '.status.traffic | length == 1 and .[0].revisionName == $revision and .[0].percent == 100' \
+            <<<"$after" >/dev/null
+          jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$after" >/dev/null
           service_url="$(jq -er '.status.url' <<<"$after")"
           external_status="$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$service_url/api/health" || true)"
           case "$external_status" in
             2*) echo "Association writer unexpectedly reachable from public runner: HTTP $external_status" >&2; exit 1 ;;
           esac
-          echo "Association writes enabled for deployed SHA $deployed_sha"
+          promoted=false
+          trap - ERR
+          echo "Association writes enabled on revision $candidate_revision for deployed SHA $deployed_sha"

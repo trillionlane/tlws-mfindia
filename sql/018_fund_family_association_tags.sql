@@ -64,6 +64,13 @@ BEGIN
         EXECUTE 'REVOKE ALL ON mf.fund_family_association_state, mf.fund_family_association_tags, mf.association_tag_idempotency FROM mfdata_ingest';
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mfdata_association_writer') THEN
+        -- Cloud SQL built-in users start as cloudsqlsuperuser members with
+        -- CREATEROLE/CREATEDB. Remove both the membership and attributes before
+        -- granting the writer's narrow object privileges below.
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cloudsqlsuperuser') THEN
+            EXECUTE 'REVOKE cloudsqlsuperuser FROM mfdata_association_writer';
+        END IF;
+        EXECUTE 'ALTER ROLE mfdata_association_writer NOCREATEROLE NOCREATEDB';
         EXECUTE format(
             'GRANT CONNECT ON DATABASE %I TO mfdata_association_writer',
             current_database()

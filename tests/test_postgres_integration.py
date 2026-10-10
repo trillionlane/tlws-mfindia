@@ -186,6 +186,7 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
 
     admin = psycopg.connect(pg_dsn, autocommit=True)
     role = "mfdata_association_writer"
+    cloudsql_role = "cloudsqlsuperuser"
     dbname = f"mfdata_association_privileges_{os.getpid()}"
     preexisting = admin.execute(
         "SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)
@@ -193,7 +194,13 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
     if preexisting:
         admin.close()
         pytest.skip(f"role {role} already exists; refusing to alter shared cluster state")
-    admin.execute(f'CREATE ROLE "{role}" NOLOGIN')
+    cloudsql_role_preexisting = admin.execute(
+        "SELECT 1 FROM pg_roles WHERE rolname = %s", (cloudsql_role,)
+    ).fetchone()
+    if not cloudsql_role_preexisting:
+        admin.execute(f'CREATE ROLE "{cloudsql_role}" NOLOGIN')
+    admin.execute(f'CREATE ROLE "{role}" NOLOGIN CREATEDB CREATEROLE')
+    admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
     admin.execute(f'CREATE DATABASE "{dbname}"')
     params = conninfo_to_dict(pg_dsn)
     params["dbname"] = dbname
@@ -214,9 +221,17 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
                     has_table_privilege(%s, 'mf.fund_family_association_tags', 'INSERT') AS tag_insert,
                     has_table_privilege(%s, 'mf.fund_family_association_tags', 'DELETE') AS tag_delete,
                     has_table_privilege(%s, 'mf.association_tag_idempotency', 'INSERT') AS key_insert,
-                    has_table_privilege(%s, 'mf.association_tag_idempotency', 'UPDATE') AS key_update
+                    has_table_privilege(%s, 'mf.association_tag_idempotency', 'UPDATE') AS key_update,
+                    roles.rolcreatedb,
+                    roles.rolcreaterole,
+                    roles.rolsuper,
+                    roles.rolreplication,
+                    roles.rolbypassrls,
+                    pg_has_role(%s, 'cloudsqlsuperuser', 'member') AS cloudsqlsuperuser_member
+                  FROM pg_roles AS roles
+                 WHERE roles.rolname = %s
                 """,
-                (role,) * 10,
+                (role,) * 12,
             ).fetchone()
         assert checks == {
             "family_select": True,
@@ -229,6 +244,12 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
             "tag_delete": False,
             "key_insert": True,
             "key_update": False,
+            "rolcreatedb": False,
+            "rolcreaterole": False,
+            "rolsuper": False,
+            "rolreplication": False,
+            "rolbypassrls": False,
+            "cloudsqlsuperuser_member": False,
         }
     finally:
         admin.execute(
@@ -238,6 +259,8 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
         )
         admin.execute(f'DROP DATABASE IF EXISTS "{dbname}"')
         admin.execute(f'DROP ROLE IF EXISTS "{role}"')
+        if not cloudsql_role_preexisting:
+            admin.execute(f'DROP ROLE IF EXISTS "{cloudsql_role}"')
         admin.close()
 
 
