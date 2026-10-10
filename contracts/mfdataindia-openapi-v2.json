@@ -1,0 +1,2986 @@
+{
+  "components": {
+    "schemas": {
+      "AnalyticsResponse": {
+        "description": "GET /api/funds/{code}/analytics \u2014 NAV-derived risk/behaviour analytics.\n\nAll figures are NAV-to-NAV; for IDCW/DIVIDEND see ``methodology``\n(not total return, comparison-ineligible).",
+        "properties": {
+          "annual_vol_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Vol Pct"
+          },
+          "annualized_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annualized Return Pct"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "calmar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calmar"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/FundLifecycle"
+          },
+          "max_dd_peak_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Dd Peak Date"
+          },
+          "max_dd_recovery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Dd Recovery Date"
+          },
+          "max_dd_trough_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Dd Trough Date"
+          },
+          "max_drawdown_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown Pct"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/FundMethodology"
+          },
+          "monthly": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly"
+          },
+          "nav_freshness": {
+            "$ref": "#/components/schemas/FundNavFreshness"
+          },
+          "nav_quality": {
+            "$ref": "#/components/schemas/FundNavQuality"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "risk_free_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Free Pct"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "sortino": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sortino"
+          },
+          "too_short": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Too Short"
+          },
+          "win_rate_days_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Rate Days Pct"
+          },
+          "win_rate_months_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Rate Months Pct"
+          },
+          "yearly": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AnalyticsYearly"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearly"
+          }
+        },
+        "required": [
+          "code",
+          "points",
+          "lifecycle",
+          "nav_freshness",
+          "nav_quality",
+          "methodology"
+        ],
+        "title": "AnalyticsResponse",
+        "type": "object"
+      },
+      "AnalyticsYearly": {
+        "properties": {
+          "return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Pct"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year"
+        ],
+        "title": "AnalyticsYearly",
+        "type": "object"
+      },
+      "CategoryMoverItem": {
+        "properties": {
+          "amfi_amc_name": {
+            "title": "Amfi Amc Name",
+            "type": "string"
+          },
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "latest_nav": {
+            "title": "Latest Nav",
+            "type": "number"
+          },
+          "latest_nav_date": {
+            "format": "date",
+            "title": "Latest Nav Date",
+            "type": "string"
+          },
+          "option_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Option Type"
+          },
+          "pct_change": {
+            "title": "Pct Change",
+            "type": "number"
+          },
+          "scheme_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheme Category"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "variants": {
+            "minimum": 1.0,
+            "title": "Variants",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amfi_scheme_code",
+          "scheme_name",
+          "amfi_amc_name",
+          "latest_nav",
+          "latest_nav_date",
+          "pct_change",
+          "variants"
+        ],
+        "title": "CategoryMoverItem",
+        "type": "object"
+      },
+      "CategoryMoversResponse": {
+        "description": "GET /api/movers/categories \u2014 comparison-eligible series only.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/MoverCategory"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "categories"
+        ],
+        "title": "CategoryMoversResponse",
+        "type": "object"
+      },
+      "FundDetail": {
+        "description": "GET /api/funds/{code} \u2014 the full v2 detail response.",
+        "properties": {
+          "amfi_amc_name": {
+            "title": "Amfi Amc Name",
+            "type": "string"
+          },
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundFact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "facts_source_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facts Source Code"
+          },
+          "family": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundFamilyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/FundHolding"
+            },
+            "title": "Holdings",
+            "type": "array"
+          },
+          "in_scope": {
+            "title": "In Scope",
+            "type": "boolean"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_defunct": {
+            "title": "Is Defunct",
+            "type": "boolean"
+          },
+          "is_etf": {
+            "title": "Is Etf",
+            "type": "boolean"
+          },
+          "isin_div_reinvest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isin Div Reinvest"
+          },
+          "isin_growth_or_div_payout": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isin Growth Or Div Payout"
+          },
+          "isin_primary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isin Primary"
+          },
+          "last_seen_in_source": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen In Source"
+          },
+          "latest_nav": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav"
+          },
+          "latest_nav_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav Date"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/FundLifecycle"
+          },
+          "nav_freshness": {
+            "$ref": "#/components/schemas/FundNavFreshness"
+          },
+          "nav_quality": {
+            "$ref": "#/components/schemas/FundNavQuality"
+          },
+          "option_type": {
+            "title": "Option Type",
+            "type": "string"
+          },
+          "periodicity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodicity"
+          },
+          "plan_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Source"
+          },
+          "plan_type": {
+            "title": "Plan Type",
+            "type": "string"
+          },
+          "scheme_category": {
+            "title": "Scheme Category",
+            "type": "string"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "scheme_type": {
+            "title": "Scheme Type",
+            "type": "string"
+          },
+          "siblings": {
+            "items": {
+              "$ref": "#/components/schemas/FundSibling"
+            },
+            "title": "Siblings",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amfi_scheme_code",
+          "scheme_name",
+          "plan_type",
+          "option_type",
+          "scheme_type",
+          "scheme_category",
+          "is_etf",
+          "is_defunct",
+          "is_active",
+          "in_scope",
+          "amfi_amc_name",
+          "created_at",
+          "updated_at",
+          "siblings",
+          "holdings",
+          "lifecycle",
+          "nav_freshness",
+          "nav_quality"
+        ],
+        "title": "FundDetail",
+        "type": "object"
+      },
+      "FundFact": {
+        "description": "fund_facts subset served by the detail endpoint (v1 shape unchanged).\n\n``status`` / ``transaction_status`` are LEGACY, non-authoritative facts:\nthey are not a buyability signal and nothing in the contract is derived\nfrom them.",
+        "properties": {
+          "asset_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Class"
+          },
+          "aum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aum"
+          },
+          "base_expense_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Expense Ratio"
+          },
+          "benchmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark"
+          },
+          "benchmark_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Name"
+          },
+          "beta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beta"
+          },
+          "category_return": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Return"
+          },
+          "crisil_rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crisil Rating"
+          },
+          "exit_load": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Load"
+          },
+          "exit_load_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Load Value"
+          },
+          "expense_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expense Ratio"
+          },
+          "expense_ratio_history": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expense Ratio History"
+          },
+          "face_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Value"
+          },
+          "fund_manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fund Manager Name"
+          },
+          "holdings_analysis": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holdings Analysis"
+          },
+          "holdings_maturity": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holdings Maturity"
+          },
+          "inception_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inception Date"
+          },
+          "is_sip_allowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Sip Allowed"
+          },
+          "lock_in_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lock In Period"
+          },
+          "min_initial_investment_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Initial Investment Amount"
+          },
+          "min_subsequent_investment_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Subsequent Investment Amount"
+          },
+          "portfolio_turnover": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Turnover"
+          },
+          "registrar_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrar Agent"
+          },
+          "return_10year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 10Year"
+          },
+          "return_1day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 1Day"
+          },
+          "return_1month": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 1Month"
+          },
+          "return_1week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 1Week"
+          },
+          "return_1year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 1Year"
+          },
+          "return_3month": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 3Month"
+          },
+          "return_3year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 3Year"
+          },
+          "return_5year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 5Year"
+          },
+          "return_6month": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 6Month"
+          },
+          "return_9month": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 9Month"
+          },
+          "return_since_launch": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Since Launch"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
+          "risk_rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Rating"
+          },
+          "sebi_category_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sebi Category Name"
+          },
+          "sharpe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe Ratio"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "std_deviation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Std Deviation"
+          },
+          "sub_asset_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Asset Class"
+          },
+          "sub_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Type"
+          },
+          "taxability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxability"
+          },
+          "transaction_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Status"
+          }
+        },
+        "title": "FundFact",
+        "type": "object"
+      },
+      "FundFamilyRef": {
+        "description": "MFData-owned fund-family identity (stable slug + tags).",
+        "properties": {
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tlws_mf_id": {
+            "title": "Tlws Mf Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tlws_mf_id",
+          "slug",
+          "tags"
+        ],
+        "title": "FundFamilyRef",
+        "type": "object"
+      },
+      "FundHolding": {
+        "properties": {
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "holding_rank": {
+            "title": "Holding Rank",
+            "type": "integer"
+          },
+          "nature_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nature Name"
+          },
+          "sector_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector Name"
+          },
+          "weight_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Pct"
+          }
+        },
+        "required": [
+          "holding_rank"
+        ],
+        "title": "FundHolding",
+        "type": "object"
+      },
+      "FundLifecycle": {
+        "description": "Evidence-backed lifecycle. Absence or a stale NAV alone yields\n``unknown`` \u2014 there is deliberately no \"matured\" boolean in the contract.",
+        "properties": {
+          "evidence": {
+            "enum": [
+              "amfi_current_feed",
+              "amfi_redeemed_marker",
+              "amfi_defunct_marker",
+              "not_seen_in_latest_feed",
+              "insufficient_evidence"
+            ],
+            "title": "Evidence",
+            "type": "string"
+          },
+          "last_seen_in_source": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen In Source"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "redeemed",
+              "defunct",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "evidence"
+        ],
+        "title": "FundLifecycle",
+        "type": "object"
+      },
+      "FundMethodology": {
+        "description": "How the NAV-derived numeric fields must be read. For IDCW/DIVIDEND the\nnumbers are NOT total return and the series is comparison-ineligible.",
+        "properties": {
+          "basis": {
+            "const": "nav_change",
+            "title": "Basis",
+            "type": "string"
+          },
+          "comparison_eligible": {
+            "title": "Comparison Eligible",
+            "type": "boolean"
+          },
+          "distribution_adjustment": {
+            "enum": [
+              "not_applicable",
+              "unavailable"
+            ],
+            "title": "Distribution Adjustment",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "enum": [
+                "distribution_history_unavailable",
+                "lifecycle_not_active",
+                "nav_freshness_lag",
+                "nav_quality_signal",
+                "nav_series_unavailable"
+              ],
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "basis",
+          "distribution_adjustment",
+          "comparison_eligible",
+          "limitations"
+        ],
+        "title": "FundMethodology",
+        "type": "object"
+      },
+      "FundNavFreshness": {
+        "description": "Objective NAV freshness. The bands are server-owned (see\nqueries.FRESHNESS_*_DAYS); consumers must not redefine them.",
+        "properties": {
+          "dataset_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset As Of"
+          },
+          "lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lag Days"
+          },
+          "latest_nav_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav Date"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "delayed",
+              "stale",
+              "very_stale",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "FundNavFreshness",
+        "type": "object"
+      },
+      "FundNavQuality": {
+        "description": "Durable NAV-quality assessment read-through. Signals are DETECTION\nsignals, not proof that a stored NAV is wrong; ``assessment_status``\ndescribes the assessment's currency, never the fund's cleanliness.",
+        "properties": {
+          "assessed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed At"
+          },
+          "assessed_dataset_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed Dataset Version"
+          },
+          "assessment_status": {
+            "enum": [
+              "current",
+              "stale",
+              "not_assessed"
+            ],
+            "title": "Assessment Status",
+            "type": "string"
+          },
+          "distinct_nav_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distinct Nav Count"
+          },
+          "methodology_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Methodology Version"
+          },
+          "observation_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Count"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "constant_nav_series",
+                    "duplicate_variant_series",
+                    "terminal_face_value_reset_candidate"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          }
+        },
+        "required": [
+          "assessment_status"
+        ],
+        "title": "FundNavQuality",
+        "type": "object"
+      },
+      "FundSibling": {
+        "description": "One variant-group sibling offered for navigation.",
+        "properties": {
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "option_type": {
+            "title": "Option Type",
+            "type": "string"
+          },
+          "periodicity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodicity"
+          },
+          "plan_type": {
+            "title": "Plan Type",
+            "type": "string"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amfi_scheme_code",
+          "scheme_name",
+          "plan_type",
+          "option_type"
+        ],
+        "title": "FundSibling",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MoverCategory": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "funds": {
+            "title": "Funds",
+            "type": "integer"
+          },
+          "gainers": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryMoverItem"
+            },
+            "title": "Gainers",
+            "type": "array"
+          },
+          "losers": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryMoverItem"
+            },
+            "title": "Losers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "category",
+          "funds",
+          "gainers",
+          "losers"
+        ],
+        "title": "MoverCategory",
+        "type": "object"
+      },
+      "MoverItem": {
+        "properties": {
+          "amfi_amc_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amfi Amc Name"
+          },
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "latest_nav": {
+            "title": "Latest Nav",
+            "type": "number"
+          },
+          "latest_nav_date": {
+            "format": "date",
+            "title": "Latest Nav Date",
+            "type": "string"
+          },
+          "option_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Option Type"
+          },
+          "pct_change": {
+            "title": "Pct Change",
+            "type": "number"
+          },
+          "plan_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Type"
+          },
+          "prev_nav": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Nav"
+          },
+          "prev_nav_date": {
+            "format": "date",
+            "title": "Prev Nav Date",
+            "type": "string"
+          },
+          "scheme_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheme Name"
+          }
+        },
+        "required": [
+          "amfi_scheme_code",
+          "latest_nav",
+          "latest_nav_date",
+          "prev_nav_date",
+          "pct_change"
+        ],
+        "title": "MoverItem",
+        "type": "object"
+      },
+      "MoversResponse": {
+        "description": "GET /api/movers \u2014 comparison-eligible series only (IDCW/DIVIDEND\nexcluded: their NAV changes are not total return).",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MoverItem"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period",
+          "direction",
+          "results"
+        ],
+        "title": "MoversResponse",
+        "type": "object"
+      },
+      "PeerHorizon": {
+        "properties": {
+          "beats_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beats Pct"
+          },
+          "fund_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fund Return"
+          },
+          "peer_count": {
+            "title": "Peer Count",
+            "type": "integer"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          }
+        },
+        "required": [
+          "peer_count"
+        ],
+        "title": "PeerHorizon",
+        "type": "object"
+      },
+      "PeersResponse": {
+        "description": "GET /api/funds/{code}/peers \u2014 peer population excludes\ncomparison-ineligible series.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "horizons": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PeerHorizon"
+            },
+            "title": "Horizons",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "horizons"
+        ],
+        "title": "PeersResponse",
+        "type": "object"
+      },
+      "ReturnsResponse": {
+        "description": "GET /api/funds/{code}/returns \u2014 NAV-to-NAV horizon changes.\n\n``horizons`` values are NAV change percentages; for IDCW/DIVIDEND they\nare NOT total return (see ``methodology``).",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "horizons": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Horizons",
+            "type": "object"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/FundLifecycle"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/FundMethodology"
+          },
+          "nav_freshness": {
+            "$ref": "#/components/schemas/FundNavFreshness"
+          },
+          "nav_quality": {
+            "$ref": "#/components/schemas/FundNavQuality"
+          }
+        },
+        "required": [
+          "code",
+          "horizons",
+          "lifecycle",
+          "nav_freshness",
+          "nav_quality",
+          "methodology"
+        ],
+        "title": "ReturnsResponse",
+        "type": "object"
+      },
+      "RiskRewardPoint": {
+        "properties": {
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "aum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aum"
+          },
+          "max_drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown"
+          },
+          "return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "self": {
+            "title": "Self",
+            "type": "boolean"
+          },
+          "vol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vol"
+          }
+        },
+        "required": [
+          "amfi_scheme_code",
+          "scheme_name",
+          "self"
+        ],
+        "title": "RiskRewardPoint",
+        "type": "object"
+      },
+      "RiskRewardResponse": {
+        "description": "GET /api/funds/{code}/risk-reward \u2014 population excludes\ncomparison-ineligible series.\n\n``refreshed`` is absent (v1 shape) when the profile table yields no rows.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RiskRewardPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "refreshed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed"
+          }
+        },
+        "required": [
+          "code",
+          "points"
+        ],
+        "title": "RiskRewardResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "MFDataIndia",
+    "version": "0.1.0",
+    "x-contract-id": "mfdataindia-json-read-v2",
+    "x-contract-version": 2
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/amcs": {
+      "get": {
+        "operationId": "api_amcs_api_amcs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Api Amcs Api Amcs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Amcs"
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "operationId": "api_categories_api_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Api Categories Api Categories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Categories"
+      }
+    },
+    "/api/compare": {
+      "get": {
+        "operationId": "api_compare_api_compare_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "codes",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "title": "Codes",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "default": 1.0,
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Years",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Compare Api Compare Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Compare"
+      }
+    },
+    "/api/fund-families": {
+      "get": {
+        "operationId": "api_fund_families_api_fund_families_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "amc",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Amc"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "option",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Option"
+            }
+          },
+          {
+            "in": "query",
+            "name": "live",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Live",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 100000,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Per Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name",
+              "maxLength": 32,
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Fund Families Api Fund Families Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund Families"
+      }
+    },
+    "/api/funds": {
+      "get": {
+        "operationId": "api_funds_api_funds_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "amc",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Amc"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "option",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Option"
+            }
+          },
+          {
+            "in": "query",
+            "name": "in_scope",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "In Scope",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "live",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Live",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 100000,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Per Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "name",
+              "maxLength": 32,
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Funds Api Funds Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Funds"
+      }
+    },
+    "/api/funds/batch": {
+      "get": {
+        "operationId": "api_funds_batch_api_funds_batch_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ids",
+            "required": true,
+            "schema": {
+              "maxLength": 2048,
+              "title": "Ids",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Funds Batch Api Funds Batch Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Funds Batch"
+      }
+    },
+    "/api/funds/{code}": {
+      "get": {
+        "operationId": "api_fund_api_funds__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FundDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund"
+      }
+    },
+    "/api/funds/{code}/analytics": {
+      "get": {
+        "operationId": "api_fund_analytics_api_funds__code__analytics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund Analytics"
+      }
+    },
+    "/api/funds/{code}/nav": {
+      "get": {
+        "operationId": "api_fund_nav_api_funds__code__nav_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Years"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Fund Nav Api Funds  Code  Nav Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund Nav"
+      }
+    },
+    "/api/funds/{code}/peers": {
+      "get": {
+        "operationId": "api_fund_peers_api_funds__code__peers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeersResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund Peers"
+      }
+    },
+    "/api/funds/{code}/returns": {
+      "get": {
+        "operationId": "api_fund_returns_api_funds__code__returns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund Returns"
+      }
+    },
+    "/api/funds/{code}/risk-reward": {
+      "get": {
+        "operationId": "api_fund_risk_reward_api_funds__code__risk_reward_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskRewardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Fund Risk Reward"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "api_health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Health Api Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Health"
+      }
+    },
+    "/api/holdings-overlap": {
+      "get": {
+        "operationId": "api_holdings_overlap_api_holdings_overlap_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "codes",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "title": "Codes",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Holdings Overlap Api Holdings Overlap Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Holdings Overlap"
+      }
+    },
+    "/api/movers": {
+      "get": {
+        "operationId": "api_movers_api_movers_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "1m",
+              "maxLength": 16,
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "gainers",
+              "maxLength": 16,
+              "title": "Direction",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoversResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Movers"
+      }
+    },
+    "/api/movers/categories": {
+      "get": {
+        "operationId": "api_movers_categories_api_movers_categories_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "1m",
+              "maxLength": 16,
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryMoversResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Movers Categories"
+      }
+    },
+    "/api/options": {
+      "get": {
+        "operationId": "api_options_api_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Api Options Api Options Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Options"
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "operationId": "api_stats_api_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Api Stats Api Stats Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Api Stats"
+      }
+    },
+    "/api/suggest": {
+      "get": {
+        "operationId": "api_suggest_api_suggest_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 25,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Api Suggest Api Suggest Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Api Suggest"
+      }
+    }
+  },
+  "x-mfdata-api-path-count": 19,
+  "x-mfdata-read-only": true
+}

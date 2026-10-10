@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -98,8 +98,7 @@ def plan_scope(value: Optional[str]) -> str:
     scope = (value or DEFAULT_PLAN_SCOPE).strip().lower()
     if scope not in _PLAN_SCOPE_SQL:
         raise ValueError(
-            f"unknown plan {value!r}; expected one of "
-            + ", ".join(sorted(_PLAN_SCOPE_SQL))
+            f"unknown plan {value!r}; expected one of " + ", ".join(sorted(_PLAN_SCOPE_SQL))
         )
     return scope
 
@@ -164,7 +163,7 @@ _COMPARISON_INELIGIBLE_OPTIONS = ("IDCW", "DIVIDEND")
 
 
 def _comparison_eligible_predicate(alias: str = "f") -> str:
-    return (f"{alias}.option_type NOT IN ('IDCW', 'DIVIDEND')")
+    return f"{alias}.option_type NOT IN ('IDCW', 'DIVIDEND')"
 
 
 def _latest_source_date(conn) -> Optional[date]:
@@ -174,13 +173,13 @@ def _latest_source_date(conn) -> Optional[date]:
     AMFI refresh carries ``last_seen_in_source`` = that refresh's source
     date, so the column maximum IS the latest snapshot date.
     """
-    row = conn.execute(
-        "SELECT max(last_seen_in_source) AS d FROM mf.funds").fetchone()
+    row = conn.execute("SELECT max(last_seen_in_source) AS d FROM mf.funds").fetchone()
     return row["d"] if row else None
 
 
-def _lifecycle(conn, code: int, *, is_defunct: bool,
-               last_seen_in_source: Optional[date]) -> dict[str, Any]:
+def _lifecycle(
+    conn, code: int, *, is_defunct: bool, last_seen_in_source: Optional[date]
+) -> dict[str, Any]:
     """Structured lifecycle state with its evidence.
 
     Precedence: AMFI REDEEMED marker > defunct evidence > current-feed
@@ -195,7 +194,9 @@ def _lifecycle(conn, code: int, *, is_defunct: bool,
           AND flag_type = 'LIFECYCLE_ENDED' AND source = 'AMFI'
           AND resolved_at IS NULL
         LIMIT 1
-        """, {"code": code}).fetchone()
+        """,
+        {"code": code},
+    ).fetchone()
     if marker:
         state, evidence = "redeemed", "amfi_redeemed_marker"
     elif is_defunct:
@@ -211,8 +212,7 @@ def _lifecycle(conn, code: int, *, is_defunct: bool,
     return {
         "state": state,
         "evidence": evidence,
-        "last_seen_in_source": (last_seen_in_source.isoformat()
-                                if last_seen_in_source else None),
+        "last_seen_in_source": (last_seen_in_source.isoformat() if last_seen_in_source else None),
     }
 
 
@@ -224,8 +224,9 @@ FRESHNESS_DELAYED_DAYS = 30
 FRESHNESS_STALE_DAYS = 180
 
 
-def _nav_freshness(*, dataset_as_of: Optional[date],
-                   latest_nav_date: Optional[date]) -> dict[str, Any]:
+def _nav_freshness(
+    *, dataset_as_of: Optional[date], latest_nav_date: Optional[date]
+) -> dict[str, Any]:
     """Objective NAV freshness from the dataset reference and the code's NAV."""
     if latest_nav_date is None:
         return {
@@ -267,7 +268,9 @@ def _nav_quality(conn, code: int, *, dataset_version: int) -> dict[str, Any]:
                observation_count, distinct_nav_count, signals
         FROM mf.nav_quality_assessments
         WHERE amfi_scheme_code = %(code)s
-        """, {"code": code}).fetchone()
+        """,
+        {"code": code},
+    ).fetchone()
     if row is None:
         return {
             "assessment_status": "not_assessed",
@@ -278,8 +281,7 @@ def _nav_quality(conn, code: int, *, dataset_version: int) -> dict[str, Any]:
             "distinct_nav_count": None,
             "signals": None,
         }
-    status = ("current" if row["assessed_dataset_version"] >= dataset_version
-              else "stale")
+    status = "current" if row["assessed_dataset_version"] >= dataset_version else "stale"
     return {
         "assessment_status": status,
         "methodology_version": row["methodology_version"],
@@ -299,8 +301,13 @@ LIMITATION_NAV_QUALITY_SIGNAL = "nav_quality_signal"
 LIMITATION_NAV_SERIES_UNAVAILABLE = "nav_series_unavailable"
 
 
-def _methodology(*, option_type: str, lifecycle: dict[str, Any],
-                 freshness: dict[str, Any], quality: dict[str, Any]) -> dict[str, Any]:
+def _methodology(
+    *,
+    option_type: str,
+    lifecycle: dict[str, Any],
+    freshness: dict[str, Any],
+    quality: dict[str, Any],
+) -> dict[str, Any]:
     """Explicit methodology for the NAV-derived numeric fields.
 
     The stored numbers are always NAV-to-NAV changes (``basis: nav_change``).
@@ -375,26 +382,60 @@ def _facts_usable_sql(alias: str) -> str:
     """
     return " OR ".join(f"{alias}.{k} IS NOT NULL" for k in _FACTS_IDENTITY_FIELDS)
 
+
 #: Every fund_facts column served by fund_detail. Single source of truth for the
 #: column set so the SELECT, the "all fields" shape, and the family-safe
 #: allowlist can never drift apart.
 _ALL_FACTS_FIELDS = (
-    "aum", "expense_ratio", "face_value", "inception_date", "sebi_category_name",
-    "asset_class", "sub_asset_class", "taxability",
-    "return_1day", "return_3month", "return_6month", "return_1year", "return_3year",
-    "return_5year", "return_10year", "return_since_launch",
-    "min_initial_investment_amount", "min_subsequent_investment_amount",
-    "is_sip_allowed", "status", "transaction_status",
-    "benchmark", "benchmark_name", "fund_manager_name", "risk_level",
-    "base_expense_ratio", "registrar_agent", "expense_ratio_history",
-    "crisil_rating", "sub_type", "exit_load_value", "exit_load",
-    "lock_in_period", "portfolio_turnover", "return_1week", "return_1month",
-    "return_9month", "sharpe_ratio", "beta", "std_deviation", "risk_rating",
-    "holdings_analysis", "holdings_maturity", "category_return",
+    "aum",
+    "expense_ratio",
+    "face_value",
+    "inception_date",
+    "sebi_category_name",
+    "asset_class",
+    "sub_asset_class",
+    "taxability",
+    "return_1day",
+    "return_3month",
+    "return_6month",
+    "return_1year",
+    "return_3year",
+    "return_5year",
+    "return_10year",
+    "return_since_launch",
+    "min_initial_investment_amount",
+    "min_subsequent_investment_amount",
+    "is_sip_allowed",
+    "status",
+    "transaction_status",
+    "benchmark",
+    "benchmark_name",
+    "fund_manager_name",
+    "risk_level",
+    "base_expense_ratio",
+    "registrar_agent",
+    "expense_ratio_history",
+    "crisil_rating",
+    "sub_type",
+    "exit_load_value",
+    "exit_load",
+    "lock_in_period",
+    "portfolio_turnover",
+    "return_1week",
+    "return_1month",
+    "return_9month",
+    "sharpe_ratio",
+    "beta",
+    "std_deviation",
+    "risk_rating",
+    "holdings_analysis",
+    "holdings_maturity",
+    "category_return",
 )
 
 _FACTS_SELECT = (
-    "SELECT " + ", ".join(_ALL_FACTS_FIELDS)
+    "SELECT "
+    + ", ".join(_ALL_FACTS_FIELDS)
     + " FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s"
 )
 
@@ -408,12 +449,27 @@ _FACTS_SELECT = (
 #: beta, std_deviation, risk_rating), and expense_ratio_history. A borrowing
 #: code keeps its own values for those and inherits only this allowlist.
 _FAMILY_SAFE_FACTS_FIELDS = (
-    "aum", "expense_ratio", "face_value", "inception_date",
-    "sebi_category_name", "asset_class", "sub_asset_class", "taxability",
-    "min_initial_investment_amount", "min_subsequent_investment_amount",
-    "benchmark", "benchmark_name", "fund_manager_name", "risk_level",
-    "base_expense_ratio", "registrar_agent", "crisil_rating", "sub_type",
-    "portfolio_turnover", "holdings_analysis", "holdings_maturity",
+    "aum",
+    "expense_ratio",
+    "face_value",
+    "inception_date",
+    "sebi_category_name",
+    "asset_class",
+    "sub_asset_class",
+    "taxability",
+    "min_initial_investment_amount",
+    "min_subsequent_investment_amount",
+    "benchmark",
+    "benchmark_name",
+    "fund_manager_name",
+    "risk_level",
+    "base_expense_ratio",
+    "registrar_agent",
+    "crisil_rating",
+    "sub_type",
+    "portfolio_turnover",
+    "holdings_analysis",
+    "holdings_maturity",
 )
 
 #: Best facts-bearing sibling of the requested scheme. A sibling must be a
@@ -473,17 +529,23 @@ _BATCH_SIBLING_SOURCE_SQL = f"""
 
 #: Facts columns served by /api/funds/batch from a fund's OWN row.
 _BATCH_FACTS_KEYS = (
-    "aum", "expense_ratio", "base_expense_ratio", "return_5year", "sharpe_ratio",
-    "beta", "risk_level", "fund_manager_name", "benchmark_name", "inception_date",
+    "aum",
+    "expense_ratio",
+    "base_expense_ratio",
+    "return_5year",
+    "sharpe_ratio",
+    "beta",
+    "risk_level",
+    "fund_manager_name",
+    "benchmark_name",
+    "inception_date",
 )
 
 #: What the batch fallback may actually BORROW from a sibling: the family-safe
 #: subset of _BATCH_FACTS_KEYS — the same policy fund_detail applies. Per-
 #: scheme performance metrics (return_5year, sharpe_ratio, beta) are computed
 #: from each code's own NAV series and are never inherited.
-_BATCH_BORROW_FACTS_KEYS = tuple(
-    k for k in _BATCH_FACTS_KEYS if k in _FAMILY_SAFE_FACTS_FIELDS
-)
+_BATCH_BORROW_FACTS_KEYS = tuple(k for k in _BATCH_FACTS_KEYS if k in _FAMILY_SAFE_FACTS_FIELDS)
 
 
 def _facts_are_usable(facts: Optional[dict]) -> bool:
@@ -556,9 +618,7 @@ def stats(conn) -> dict[str, Any]:
         "nav_first": summary["nav_first"].isoformat() if summary["nav_first"] else None,
         "nav_last": summary["nav_last"].isoformat() if summary["nav_last"] else None,
         "enrichment_pct": (
-            float(summary["enrichment_pct"])
-            if summary["enrichment_pct"] is not None
-            else None
+            float(summary["enrichment_pct"]) if summary["enrichment_pct"] is not None else None
         ),
         "dataset_version": summary["dataset_version"],
         "source_content_hash": summary["source_content_hash"],
@@ -593,8 +653,10 @@ def list_funds(
     if live:
         where.append("NOT f.is_defunct")
     if q:
-        where.append("(f.scheme_name ILIKE %(q)s OR CAST(f.amfi_scheme_code AS text) = %(qeq)s "
-                     "OR f.isin_primary = %(qeq)s)")
+        where.append(
+            "(f.scheme_name ILIKE %(q)s OR CAST(f.amfi_scheme_code AS text) = %(qeq)s "
+            "OR f.isin_primary = %(qeq)s)"
+        )
         params["q"] = f"%{q}%"
         params["qeq"] = q.strip()
     if amc:
@@ -625,15 +687,18 @@ def list_funds(
     # join: a name sort needs no join; a facts/NAV sort needs its column available
     # before ORDER BY. ``pos`` preserves page order through the outer joins.
     if sort in ("aum", "expense", "return_5y"):
-        sort_join = ("LEFT JOIN mf.fund_facts fs "
-                     "ON fs.amfi_scheme_code = f.amfi_scheme_code")
-        order = {"aum": "fs.aum DESC NULLS LAST",
-                 "expense": "fs.expense_ratio ASC NULLS LAST",
-                 "return_5y": "fs.return_5year DESC NULLS LAST"}[sort]
+        sort_join = "LEFT JOIN mf.fund_facts fs ON fs.amfi_scheme_code = f.amfi_scheme_code"
+        order = {
+            "aum": "fs.aum DESC NULLS LAST",
+            "expense": "fs.expense_ratio ASC NULLS LAST",
+            "return_5y": "fs.return_5year DESC NULLS LAST",
+        }[sort]
     elif sort == "nav":
-        sort_join = ("LEFT JOIN LATERAL (SELECT n.nav FROM mf.nav_history n "
-                     "WHERE n.amfi_scheme_code = f.amfi_scheme_code "
-                     "ORDER BY n.nav_date DESC LIMIT 1) lt ON true")
+        sort_join = (
+            "LEFT JOIN LATERAL (SELECT n.nav FROM mf.nav_history n "
+            "WHERE n.amfi_scheme_code = f.amfi_scheme_code "
+            "ORDER BY n.nav_date DESC LIMIT 1) lt ON true"
+        )
         order = "lt.nav DESC NULLS LAST"
     else:
         sort_join = ""
@@ -799,7 +864,8 @@ def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[
     # -- evidence-backed signals (cheap index/singleton reads, no history scan)
     dataset_as_of, dataset_version = _dataset_reference(conn)
     out["lifecycle"] = _lifecycle(
-        conn, code,
+        conn,
+        code,
         is_defunct=bool(out["is_defunct"]),
         last_seen_in_source=out.get("last_seen_in_source"),
     )
@@ -811,9 +877,7 @@ def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[
     return out
 
 
-def nav_series(
-    conn, code: int, *, years: Optional[float] = None
-) -> dict[str, Any]:
+def nav_series(conn, code: int, *, years: Optional[float] = None) -> dict[str, Any]:
     """NAV time series for the chart, optionally windowed to the last ``years``.
 
     The cutoff is computed in Python, not SQL: make_interval() with a fractional
@@ -823,11 +887,13 @@ def nav_series(
         rows = conn.execute(
             "SELECT nav_date, nav FROM mf.nav_history "
             "WHERE amfi_scheme_code = %(code)s ORDER BY nav_date",
-            {"code": code}).fetchall()
+            {"code": code},
+        ).fetchall()
     else:
         mx = conn.execute(
-            "SELECT max(nav_date) AS m FROM mf.nav_history "
-            "WHERE amfi_scheme_code = %(code)s", {"code": code}).fetchone()["m"]
+            "SELECT max(nav_date) AS m FROM mf.nav_history WHERE amfi_scheme_code = %(code)s",
+            {"code": code},
+        ).fetchone()["m"]
         if mx is None:
             return {"code": code, "points": [], "count": 0}
         cutoff = mx - timedelta(days=int(round(years * 365.25)))
@@ -835,7 +901,8 @@ def nav_series(
             "SELECT nav_date, nav FROM mf.nav_history "
             "WHERE amfi_scheme_code = %(code)s AND nav_date > %(cutoff)s "
             "ORDER BY nav_date",
-            {"code": code, "cutoff": cutoff}).fetchall()
+            {"code": code, "cutoff": cutoff},
+        ).fetchall()
     points = [{"date": r["nav_date"].isoformat(), "nav": float(r["nav"])} for r in rows]
     return {"code": code, "points": points, "count": len(points)}
 
@@ -849,15 +916,17 @@ def _fund_signals(conn, code: int, *, latest_nav_date: Optional[date]) -> dict[s
     """
     fund = conn.execute(
         "SELECT option_type, is_defunct, last_seen_in_source FROM mf.funds "
-        "WHERE amfi_scheme_code = %(code)s", {"code": code}).fetchone()
+        "WHERE amfi_scheme_code = %(code)s",
+        {"code": code},
+    ).fetchone()
     dataset_as_of, dataset_version = _dataset_reference(conn)
     lifecycle = _lifecycle(
-        conn, code,
+        conn,
+        code,
         is_defunct=bool(fund["is_defunct"]) if fund else False,
         last_seen_in_source=fund["last_seen_in_source"] if fund else None,
     )
-    freshness = _nav_freshness(
-        dataset_as_of=dataset_as_of, latest_nav_date=latest_nav_date)
+    freshness = _nav_freshness(dataset_as_of=dataset_as_of, latest_nav_date=latest_nav_date)
     quality = _nav_quality(conn, code, dataset_version=dataset_version)
     return {
         "lifecycle": lifecycle,
@@ -886,7 +955,8 @@ def returns(conn, code: int) -> dict[str, Any]:
     latest = conn.execute(
         "SELECT nav, nav_date FROM mf.nav_history "
         "WHERE amfi_scheme_code = %(code)s ORDER BY nav_date DESC LIMIT 1",
-        {"code": code}).fetchone()
+        {"code": code},
+    ).fetchone()
     if not latest:
         out: dict[str, Any] = {"code": code, "horizons": {}}
         out.update(_fund_signals(conn, code, latest_nav_date=None))
@@ -906,7 +976,8 @@ def returns(conn, code: int) -> dict[str, Any]:
             WHERE amfi_scheme_code = %(code)s AND nav_date <= %(cutoff)s
             ORDER BY nav_date DESC LIMIT 1
             """,
-            {"code": code, "cutoff": cutoff}).fetchone()
+            {"code": code, "cutoff": cutoff},
+        ).fetchone()
         if row and float(row["nav"]) > 0:
             pct = (last_nav / float(row["nav"]) - 1.0) * 100.0
             out["horizons"][label] = round(pct, 2)
@@ -945,26 +1016,29 @@ def fund_analytics(conn, code: int) -> dict[str, Any]:
     rows = conn.execute(
         "SELECT nav_date, nav FROM mf.nav_history "
         "WHERE amfi_scheme_code = %(code)s ORDER BY nav_date",
-        {"code": code}).fetchall()
+        {"code": code},
+    ).fetchall()
     if len(rows) < 30:
         out = {"code": code, "points": len(rows), "too_short": True}
-        out.update(_fund_signals(conn, code,
-                                 latest_nav_date=rows[-1]["nav_date"] if rows else None))
+        out.update(
+            _fund_signals(conn, code, latest_nav_date=rows[-1]["nav_date"] if rows else None)
+        )
         return out
 
     dates = [r["nav_date"] for r in rows]
     navs = [float(r["nav"]) for r in rows]
     n = len(navs)
     out: dict[str, Any] = {
-        "code": code, "points": n,
-        "first_date": dates[0].isoformat(), "as_of": dates[-1].isoformat(),
+        "code": code,
+        "points": n,
+        "first_date": dates[0].isoformat(),
+        "as_of": dates[-1].isoformat(),
         "risk_free_pct": round(RISK_FREE_ANNUAL * 100, 2),
     }
     out.update(_fund_signals(conn, code, latest_nav_date=dates[-1]))
 
     # ---- daily log returns -------------------------------------------------
-    rets = [math.log(navs[i] / navs[i - 1]) for i in range(1, n)
-            if navs[i - 1] > 0 and navs[i] > 0]
+    rets = [math.log(navs[i] / navs[i - 1]) for i in range(1, n) if navs[i - 1] > 0 and navs[i] > 0]
     if not rets:
         out["too_short"] = True
         return out
@@ -979,7 +1053,8 @@ def fund_analytics(conn, code: int) -> dict[str, Any]:
     downside = math.sqrt(sum(min(r - rf_daily, 0.0) ** 2 for r in rets) / len(rets))
     if downside > 0:
         out["sortino"] = round(
-            (ann_return - RISK_FREE_ANNUAL) / (downside * math.sqrt(_TRADING_DAYS)), 2)
+            (ann_return - RISK_FREE_ANNUAL) / (downside * math.sqrt(_TRADING_DAYS)), 2
+        )
 
     # ---- max drawdown (depth, trough window, recovery) ---------------------
     peak = navs[0]
@@ -992,14 +1067,12 @@ def fund_analytics(conn, code: int) -> dict[str, Any]:
         dd = navs[i] / peak - 1.0
         if dd < max_dd:
             max_dd, dd_peak_i, dd_trough_i = dd, peak_i, i
-    trough_peak = max(navs[dd_peak_i:dd_trough_i + 1])
-    recovery_i = next((j for j in range(dd_trough_i + 1, n)
-                       if navs[j] >= trough_peak), None)
+    trough_peak = max(navs[dd_peak_i : dd_trough_i + 1])
+    recovery_i = next((j for j in range(dd_trough_i + 1, n) if navs[j] >= trough_peak), None)
     out["max_drawdown_pct"] = round(max_dd * 100, 2)
     out["max_dd_peak_date"] = dates[dd_peak_i].isoformat()
     out["max_dd_trough_date"] = dates[dd_trough_i].isoformat()
-    out["max_dd_recovery_date"] = (dates[recovery_i].isoformat()
-                                   if recovery_i is not None else None)
+    out["max_dd_recovery_date"] = dates[recovery_i].isoformat() if recovery_i is not None else None
 
     # ---- CAGR + Calmar -----------------------------------------------------
     years = (dates[-1] - dates[0]).days / 365.25
@@ -1066,7 +1139,9 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
         FROM mf.funds f LEFT JOIN mf.fund_facts ff
              ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE f.amfi_scheme_code = %(code)s
-        """, {"code": code}).fetchone()
+        """,
+        {"code": code},
+    ).fetchone()
     if not row or not row["sebi_category_name"]:
         return {"code": code, "category": None, "horizons": {}}
 
@@ -1083,28 +1158,35 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
     peer_plan = _plan_predicate()
     peer_eligible = _comparison_eligible_predicate("f")
     subject_eligible = row["option_type"] not in _COMPARISON_INELIGIBLE_OPTIONS
-    colmap = {"1Y": ("return_1year", row["return_1year"]),
-              "3Y": ("return_3year", row["return_3year"]),
-              "5Y": ("return_5year", row["return_5year"])}
+    colmap = {
+        "1Y": ("return_1year", row["return_1year"]),
+        "3Y": ("return_3year", row["return_3year"]),
+        "5Y": ("return_5year", row["return_5year"]),
+    }
     out = {"code": code, "category": cat, "horizons": {}}
     for label, (col, mine) in colmap.items():
-        peers = [r["r"] for r in conn.execute(
-            f"""
+        peers = [
+            r["r"]
+            for r in conn.execute(
+                f"""
             SELECT {col} AS r FROM mf.fund_facts ff
             JOIN mf.funds f ON f.amfi_scheme_code = ff.amfi_scheme_code
             WHERE ff.sebi_category_name = %(cat)s
               AND f.in_scope AND NOT f.is_defunct AND {peer_plan}
               AND {peer_eligible}
               AND ff.{col} IS NOT NULL
-            """, {"cat": cat}).fetchall()]
+            """,
+                {"cat": cat},
+            ).fetchall()
+        ]
         n = len(peers)
         if n < 10 or mine is None or not subject_eligible:
-            out["horizons"][label] = {
-                "peer_count": n, "fund_return": _f(mine), "beats_pct": None}
+            out["horizons"][label] = {"peer_count": n, "fund_return": _f(mine), "beats_pct": None}
             continue
         below = sum(1 for p in peers if _f(p) < _f(mine))
         out["horizons"][label] = {
-            "peer_count": n, "fund_return": round(float(mine), 2),
+            "peer_count": n,
+            "fund_return": round(float(mine), 2),
             "beats_pct": round(100.0 * below / (n - 1), 1),
             "rank": n - below,
         }
@@ -1130,7 +1212,9 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
         FROM mf.funds f LEFT JOIN mf.fund_facts ff
              ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE f.amfi_scheme_code = %(code)s
-        """, {"code": code}).fetchone()
+        """,
+        {"code": code},
+    ).fetchone()
     if not me or not me["sebi_category_name"]:
         return {"code": code, "category": None, "points": []}
 
@@ -1146,19 +1230,29 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
           AND {_plan_predicate()}
           AND {_comparison_eligible_predicate("f")}
         ORDER BY rp.annual_vol
-        """, {"cat": me["sebi_category_name"]}).fetchall()
+        """,
+        {"cat": me["sebi_category_name"]},
+    ).fetchall()
 
-    points = [{
-        "amfi_scheme_code": r["amfi_scheme_code"],
-        "scheme_name": r["scheme_name"],
-        "vol": _f(r["annual_vol"]),
-        "return": _f(r["cagr"]),
-        "max_drawdown": _f(r["max_drawdown"]),
-        "aum": _f(r["aum"]),
-        "self": r["amfi_scheme_code"] == code,
-    } for r in rows if r["annual_vol"] is not None and r["cagr"] is not None]
-    return {"code": code, "category": me["sebi_category_name"],
-            "points": points, "refreshed": bool(points)}
+    points = [
+        {
+            "amfi_scheme_code": r["amfi_scheme_code"],
+            "scheme_name": r["scheme_name"],
+            "vol": _f(r["annual_vol"]),
+            "return": _f(r["cagr"]),
+            "max_drawdown": _f(r["max_drawdown"]),
+            "aum": _f(r["aum"]),
+            "self": r["amfi_scheme_code"] == code,
+        }
+        for r in rows
+        if r["annual_vol"] is not None and r["cagr"] is not None
+    ]
+    return {
+        "code": code,
+        "category": me["sebi_category_name"],
+        "points": points,
+        "refreshed": bool(points),
+    }
 
 
 def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
@@ -1242,8 +1336,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
     # sibling SQL filters on), so both endpoints agree on what counts as "has
     # its own facts".
     missing = [
-        code for code in order
-        if all(by_code[code][k] is None for k in _FACTS_IDENTITY_FIELDS)
+        code for code in order if all(by_code[code][k] is None for k in _FACTS_IDENTITY_FIELDS)
     ]
     facts_source: dict[int, int] = {}
     source_facts: dict[int, dict[str, Any]] = {}
@@ -1290,8 +1383,15 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
             "in_scope": r["in_scope"],
             "is_defunct": r["is_defunct"],
         }
-        for k in ("aum", "expense_ratio", "base_expense_ratio", "return_5year",
-                  "sharpe_ratio", "beta", "latest_nav"):
+        for k in (
+            "aum",
+            "expense_ratio",
+            "base_expense_ratio",
+            "return_5year",
+            "sharpe_ratio",
+            "beta",
+            "latest_nav",
+        ):
             if r.get(k) is not None:
                 fund[k] = float(r[k])
         for k in ("inception_date", "latest_nav_date"):
@@ -1327,7 +1427,9 @@ def holdings_overlap(conn, codes: list[int]) -> dict[str, Any]:
             """
             SELECT company_name, weight_pct FROM mf.fund_holdings
             WHERE amfi_scheme_code = %(c)s ORDER BY holding_rank LIMIT 20
-            """, {"c": c}).fetchall()
+            """,
+            {"c": c},
+        ).fetchall()
         names[c] = [r["company_name"] for r in rows if r["company_name"]]
 
     def norm(s: str) -> str:
@@ -1340,12 +1442,15 @@ def holdings_overlap(conn, codes: list[int]) -> dict[str, Any]:
             sa, sb = {norm(n) for n in names.get(a, [])}, {norm(n) for n in names.get(b, [])}
             shared = sa & sb
             union = sa | sb
-            pairs.append({
-                "a": a, "b": b,
-                "shared_count": len(shared),
-                "union_count": len(union),
-                "jaccard": round(len(shared) / len(union), 3) if union else None,
-            })
+            pairs.append(
+                {
+                    "a": a,
+                    "b": b,
+                    "shared_count": len(shared),
+                    "union_count": len(union),
+                    "jaccard": round(len(shared) / len(union), 3) if union else None,
+                }
+            )
     return {"codes": list(codes), "pairs": pairs}
 
 
@@ -1365,7 +1470,8 @@ def amcs(conn) -> list[dict[str, Any]]:
         LEFT JOIN mf.funds f ON f.amc_id = a.amc_id
         GROUP BY a.amfi_amc_name
         ORDER BY live_funds DESC, a.amfi_amc_name
-        """).fetchall()
+        """
+    ).fetchall()
 
 
 def categories(conn) -> list[dict[str, Any]]:
@@ -1378,15 +1484,20 @@ def categories(conn) -> list[dict[str, Any]]:
         WHERE f.in_scope AND NOT f.is_defunct AND {_plan_predicate()}
         GROUP BY f.scheme_category
         ORDER BY live_funds DESC
-        """).fetchall()
+        """
+    ).fetchall()
 
 
 def options(conn) -> list[str]:
     """Distinct option types in the served universe, for the filter dropdown."""
-    return [r["option_type"] for r in conn.execute(
-        f"SELECT DISTINCT f.option_type FROM mf.funds f "
-        f"WHERE f.in_scope AND NOT f.is_defunct AND {_plan_predicate()} "
-        "ORDER BY f.option_type").fetchall()]
+    return [
+        r["option_type"]
+        for r in conn.execute(
+            f"SELECT DISTINCT f.option_type FROM mf.funds f "
+            f"WHERE f.in_scope AND NOT f.is_defunct AND {_plan_predicate()} "
+            "ORDER BY f.option_type"
+        ).fetchall()
+    ]
 
 
 def suggest(
@@ -1438,7 +1549,11 @@ _MOVER_DAYS = {"1d": 1, "1w": 7, "1m": 30, "3m": 90, "6m": 182, "1y": 365}
 
 
 def movers(
-    conn, *, period: str = "1m", direction: str = "gainers", limit: int = 10,
+    conn,
+    *,
+    period: str = "1m",
+    direction: str = "gainers",
+    limit: int = 10,
     plan: str = DEFAULT_PLAN_SCOPE,
 ) -> dict[str, Any]:
     """Top gainers/losers over a period, computed from our own NAV history.
@@ -1485,30 +1600,39 @@ def movers(
     names = {}
     if codes:
         for r in conn.execute(
-                "SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type, a.amfi_amc_name "
-                "FROM mf.funds f JOIN mf.amcs a ON a.amc_id = f.amc_id "
-                "WHERE f.amfi_scheme_code = ANY(%(codes)s)",
-                {"codes": codes}).fetchall():
+            "SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type, a.amfi_amc_name "
+            "FROM mf.funds f JOIN mf.amcs a ON a.amc_id = f.amc_id "
+            "WHERE f.amfi_scheme_code = ANY(%(codes)s)",
+            {"codes": codes},
+        ).fetchall():
             names[int(r["amfi_scheme_code"])] = r
     out = []
     for r in rows:
         latest, prev = r["latest_nav"], r["prev_nav"]
         if latest and prev and float(prev) > 0:
             meta = names.get(int(r["amfi_scheme_code"]), {})
-            out.append({
-                "amfi_scheme_code": int(r["amfi_scheme_code"]),
-                "scheme_name": meta.get("scheme_name"),
-                "plan_type": meta.get("plan_type"),
-                "option_type": meta.get("option_type"),
-                "amfi_amc_name": meta.get("amfi_amc_name"),
-                "latest_nav": _f(latest), "prev_nav": _f(prev),
-                "latest_nav_date": r["latest_nav_date"].isoformat(),
-                "prev_nav_date": r["prev_nav_date"].isoformat(),
-                "pct_change": round((float(latest) / float(prev) - 1.0) * 100.0, 2),
-            })
+            out.append(
+                {
+                    "amfi_scheme_code": int(r["amfi_scheme_code"]),
+                    "scheme_name": meta.get("scheme_name"),
+                    "plan_type": meta.get("plan_type"),
+                    "option_type": meta.get("option_type"),
+                    "amfi_amc_name": meta.get("amfi_amc_name"),
+                    "latest_nav": _f(latest),
+                    "prev_nav": _f(prev),
+                    "latest_nav_date": r["latest_nav_date"].isoformat(),
+                    "prev_nav_date": r["prev_nav_date"].isoformat(),
+                    "pct_change": round((float(latest) / float(prev) - 1.0) * 100.0, 2),
+                }
+            )
     out.sort(key=lambda x: x["pct_change"], reverse=(direction == "gainers"))
-    return {"period": period, "direction": direction,
-            "as_of": ref.isoformat(), "from": cutoff.isoformat(), "results": out[:limit]}
+    return {
+        "period": period,
+        "direction": direction,
+        "as_of": ref.isoformat(),
+        "from": cutoff.isoformat(),
+        "results": out[:limit],
+    }
 
 
 # Broad families for the front-page category movers. AMFI's scheme_category
@@ -1523,13 +1647,13 @@ def fund_family(scheme_category: Optional[str]) -> str:
     c = (scheme_category or "").strip()
     cl = c.lower()
     if cl.startswith("equity scheme") or cl.startswith("elss"):
-        return "Equity"            # ELSS is a tax-saver equity scheme
+        return "Equity"  # ELSS is a tax-saver equity scheme
     if cl.startswith("income/debt oriented") or cl.startswith("debt scheme") or cl == "income":
-        return "Debt"              # "Income" (legacy) was a debt income category
+        return "Debt"  # "Income" (legacy) was a debt income category
     if cl.startswith("hybrid scheme"):
         return "Hybrid"
     if "etf" in cl or "exchange traded fund" in cl:
-        return "ETF"               # catches "… - Other ETFs", "Gold ETF", "Equity ETF"
+        return "ETF"  # catches "… - Other ETFs", "Gold ETF", "Equity ETF"
     if cl.startswith("index fund") or "index funds" in cl:
         return "Index"
     if "fund of funds" in cl or "fof" in cl:
@@ -1616,8 +1740,11 @@ def category_movers(
         # ties so the row matches the fund's canonical variant elsewhere in the UI.
         rep = sorted(
             fam,
-            key=lambda x: (-abs(x["pct_change"]), x["option_type"] != "GROWTH",
-                           x["amfi_scheme_code"]),
+            key=lambda x: (
+                -abs(x["pct_change"]),
+                x["option_type"] != "GROWTH",
+                x["amfi_scheme_code"],
+            ),
         )[0]
         rep = dict(rep)
         rep["variants"] = len(fam)
@@ -1634,10 +1761,15 @@ def category_movers(
             continue
         gainers = sorted(items, key=lambda x: x["pct_change"], reverse=True)[:limit]
         losers = sorted(items, key=lambda x: x["pct_change"])[:limit]
-        categories.append({"category": fam, "funds": len(items),
-                           "gainers": gainers, "losers": losers})
-    return {"period": period, "as_of": ref.isoformat(),
-            "from": cutoff.isoformat(), "categories": categories}
+        categories.append(
+            {"category": fam, "funds": len(items), "gainers": gainers, "losers": losers}
+        )
+    return {
+        "period": period,
+        "as_of": ref.isoformat(),
+        "from": cutoff.isoformat(),
+        "categories": categories,
+    }
 
 
 def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
@@ -1665,12 +1797,21 @@ def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
                 ORDER BY n.nav_date DESC LIMIT 1
             ) lt ON true
             WHERE f.amfi_scheme_code = %(code)s
-            """, {"code": code}).fetchone()
+            """,
+            {"code": code},
+        ).fetchone()
         if not fund:
             continue
         fund = dict(fund)
-        for k in ("aum", "expense_ratio", "base_expense_ratio", "return_5year",
-                  "sharpe_ratio", "beta", "latest_nav"):
+        for k in (
+            "aum",
+            "expense_ratio",
+            "base_expense_ratio",
+            "return_5year",
+            "sharpe_ratio",
+            "beta",
+            "latest_nav",
+        ):
             if fund.get(k) is not None:
                 fund[k] = float(fund[k])
         for k in ("inception_date", "latest_nav_date"):
@@ -1682,8 +1823,9 @@ def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
             if base and base > 0:
                 for pt in series:
                     pt["value"] = round(pt["nav"] / base * 100.0, 4)
-        out_funds.append({"fund": fund, "points": series,
-                          "returns": returns(conn, code)["horizons"]})
+        out_funds.append(
+            {"fund": fund, "points": series, "returns": returns(conn, code)["horizons"]}
+        )
     return {"years": years, "funds": out_funds}
 
 
@@ -1719,8 +1861,10 @@ def list_fund_families(
     if live:
         where.append("NOT f.is_defunct")
     if q:
-        where.append("(f.scheme_name ILIKE %(q)s OR CAST(f.amfi_scheme_code AS text) = %(qeq)s "
-                     "OR f.isin_primary = %(qeq)s)")
+        where.append(
+            "(f.scheme_name ILIKE %(q)s OR CAST(f.amfi_scheme_code AS text) = %(qeq)s "
+            "OR f.isin_primary = %(qeq)s)"
+        )
         params["q"] = f"%{q}%"
         params["qeq"] = q.strip()
     if amc:

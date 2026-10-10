@@ -34,8 +34,8 @@ import pytest
 pytestmark = pytest.mark.postgres
 
 _D0 = date(2026, 1, 1)
-_SNAPSHOT = _D0 + timedelta(days=40)      # latest source snapshot date
-_NAV_REF = _SNAPSHOT                      # newest NAV in the scratch DB
+_SNAPSHOT = _D0 + timedelta(days=40)  # latest source snapshot date
+_NAV_REF = _SNAPSHOT  # newest NAV in the scratch DB
 _AMC = 900006
 #: code -> role in the fixture set
 GROWTH_ACTIVE = 900500
@@ -57,11 +57,9 @@ def _dsn_with_db(pg_dsn: str, dbname: str) -> str:
         head, _, tail = pg_dsn.partition(f"/{pg_dsn.split('/')[-1].split('?')[0]}")
         rest = "?" + pg_dsn.split("?", 1)[1] if "?" in pg_dsn else ""
         return f"{head}/{dbname}{rest}"
-    parts = {}
-    for tok in pg_dsn.replace(" ", "").split("host=")[0].split(","):
-        pass
     # keyword form: host=... port=... dbname=... user=... password=***
     import re
+
     out = []
     for m in re.finditer(r"(\w+)=('[^']*'|\S+)", pg_dsn):
         k, v = m.group(1), m.group(2)
@@ -103,7 +101,7 @@ def _scratch_database(pg_dsn: str, repo_root: str):
     finally:
         admin = psycopg.connect(pg_dsn, autocommit=True)
         admin.execute(
-            f'SELECT pg_terminate_backend(pid) FROM pg_stat_activity '
+            f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
             f"WHERE datname = '{dbname}' AND pid <> pg_backend_pid()"
         )
         admin.execute(f'DROP DATABASE IF EXISTS "{dbname}"')
@@ -124,11 +122,20 @@ def _seed(dsn: str) -> None:
         (_AMC,),
     )
 
-    def fund(code: int, *, option: str = "GROWTH", plan: str = "REGULAR",
-             scheme_type: str = "OPEN_ENDED", category: str = _CATS,
-             periodicity: str | None = None, is_defunct: bool = False,
-             is_active: bool = True, last_seen: date | None = _SNAPSHOT,
-             group: str | None = None, name: str | None = None):
+    def fund(
+        code: int,
+        *,
+        option: str = "GROWTH",
+        plan: str = "REGULAR",
+        scheme_type: str = "OPEN_ENDED",
+        category: str = _CATS,
+        periodicity: str | None = None,
+        is_defunct: bool = False,
+        is_active: bool = True,
+        last_seen: date | None = _SNAPSHOT,
+        group: str | None = None,
+        name: str | None = None,
+    ):
         cur.execute(
             """
             INSERT INTO mf.funds (amfi_scheme_code, scheme_name, scheme_name_norm,
@@ -137,9 +144,21 @@ def _seed(dsn: str) -> None:
                                   last_seen_in_source, first_seen_in_source)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (code, name or f"Signal Fund {code}", (name or f"signal fund {code}").upper(),
-             _AMC, scheme_type, category, plan, option, periodicity,
-             is_defunct, is_active, last_seen, _D0),
+            (
+                code,
+                name or f"Signal Fund {code}",
+                (name or f"signal fund {code}").upper(),
+                _AMC,
+                scheme_type,
+                category,
+                plan,
+                option,
+                periodicity,
+                is_defunct,
+                is_active,
+                last_seen,
+                _D0,
+            ),
         )
         if group:
             cur.execute(
@@ -150,8 +169,7 @@ def _seed(dsn: str) -> None:
 
     def nav(code: int, pairs):
         cur.executemany(
-            "INSERT INTO mf.nav_history (amfi_scheme_code, nav_date, nav) "
-            "VALUES (%s, %s, %s)",
+            "INSERT INTO mf.nav_history (amfi_scheme_code, nav_date, nav) VALUES (%s, %s, %s)",
             [(code, d, v) for d, v in pairs],
         )
 
@@ -177,10 +195,8 @@ def _seed(dsn: str) -> None:
         (REDEEMED, _NAV_REF - timedelta(days=1)),
     )
     # 4) close-ended stale scheme WITHOUT any authoritative maturity evidence
-    fund(CLOSE_ENDED_STALE, scheme_type="CLOSE_ENDED",
-         last_seen=_SNAPSHOT - timedelta(days=120))
-    nav(CLOSE_ENDED_STALE, [(_SNAPSHOT - timedelta(days=120 + i), 12.0 + i)
-                            for i in range(10)])
+    fund(CLOSE_ENDED_STALE, scheme_type="CLOSE_ENDED", last_seen=_SNAPSHOT - timedelta(days=120))
+    nav(CLOSE_ENDED_STALE, [(_SNAPSHOT - timedelta(days=120 + i), 12.0 + i) for i in range(10)])
     # 5) no-NAV scheme
     fund(NO_NAV)
     # 6) constant series candidate (260 identical observations)
@@ -211,12 +227,10 @@ def _seed(dsn: str) -> None:
     # Bump the dataset version first (fresh DB starts at 1) so the stale
     # case below can age a row without tripping the > 0 CHECK.
     for _ in range(2):
-        conn.execute(
-            "SELECT mf.refresh_dataset_summary('signal_test_seed', NULL)"
-        )
-    dv = conn.execute(
-        "SELECT dataset_version FROM mf.dataset_summary WHERE singleton"
-    ).fetchone()["dataset_version"]
+        conn.execute("SELECT mf.refresh_dataset_summary('signal_test_seed', NULL)")
+    dv = conn.execute("SELECT dataset_version FROM mf.dataset_summary WHERE singleton").fetchone()[
+        "dataset_version"
+    ]
     assert dv >= 2
 
     # run the real audit so the assessment table is populated (committed) at
@@ -252,7 +266,8 @@ def api_signals(pg_dsn, repo_root):
 def test_active_growth_scheme_is_comparison_eligible(api_signals):
     d = api_signals.get(f"/api/funds/{GROWTH_ACTIVE}").json()
     assert d["lifecycle"] == {
-        "state": "active", "evidence": "amfi_current_feed",
+        "state": "active",
+        "evidence": "amfi_current_feed",
         "last_seen_in_source": _SNAPSHOT.isoformat(),
     }
     assert d["nav_freshness"]["status"] == "current"
@@ -344,8 +359,9 @@ def test_legacy_act_all_never_becomes_buyability(api_signals):
     assert d["facts"]["transaction_status"] == "ALL"
     # no buyability translation anywhere in the response
     flat = _flatten_keys(d)
-    assert not any("transaction_available" in k or "buyable" in k
-                   or "purchasable" in k for k in flat)
+    assert not any(
+        "transaction_available" in k or "buyable" in k or "purchasable" in k for k in flat
+    )
     # lifecycle/quality never depend on those facts: both stay well-defined
     assert d["lifecycle"]["state"] == "active"
 

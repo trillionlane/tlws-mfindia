@@ -89,9 +89,7 @@ def _ensure_schema(pg_dsn: str, repo_root: str) -> None:
     psycopg = pytest.importorskip("psycopg")
     conn = psycopg.connect(pg_dsn, autocommit=True)
     try:
-        missing = conn.execute(
-            "SELECT to_regclass('mf.funds') IS NULL AS missing"
-        ).fetchone()[0]
+        missing = conn.execute("SELECT to_regclass('mf.funds') IS NULL AS missing").fetchone()[0]
     finally:
         conn.close()
     if missing:
@@ -198,22 +196,30 @@ def _setup_refresh1(db) -> None:
 
 
 def _fund(db, code: int) -> dict:
-    row = db["cur"].execute(
-        "SELECT f.*, a.amfi_amc_name FROM mf.funds f "
-        "JOIN mf.amcs a ON a.amc_id = f.amc_id WHERE f.amfi_scheme_code = %s",
-        (code,),
-    ).fetchone()
+    row = (
+        db["cur"]
+        .execute(
+            "SELECT f.*, a.amfi_amc_name FROM mf.funds f "
+            "JOIN mf.amcs a ON a.amc_id = f.amc_id WHERE f.amfi_scheme_code = %s",
+            (code,),
+        )
+        .fetchone()
+    )
     assert row is not None, f"fixture fund {code} missing"
     return dict(row)
 
 
 def _lifecycle_flags_for(db, *codes: int) -> list[dict]:
-    rows = db["cur"].execute(
-        "SELECT amfi_scheme_code, flag_type FROM mf.quality_flags "
-        "WHERE amfi_scheme_code = ANY(%s::int[]) "
-        "  AND flag_type IN ('LIFECYCLE_ENDED', 'DEAD_SCHEME')",
-        (list(codes),),
-    ).fetchall()
+    rows = (
+        db["cur"]
+        .execute(
+            "SELECT amfi_scheme_code, flag_type FROM mf.quality_flags "
+            "WHERE amfi_scheme_code = ANY(%s::int[]) "
+            "  AND flag_type IN ('LIFECYCLE_ENDED', 'DEAD_SCHEME')",
+            (list(codes),),
+        )
+        .fetchall()
+    )
     return [dict(r) for r in rows]
 
 
@@ -232,10 +238,22 @@ def test_unchanged_scheme_advances_last_seen(last_seen_db):
     assert after["last_seen_in_source"] == _D2
     assert after["first_seen_in_source"] == _D1
     # Nothing else moved: the presence guard must not rewrite metadata.
-    for col in ("scheme_name", "scheme_name_norm", "scheme_type", "scheme_category",
-                "plan_type", "plan_source", "option_type", "periodicity",
-                "is_etf", "is_defunct", "nav_not_published",
-                "isin_growth_or_div_payout", "isin_div_reinvest", "amc_id"):
+    for col in (
+        "scheme_name",
+        "scheme_name_norm",
+        "scheme_type",
+        "scheme_category",
+        "plan_type",
+        "plan_source",
+        "option_type",
+        "periodicity",
+        "is_etf",
+        "is_defunct",
+        "nav_not_published",
+        "isin_growth_or_div_payout",
+        "isin_div_reinvest",
+        "amc_id",
+    ):
         assert after[col] == before[col], f"{col} changed for an unchanged scheme"
     assert after["is_active"] is True
 
@@ -277,11 +295,15 @@ def test_amfi_redeemed_marker_produces_lifecycle_ended_evidence(last_seen_db):
 
     rows = _lifecycle_flags_for(db, 900302)
     assert len(rows) == 1 and rows[0]["flag_type"] == "LIFECYCLE_ENDED"
-    detail = db["cur"].execute(
-        "SELECT details FROM mf.quality_flags WHERE amfi_scheme_code = %s "
-        "AND flag_type = 'LIFECYCLE_ENDED'",
-        (900302,),
-    ).fetchone()["details"]
+    detail = (
+        db["cur"]
+        .execute(
+            "SELECT details FROM mf.quality_flags WHERE amfi_scheme_code = %s "
+            "AND flag_type = 'LIFECYCLE_ENDED'",
+            (900302,),
+        )
+        .fetchone()["details"]
+    )
     detail = detail if isinstance(detail, dict) else _json.loads(detail)
     assert detail["raw_value"] == "REDEEMED"
 
@@ -310,13 +332,17 @@ def test_last_seen_guard_changes_unchanged_counting(last_seen_db):
     source presence (the original bug)."""
     db = last_seen_db
     _setup_refresh1(db)
-    inserted1 = db["cur"].execute(
-        "SELECT count(*) AS n FROM mf.funds WHERE amfi_scheme_code = ANY(%s::int[])",
-        (list(_CODES),),
-    ).fetchone()["n"]
+    inserted1 = (
+        db["cur"]
+        .execute(
+            "SELECT count(*) AS n FROM mf.funds WHERE amfi_scheme_code = ANY(%s::int[])",
+            (list(_CODES),),
+        )
+        .fetchone()["n"]
+    )
     assert inserted1 == 3
 
     _refresh2(db)
-    assert db["refresh2"]["updated"] == 2   # 900300 (presence only) + 900302
+    assert db["refresh2"]["updated"] == 2  # 900300 (presence only) + 900302
     assert db["refresh2"]["inserted"] == 0
     assert db["refresh2"]["unchanged"] == 0

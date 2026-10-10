@@ -282,8 +282,9 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             raise HTTPException(status_code=422, detail="at most 50 ids per request")
         return run_db(lambda conn: queries.funds_batch(conn, parts))
 
-    @app.get("/api/funds/{code}", response_model=schemas.FundDetail,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/funds/{code}", response_model=schemas.FundDetail, response_model_exclude_unset=True
+    )
     def api_fund(
         code: int, plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16)
     ) -> dict[str, Any]:
@@ -301,23 +302,35 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
     ) -> dict[str, Any]:
         return run_db(lambda conn: queries.nav_series(conn, code, years=years))
 
-    @app.get("/api/funds/{code}/returns", response_model=schemas.ReturnsResponse,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/funds/{code}/returns",
+        response_model=schemas.ReturnsResponse,
+        response_model_exclude_unset=True,
+    )
     def api_fund_returns(code: int) -> dict[str, Any]:
         return run_db(lambda conn: queries.returns(conn, code))
 
-    @app.get("/api/funds/{code}/analytics", response_model=schemas.AnalyticsResponse,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/funds/{code}/analytics",
+        response_model=schemas.AnalyticsResponse,
+        response_model_exclude_unset=True,
+    )
     def api_fund_analytics(code: int) -> dict[str, Any]:
         return run_db(lambda conn: queries.fund_analytics(conn, code))
 
-    @app.get("/api/funds/{code}/peers", response_model=schemas.PeersResponse,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/funds/{code}/peers",
+        response_model=schemas.PeersResponse,
+        response_model_exclude_unset=True,
+    )
     def api_fund_peers(code: int) -> dict[str, Any]:
         return run_db(lambda conn: queries.fund_peers(conn, code))
 
-    @app.get("/api/funds/{code}/risk-reward", response_model=schemas.RiskRewardResponse,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/funds/{code}/risk-reward",
+        response_model=schemas.RiskRewardResponse,
+        response_model_exclude_unset=True,
+    )
     def api_fund_risk_reward(code: int) -> dict[str, Any]:
         return run_db(lambda conn: queries.risk_reward(conn, code))
 
@@ -342,16 +355,16 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
 
     @app.get("/api/suggest")
     def api_suggest(
-        q: str = Query("", max_length=200), limit: int = Query(10, ge=1, le=25),
+        q: str = Query("", max_length=200),
+        limit: int = Query(10, ge=1, le=25),
         plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16),
     ) -> list[dict[str, Any]]:
         scope = _plan_scope_or_422(plan)
-        return run_db(
-            lambda conn: queries.suggest(conn, q, limit=limit, plan=scope)
-        )
+        return run_db(lambda conn: queries.suggest(conn, q, limit=limit, plan=scope))
 
-    @app.get("/api/movers", response_model=schemas.MoversResponse,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/movers", response_model=schemas.MoversResponse, response_model_exclude_unset=True
+    )
     def api_movers(
         period: str = Query("1m", max_length=16),
         direction: str = Query("gainers", max_length=16),
@@ -365,8 +378,11 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             )
         )
 
-    @app.get("/api/movers/categories", response_model=schemas.CategoryMoversResponse,
-            response_model_exclude_unset=True)
+    @app.get(
+        "/api/movers/categories",
+        response_model=schemas.CategoryMoversResponse,
+        response_model_exclude_unset=True,
+    )
     def api_movers_categories(
         period: str = Query("1m", max_length=16),
         limit: int = Query(5, ge=1, le=20),
@@ -374,9 +390,7 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
     ) -> dict[str, Any]:
         scope = _plan_scope_or_422(plan)
         return run_db(
-            lambda conn: queries.category_movers(
-                conn, period=period, limit=limit, plan=scope
-            )
+            lambda conn: queries.category_movers(conn, period=period, limit=limit, plan=scope)
         )
 
     @app.get("/api/compare")

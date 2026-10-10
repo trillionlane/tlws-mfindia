@@ -51,6 +51,7 @@ Limitation = Literal[
 # Fund detail and siblings
 # ---------------------------------------------------------------------------
 
+
 class FundLifecycle(BaseModel):
     """Evidence-backed lifecycle. Absence or a stale NAV alone yields
     ``unknown`` — there is deliberately no "matured" boolean in the contract."""
@@ -212,6 +213,7 @@ class FundDetail(BaseModel):
 # Returns and analytics
 # ---------------------------------------------------------------------------
 
+
 class ReturnsResponse(BaseModel):
     """GET /api/funds/{code}/returns — NAV-to-NAV horizon changes.
 
@@ -270,6 +272,7 @@ class AnalyticsResponse(BaseModel):
 # Movers and category movers
 # ---------------------------------------------------------------------------
 
+
 class MoverItem(BaseModel):
     amfi_scheme_code: int
     scheme_name: str | None = None
@@ -325,6 +328,7 @@ class CategoryMoversResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Peers and risk-reward
 # ---------------------------------------------------------------------------
+
 
 class PeerHorizon(BaseModel):
     peer_count: int

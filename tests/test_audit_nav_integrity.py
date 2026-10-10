@@ -16,7 +16,6 @@ Safety assertions:
 
 from __future__ import annotations
 
-import hashlib
 import json
 from datetime import date, timedelta
 from pathlib import Path
@@ -27,8 +26,8 @@ from mfdataindia.audit import nav_integrity
 
 pytestmark = pytest.mark.postgres
 
-_AMC_A = 900004   # Audit Test AMC A
-_AMC_B = 900005   # Audit Test AMC B (guarded-identity control)
+_AMC_A = 900004  # Audit Test AMC A
+_AMC_B = 900005  # Audit Test AMC B (guarded-identity control)
 _CATS = "Debt Scheme - Liquid Fund"
 _CODES = tuple(range(900400, 900409))
 D0 = date(2026, 1, 1)
@@ -62,9 +61,7 @@ def _ensure_schema(pg_dsn: str, repo_root: str) -> None:
     psycopg = pytest.importorskip("psycopg")
     conn = psycopg.connect(pg_dsn, autocommit=True)
     try:
-        missing = conn.execute(
-            "SELECT to_regclass('mf.funds') IS NULL AS missing"
-        ).fetchone()[0]
+        missing = conn.execute("SELECT to_regclass('mf.funds') IS NULL AS missing").fetchone()[0]
     finally:
         conn.close()
     if missing:
@@ -135,22 +132,33 @@ def audit_db(pg_dsn, repo_root):
         _fund(cur, 900404, amc_id=_AMC_B, category=_CATS, group_key="AUDIT-404")
         _nav(cur, 900404, n=12, start=1.0, step=1.0)
         # identical series, same AMC, DIFFERENT category: must not pair
-        _fund(cur, 900405, amc_id=_AMC_A, category="Equity Scheme - Large Cap Fund",
-              group_key="AUDIT-405")
+        _fund(
+            cur,
+            900405,
+            amc_id=_AMC_A,
+            category="Equity Scheme - Large Cap Fund",
+            group_key="AUDIT-405",
+        )
         _nav(cur, 900405, n=12, start=1.0, step=1.0)
         # terminal face-value reset: 12.0 -> 12.5 -> 10.0000
         _fund(cur, 900406, amc_id=_AMC_A, category=_CATS, group_key="AUDIT-406")
         cur.executemany(
             "INSERT INTO mf.nav_history (amfi_scheme_code, nav_date, nav) VALUES (%s,%s,%s)",
-            [(900406, D0, 12.0), (900406, D0 + timedelta(days=1), 12.5),
-             (900406, D0 + timedelta(days=2), 10.0)],
+            [
+                (900406, D0, 12.0),
+                (900406, D0 + timedelta(days=1), 12.5),
+                (900406, D0 + timedelta(days=2), 10.0),
+            ],
         )
         # terminal 10.0000 from a lower prior NAV: an early fund, not a reset
         _fund(cur, 900407, amc_id=_AMC_A, category=_CATS, group_key="AUDIT-407")
         cur.executemany(
             "INSERT INTO mf.nav_history (amfi_scheme_code, nav_date, nav) VALUES (%s,%s,%s)",
-            [(900407, D0, 9.5), (900407, D0 + timedelta(days=1), 9.8),
-             (900407, D0 + timedelta(days=2), 10.0)],
+            [
+                (900407, D0, 9.5),
+                (900407, D0 + timedelta(days=1), 9.8),
+                (900407, D0 + timedelta(days=2), 10.0),
+            ],
         )
         # ordinary accreting series: clean
         _fund(cur, 900408, amc_id=_AMC_A, category=_CATS, group_key="AUDIT-408")
@@ -175,10 +183,14 @@ def audit_run(audit_db):
 
 
 def _assessment(db, code: int):
-    row = db["cur"].execute(
-        "SELECT * FROM mf.nav_quality_assessments WHERE amfi_scheme_code = %s",
-        (code,),
-    ).fetchone()
+    row = (
+        db["cur"]
+        .execute(
+            "SELECT * FROM mf.nav_quality_assessments WHERE amfi_scheme_code = %s",
+            (code,),
+        )
+        .fetchone()
+    )
     return dict(row) if row else None
 
 
@@ -204,8 +216,12 @@ def test_duplicate_signal_requires_guarded_family(audit_run):
         ev = row["evidence"]["duplicate_variant_series"]
         assert ev["family"]["amc_id"] == _AMC_A
         assert ev["family"]["group_key"] == "AUDIT-G1"
-    assert _assessment(db, 900402)["evidence"]["duplicate_variant_series"]["counterpart_codes"] == [900403]
-    assert _assessment(db, 900403)["evidence"]["duplicate_variant_series"]["counterpart_codes"] == [900402]
+    assert _assessment(db, 900402)["evidence"]["duplicate_variant_series"]["counterpart_codes"] == [
+        900403
+    ]
+    assert _assessment(db, 900403)["evidence"]["duplicate_variant_series"]["counterpart_codes"] == [
+        900402
+    ]
     # different AMC and different category break the guarded identity
     assert _assessment(db, 900404)["signals"] == []
     assert _assessment(db, 900405)["signals"] == []
@@ -262,7 +278,10 @@ def test_rerun_is_idempotent(audit_run):
     db = audit_run
     first = db["summary"]
     second = nav_integrity.assess(db["conn"], write=True)
-    strip = lambda d: {k: v for k, v in d.items() if k != "duration_ms"}
+
+    def strip(d):
+        return {k: v for k, v in d.items() if k != "duration_ms"}
+
     assert strip(first) == strip(second)
     # and nav_history is still untouched after the second pass
     assert db["nav_after"] == _nav_history_state(db["cur"])
