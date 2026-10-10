@@ -90,8 +90,13 @@ def test_association_activation_is_manual_exact_sha_bound() -> None:
     assert 'test "$deployed_sha" = "${{ inputs.confirm_git_sha }}"' in workflow
     assert "group: tlws-mf-data-dev-mutations" in workflow
     assert "--no-traffic" in workflow
-    assert '--to-revisions="$candidate_revision=100"' in workflow
-    assert '--to-revisions="$before_revision=100"' in workflow
+    assert "actions/checkout@v4" in workflow
+    assert "promote_association_revision_dev.sh" in workflow
+
+    promotion = (ROOT / "scripts" / "promote_association_revision_dev.sh").read_text()
+    assert "trap rollback_on_exit EXIT" in promotion
+    assert '--to-revisions="$enabled_revision=100"' in promotion
+    assert '--to-revisions="$disabled_revision=100"' in promotion
 
     deploy = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
     assert "group: tlws-mf-data-dev-mutations" in deploy
