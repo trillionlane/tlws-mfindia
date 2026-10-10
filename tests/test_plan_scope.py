@@ -9,11 +9,18 @@ instead of touching real rows. Skipped unless ``MF_TEST_DSN`` is set.
 so most tests deliberately pass ``in_scope=False`` (or use the sibling
 navigation list, which never applies ``in_scope``). That is what proves the plan
 predicate does real work on its own instead of riding along with curation.
+
+Also safe on an untouched database: the fixture migrates when ``mf.funds`` does
+not exist yet — CI's Postgres service starts empty and this file is collected
+*before* ``test_postgres_integration.py``, so it cannot inherit a schema from it
+— and the one test that only means something against real data reports a skip
+rather than passing vacuously on an empty one.
 """
 
 from __future__ import annotations
 
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -99,11 +106,40 @@ def _plans(rows) -> set[str]:
     return {r["plan_type"] for r in rows}
 
 
+def _ensure_schema(pg_dsn: str, repo_root: str) -> None:
+    """Migrate a never-bootstrapped database; leave any other database alone.
+
+    No suite autouse fixture creates the schema: each DSN file brings it up
+    itself, and collection order decides who arrives first. This file sorts
+    *before* ``test_postgres_integration.py``, so CI's empty service database
+    still has no ``mf`` schema when these tests start.
+
+    The probe is deliberately ``mf.funds``: a database that already has it is
+    either populated (a local dev snapshot) or already migrated (CI), and
+    ``apply_migrations`` must not be replayed into either — it is checksum
+    verified and fails closed on a restored schema without a ledger.
+    """
+    psycopg = pytest.importorskip("psycopg")
+    conn = psycopg.connect(pg_dsn, autocommit=True)
+    try:
+        missing = conn.execute(
+            "SELECT to_regclass('mf.funds') IS NULL AS missing"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    if missing:
+        from mfdataindia.store.postgres import PostgresStore
+
+        with PostgresStore(pg_dsn) as store:
+            store.apply_migrations(Path(repo_root) / "sql")
+
+
 @pytest.fixture
-def scope_db(pg_dsn):
+def scope_db(pg_dsn, repo_root):
     """Rolled-back transaction holding the synthetic plan-scope group."""
     if not pg_dsn:
         pytest.skip("MF_TEST_DSN not set")
+    _ensure_schema(pg_dsn, repo_root)
     psycopg = pytest.importorskip("psycopg")
     from psycopg.rows import dict_row
 
@@ -134,11 +170,17 @@ def scope_db(pg_dsn):
 
 @pytest.fixture
 def scope_db_with_nav(scope_db):
-    """The same transaction plus NAV rows for the movers tests."""
+    """The same transaction plus NAV rows for the movers tests.
+
+    ``movers`` anchors its window on the database's own ``max(nav_date)``, so a
+    freshly migrated CI database — which has no NAV history at all — supplies
+    today instead and the synthetic rows become the reference themselves. The
+    window stays relative either way, so the same assertions hold on an empty
+    and on a populated database.
+    """
     cur = scope_db.cursor()
     cur.execute("SELECT max(nav_date) AS mx FROM mf.nav_history")
-    ref = cur.fetchone()["mx"]
-    assert ref is not None, "NAV history is empty; cannot exercise movers"
+    ref = cur.fetchone()["mx"] or date.today()
     _insert_nav(cur, ref=ref)
     return scope_db
 
@@ -293,19 +335,24 @@ def test_facet_counts_use_the_served_scope(scope_db):
 
 # -- populated-database zero-change guard ------------------------------------
 
-def test_served_universe_is_unchanged_by_the_default(pg_dsn):
+def test_served_universe_is_unchanged_by_the_default(pg_dsn, repo_root):
     # in_scope already excludes Direct, so the new predicate must not change a
     # single row of what the Insights consumer sees today. If this ever fails,
     # ingest has started marking Direct or Retail rows as in scope.
     if not pg_dsn:
         pytest.skip("MF_TEST_DSN not set")
+    _ensure_schema(pg_dsn, repo_root)
     psycopg = pytest.importorskip("psycopg")
     from psycopg.rows import dict_row
 
     conn = psycopg.connect(pg_dsn, row_factory=dict_row, autocommit=True)
     try:
-        assert (queries.list_funds(conn, per_page=1)["total"]
-                == queries.list_funds(conn, per_page=1, plan="all")["total"])
+        served = queries.list_funds(conn, per_page=1)["total"]
+        if served == 0:
+            # A freshly migrated CI database has nothing to compare, and this
+            # would pass for the wrong reason. Report the skip rather than a win.
+            pytest.skip("database serves no funds; this guard needs a populated one")
+        assert served == queries.list_funds(conn, per_page=1, plan="all")["total"]
         assert (queries.list_fund_families(conn, per_page=1)["total"]
                 == queries.list_fund_families(conn, per_page=1, plan="all")["total"])
         assert all(row["plan_type"] in {"REGULAR", "UNLABELLED"}
@@ -316,9 +363,10 @@ def test_served_universe_is_unchanged_by_the_default(pg_dsn):
 
 # -- rollback ----------------------------------------------------------------
 
-def test_rollback_leaves_no_rows(pg_dsn):
+def test_rollback_leaves_no_rows(pg_dsn, repo_root):
     if not pg_dsn:
         pytest.skip("MF_TEST_DSN not set")
+    _ensure_schema(pg_dsn, repo_root)
     psycopg = pytest.importorskip("psycopg")
     conn = psycopg.connect(pg_dsn, autocommit=True)
     try:
