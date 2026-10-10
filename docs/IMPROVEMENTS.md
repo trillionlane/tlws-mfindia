@@ -111,6 +111,62 @@ crawlers are no longer the only thing keeping full holdings current.
 
 ---
 
+## P1 — NAV-series integrity and scheme lifecycle (open, 2026-10-10)
+
+**Why:** the partner research UI renders whatever `nav_history` holds, and a
+triage of the populated database found series that are structurally impossible
+plus a scheme lifecycle the schema does not model. Both are visible to a
+distributor as a wrong chart, not as a warning.
+
+Measured on the 14,368-scheme dev database:
+
+- **Frozen series — 8 codes** have >250 NAV points and **exactly one distinct
+  value**. `139891` / `139892` (Franklin India Liquid Fund, REGULAR GROWTH and
+  IDCW) sit at precisely `10.0000` for 1,525 consecutive observations
+  (2021-10-04 → 2026-10-07). They render a flat line, 0.00% returns, and can
+  never move in `movers`. Suspected ingest vector: the next-day liquid/overnight
+  NAV path PR #19 (`fa2e2cd`) just tightened — worth re-checking whether these
+  rows predate that guard.
+- **Duplicated series across options:** `139889` (GROWTH) and `139890` (IDCW)
+  carry byte-identical series (13.2720 → 18.1002, same 1,525 dates). An IDCW
+  option that never diverges from its Growth twin is not a real payout history.
+- **One name, many funds:** `Franklin India Liquid Fund` is 13 AMFI codes under a
+  single `fund_variants.group_key`, with latest NAVs from ₹10.00 to ₹6,339.87.
+  The family view collapses them into one row whose representative is whichever
+  variant the pick rule chose, so "the same fund" is one arbitrary code.
+  **Corrected earlier flag:** `100538` at ₹6,339.87 is *legitimate* — 1,830
+  distinct daily values accreting 4,820.63 → 6,339.87 is what a long-running
+  liquid fund looks like. The anomalies are the frozen/duplicated rows above.
+- **Maturity is not modelled:** FMP `151566` ends at `10.0000` on 2026-09-09
+  after `12.5916` the previous session — a −20.58% single-day move that is
+  actually the redemption at face value. It is still `is_active = true`,
+  `is_defunct = false`, so it is served as a live fund and its "Growth of
+  ₹10,000" chart ends in a cliff. **191 of 4,291** served codes have no NAV in
+  30+ days (168 in 180+).
+- **IDCW metrics:** 2,324 of the 4,291 served codes are IDCW options, and every
+  return / CAGR / Sharpe / drawdown is computed NAV-to-NAV from post-payout NAV.
+  A payout therefore reads as a loss (the FMP sawtooth). Needs a decision
+  before code: build a payout-rebased series, restrict risk metrics to
+  Growth/IDCW-Reinvestment variants, or disclose "NAV-based, excludes dividends"
+  and suppress the maturity reset.
+- **Buyability is stored but not surfaced:** `fund_facts.status` /
+  `transaction_status` are populated (`ACT/ALL` 3,461 · blank 409 · `ACT/TSUSP`
+  260 · `TER/ALL` 41 · `SUSPACT/SUSP` 31 · `INC` 7) but no endpoint exposes them
+  as a first-class "can a client transact in this today" signal.
+
+**The what:**
+1. A NAV-integrity check in `scripts/refresh_daily.py` (and a one-off audit
+   script): flag zero-variance series above a point threshold, and identical
+   series across two option variants of one family.
+2. Derive a maturity/closed signal for `CLOSE_ENDED` schemes (last NAV far
+   behind the dataset reference, or a terminal NAV reset back to face value) and
+   expose it in `/api/funds/{code}` so consumers can badge "matured" instead of
+   charting it as a crash.
+3. Expose `status` / `transaction_status` through the detail payload as an
+   explicit buyability flag.
+4. Decide the IDCW methodology question above, then apply it consistently to
+   charts, returns, analytics and movers.
+
 ## UI: dark mode + front-page category movers (done, 2026-10-08)
 
 - **Dark mode** on all three pages (index / fund / compare). The theme is
@@ -243,6 +299,78 @@ itself was fully enriched. The fund list also showed all 13 rows.
   performance (Sharpe/return_5year/beta), a raw-benchmark-only row is treated
   as complete and surfaced via benchmark_name (COALESCE) in batch, no-group
   no-facts stays blank, rollback leaves no rows.
+
+## API: plan scope — Regular is the served universe (done, 2026-10-10)
+
+**Why:** this data feeds a distributor-facing product (TrillionInsights
+partner research). Direct plans are a different commission model, not a product
+choice, so a partner must never be *offered* one — yet the fund-detail sibling
+navigation listed all three Direct variants of a scheme next to the Regular
+ones, and any consumer that disabled `in_scope` (or typed a Direct code into the
+typeahead) could surface them.
+
+`mf.funds.in_scope` is a STORED generated column
+(`plan_type = 'REGULAR' OR (plan_type = 'UNLABELLED' AND NOT is_etf AND
+plan_source = 'NAME')`) that already excludes Direct, so **no existing response
+changed** — but `in_scope` is a *curation* flag that `/api/funds` exposes as an
+option and the sibling list does not apply at all. "We never show Direct" now
+states itself instead of riding on an expression defined for another purpose.
+
+- New policy in `queries.py`: `DEFAULT_PLAN_SCOPE = "regular"`, a closed
+  `_PLAN_SCOPE_SQL` map (`regular` → `REGULAR` + `UNLABELLED`, `direct` →
+  `DIRECT`, `all` → no predicate), `plan_scope()` (normalises, raises
+  `ValueError` on anything unknown) and `_plan_predicate()` (emits SQL only from
+  the whitelist map, never from input). `UNLABELLED` stays in the default scope
+  because those are name-inferred Regular rows — dropping them would silently
+  lose real Regular funds, and they can never be Direct. `RETAIL` /
+  `INSTITUTIONAL` are excluded: a distributor sells neither.
+- `plan` query parameter (default `regular`) on the discovery and navigation
+  routes: `/api/funds`, `/api/fund-families`, `/api/funds/{code}` (scopes the
+  `siblings` list), `/api/suggest`, `/api/movers`, `/api/movers/categories`.
+  Resolved by `_plan_scope_or_422` **before** any DB work, so a typo is a 422
+  rather than a silently widened or narrowed universe.
+- Always scoped (no parameter, because widening them would be a footgun): peer
+  sets in `/api/funds/{code}/peers` and `/risk-reward` (a percentile must not
+  compare a Regular fund against Direct peers on the same book), and the facet
+  counts `/api/amcs`, `/api/categories`, `/api/options` (a count must never
+  promise rows the list will not return).
+- Deliberately **not** filtered: explicit-identifier lookups —
+  `/api/funds/{code}`, `/nav`, `/returns`, `/analytics`, `/api/funds/batch`,
+  `/api/compare`, `/api/holdings-overlap`. A code is an identifier, and hiding
+  one the caller named would be a lie; they all return `plan_type` so the
+  consumer can badge it. The consequence is a useful one: opening a Direct code
+  still works, and every hop it offers leads back into the served universe.
+- **Typeahead ranking bug found and fixed while here:** the exact-match sort key
+  was `(code = q OR isin_primary = q)`. `isin_primary` is NULL for schemes
+  without an ISIN, `FALSE OR NULL` is NULL, and Postgres sorts NULL **first**
+  under `DESC` — so all 19 live ISIN-less codes (every FMP / close-ended
+  re-issue) jumped above far more relevant matches on every query. That is
+  exactly why "hdf" offered *HDFC FMP 1269D March 2023* before *HDFC Aggressive
+  Hybrid Fund*. Wrapped in `coalesce(..., false)`, plus a final
+  `amfi_scheme_code` tie-break so same-named variants no longer come back in
+  arbitrary order.
+- Verified live against the 14,368-scheme dev database: `/api/suggest?q=hdf`
+  now leads with HDFC Aggressive Hybrid Fund / Arbitrage / Balanced Advantage
+  (all Regular); `/api/funds/151566` returns 3 siblings (was 6, incl. 3 Direct);
+  `/api/funds/151567` (Direct) still resolves but offers only its Regular twins;
+  `/api/funds?in_scope=false` returns 9,873 rows with zero Direct where
+  `plan=all` returns 14,127; `plan=bogus` → 422. Totals for the served universe
+  are identical before/after (4,291 funds, 1,821 families).
+- Tests: `tests/test_plan_scope.py` (populated-DB safe: 9002xx range, AMC
+  900002, one always-rolled-back transaction, fails if identifiers pre-exist) —
+  default lists no Direct/Retail even with `in_scope=False`, `plan=all` widens,
+  `plan=direct` narrows, blank-plan feed row is not pulled back in, family view
+  is Regular-represented with `variant_count` from served variants only,
+  siblings exclude Direct (and include it only when asked), a Direct page offers
+  Regular twins, suggest never returns Direct and cannot resolve a Direct code,
+  the ISIN-less scheme no longer ranks first, ordering is deterministic, movers
+  and category movers honour the scope where `in_scope` alone would not, facet
+  counts use the served scope, **populated-DB zero-change guard**, rollback
+  leaves no rows. Pure policy + 422 tests in `tests/test_queries.py`;
+  OpenAPI documentation of `plan` asserted in `tests/test_openapi_contract.py`.
+- Contract: `contracts/mfdataindia-openapi-v1.json` re-exported (66 added lines
+  = the `plan` parameter on six routes; no path or response-shape change, so
+  consumers that do not send `plan` are unaffected).
 
 ## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
 

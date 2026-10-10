@@ -25,3 +25,28 @@ def test_committed_openapi_contract_is_current_and_complete() -> None:
         for method in contract["paths"][path]
         if method != "parameters"
     } == {"get"}
+
+
+#: Routes that discover or navigate to funds must document the plan scope, so a
+#: consumer can see that Direct plans are excluded by default rather than
+#: inferring it from an empty result.
+_PLAN_SCOPED_PATHS = (
+    "/api/funds",
+    "/api/fund-families",
+    "/api/funds/{code}",
+    "/api/suggest",
+    "/api/movers",
+    "/api/movers/categories",
+)
+
+
+def test_plan_scope_is_documented_on_every_discovery_route() -> None:
+    contract = json.loads(
+        (ROOT / "contracts" / "mfdataindia-openapi-v1.json").read_text()
+    )
+    for path in _PLAN_SCOPED_PATHS:
+        parameters = contract["paths"][path]["get"]["parameters"]
+        plan = next(item for item in parameters if item["name"] == "plan")
+        assert plan["in"] == "query"
+        assert plan["required"] is False
+        assert plan["schema"]["default"] == "regular"

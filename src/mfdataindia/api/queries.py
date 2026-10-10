@@ -36,6 +36,68 @@ _SORT_FAMILY = {
     "return_5y": "ff.return_5year DESC NULLS LAST",
 }
 
+#: Plan scope for every surface that discovers or navigates to a fund.
+#: ``mf.funds.plan_type`` is NOT NULL with a CHECK over
+#: (REGULAR, DIRECT, RETAIL, INSTITUTIONAL, UNLABELLED).
+#:
+#: This service feeds a distributor-facing product: Direct plans carry a
+#: different commission model and must never surface as a choice, so the default
+#: scope is ``regular``. ``in_scope`` is a STORED generated column that already
+#: excludes Direct — but it is a *curation* flag, several routes apply it as an
+#: option rather than a rule (``/api/funds?in_scope=false``, and the sibling
+#: navigation list not at all), and "we never show Direct" must not depend on an
+#: expression defined for a different purpose. This predicate states it directly.
+#:
+#: ``regular`` deliberately admits UNLABELLED: that is the historical AMFI feed
+#: whose blank Plan column the ingest resolved to Regular *from the scheme name*
+#: (``plan_source = 'NAME'``), which is exactly the population ``in_scope``
+#: admits. Dropping those rows would silently lose real Regular funds; they can
+#: never be Direct. Retail and Institutional are separate plan labels and are
+#: excluded — a distributor sells neither.
+#:
+#: ``all`` and ``direct`` exist for internal/ops queries and are never the
+#: default on any route.
+DEFAULT_PLAN_SCOPE = "regular"
+
+#: scope -> the ``plan_type`` values it admits. ``all`` adds no predicate.
+#: This map is the ONLY source of the emitted SQL values, so a scope can never
+#: be string-interpolated from a request.
+_PLAN_SCOPE_SQL: dict[str, Optional[tuple[str, ...]]] = {
+    "regular": ("REGULAR", "UNLABELLED"),
+    "direct": ("DIRECT",),
+    "all": None,
+}
+
+
+def plan_scope(value: Optional[str]) -> str:
+    """Normalise a caller-supplied plan scope to a known key.
+
+    Raises ``ValueError`` for anything outside :data:`_PLAN_SCOPE_SQL`; the route
+    layer turns that into a 422 so a typo can never silently widen or narrow the
+    universe a partner is looking at.
+    """
+    scope = (value or DEFAULT_PLAN_SCOPE).strip().lower()
+    if scope not in _PLAN_SCOPE_SQL:
+        raise ValueError(
+            f"unknown plan {value!r}; expected one of "
+            + ", ".join(sorted(_PLAN_SCOPE_SQL))
+        )
+    return scope
+
+
+def _plan_predicate(scope: str = DEFAULT_PLAN_SCOPE, alias: str = "f") -> str:
+    """SQL fragment restricting a query to ``scope``. Safe by construction.
+
+    ``scope`` is resolved through the closed :data:`_PLAN_SCOPE_SQL` map, so the
+    emitted literals never come from request input.
+    """
+    plans = _PLAN_SCOPE_SQL[plan_scope(scope)]
+    if plans is None:
+        return "TRUE"
+    values = ", ".join(f"'{p}'" for p in plans)
+    return f"{alias}.plan_type IN ({values})"
+
+
 _STATS_SQL = """
     SELECT schemes_total, in_scope_total, in_scope_live, amcs, categories,
            nav_rows, nav_first, nav_last, enrichment_pct, dataset_version,
@@ -280,11 +342,16 @@ def list_funds(
     page: int = 1,
     per_page: int = 50,
     sort: str = "name",
+    plan: str = DEFAULT_PLAN_SCOPE,
 ) -> dict[str, Any]:
-    """Searchable, paginated fund list with each fund's latest NAV."""
+    """Searchable, paginated fund list with each fund's latest NAV.
+
+    ``plan`` defaults to the Regular scope: Direct rows are never listed.
+    """
     order = _SORT.get(sort, "f.scheme_name")
     where = ["TRUE"]
     params: dict[str, Any] = {}
+    where.append(_plan_predicate(plan_scope(plan)))
     if in_scope:
         where.append("f.in_scope")
     if live:
@@ -378,8 +445,15 @@ def list_funds(
     return {"total": total, "page": page, "per_page": per_page, "results": rows}
 
 
-def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
-    """Everything about one fund: identity, latest NAV, facts, opinions, siblings."""
+def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[dict[str, Any]]:
+    """Everything about one fund: identity, latest NAV, facts, opinions, siblings.
+
+    A code is always resolvable by code (it is an identifier lookup, not
+    discovery), but the ``siblings`` navigation list honours ``plan`` — by
+    default it offers only Regular variants, so a Direct scheme can never be
+    reached by clicking through the UI. A Direct code opened directly therefore
+    shows its Regular twins as the way back into the served universe.
+    """
     fund = conn.execute(
         """
         SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.plan_source,
@@ -438,14 +512,17 @@ def fund_detail(conn, code: int) -> Optional[dict[str, Any]]:
         {"code": code},
     ).fetchall()
 
-    # siblings in the same variant group (Regular/Direct/IDCW twins)
+    # siblings in the same variant group (Regular/Direct/IDCW twins), narrowed to
+    # the served plan scope so the UI never links a partner to a Direct variant.
+    sibling_plan = _plan_predicate(plan_scope(plan), alias="f2")
     siblings = conn.execute(
-        """
+        f"""
         SELECT v2.amfi_scheme_code, f2.scheme_name, f2.plan_type, f2.option_type
         FROM mf.fund_variants v1
         JOIN mf.fund_variants v2 ON v2.group_key = v1.group_key
         JOIN mf.funds f2 ON f2.amfi_scheme_code = v2.amfi_scheme_code
         WHERE v1.amfi_scheme_code = %(code)s
+          AND {sibling_plan}
         ORDER BY f2.plan_type, f2.option_type
         """,
         {"code": code},
@@ -699,6 +776,10 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
         return {"code": code, "category": None, "horizons": {}}
 
     cat = row["sebi_category_name"]
+    # Peer sets are always the served plan scope (Regular): a Direct twin earns a
+    # lower expense ratio on the same book, so mixing plans would rank the
+    # subject against peers it is not comparable with.
+    peer_plan = _plan_predicate()
     colmap = {"1Y": ("return_1year", row["return_1year"]),
               "3Y": ("return_3year", row["return_3year"]),
               "5Y": ("return_5year", row["return_5year"])}
@@ -709,7 +790,8 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
             SELECT {col} AS r FROM mf.fund_facts ff
             JOIN mf.funds f ON f.amfi_scheme_code = ff.amfi_scheme_code
             WHERE ff.sebi_category_name = %(cat)s
-              AND f.in_scope AND NOT f.is_defunct AND ff.{col} IS NOT NULL
+              AND f.in_scope AND NOT f.is_defunct AND {peer_plan}
+              AND ff.{col} IS NOT NULL
             """, {"cat": cat}).fetchall()]
         n = len(peers)
         if n < 10 or mine is None:
@@ -745,7 +827,7 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
         return {"code": code, "category": None, "points": []}
 
     rows = conn.execute(
-        """
+        f"""
         SELECT f.amfi_scheme_code, f.scheme_name, ff.aum,
                rp.annual_vol, rp.cagr, rp.max_drawdown, rp.points AS nav_points
         FROM mf.fund_risk_profile rp
@@ -753,6 +835,7 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
         JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE ff.sebi_category_name = %(cat)s
           AND f.in_scope AND NOT f.is_defunct
+          AND {_plan_predicate()}
         ORDER BY rp.annual_vol
         """, {"cat": me["sebi_category_name"]}).fetchall()
 
@@ -958,10 +1041,17 @@ def holdings_overlap(conn, codes: list[int]) -> dict[str, Any]:
 
 
 def amcs(conn) -> list[dict[str, Any]]:
-    """AMCs with in-scope fund counts, for the filter dropdown."""
+    """AMCs with served-universe fund counts, for the filter dropdown.
+
+    Counts use the same predicates as the fund list (in-scope, live, Regular
+    plan) so a facet count never promises rows the list will not return.
+    """
     return conn.execute(
-        """
-        SELECT a.amfi_amc_name, count(*) FILTER (WHERE f.in_scope AND NOT f.is_defunct) AS live_funds
+        f"""
+        SELECT a.amfi_amc_name,
+               count(*) FILTER (
+                   WHERE f.in_scope AND NOT f.is_defunct AND {_plan_predicate()}
+               ) AS live_funds
         FROM mf.amcs a
         LEFT JOIN mf.funds f ON f.amc_id = a.amc_id
         GROUP BY a.amfi_amc_name
@@ -970,45 +1060,63 @@ def amcs(conn) -> list[dict[str, Any]]:
 
 
 def categories(conn) -> list[dict[str, Any]]:
-    """Scheme categories with live in-scope fund counts, for the filter dropdown."""
+    """Scheme categories with served-universe live fund counts, for the filter
+    dropdown (same predicates as :func:`amcs`)."""
     return conn.execute(
-        """
-        SELECT scheme_category, count(*) AS live_funds
-        FROM mf.funds
-        WHERE in_scope AND NOT is_defunct
-        GROUP BY scheme_category
+        f"""
+        SELECT f.scheme_category, count(*) AS live_funds
+        FROM mf.funds f
+        WHERE f.in_scope AND NOT f.is_defunct AND {_plan_predicate()}
+        GROUP BY f.scheme_category
         ORDER BY live_funds DESC
         """).fetchall()
 
 
 def options(conn) -> list[str]:
-    """Distinct in-scope option types, for the filter dropdown."""
+    """Distinct option types in the served universe, for the filter dropdown."""
     return [r["option_type"] for r in conn.execute(
-        "SELECT DISTINCT option_type FROM mf.funds WHERE in_scope AND NOT is_defunct "
-        "ORDER BY option_type").fetchall()]
+        f"SELECT DISTINCT f.option_type FROM mf.funds f "
+        f"WHERE f.in_scope AND NOT f.is_defunct AND {_plan_predicate()} "
+        "ORDER BY f.option_type").fetchall()]
 
 
-def suggest(conn, q: str, *, limit: int = 10) -> list[dict[str, Any]]:
+def suggest(
+    conn, q: str, *, limit: int = 10, plan: str = DEFAULT_PLAN_SCOPE
+) -> list[dict[str, Any]]:
     """Autocomplete suggestions. Exact code/ISIN match first, then name prefix,
-    then substring. Fast and lightweight (no joins to facts/holdings)."""
+    then substring. Fast and lightweight (no joins to facts/holdings).
+
+    Restricted to the served plan scope (Regular by default), so a Direct plan
+    can never be typed into existence from the search box either. The final
+    ``amfi_scheme_code`` tie-break makes the order deterministic — variants of
+    one scheme share a name, and without it Postgres returned them at random.
+    """
     q = (q or "").strip()
     if not q:
         return []
+    plan_pred = _plan_predicate(plan_scope(plan))
     rows = conn.execute(
-        """
+        f"""
         SELECT f.amfi_scheme_code, f.scheme_name, f.plan_type, f.option_type,
                a.amfi_amc_name
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
-        WHERE f.in_scope AND NOT f.is_defunct AND (
+        WHERE f.in_scope AND NOT f.is_defunct AND {plan_pred} AND (
             CAST(f.amfi_scheme_code AS text) = %(qeq)s
             OR f.isin_primary = %(qeq)s
             OR f.scheme_name ILIKE %(q)s
         )
         ORDER BY
-            (CAST(f.amfi_scheme_code AS text) = %(qeq)s OR f.isin_primary = %(qeq)s) DESC,
+            -- coalesce is load-bearing, not cosmetic: ``isin_primary = q`` is NULL
+            -- when a fund has no ISIN, and ``FALSE OR NULL`` is NULL — which Postgres
+            -- sorts FIRST under DESC. Every ISIN-less scheme (19 live codes, all
+            -- close-ended re-issues) therefore jumped to the top of the typeahead
+            -- ahead of far more relevant matches.
+            (CAST(f.amfi_scheme_code AS text) = %(qeq)s
+             OR coalesce(f.isin_primary = %(qeq)s, false)) DESC,
             (f.scheme_name ILIKE %(qprefix)s) DESC,
-            f.scheme_name
+            f.scheme_name,
+            f.amfi_scheme_code
         LIMIT %(limit)s
         """,
         {"q": f"%{q}%", "qeq": q, "qprefix": f"{q}%", "limit": limit},
@@ -1021,21 +1129,28 @@ _MOVER_DAYS = {"1d": 1, "1w": 7, "1m": 30, "3m": 90, "6m": 182, "1y": 365}
 
 
 def movers(
-    conn, *, period: str = "1m", direction: str = "gainers", limit: int = 10
+    conn, *, period: str = "1m", direction: str = "gainers", limit: int = 10,
+    plan: str = DEFAULT_PLAN_SCOPE,
 ) -> dict[str, Any]:
     """Top gainers/losers over a period, computed from our own NAV history.
 
     For each in-scope fund: latest NAV vs the NAV at or just before the period
-    start. The cutoff is computed in Python (portable)."""
+    start. The cutoff is computed in Python (portable).
+
+    Scoped to the served plan (Regular by default): a Direct twin moving the same
+    book would otherwise double up the leaderboard with rows a partner cannot
+    transact in.
+    """
     days = _MOVER_DAYS.get(period, 30)
     ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
     if ref is None:
         return {"period": period, "direction": direction, "results": []}
     cutoff = ref - timedelta(days=days)
+    mover_plan = _plan_predicate(plan_scope(plan))
     # Single group-by scan over the recent window (fast on the embedded engine).
     # "prev" is the earliest NAV at/after the period start, "latest" the most recent.
     rows = conn.execute(
-        """
+        f"""
         SELECT amfi_scheme_code,
                (array_agg(nav ORDER BY nav_date DESC))[1] AS latest_nav,
                (array_agg(nav ORDER BY nav_date ASC))[1]  AS prev_nav,
@@ -1044,7 +1159,8 @@ def movers(
         FROM mf.nav_history
         WHERE nav_date >= %(cutoff)s
           AND amfi_scheme_code IN (
-              SELECT amfi_scheme_code FROM mf.funds WHERE in_scope AND NOT is_defunct)
+              SELECT f.amfi_scheme_code FROM mf.funds f
+              WHERE f.in_scope AND NOT f.is_defunct AND {mover_plan})
         GROUP BY amfi_scheme_code
         """,
         {"cutoff": cutoff},
@@ -1108,7 +1224,7 @@ def fund_family(scheme_category: Optional[str]) -> str:
 
 
 def category_movers(
-    conn, *, period: str = "1m", limit: int = 5
+    conn, *, period: str = "1m", limit: int = 5, plan: str = DEFAULT_PLAN_SCOPE
 ) -> dict[str, Any]:
     """Top-N gainers AND losers per broad category family.
 
@@ -1128,8 +1244,9 @@ def category_movers(
     if ref is None:
         return {"period": period, "categories": []}
     cutoff = ref - timedelta(days=days)
+    fam_plan = _plan_predicate(plan_scope(plan))
     rows = conn.execute(
-        """
+        f"""
         SELECT f.amfi_scheme_code, f.scheme_name, f.scheme_category, f.option_type,
                a.amfi_amc_name,
                coalesce(fv.group_key, CAST(f.amfi_scheme_code AS text)) AS fam_key,
@@ -1142,6 +1259,7 @@ def category_movers(
         LEFT JOIN mf.fund_variants fv ON fv.amfi_scheme_code = f.amfi_scheme_code
         WHERE n.nav_date >= %(cutoff)s
           AND f.in_scope AND NOT f.is_defunct
+          AND {fam_plan}
         GROUP BY f.amfi_scheme_code, f.scheme_name, f.scheme_category,
                  f.option_type, a.amfi_amc_name, fv.group_key
         """,
@@ -1259,8 +1377,12 @@ def list_fund_families(
     page: int = 1,
     per_page: int = 50,
     sort: str = "name",
+    plan: str = DEFAULT_PLAN_SCOPE,
 ) -> dict[str, Any]:
     """One row per scheme family (base scheme), collapsing plan/option variants.
+
+    ``plan`` defaults to the Regular scope, so a family is never represented by
+    (or counted from) a Direct variant.
 
     A family's identity is the base-scheme key (``group_key``) plus AMC and
     scheme classification: ``group_key`` alone is a documented heuristic that
@@ -1271,7 +1393,7 @@ def list_fund_families(
     group are their own family.
     """
     order = _SORT_FAMILY.get(sort, "s.scheme_name")
-    where = ["f.in_scope"]
+    where = [_plan_predicate(plan_scope(plan)), "f.in_scope"]
     params: dict[str, Any] = {}
     if live:
         where.append("NOT f.is_defunct")
