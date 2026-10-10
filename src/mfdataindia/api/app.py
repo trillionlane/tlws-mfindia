@@ -114,6 +114,19 @@ def _positive_int(name: str, default: int) -> int:
     return value
 
 
+def _plan_scope_or_422(value: str) -> str:
+    """Resolve a ``plan`` query parameter before the request touches the database.
+
+    Validating up front makes a typo a 422 instead of a 500 from inside a query,
+    and — more importantly — it can never be silently coerced into a wider or
+    narrower universe than the caller asked for.
+    """
+    try:
+        return queries.plan_scope(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 def create_app(dsn: Optional[str] = None) -> FastAPI:
     # No built-in default. This used to fall back to the PGlite dev instance on
     # 5433, which serves stale fund data while looking perfectly healthy.
@@ -208,7 +221,9 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
         page: int = Query(1, ge=1, le=100_000),
         per_page: int = Query(50, ge=1, le=500),
         sort: str = Query("name", max_length=32),
+        plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16),
     ) -> dict[str, Any]:
+        scope = _plan_scope_or_422(plan)
         return run_db(
             lambda conn: queries.list_funds(
                 conn,
@@ -221,6 +236,7 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
                 page=page,
                 per_page=per_page,
                 sort=sort,
+                plan=scope,
             )
         )
 
@@ -234,7 +250,9 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
         page: int = Query(1, ge=1, le=100_000),
         per_page: int = Query(50, ge=1, le=500),
         sort: str = Query("name", max_length=32),
+        plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16),
     ) -> dict[str, Any]:
+        scope = _plan_scope_or_422(plan)
         return run_db(
             lambda conn: queries.list_fund_families(
                 conn,
@@ -246,6 +264,7 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
                 page=page,
                 per_page=per_page,
                 sort=sort,
+                plan=scope,
             )
         )
 
@@ -264,8 +283,13 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
         return run_db(lambda conn: queries.funds_batch(conn, parts))
 
     @app.get("/api/funds/{code}")
-    def api_fund(code: int) -> dict[str, Any]:
-        fund = run_db(lambda conn: queries.fund_detail(conn, code))
+    def api_fund(
+        code: int, plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16)
+    ) -> dict[str, Any]:
+        # ``plan`` scopes the sibling navigation list only: the requested code is
+        # always resolvable by code, but the page must not offer a Direct hop.
+        scope = _plan_scope_or_422(plan)
+        fund = run_db(lambda conn: queries.fund_detail(conn, code, plan=scope))
         if fund is None:
             raise HTTPException(status_code=404, detail=f"fund {code} not found")
         return fund
@@ -313,26 +337,40 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
 
     @app.get("/api/suggest")
     def api_suggest(
-        q: str = Query("", max_length=200), limit: int = Query(10, ge=1, le=25)
+        q: str = Query("", max_length=200), limit: int = Query(10, ge=1, le=25),
+        plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16),
     ) -> list[dict[str, Any]]:
-        return run_db(lambda conn: queries.suggest(conn, q, limit=limit))
+        scope = _plan_scope_or_422(plan)
+        return run_db(
+            lambda conn: queries.suggest(conn, q, limit=limit, plan=scope)
+        )
 
     @app.get("/api/movers")
     def api_movers(
         period: str = Query("1m", max_length=16),
         direction: str = Query("gainers", max_length=16),
         limit: int = Query(10, ge=1, le=50),
+        plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16),
     ) -> dict[str, Any]:
+        scope = _plan_scope_or_422(plan)
         return run_db(
-            lambda conn: queries.movers(conn, period=period, direction=direction, limit=limit)
+            lambda conn: queries.movers(
+                conn, period=period, direction=direction, limit=limit, plan=scope
+            )
         )
 
     @app.get("/api/movers/categories")
     def api_movers_categories(
         period: str = Query("1m", max_length=16),
         limit: int = Query(5, ge=1, le=20),
+        plan: str = Query(queries.DEFAULT_PLAN_SCOPE, max_length=16),
     ) -> dict[str, Any]:
-        return run_db(lambda conn: queries.category_movers(conn, period=period, limit=limit))
+        scope = _plan_scope_or_422(plan)
+        return run_db(
+            lambda conn: queries.category_movers(
+                conn, period=period, limit=limit, plan=scope
+            )
+        )
 
     @app.get("/api/compare")
     def api_compare(

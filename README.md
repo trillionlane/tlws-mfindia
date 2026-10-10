@@ -165,16 +165,55 @@ since every factsheet lists every live scheme).
 
 ```
 GET /api/stats                       coverage summary
-GET /api/funds?q=&amc=&category=&option=&page=&per_page=&sort=
+GET /api/funds?q=&amc=&category=&option=&page=&per_page=&sort=&plan=
 GET /api/fund-families?q=&amc=...    one row per scheme family (variants collapsed)
 GET /api/funds/batch?ids=            mixed AMFI codes + ISINs, max 50 per request
-GET /api/funds/{code}                full detail (identity, latest NAV, facts, variants)
+GET /api/funds/{code}?plan=          full detail (identity, latest NAV, facts, variants)
 GET /api/funds/{code}/nav?years=     NAV series for the chart
 GET /api/funds/{code}/returns        returns computed from our own NAV series
-GET /api/movers?period=&direction=&limit=   global top gainers/losers
-GET /api/movers/categories?period=&limit=   top-5 gainers AND losers per family
+GET /api/movers?period=&direction=&limit=&plan=   global top gainers/losers
+GET /api/movers/categories?period=&limit=&plan=   top-5 gainers AND losers per family
 GET /api/amcs · /api/categories · /api/options
 ```
+
+**Plan scope — the served universe is Regular.** Every surface that *discovers*
+or *navigates* to a fund defaults to `plan=regular`, so **Direct plans never
+appear**: this data feeds a distributor-facing product, and Direct is a
+different commission model, not a product choice. `plan=direct` and `plan=all`
+are accepted for internal/ops queries; an unknown value is a `422` (never a
+silently widened universe). The scope is the `in_scope` rule reproduced exactly —
+`REGULAR`, plus `UNLABELLED` **only** when the plan was inferred from the scheme
+name on the legacy no-Plan-column feed (`plan_source='NAME'`) and the scheme is
+not an ETF — and it excludes `DIRECT`, `RETAIL`, `INSTITUTIONAL` **and every
+plan-unknown row** (`COLUMN_BLANK` / `COLUMN_UNRECOGNISED`, 5,705 in today's
+feed). A blank Plan column means the plan is unknown, not Regular.
+
+`plan` and `in_scope` are orthogonal, and both have safe defaults, so asking for
+an out-of-curation plan needs both switches: `/api/funds?plan=direct` alone is
+**empty**, because every Direct row is `in_scope = false` by definition — ops
+queries must add `&in_scope=false`. That is intended (neither parameter quietly
+overrides the other) but it is easy to misread as "no Direct funds exist".
+
+`mf.funds.in_scope` is a generated column that already encodes that rule, so
+**this changes no existing default response** (asserted by a populated-DB
+zero-change test). The predicate exists anyway because `in_scope` is a *curation*
+flag that several routes treat as an option (`/api/funds?in_scope=false`) and the
+sibling navigation list does not apply at all — "we never show a plan we do not
+know" cannot depend on a flag a caller can switch off. Because the rule is then
+written in two places, `tests/test_plan_scope.py` evaluates the emitted predicate
+against the generated column over every row, so the two can never drift.
+
+Consequences worth knowing: `/api/funds/{code}` resolves **any** code by code
+(an identifier lookup is not discovery), but its `siblings` list offers only
+served-plan variants — so a Direct page's only hops lead back to Regular.
+`/api/suggest` cannot resolve a Direct code at all. Peer sets
+(`/api/funds/{code}/peers`, `/risk-reward`) and the facet counts
+(`/api/amcs`, `/categories`, `/options`) are always scoped to the served
+universe, so a percentile never compares a Regular fund against Direct peers it
+is not comparable with, and a facet count never promises rows the list will not
+return. Explicit-identifier endpoints (`/api/funds/batch`, `/api/compare`,
+`/api/holdings-overlap`) stay code-addressable by design and return `plan_type`
+so a caller can badge what it got.
 
 **Scheme-family de-duplication.** Same-named schemes often exist under several
 AMFI codes (plan/option tranches, new ISIN re-issues). `/api/fund-families`

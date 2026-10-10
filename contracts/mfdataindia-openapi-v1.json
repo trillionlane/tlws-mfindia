@@ -280,6 +280,17 @@
               "title": "Sort",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -435,6 +446,17 @@
               "title": "Sort",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -517,6 +539,17 @@
             "schema": {
               "title": "Code",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
             }
           }
         ],
@@ -869,6 +902,17 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -923,6 +967,17 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
             }
           }
         ],
@@ -1020,6 +1075,17 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "plan",
+            "required": false,
+            "schema": {
+              "default": "regular",
+              "maxLength": 16,
+              "title": "Plan",
+              "type": "string"
             }
           }
         ],
