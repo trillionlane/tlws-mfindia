@@ -129,6 +129,224 @@ def _f(v: Any) -> Optional[float]:
     return None if v is None else float(v)
 
 
+# =============================================================================
+# Evidence-backed signals: lifecycle, NAV freshness, NAV quality, methodology
+# =============================================================================
+# These replace ad-hoc boolean guesses with structured, evidence-carrying
+# objects. The rules are deliberately conservative:
+#
+# * lifecycle: ``redeemed`` requires the authoritative AMFI REDEEMED marker
+#   (an open AMFI-sourced LIFECYCLE_ENDED quality flag — the evidence the
+#   ingest has always written for the marker); ``defunct`` uses the existing
+#   defunct evidence; ``active`` requires presence in the latest successful
+#   source snapshot. Stale NAV, a terminal 10.00 reset, or a close-ended
+#   scheme type ALONE never produce redeemed/defunct — ambiguous cases are
+#   ``unknown`` with the evidence that got us there. There is no top-level
+#   "matured" boolean anywhere in the contract.
+# * nav_freshness: objective calendar-day lag between the dataset-wide latest
+#   NAV (mf.dataset_summary.nav_last) and the code's own latest NAV, banded by
+#   server-owned thresholds below. Consumers must not redefine these bands.
+# * nav_quality: read-through of the durable audit assessments
+#   (mf.nav_quality_assessments). A constant series is a DETECTION signal
+#   (constant_nav_series), never "frozen", "invalid" or "corrupt". When the
+#   assessed dataset version is older than the served dataset version the
+#   assessment is reported ``stale`` — never as "clean".
+# * methodology: the numeric returns/analytics fields are NAV-to-NAV changes.
+#   For IDCW/DIVIDEND options distributions are not in the NAV and no
+#   distribution history is available, so those numbers are NOT total return
+#   and the series is comparison-ineligible; a direct request still returns
+#   the raw NAV-based numbers with the methodology and limitation fields.
+
+#: Option types whose NAV change excludes distributions — comparison-ineligible
+#: for every API-owned ranking. The predicate fragment is whitelist-built from
+#: the closed schema option set, never from request input.
+_COMPARISON_INELIGIBLE_OPTIONS = ("IDCW", "DIVIDEND")
+
+
+def _comparison_eligible_predicate(alias: str = "f") -> str:
+    return (f"{alias}.option_type NOT IN ('IDCW', 'DIVIDEND')")
+
+
+def _latest_source_date(conn) -> Optional[date]:
+    """The latest successful source snapshot date recorded in mf.funds.
+
+    After the ingest fix, every scheme present in the most recent successful
+    AMFI refresh carries ``last_seen_in_source`` = that refresh's source
+    date, so the column maximum IS the latest snapshot date.
+    """
+    row = conn.execute(
+        "SELECT max(last_seen_in_source) AS d FROM mf.funds").fetchone()
+    return row["d"] if row else None
+
+
+def _lifecycle(conn, code: int, *, is_defunct: bool,
+               last_seen_in_source: Optional[date]) -> dict[str, Any]:
+    """Structured lifecycle state with its evidence.
+
+    Precedence: AMFI REDEEMED marker > defunct evidence > current-feed
+    presence > unknown. The marker check runs first even for schemes still
+    visible in the feed, because a REDEEMED close-ended scheme can keep
+    appearing in NAVAll alongside its terminal redemption NAV.
+    """
+    marker = conn.execute(
+        """
+        SELECT 1 AS hit FROM mf.quality_flags
+        WHERE amfi_scheme_code = %(code)s
+          AND flag_type = 'LIFECYCLE_ENDED' AND source = 'AMFI'
+          AND resolved_at IS NULL
+        LIMIT 1
+        """, {"code": code}).fetchone()
+    if marker:
+        state, evidence = "redeemed", "amfi_redeemed_marker"
+    elif is_defunct:
+        state, evidence = "defunct", "amfi_defunct_marker"
+    elif last_seen_in_source is None:
+        state, evidence = "unknown", "insufficient_evidence"
+    else:
+        latest = _latest_source_date(conn)
+        if latest is not None and last_seen_in_source == latest:
+            state, evidence = "active", "amfi_current_feed"
+        else:
+            state, evidence = "unknown", "not_seen_in_latest_feed"
+    return {
+        "state": state,
+        "evidence": evidence,
+        "last_seen_in_source": (last_seen_in_source.isoformat()
+                                if last_seen_in_source else None),
+    }
+
+
+#: Server-owned NAV freshness bands, in calendar days of lag.
+#:   current: 0-7 · delayed: 8-30 · stale: 31-180 · very_stale: >180
+#:   missing: no NAV at all.
+FRESHNESS_CURRENT_DAYS = 7
+FRESHNESS_DELAYED_DAYS = 30
+FRESHNESS_STALE_DAYS = 180
+
+
+def _nav_freshness(*, dataset_as_of: Optional[date],
+                   latest_nav_date: Optional[date]) -> dict[str, Any]:
+    """Objective NAV freshness from the dataset reference and the code's NAV."""
+    if latest_nav_date is None:
+        return {
+            "dataset_as_of": dataset_as_of.isoformat() if dataset_as_of else None,
+            "latest_nav_date": None,
+            "lag_days": None,
+            "status": "missing",
+        }
+    # dataset_as_of is the dataset-wide max NAV date, so whenever the code has
+    # a NAV the reference exists and is not before it (next-day liquid/overnight
+    # NAVs make it newer, never older).
+    lag_days = (dataset_as_of - latest_nav_date).days if dataset_as_of else 0
+    if lag_days <= FRESHNESS_CURRENT_DAYS:
+        status = "current"
+    elif lag_days <= FRESHNESS_DELAYED_DAYS:
+        status = "delayed"
+    elif lag_days <= FRESHNESS_STALE_DAYS:
+        status = "stale"
+    else:
+        status = "very_stale"
+    return {
+        "dataset_as_of": dataset_as_of.isoformat() if dataset_as_of else None,
+        "latest_nav_date": latest_nav_date.isoformat(),
+        "lag_days": lag_days,
+        "status": status,
+    }
+
+
+def _nav_quality(conn, code: int, *, dataset_version: int) -> dict[str, Any]:
+    """Read-through of the durable NAV-quality assessment for one scheme.
+
+    ``assessment_status`` is about the ASSESSMENT, not the fund: an older
+    assessed dataset version means the signal is no newer than the audit run,
+    so it is reported ``stale`` — never as "clean".
+    """
+    row = conn.execute(
+        """
+        SELECT methodology_version, assessed_dataset_version, assessed_at,
+               observation_count, distinct_nav_count, signals
+        FROM mf.nav_quality_assessments
+        WHERE amfi_scheme_code = %(code)s
+        """, {"code": code}).fetchone()
+    if row is None:
+        return {
+            "assessment_status": "not_assessed",
+            "methodology_version": None,
+            "assessed_dataset_version": None,
+            "assessed_at": None,
+            "observation_count": None,
+            "distinct_nav_count": None,
+            "signals": None,
+        }
+    status = ("current" if row["assessed_dataset_version"] >= dataset_version
+              else "stale")
+    return {
+        "assessment_status": status,
+        "methodology_version": row["methodology_version"],
+        "assessed_dataset_version": int(row["assessed_dataset_version"]),
+        "assessed_at": row["assessed_at"].isoformat() if row["assessed_at"] else None,
+        "observation_count": int(row["observation_count"]),
+        "distinct_nav_count": int(row["distinct_nav_count"]),
+        "signals": list(row["signals"] or []),
+    }
+
+
+#: Closed list of methodology limitation reason codes.
+LIMITATION_DISTRIBUTION_HISTORY_UNAVAILABLE = "distribution_history_unavailable"
+LIMITATION_LIFECYCLE_NOT_ACTIVE = "lifecycle_not_active"
+LIMITATION_NAV_FRESHNESS_LAG = "nav_freshness_lag"
+LIMITATION_NAV_QUALITY_SIGNAL = "nav_quality_signal"
+LIMITATION_NAV_SERIES_UNAVAILABLE = "nav_series_unavailable"
+
+
+def _methodology(*, option_type: str, lifecycle: dict[str, Any],
+                 freshness: dict[str, Any], quality: dict[str, Any]) -> dict[str, Any]:
+    """Explicit methodology for the NAV-derived numeric fields.
+
+    The stored numbers are always NAV-to-NAV changes (``basis: nav_change``).
+    For growth, distribution adjustment is not applicable and the series may
+    be comparison-eligible when the lifecycle, freshness and quality gates
+    pass. For IDCW/DIVIDEND the distribution history is unavailable, so the
+    numbers are NOT total return and the series is comparison-ineligible —
+    its raw NAV-based numbers are still served on a direct request.
+    """
+    limitations: list[str] = []
+    is_growth = option_type not in _COMPARISON_INELIGIBLE_OPTIONS
+    if freshness["status"] == "missing":
+        limitations.append(LIMITATION_NAV_SERIES_UNAVAILABLE)
+    if is_growth:
+        distribution_adjustment = "not_applicable"
+        if lifecycle["state"] != "active":
+            limitations.append(LIMITATION_LIFECYCLE_NOT_ACTIVE)
+        if freshness["status"] != "current":
+            limitations.append(LIMITATION_NAV_FRESHNESS_LAG)
+        # An absent durable assessment is not a gate failure: no signal is
+        # recorded, and the governed audit is the verification mechanism.
+        if quality["signals"]:
+            limitations.append(LIMITATION_NAV_QUALITY_SIGNAL)
+        comparison_eligible = not limitations
+    else:
+        distribution_adjustment = "unavailable"
+        limitations.append(LIMITATION_DISTRIBUTION_HISTORY_UNAVAILABLE)
+        comparison_eligible = False
+    return {
+        "basis": "nav_change",
+        "distribution_adjustment": distribution_adjustment,
+        "comparison_eligible": comparison_eligible,
+        "limitations": limitations,
+    }
+
+
+def _dataset_reference(conn) -> tuple[Optional[date], int]:
+    """(dataset nav_last, dataset_version) — the freshness/quality reference."""
+    row = conn.execute(
+        "SELECT nav_last, dataset_version FROM mf.dataset_summary WHERE singleton"
+    ).fetchone()
+    if row is None:
+        return None, 0
+    return row["nav_last"], int(row["dataset_version"])
+
+
 #: Fund-level factsheet fields. A facts row is "usable" — i.e. the scheme code
 #: actually has factsheet data of its own — when at least one of these is set.
 #: Everything else (returns, Sharpe, exit load, ...) is per-code enrichment and
@@ -478,6 +696,7 @@ def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[
                f.option_type, f.periodicity, f.scheme_type, f.scheme_category,
                f.is_etf, f.is_defunct, f.is_active, f.in_scope,
                f.isin_growth_or_div_payout, f.isin_div_reinvest, f.isin_primary,
+               f.last_seen_in_source,
                a.amfi_amc_name, f.created_at, f.updated_at
         FROM mf.funds f JOIN mf.amcs a ON a.amc_id = f.amc_id
         WHERE f.amfi_scheme_code = %(code)s
@@ -535,7 +754,8 @@ def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[
     sibling_plan = _plan_predicate(plan_scope(plan), alias="f2")
     siblings = conn.execute(
         f"""
-        SELECT v2.amfi_scheme_code, f2.scheme_name, f2.plan_type, f2.option_type
+        SELECT v2.amfi_scheme_code, f2.scheme_name, f2.plan_type, f2.option_type,
+               f2.periodicity
         FROM mf.fund_variants v1
         JOIN mf.fund_variants v2 ON v2.group_key = v1.group_key
         JOIN mf.funds f2 ON f2.amfi_scheme_code = v2.amfi_scheme_code
@@ -575,6 +795,19 @@ def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[
         if isinstance(h.get("weight_pct"), Decimal):
             h["weight_pct"] = float(h["weight_pct"])
     out["holdings"] = holdings
+
+    # -- evidence-backed signals (cheap index/singleton reads, no history scan)
+    dataset_as_of, dataset_version = _dataset_reference(conn)
+    out["lifecycle"] = _lifecycle(
+        conn, code,
+        is_defunct=bool(out["is_defunct"]),
+        last_seen_in_source=out.get("last_seen_in_source"),
+    )
+    out["nav_freshness"] = _nav_freshness(
+        dataset_as_of=dataset_as_of,
+        latest_nav_date=latest["nav_date"] if latest else None,
+    )
+    out["nav_quality"] = _nav_quality(conn, code, dataset_version=dataset_version)
     return out
 
 
@@ -607,23 +840,63 @@ def nav_series(
     return {"code": code, "points": points, "count": len(points)}
 
 
+def _fund_signals(conn, code: int, *, latest_nav_date: Optional[date]) -> dict[str, Any]:
+    """The lifecycle/freshness/quality/methodology quartet for one code.
+
+    Shared by fund detail, returns and analytics so the gates cannot drift.
+    Cheap reads only (funds row, singleton dataset_summary, one quality-flag
+    probe, one assessment row) — never a history scan on a request path.
+    """
+    fund = conn.execute(
+        "SELECT option_type, is_defunct, last_seen_in_source FROM mf.funds "
+        "WHERE amfi_scheme_code = %(code)s", {"code": code}).fetchone()
+    dataset_as_of, dataset_version = _dataset_reference(conn)
+    lifecycle = _lifecycle(
+        conn, code,
+        is_defunct=bool(fund["is_defunct"]) if fund else False,
+        last_seen_in_source=fund["last_seen_in_source"] if fund else None,
+    )
+    freshness = _nav_freshness(
+        dataset_as_of=dataset_as_of, latest_nav_date=latest_nav_date)
+    quality = _nav_quality(conn, code, dataset_version=dataset_version)
+    return {
+        "lifecycle": lifecycle,
+        "nav_freshness": freshness,
+        "nav_quality": quality,
+        "methodology": _methodology(
+            option_type=fund["option_type"] if fund else "UNKNOWN",
+            lifecycle=lifecycle,
+            freshness=freshness,
+            quality=quality,
+        ),
+    }
+
+
 def returns(conn, code: int) -> dict[str, Any]:
     """Returns computed from our own NAV series (authoritative, not a source's).
 
     For each horizon we take the latest NAV and the NAV at or just before the
     horizon start. None where the series is too short.
+
+    Every response carries ``methodology``: the numbers are NAV-to-NAV
+    changes (``basis: nav_change``). For IDCW/DIVIDEND options they are NOT
+    total return — distributions are unavailable — and the series is
+    comparison-ineligible.
     """
     latest = conn.execute(
         "SELECT nav, nav_date FROM mf.nav_history "
         "WHERE amfi_scheme_code = %(code)s ORDER BY nav_date DESC LIMIT 1",
         {"code": code}).fetchone()
     if not latest:
-        return {"code": code, "horizons": {}}
+        out: dict[str, Any] = {"code": code, "horizons": {}}
+        out.update(_fund_signals(conn, code, latest_nav_date=None))
+        return out
     last_nav = float(latest["nav"])
     last_date = latest["nav_date"]
 
     horizons = {"1M": 1, "3M": 3, "6M": 6, "1Y": 12, "3Y": 36, "5Y": 60}
     out: dict[str, Any] = {"code": code, "as_of": last_date.isoformat(), "horizons": {}}
+    out.update(_fund_signals(conn, code, latest_nav_date=last_date))
     for label, months in horizons.items():
         # Cutoff computed in Python (see nav_series re: make_interval portability).
         cutoff = last_date - timedelta(days=int(round(months * 30.44)))
@@ -674,7 +947,10 @@ def fund_analytics(conn, code: int) -> dict[str, Any]:
         "WHERE amfi_scheme_code = %(code)s ORDER BY nav_date",
         {"code": code}).fetchall()
     if len(rows) < 30:
-        return {"code": code, "points": len(rows), "too_short": True}
+        out = {"code": code, "points": len(rows), "too_short": True}
+        out.update(_fund_signals(conn, code,
+                                 latest_nav_date=rows[-1]["nav_date"] if rows else None))
+        return out
 
     dates = [r["nav_date"] for r in rows]
     navs = [float(r["nav"]) for r in rows]
@@ -684,6 +960,7 @@ def fund_analytics(conn, code: int) -> dict[str, Any]:
         "first_date": dates[0].isoformat(), "as_of": dates[-1].isoformat(),
         "risk_free_pct": round(RISK_FREE_ANNUAL * 100, 2),
     }
+    out.update(_fund_signals(conn, code, latest_nav_date=dates[-1]))
 
     # ---- daily log returns -------------------------------------------------
     rets = [math.log(navs[i] / navs[i - 1]) for i in range(1, n)
@@ -784,7 +1061,7 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
     """
     row = conn.execute(
         """
-        SELECT f.amfi_scheme_code, ff.sebi_category_name,
+        SELECT f.amfi_scheme_code, f.option_type, ff.sebi_category_name,
                ff.return_1year, ff.return_3year, ff.return_5year
         FROM mf.funds f LEFT JOIN mf.fund_facts ff
              ON ff.amfi_scheme_code = f.amfi_scheme_code
@@ -797,7 +1074,15 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
     # Peer sets are always the served plan scope (Regular): a Direct twin earns a
     # lower expense ratio on the same book, so mixing plans would rank the
     # subject against peers it is not comparable with.
+    #
+    # Comparison-ineligible series (IDCW/DIVIDEND) never enter the peer
+    # population (documented v1-eligibility change): their NAV changes are not
+    # total return, so ranking them against growth peers is a false signal. An
+    # ineligible subject still reports its own raw fund_return and the peer
+    # population size, but no beats_pct/rank.
     peer_plan = _plan_predicate()
+    peer_eligible = _comparison_eligible_predicate("f")
+    subject_eligible = row["option_type"] not in _COMPARISON_INELIGIBLE_OPTIONS
     colmap = {"1Y": ("return_1year", row["return_1year"]),
               "3Y": ("return_3year", row["return_3year"]),
               "5Y": ("return_5year", row["return_5year"])}
@@ -809,10 +1094,11 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
             JOIN mf.funds f ON f.amfi_scheme_code = ff.amfi_scheme_code
             WHERE ff.sebi_category_name = %(cat)s
               AND f.in_scope AND NOT f.is_defunct AND {peer_plan}
+              AND {peer_eligible}
               AND ff.{col} IS NOT NULL
             """, {"cat": cat}).fetchall()]
         n = len(peers)
-        if n < 10 or mine is None:
+        if n < 10 or mine is None or not subject_eligible:
             out["horizons"][label] = {
                 "peer_count": n, "fund_return": _f(mine), "beats_pct": None}
             continue
@@ -833,6 +1119,10 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
     peers; the fund itself is flagged so the client can highlight it. AUM is
     attached for bubble sizing. Returns ``{"category": ...}`` with an empty
     ``points`` list when the profile table is empty (not yet refreshed).
+
+    The population excludes comparison-ineligible series (IDCW/DIVIDEND) — the
+    documented v1-eligibility change: distribution-adjusted risk figures do not
+    exist, so mixing them into the risk/reward map would be a false signal.
     """
     me = conn.execute(
         """
@@ -854,6 +1144,7 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
         WHERE ff.sebi_category_name = %(cat)s
           AND f.in_scope AND NOT f.is_defunct
           AND {_plan_predicate()}
+          AND {_comparison_eligible_predicate("f")}
         ORDER BY rp.annual_vol
         """, {"cat": me["sebi_category_name"]}).fetchall()
 
@@ -1158,6 +1449,12 @@ def movers(
     Scoped to the served plan (Regular by default): a Direct twin moving the same
     book would otherwise double up the leaderboard with rows a partner cannot
     transact in.
+
+    Comparison-ineligible series are excluded from the population (documented
+    v1-eligibility change): IDCW/DIVIDEND NAV changes are not total return
+    (distributions are unavailable), so ranking them beside growth series would
+    be a false signal. A direct request for one of those codes' returns still
+    serves the raw NAV-based numbers with the methodology fields.
     """
     days = _MOVER_DAYS.get(period, 30)
     ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
@@ -1178,7 +1475,8 @@ def movers(
         WHERE nav_date >= %(cutoff)s
           AND amfi_scheme_code IN (
               SELECT f.amfi_scheme_code FROM mf.funds f
-              WHERE f.in_scope AND NOT f.is_defunct AND {mover_plan})
+              WHERE f.in_scope AND NOT f.is_defunct AND {mover_plan}
+                AND {_comparison_eligible_predicate("f")})
         GROUP BY amfi_scheme_code
         """,
         {"cutoff": cutoff},
@@ -1250,12 +1548,16 @@ def category_movers(
     period start), but grouped by fund family so the front page can show one
     compact tile per family. One window scan; grouping/slicing in Python.
 
-    Variants of one scheme (GROWTH/IDCW, and multiple IDCW payout periodicities
-    — each is its own AMFI scheme code) move identically, so they would
-    otherwise stack up the list. They are collapsed onto one row per
-    ``mf.fund_variants`` family: the variant with the biggest absolute move is
-    the representative, and its ``variants`` count tells the UI how many plan/
-    option variants of that scheme were in the window.
+    Variants of one scheme (plan and payout periodicity — each is its own AMFI
+    scheme code) move identically, so they would otherwise stack up the list.
+    They are collapsed onto one row per ``mf.fund_variants`` family: the
+    variant with the biggest absolute move is the representative, and its
+    ``variants`` count tells the UI how many plan/option variants of that
+    scheme were in the window.
+
+    Comparison-ineligible series (IDCW/DIVIDEND) are excluded from the
+    population, the same documented v1-eligibility change as :func:`movers` —
+    so the collapsing is now across comparable variants only.
     """
     days = _MOVER_DAYS.get(period, 30)
     ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
@@ -1278,6 +1580,7 @@ def category_movers(
         WHERE n.nav_date >= %(cutoff)s
           AND f.in_scope AND NOT f.is_defunct
           AND {fam_plan}
+          AND {_comparison_eligible_predicate("f")}
         GROUP BY f.amfi_scheme_code, f.scheme_name, f.scheme_category,
                  f.option_type, a.amfi_amc_name, fv.group_key
         """,
