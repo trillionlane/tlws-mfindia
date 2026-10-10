@@ -317,13 +317,11 @@ option and the sibling list does not apply at all. "We never show Direct" now
 states itself instead of riding on an expression defined for another purpose.
 
 - New policy in `queries.py`: `DEFAULT_PLAN_SCOPE = "regular"`, a closed
-  `_PLAN_SCOPE_SQL` map (`regular` → `REGULAR` + `UNLABELLED`, `direct` →
-  `DIRECT`, `all` → no predicate), `plan_scope()` (normalises, raises
-  `ValueError` on anything unknown) and `_plan_predicate()` (emits SQL only from
-  the whitelist map, never from input). `UNLABELLED` stays in the default scope
-  because those are name-inferred Regular rows — dropping them would silently
-  lose real Regular funds, and they can never be Direct. `RETAIL` /
-  `INSTITUTIONAL` are excluded: a distributor sells neither.
+  `_PLAN_SCOPE_SQL` map of scope → SQL predicate template (`regular` → the
+  served-plan rule, `direct` → `plan_type = 'DIRECT'`, `all` → `TRUE`),
+  `plan_scope()` (normalises, raises `ValueError` on anything unknown) and
+  `_plan_predicate()` (binds `{alias}` from call-site constants only, never from
+  input). `RETAIL` / `INSTITUTIONAL` are excluded: a distributor sells neither.
 - `plan` query parameter (default `regular`) on the discovery and navigation
   routes: `/api/funds`, `/api/fund-families`, `/api/funds/{code}` (scopes the
   `siblings` list), `/api/suggest`, `/api/movers`, `/api/movers/categories`.
@@ -371,6 +369,43 @@ states itself instead of riding on an expression defined for another purpose.
 - Contract: `contracts/mfdataindia-openapi-v1.json` re-exported (66 added lines
   = the `plan` parameter on six routes; no path or response-shape change, so
   consumers that do not send `plan` are unaffected).
+
+**Review round 1 — [P1] the scope admitted plan-*unknown* rows (fixed same day).**
+`regular` was written as `plan_type IN ('REGULAR', 'UNLABELLED')`, but
+`UNLABELLED` is not one population. `resolve_plan` (`amfi_navall.py`) returns it
+for three genuinely different reasons — `NAME` (legacy feed had *no* Plan column,
+so the name is the only signal and unlabelled means "written without the word
+Regular"), `COLUMN_BLANK` (the feed **has** a Plan column and left it empty: the
+plan is unknown) and `COLUMN_UNRECOGNISED` (a Plan cell we cannot classify) — and
+the rule additionally exempts ETFs. Measured on the live feed, the shortcut
+admitted **10,050 rows where the authoritative rule admits 4,345**: 5,705
+`UNLABELLED + COLUMN_BLANK`, 5,573 of them still live. It doubled the served
+universe, and it surfaced exactly where this PR deliberately bypasses curation
+(`/api/funds?in_scope=false`, sibling navigation) — which also explains why the
+zero-change guard never caught it: every *default* response already filters
+`in_scope`, so the column masked the predicate's own error.
+
+Fix: `_SERVED_PLAN_SQL` reproduces the generated column verbatim. Three guards
+keep the two definitions from drifting, because the scope intentionally cannot
+read `in_scope`:
+
+1. `test_regular_scope_admits_exactly_what_curation_admits` evaluates the emitted
+   predicate against the column with `IS DISTINCT FROM` over every row visible in
+   the test transaction — the synthetic group on CI, all 14,368 rows locally.
+   This is the behavioural guard.
+2. `test_regular_scope_predicate_matches_the_generated_column_text` reads the
+   `GENERATED ALWAYS AS (…) STORED` expression out of `sql/001_core_schema.sql`
+   and compares it with the test's own independent transcription of the rule.
+3. The fixture now carries one row per UNLABELLED sub-case — `900205`
+   COLUMN_BLANK, `900209` COLUMN_UNRECOGNISED, `900208` NAME-but-ETF — plus
+   `900210` REGULAR-but-ETF to prove the carve-out was not over-applied. Listing,
+   typeahead and sibling navigation now assert the exact served code set, in both
+   `in_scope=True` and `in_scope=False` modes.
+
+Negative control: reverting the predicate to the reviewed-against form fails
+exactly three tests — the parametrised `in_scope=False` listing, sibling
+navigation, and the equivalence guard — so the new assertions are proven to catch
+the reported bug rather than merely passing alongside it.
 
 ## Schema: `apply_migrations` now equals a fresh compose boot (done, 2026-10-08)
 

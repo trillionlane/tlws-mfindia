@@ -181,17 +181,27 @@ or *navigates* to a fund defaults to `plan=regular`, so **Direct plans never
 appear**: this data feeds a distributor-facing product, and Direct is a
 different commission model, not a product choice. `plan=direct` and `plan=all`
 are accepted for internal/ops queries; an unknown value is a `422` (never a
-silently widened universe). The scope admits `REGULAR` plus name-inferred
-`UNLABELLED` rows — the historical AMFI feed whose blank Plan column the ingest
-resolved to Regular *from the scheme name*, which is exactly the population
-`in_scope` admits — and excludes `DIRECT`, `RETAIL` and `INSTITUTIONAL`.
+silently widened universe). The scope is the `in_scope` rule reproduced exactly —
+`REGULAR`, plus `UNLABELLED` **only** when the plan was inferred from the scheme
+name on the legacy no-Plan-column feed (`plan_source='NAME'`) and the scheme is
+not an ETF — and it excludes `DIRECT`, `RETAIL`, `INSTITUTIONAL` **and every
+plan-unknown row** (`COLUMN_BLANK` / `COLUMN_UNRECOGNISED`, 5,705 in today's
+feed). A blank Plan column means the plan is unknown, not Regular.
 
-`mf.funds.in_scope` is a generated column that already excludes Direct, so
-**this changes no existing response** (asserted by a populated-DB zero-change
-test). The predicate exists anyway because `in_scope` is a *curation* flag that
-several routes treat as an option (`/api/funds?in_scope=false`) and the sibling
-navigation list does not apply at all — "we never show Direct" must not depend
-on an expression defined for a different purpose.
+`plan` and `in_scope` are orthogonal, and both have safe defaults, so asking for
+an out-of-curation plan needs both switches: `/api/funds?plan=direct` alone is
+**empty**, because every Direct row is `in_scope = false` by definition — ops
+queries must add `&in_scope=false`. That is intended (neither parameter quietly
+overrides the other) but it is easy to misread as "no Direct funds exist".
+
+`mf.funds.in_scope` is a generated column that already encodes that rule, so
+**this changes no existing default response** (asserted by a populated-DB
+zero-change test). The predicate exists anyway because `in_scope` is a *curation*
+flag that several routes treat as an option (`/api/funds?in_scope=false`) and the
+sibling navigation list does not apply at all — "we never show a plan we do not
+know" cannot depend on a flag a caller can switch off. Because the rule is then
+written in two places, `tests/test_plan_scope.py` evaluates the emitted predicate
+against the generated column over every row, so the two can never drift.
 
 Consequences worth knowing: `/api/funds/{code}` resolves **any** code by code
 (an identifier lookup is not discovery), but its `siblings` list offers only

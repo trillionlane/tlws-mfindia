@@ -48,24 +48,43 @@ _SORT_FAMILY = {
 #: navigation list not at all), and "we never show Direct" must not depend on an
 #: expression defined for a different purpose. This predicate states it directly.
 #:
-#: ``regular`` deliberately admits UNLABELLED: that is the historical AMFI feed
-#: whose blank Plan column the ingest resolved to Regular *from the scheme name*
-#: (``plan_source = 'NAME'``), which is exactly the population ``in_scope``
-#: admits. Dropping those rows would silently lose real Regular funds; they can
-#: never be Direct. Retail and Institutional are separate plan labels and are
-#: excluded — a distributor sells neither.
+#: ``regular`` admits UNLABELLED only in the one case the authoritative rule
+#: admits it: the legacy AMFI feed had *no* Plan column, so the ingest inferred
+#: Regular from the scheme name (``plan_source = 'NAME'``) and the scheme is not
+#: an ETF. Those are real Regular funds and dropping them would silently shrink
+#: the universe. Every other UNLABELLED row is a data gap, not a Regular plan:
+#: ``COLUMN_BLANK`` means the feed HAS a Plan column and left it empty (plan
+#: unknown — 5,705 rows in today's feed), and ``COLUMN_UNRECOGNISED`` means the
+#: cell held vocabulary we do not know. Retail and Institutional are separate
+#: labels and are excluded; a distributor sells neither.
 #:
 #: ``all`` and ``direct`` exist for internal/ops queries and are never the
 #: default on any route.
 DEFAULT_PLAN_SCOPE = "regular"
 
-#: scope -> the ``plan_type`` values it admits. ``all`` adds no predicate.
-#: This map is the ONLY source of the emitted SQL values, so a scope can never
-#: be string-interpolated from a request.
-_PLAN_SCOPE_SQL: dict[str, Optional[tuple[str, ...]]] = {
-    "regular": ("REGULAR", "UNLABELLED"),
-    "direct": ("DIRECT",),
-    "all": None,
+#: The ``regular`` scope, written as SQL. This expression MUST stay identical to
+#: the ``in_scope`` STORED generated column (``sql/001_core_schema.sql``), which
+#: is the authoritative served-plan rule. It is duplicated on purpose rather
+#: than reused: the scope has to hold on surfaces that *deliberately* bypass
+#: curation — ``/api/funds?in_scope=false`` and sibling navigation, which never
+#: consults ``in_scope`` — so referencing the column would make those two
+#: surfaces a no-op. Drift is caught instead of assumed, by
+#: ``tests/test_plan_scope.py::test_regular_scope_admits_exactly_what_curation_admits``,
+#: which evaluates this expression against the live column over every row.
+_SERVED_PLAN_SQL = (
+    "({alias}.plan_type = 'REGULAR'"
+    " OR ({alias}.plan_type = 'UNLABELLED'"
+    " AND NOT {alias}.is_etf"
+    " AND {alias}.plan_source = 'NAME'))"
+)
+
+#: scope key -> SQL predicate template. ``{alias}`` is bound only from
+#: call-site constants, never from a request, and this map is the ONLY source of
+#: emitted SQL — so a scope value can never be string-interpolated into a query.
+_PLAN_SCOPE_SQL: dict[str, str] = {
+    "regular": _SERVED_PLAN_SQL,
+    "direct": "{alias}.plan_type = 'DIRECT'",
+    "all": "TRUE",
 }
 
 
@@ -88,14 +107,13 @@ def plan_scope(value: Optional[str]) -> str:
 def _plan_predicate(scope: str = DEFAULT_PLAN_SCOPE, alias: str = "f") -> str:
     """SQL fragment restricting a query to ``scope``. Safe by construction.
 
-    ``scope`` is resolved through the closed :data:`_PLAN_SCOPE_SQL` map, so the
-    emitted literals never come from request input.
+    ``scope`` is resolved through the closed :data:`_PLAN_SCOPE_SQL` map and
+    ``alias`` always comes from the call site, so no fragment is ever built from
+    request input. The alias must qualify ``mf.funds``: the ``regular`` scope
+    reads three columns (``plan_type``, ``is_etf``, ``plan_source``) because it
+    mirrors the three-column generated column.
     """
-    plans = _PLAN_SCOPE_SQL[plan_scope(scope)]
-    if plans is None:
-        return "TRUE"
-    values = ", ".join(f"'{p}'" for p in plans)
-    return f"{alias}.plan_type IN ({values})"
+    return _PLAN_SCOPE_SQL[plan_scope(scope)].format(alias=alias)
 
 
 _STATS_SQL = """
