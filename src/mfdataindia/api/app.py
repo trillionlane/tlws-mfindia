@@ -393,7 +393,9 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             lambda conn: queries.category_movers(conn, period=period, limit=limit, plan=scope)
         )
 
-    @app.get("/api/compare")
+    @app.get(
+        "/api/compare", response_model=schemas.CompareResponse, response_model_exclude_unset=True
+    )
     def api_compare(
         codes: str = Query(..., max_length=128),
         years: float = Query(1.0, ge=0, le=100),

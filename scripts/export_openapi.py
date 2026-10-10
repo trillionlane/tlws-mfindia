@@ -46,6 +46,7 @@ _TYPED_ENDPOINTS = {
     "/api/funds/{code}/risk-reward": "RiskRewardResponse",
     "/api/movers": "MoversResponse",
     "/api/movers/categories": "CategoryMoversResponse",
+    "/api/compare": "CompareResponse",
 }
 
 

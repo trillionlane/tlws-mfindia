@@ -69,6 +69,11 @@ def main() -> int:
     started = perf_counter()
     with PostgresStore(dsn, use_copy=False, connect_timeout=30) as store:
         with store.transaction() as conn:
+            # Keep the full-history scan, dataset version, and persisted
+            # assessments on one stable snapshot if a daily refresh overlaps
+            # this separately scheduled operator run. A later refresh then
+            # advances dataset_version and makes these assessments stale.
+            conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
             summary = nav_integrity.assess(conn, write=not args.dry_run)
     summary["duration_ms"] = int((perf_counter() - started) * 1000)
     print(json.dumps(summary, indent=2, sort_keys=True, default=str))

@@ -151,19 +151,20 @@ def _f(v: Any) -> Optional[float]:
 #   assessed dataset version is older than the served dataset version the
 #   assessment is reported ``stale`` — never as "clean".
 # * methodology: the numeric returns/analytics fields are NAV-to-NAV changes.
-#   For IDCW/DIVIDEND options distributions are not in the NAV and no
-#   distribution history is available, so those numbers are NOT total return
-#   and the series is comparison-ineligible; a direct request still returns
-#   the raw NAV-based numbers with the methodology and limitation fields.
+#   Only confirmed Growth options can be comparison-eligible. Other options
+#   lack authoritative distribution/unit-event history, so their numbers are
+#   not established total return; direct requests still return the raw
+#   NAV-based numbers with methodology and limitation fields.
 
-#: Option types whose NAV change excludes distributions — comparison-ineligible
-#: for every API-owned ranking. The predicate fragment is whitelist-built from
-#: the closed schema option set, never from request input.
-_COMPARISON_INELIGIBLE_OPTIONS = ("IDCW", "DIVIDEND")
+#: Only a confirmed Growth option has a NAV series that needs no distribution
+#: or unit-event adjustment. IDCW/DIVIDEND omit cash distributions, BONUS can
+#: contain unit events, and UNKNOWN has no authoritative option classification;
+#: all therefore fail closed for comparison and API-owned rankings.
+_COMPARISON_ELIGIBLE_OPTION = "GROWTH"
 
 
 def _comparison_eligible_predicate(alias: str = "f") -> str:
-    return f"{alias}.option_type NOT IN ('IDCW', 'DIVIDEND')"
+    return f"{alias}.option_type = '{_COMPARISON_ELIGIBLE_OPTION}'"
 
 
 def _latest_source_date(conn) -> Optional[date]:
@@ -313,12 +314,12 @@ def _methodology(
     The stored numbers are always NAV-to-NAV changes (``basis: nav_change``).
     For growth, distribution adjustment is not applicable and the series may
     be comparison-eligible when the lifecycle, freshness and quality gates
-    pass. For IDCW/DIVIDEND the distribution history is unavailable, so the
-    numbers are NOT total return and the series is comparison-ineligible —
-    its raw NAV-based numbers are still served on a direct request.
+    pass. For every non-Growth option the distribution or unit-event history
+    is unavailable, so the numbers are not established total return and the
+    series is comparison-ineligible. Raw NAV numbers remain directly available.
     """
     limitations: list[str] = []
-    is_growth = option_type not in _COMPARISON_INELIGIBLE_OPTIONS
+    is_growth = option_type == _COMPARISON_ELIGIBLE_OPTION
     if freshness["status"] == "missing":
         limitations.append(LIMITATION_NAV_SERIES_UNAVAILABLE)
     if is_growth:
@@ -948,9 +949,9 @@ def returns(conn, code: int) -> dict[str, Any]:
     horizon start. None where the series is too short.
 
     Every response carries ``methodology``: the numbers are NAV-to-NAV
-    changes (``basis: nav_change``). For IDCW/DIVIDEND options they are NOT
-    total return — distributions are unavailable — and the series is
-    comparison-ineligible.
+    changes (``basis: nav_change``). For non-Growth options they are not
+    established total return because distribution/unit-event truth is
+    unavailable, and the series is comparison-ineligible.
     """
     latest = conn.execute(
         "SELECT nav, nav_date FROM mf.nav_history "
@@ -1150,14 +1151,14 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
     # lower expense ratio on the same book, so mixing plans would rank the
     # subject against peers it is not comparable with.
     #
-    # Comparison-ineligible series (IDCW/DIVIDEND) never enter the peer
+    # Option-level comparison-ineligible series never enter the peer
     # population (documented v1-eligibility change): their NAV changes are not
     # total return, so ranking them against growth peers is a false signal. An
     # ineligible subject still reports its own raw fund_return and the peer
     # population size, but no beats_pct/rank.
     peer_plan = _plan_predicate()
     peer_eligible = _comparison_eligible_predicate("f")
-    subject_eligible = row["option_type"] not in _COMPARISON_INELIGIBLE_OPTIONS
+    subject_eligible = row["option_type"] == _COMPARISON_ELIGIBLE_OPTION
     colmap = {
         "1Y": ("return_1year", row["return_1year"]),
         "3Y": ("return_3year", row["return_3year"]),
@@ -1202,7 +1203,7 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
     attached for bubble sizing. Returns ``{"category": ...}`` with an empty
     ``points`` list when the profile table is empty (not yet refreshed).
 
-    The population excludes comparison-ineligible series (IDCW/DIVIDEND) — the
+    The population excludes option-level comparison-ineligible series — the
     documented v1-eligibility change: distribution-adjusted risk figures do not
     exist, so mixing them into the risk/reward map would be a false signal.
     """
@@ -1566,10 +1567,10 @@ def movers(
     transact in.
 
     Comparison-ineligible series are excluded from the population (documented
-    v1-eligibility change): IDCW/DIVIDEND NAV changes are not total return
-    (distributions are unavailable), so ranking them beside growth series would
-    be a false signal. A direct request for one of those codes' returns still
-    serves the raw NAV-based numbers with the methodology fields.
+    v1-eligibility change): only confirmed Growth options enter rankings.
+    Other NAV changes lack authoritative distribution/unit-event truth, so
+    ranking them beside Growth would be a false signal. Direct requests still
+    serve raw NAV-based numbers with methodology fields.
     """
     days = _MOVER_DAYS.get(period, 30)
     ref = conn.execute("SELECT max(nav_date) AS mx FROM mf.nav_history").fetchone()["mx"]
@@ -1679,7 +1680,7 @@ def category_movers(
     ``variants`` count tells the UI how many plan/option variants of that
     scheme were in the window.
 
-    Comparison-ineligible series (IDCW/DIVIDEND) are excluded from the
+    Option-level comparison-ineligible series are excluded from the
     population, the same documented v1-eligibility change as :func:`movers` —
     so the collapsing is now across comparable variants only.
     """
@@ -1823,8 +1824,17 @@ def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
             if base and base > 0:
                 for pt in series:
                     pt["value"] = round(pt["nav"] / base * 100.0, 4)
+        return_payload = returns(conn, code)
         out_funds.append(
-            {"fund": fund, "points": series, "returns": returns(conn, code)["horizons"]}
+            {
+                "fund": fund,
+                "points": series,
+                "returns": return_payload["horizons"],
+                "lifecycle": return_payload["lifecycle"],
+                "nav_freshness": return_payload["nav_freshness"],
+                "nav_quality": return_payload["nav_quality"],
+                "methodology": return_payload["methodology"],
+            }
         )
     return {"years": years, "funds": out_funds}
 

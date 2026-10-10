@@ -48,6 +48,8 @@ DUP_A = 900506
 DUP_B = 900507
 MOVER_GROWTH = 900508
 MOVER_IDCW = 900509
+MOVER_BONUS = 900510
+MOVER_UNKNOWN = 900511
 _CATS = "Debt Scheme - Liquid Fund"
 
 
@@ -208,11 +210,15 @@ def _seed(dsn: str) -> None:
     series = [(_D0 + timedelta(days=i), 5.0 + i * 0.5) for i in range(30)]
     nav(DUP_A, series)
     nav(DUP_B, series)
-    # 8) movers: a strong growth mover and a stronger IDCW mover (must be excluded)
+    # 8) movers: only the confirmed Growth option is comparison-eligible.
     fund(MOVER_GROWTH)
     fund(MOVER_IDCW, option="IDCW")
+    fund(MOVER_BONUS, option="BONUS")
+    fund(MOVER_UNKNOWN, option="UNKNOWN")
     nav(MOVER_GROWTH, [(_NAV_REF - timedelta(days=10), 100.0), (_NAV_REF, 110.0)])
     nav(MOVER_IDCW, [(_NAV_REF - timedelta(days=10), 100.0), (_NAV_REF, 130.0)])
+    nav(MOVER_BONUS, [(_NAV_REF - timedelta(days=10), 100.0), (_NAV_REF, 140.0)])
+    nav(MOVER_UNKNOWN, [(_NAV_REF - timedelta(days=10), 100.0), (_NAV_REF, 150.0)])
 
     # legacy facts: ACT/ALL must stay a passive fact, never a buyability signal
     cur.execute(
@@ -295,6 +301,14 @@ def test_idcw_scheme_is_comparison_ineligible(api_signals):
     assert r["horizons"]["1M"] is not None
 
 
+@pytest.mark.parametrize("code", [MOVER_BONUS, MOVER_UNKNOWN])
+def test_unconfirmed_total_return_options_fail_closed(api_signals, code):
+    m = api_signals.get(f"/api/funds/{code}/returns").json()["methodology"]
+    assert m["distribution_adjustment"] == "unavailable"
+    assert m["comparison_eligible"] is False
+    assert "distribution_history_unavailable" in m["limitations"]
+
+
 def test_amfi_redeemed_marker_produces_redeemed_state(api_signals):
     d = api_signals.get(f"/api/funds/{REDEEMED}").json()
     assert d["lifecycle"]["state"] == "redeemed"
@@ -371,12 +385,23 @@ def test_movers_exclude_comparison_ineligible(api_signals):
     codes = {r["amfi_scheme_code"] for r in d["results"]}
     assert MOVER_GROWTH in codes
     assert MOVER_IDCW not in codes
+    assert MOVER_BONUS not in codes
+    assert MOVER_UNKNOWN not in codes
     opts = {r["option_type"] for r in d["results"]}
-    assert not (opts & {"IDCW", "DIVIDEND"})
+    assert opts <= {"GROWTH"}
     d2 = api_signals.get("/api/movers/categories?period=1m&limit=5").json()
     for cat in d2["categories"]:
         for r in cat["gainers"] + cat["losers"]:
-            assert r["option_type"] not in {"IDCW", "DIVIDEND"}
+            assert r["option_type"] == "GROWTH"
+
+
+def test_compare_carries_policy_signals_for_every_identity(api_signals):
+    d = api_signals.get(f"/api/compare?codes={GROWTH_ACTIVE},{IDCW}&years=1").json()
+    funds = {item["fund"]["amfi_scheme_code"]: item for item in d["funds"]}
+    assert funds[GROWTH_ACTIVE]["methodology"]["comparison_eligible"] is True
+    assert funds[IDCW]["methodology"]["comparison_eligible"] is False
+    for item in funds.values():
+        assert set(("lifecycle", "nav_freshness", "nav_quality", "methodology")) <= set(item)
 
 
 def test_detail_does_not_require_a_quality_scan(api_signals):

@@ -639,7 +639,9 @@ class PostgresStore:
         snapshot"), so the extra guard belongs in the change-detection
         predicate rather than a separate write. The guard is conditioned on
         ``EXCLUDED.last_seen_in_source IS NOT NULL`` so a source-less load
-        (no ``source_date``) never clobbers recorded evidence with NULL.
+        (no ``source_date``) never clobbers recorded evidence with NULL, and
+        the assignment is monotonic so replaying an older snapshot cannot
+        move recorded source-presence evidence backwards.
         Schemes ABSENT from the feed are not in staging, so they keep their
         previous last-seen date and stay classified conservatively: absence or
         stale NAV alone never marks a scheme redeemed or matured.
@@ -686,7 +688,13 @@ class PostgresStore:
                 nav_not_published         = EXCLUDED.nav_not_published,
                 isin_growth_or_div_payout = EXCLUDED.isin_growth_or_div_payout,
                 isin_div_reinvest         = EXCLUDED.isin_div_reinvest,
-                last_seen_in_source       = EXCLUDED.last_seen_in_source,
+                last_seen_in_source       = CASE
+                    WHEN EXCLUDED.last_seen_in_source IS NULL
+                        THEN f.last_seen_in_source
+                    WHEN f.last_seen_in_source IS NULL
+                        THEN EXCLUDED.last_seen_in_source
+                    ELSE greatest(f.last_seen_in_source, EXCLUDED.last_seen_in_source)
+                END,
                 is_active                 = EXCLUDED.is_active,
                 metadata_authority        = EXCLUDED.metadata_authority,
                 updated_at                = now()
@@ -705,7 +713,8 @@ class PostgresStore:
                OR f.isin_growth_or_div_payout IS DISTINCT FROM EXCLUDED.isin_growth_or_div_payout
                OR f.isin_div_reinvest         IS DISTINCT FROM EXCLUDED.isin_div_reinvest
                OR (EXCLUDED.last_seen_in_source IS NOT NULL
-                   AND f.last_seen_in_source  IS DISTINCT FROM EXCLUDED.last_seen_in_source)
+                   AND (f.last_seen_in_source IS NULL
+                        OR EXCLUDED.last_seen_in_source > f.last_seen_in_source))
             """
         )
         written = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0

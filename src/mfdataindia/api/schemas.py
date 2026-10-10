@@ -86,8 +86,8 @@ class FundNavQuality(BaseModel):
 
 
 class FundMethodology(BaseModel):
-    """How the NAV-derived numeric fields must be read. For IDCW/DIVIDEND the
-    numbers are NOT total return and the series is comparison-ineligible."""
+    """How the NAV-derived numeric fields must be read. Only confirmed Growth
+    can be eligible; other options lack required distribution/unit-event truth."""
 
     basis: MethodologyBasis
     distribution_adjustment: DistributionAdjustment
@@ -217,8 +217,8 @@ class FundDetail(BaseModel):
 class ReturnsResponse(BaseModel):
     """GET /api/funds/{code}/returns — NAV-to-NAV horizon changes.
 
-    ``horizons`` values are NAV change percentages; for IDCW/DIVIDEND they
-    are NOT total return (see ``methodology``).
+    ``horizons`` values are NAV change percentages; non-Growth options are not
+    established total return (see ``methodology``).
     """
 
     code: int
@@ -238,8 +238,8 @@ class AnalyticsYearly(BaseModel):
 class AnalyticsResponse(BaseModel):
     """GET /api/funds/{code}/analytics — NAV-derived risk/behaviour analytics.
 
-    All figures are NAV-to-NAV; for IDCW/DIVIDEND see ``methodology``
-    (not total return, comparison-ineligible).
+    All figures are NAV-to-NAV; for non-Growth options see ``methodology``
+    (not established total return, comparison-ineligible).
     """
 
     code: int
@@ -269,6 +269,59 @@ class AnalyticsResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Comparison
+# ---------------------------------------------------------------------------
+
+
+class ComparisonFund(BaseModel):
+    amfi_scheme_code: int
+    scheme_name: str
+    plan_type: str
+    option_type: str
+    amfi_amc_name: str
+    aum: float | None = None
+    expense_ratio: float | None = None
+    base_expense_ratio: float | None = None
+    return_5year: float | None = None
+    sharpe_ratio: float | None = None
+    beta: float | None = None
+    risk_level: str | None = None
+    fund_manager_name: str | None = None
+    benchmark_name: str | None = None
+    inception_date: date | None = None
+    registrar_agent: str | None = None
+    latest_nav: float | None = None
+    latest_nav_date: date | None = None
+
+
+class ComparisonPoint(BaseModel):
+    date: date
+    nav: float
+    value: float | None = None
+
+
+class ComparisonItem(BaseModel):
+    """One requested identity plus the policy signals needed to decide
+    whether its normalized NAV performance may be compared."""
+
+    fund: ComparisonFund
+    points: list[ComparisonPoint]
+    returns: dict[str, float | None]
+    lifecycle: FundLifecycle
+    nav_freshness: FundNavFreshness
+    nav_quality: FundNavQuality
+    methodology: FundMethodology
+
+
+class CompareResponse(BaseModel):
+    """GET /api/compare — identities are retained, while consumers use the
+    supplied policy objects to withhold ineligible normalized performance."""
+
+    years: float
+    funds: list[ComparisonItem]
+
+
+# ---------------------------------------------------------------------------
 # Movers and category movers
 # ---------------------------------------------------------------------------
 
@@ -287,8 +340,7 @@ class MoverItem(BaseModel):
 
 
 class MoversResponse(BaseModel):
-    """GET /api/movers — comparison-eligible series only (IDCW/DIVIDEND
-    excluded: their NAV changes are not total return)."""
+    """GET /api/movers — confirmed Growth option series only."""
 
     period: str
     direction: str

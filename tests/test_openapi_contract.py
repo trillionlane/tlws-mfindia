@@ -168,6 +168,7 @@ def test_ranking_responses_are_explicit_not_generic() -> None:
         "RiskRewardResponse",
         "ReturnsResponse",
         "AnalyticsResponse",
+        "CompareResponse",
     ):
         assert model in schemas
     mover = schemas["MoverItem"]["properties"]
@@ -189,6 +190,9 @@ def test_ranking_responses_are_explicit_not_generic() -> None:
     rr = schemas["RiskRewardPoint"]["properties"]
     for key in ("amfi_scheme_code", "scheme_name", "vol", "return", "max_drawdown", "aum", "self"):
         assert key in rr
+    comparison = schemas["ComparisonItem"]["properties"]
+    for key in ("fund", "points", "returns", "lifecycle", "nav_freshness", "nav_quality", "methodology"):
+        assert key in comparison
 
 
 def test_plan_scope_is_documented_on_every_discovery_route() -> None:

@@ -254,10 +254,11 @@ section nav that highlights the section in view and jumps on click.
 ## Data-quality & methodology signals
 
 Fund detail serves evidence-backed `lifecycle`, `nav_freshness` and
-`nav_quality` objects; returns and analytics serve a `methodology` object
-(IDCW/DIVIDEND series are not total return and are comparison-ineligible in
-API-owned rankings). Signals are detection, not verdicts, and absence or
-stale NAV alone never marks a scheme redeemed/matured. The governed
+`nav_quality` objects; returns, analytics, and each comparison item serve a
+`methodology` object (only confirmed Growth series can be comparison-eligible;
+payout, bonus, and unclassified option series are not established total return
+and are excluded from API-owned rankings). Signals are detection, not verdicts,
+and absence or stale NAV alone never marks a scheme redeemed/matured. The governed
 `scripts/audit_nav_integrity.py` is the sole writer of
 `mf.nav_quality_assessments` and never touches `mf.nav_history`. Full rules,
 thresholds and the v2 contract are in

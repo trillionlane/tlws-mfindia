@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AnalyticsResponse": {
-        "description": "GET /api/funds/{code}/analytics \u2014 NAV-derived risk/behaviour analytics.\n\nAll figures are NAV-to-NAV; for IDCW/DIVIDEND see ``methodology``\n(not total return, comparison-ineligible).",
+        "description": "GET /api/funds/{code}/analytics \u2014 NAV-derived risk/behaviour analytics.\n\nAll figures are NAV-to-NAV; for non-Growth options see ``methodology``\n(not established total return, comparison-ineligible).",
         "properties": {
           "annual_vol_pct": {
             "anyOf": [
@@ -383,6 +383,288 @@
           "categories"
         ],
         "title": "CategoryMoversResponse",
+        "type": "object"
+      },
+      "CompareResponse": {
+        "description": "GET /api/compare \u2014 identities are retained, while consumers use the\nsupplied policy objects to withhold ineligible normalized performance.",
+        "properties": {
+          "funds": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonItem"
+            },
+            "title": "Funds",
+            "type": "array"
+          },
+          "years": {
+            "title": "Years",
+            "type": "number"
+          }
+        },
+        "required": [
+          "years",
+          "funds"
+        ],
+        "title": "CompareResponse",
+        "type": "object"
+      },
+      "ComparisonFund": {
+        "properties": {
+          "amfi_amc_name": {
+            "title": "Amfi Amc Name",
+            "type": "string"
+          },
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "aum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aum"
+          },
+          "base_expense_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Expense Ratio"
+          },
+          "benchmark_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Name"
+          },
+          "beta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beta"
+          },
+          "expense_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expense Ratio"
+          },
+          "fund_manager_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fund Manager Name"
+          },
+          "inception_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inception Date"
+          },
+          "latest_nav": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav"
+          },
+          "latest_nav_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav Date"
+          },
+          "option_type": {
+            "title": "Option Type",
+            "type": "string"
+          },
+          "plan_type": {
+            "title": "Plan Type",
+            "type": "string"
+          },
+          "registrar_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrar Agent"
+          },
+          "return_5year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return 5Year"
+          },
+          "risk_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Level"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "sharpe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe Ratio"
+          }
+        },
+        "required": [
+          "amfi_scheme_code",
+          "scheme_name",
+          "plan_type",
+          "option_type",
+          "amfi_amc_name"
+        ],
+        "title": "ComparisonFund",
+        "type": "object"
+      },
+      "ComparisonItem": {
+        "description": "One requested identity plus the policy signals needed to decide\nwhether its normalized NAV performance may be compared.",
+        "properties": {
+          "fund": {
+            "$ref": "#/components/schemas/ComparisonFund"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/FundLifecycle"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/FundMethodology"
+          },
+          "nav_freshness": {
+            "$ref": "#/components/schemas/FundNavFreshness"
+          },
+          "nav_quality": {
+            "$ref": "#/components/schemas/FundNavQuality"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "returns": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Returns",
+            "type": "object"
+          }
+        },
+        "required": [
+          "fund",
+          "points",
+          "returns",
+          "lifecycle",
+          "nav_freshness",
+          "nav_quality",
+          "methodology"
+        ],
+        "title": "ComparisonItem",
+        "type": "object"
+      },
+      "ComparisonPoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "nav": {
+            "title": "Nav",
+            "type": "number"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "date",
+          "nav"
+        ],
+        "title": "ComparisonPoint",
         "type": "object"
       },
       "FundDetail": {
@@ -1221,7 +1503,7 @@
         "type": "object"
       },
       "FundMethodology": {
-        "description": "How the NAV-derived numeric fields must be read. For IDCW/DIVIDEND the\nnumbers are NOT total return and the series is comparison-ineligible.",
+        "description": "How the NAV-derived numeric fields must be read. Only confirmed Growth\ncan be eligible; other options lack required distribution/unit-event truth.",
         "properties": {
           "basis": {
             "const": "nav_change",
@@ -1592,7 +1874,7 @@
         "type": "object"
       },
       "MoversResponse": {
-        "description": "GET /api/movers \u2014 comparison-eligible series only (IDCW/DIVIDEND\nexcluded: their NAV changes are not total return).",
+        "description": "GET /api/movers \u2014 confirmed Growth option series only.",
         "properties": {
           "as_of": {
             "anyOf": [
@@ -1722,7 +2004,7 @@
         "type": "object"
       },
       "ReturnsResponse": {
-        "description": "GET /api/funds/{code}/returns \u2014 NAV-to-NAV horizon changes.\n\n``horizons`` values are NAV change percentages; for IDCW/DIVIDEND they\nare NOT total return (see ``methodology``).",
+        "description": "GET /api/funds/{code}/returns \u2014 NAV-to-NAV horizon changes.\n\n``horizons`` values are NAV change percentages; non-Growth options are not\nestablished total return (see ``methodology``).",
         "properties": {
           "as_of": {
             "anyOf": [
@@ -2017,9 +2299,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Api Compare Api Compare Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CompareResponse"
                 }
               }
             },

@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS mf.nav_quality_assessments (
     first_nav_date            date NOT NULL,
     last_nav_date             date NOT NULL,
     -- Closed set: the CHECK admits only these three signals (empty = no
-    -- signal; the audit writes rows for signaled schemes only, so this is
-    -- enforced at the application layer as well).
+    -- signal; the audit writes one row for every assessed scheme so absence
+    -- can be distinguished from an assessed-and-clean empty signal set).
     signals                   text[] NOT NULL DEFAULT '{}'
                                 CHECK (signals <@ ARRAY['constant_nav_series',
                                                          'duplicate_variant_series',
@@ -69,7 +69,7 @@ BEGIN
         EXECUTE 'GRANT SELECT ON mf.nav_quality_assessments TO mfdata_app';
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'mfdata_ingest') THEN
-        EXECUTE 'GRANT SELECT, INSERT, UPDATE ON mf.nav_quality_assessments TO mfdata_ingest';
+        EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON mf.nav_quality_assessments TO mfdata_ingest';
     END IF;
 END
 $$;

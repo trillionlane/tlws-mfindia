@@ -5,7 +5,8 @@ Every scheme PRESENT in a successful AMFI refresh must advance
 other metadata is unchanged — presence in the feed is lifecycle evidence.
 Schemes ABSENT from the feed keep their previous last-seen date, and neither
 absence nor a stale NAV alone may produce an authoritative redeemed/matured
-classification. The AMFI REDEEMED marker keeps producing the existing
+classification. Replaying an older snapshot cannot regress the date. The AMFI
+REDEEMED marker keeps producing the existing
 ``LIFECYCLE_ENDED`` evidence.
 
 Safe to run against a populated database: the synthetic schemes (9003xx AMFI
@@ -346,3 +347,21 @@ def test_last_seen_guard_changes_unchanged_counting(last_seen_db):
     assert db["refresh2"]["updated"] == 2  # 900300 (presence only) + 900302
     assert db["refresh2"]["inserted"] == 0
     assert db["refresh2"]["unchanged"] == 0
+
+
+def test_older_snapshot_replay_cannot_regress_last_seen(last_seen_db):
+    """Historical replays may rebuild NAV history, but source-presence
+    evidence is monotonic and must never move backwards."""
+    db = last_seen_db
+    _setup_refresh1(db)
+    _refresh2(db)
+    assert _fund(db, 900300)["last_seen_in_source"] == _D2
+
+    factory = _make_scheme_factory()
+    replay = _scheme(factory, 900300, redeemed=False, nav_date=_D1)
+    updated, inserted, unchanged = _stage_and_merge(
+        db, list(fund_rows([replay], source_date=_D1))
+    )
+
+    assert (updated, inserted, unchanged) == (0, 0, 1)
+    assert _fund(db, 900300)["last_seen_in_source"] == _D2
