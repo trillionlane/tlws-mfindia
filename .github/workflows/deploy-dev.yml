@@ -26,7 +26,9 @@ env:
   SERVICE_NAME: tlws-mf-data-dev
   ASSOCIATION_SERVICE_NAME: tlws-mf-data-association-writer-dev
   ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-assoc-writer-dev@trillionlane-dev.iam.gserviceaccount.com
+  ASSOCIATION_WRITER_PROVISIONED: ${{ vars.MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED || 'false' }}
   MIGRATION_JOB: tlws-mf-data-migrate-dev
+  REFRESH_JOB: tlws-mf-data-nav-refresh-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
   INSIGHTS_RUNTIME_SERVICE_ACCOUNT: trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
@@ -59,20 +61,31 @@ jobs:
           WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
           RUNTIME_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}
+          INGEST_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}
           ASSOCIATION_WRITER_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_ASSOCIATION_WRITER_SERVICE_ACCOUNT }}
           MIGRATE_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}
           CLOUD_SQL_INSTANCE: ${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}
         run: |
           set -euo pipefail
-          for name in PROJECT_ID REGION ARTIFACT_REPOSITORY WORKLOAD_IDENTITY_PROVIDER DEPLOY_SERVICE_ACCOUNT RUNTIME_SERVICE_ACCOUNT ASSOCIATION_WRITER_SERVICE_ACCOUNT MIGRATE_SERVICE_ACCOUNT CLOUD_SQL_INSTANCE; do
+          for name in PROJECT_ID REGION ARTIFACT_REPOSITORY WORKLOAD_IDENTITY_PROVIDER DEPLOY_SERVICE_ACCOUNT RUNTIME_SERVICE_ACCOUNT INGEST_SERVICE_ACCOUNT MIGRATE_SERVICE_ACCOUNT CLOUD_SQL_INSTANCE; do
             test -n "${!name:-}" || { echo "Missing mf-data-dev variable: $name" >&2; exit 1; }
           done
+          case "$ASSOCIATION_WRITER_PROVISIONED" in
+            true|false) ;;
+            *) echo "MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED must be true or false" >&2; exit 1 ;;
+          esac
+          if [[ "$ASSOCIATION_WRITER_PROVISIONED" == "true" ]]; then
+            test -n "${ASSOCIATION_WRITER_SERVICE_ACCOUNT:-}" || {
+              echo "Missing mf-data-dev variable: ASSOCIATION_WRITER_SERVICE_ACCOUNT" >&2
+              exit 1
+            }
+            test "$ASSOCIATION_WRITER_SERVICE_ACCOUNT" = "$ASSOCIATION_RUNTIME_SERVICE_ACCOUNT"
+          fi
           test "$PROJECT_ID" = "$EXPECTED_PROJECT"
           test "$REGION" = "$EXPECTED_REGION"
           test "$ARTIFACT_REPOSITORY" = "tlws-mf-data-dev"
           test "$CLOUD_SQL_INSTANCE" = "trillionlane-dev:asia-south1:tlws-mf-data-dev"
           test "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" = "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com"
-          test "$ASSOCIATION_WRITER_SERVICE_ACCOUNT" = "$ASSOCIATION_RUNTIME_SERVICE_ACCOUNT"
           test "$VPC_NETWORK" = "tl-dev-vpc"
           test "$VPC_SUBNET" = "tl-dev-mumbai"
           test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
@@ -102,6 +115,12 @@ jobs:
           test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
           test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
           test "$(gcloud run services describe "$INSIGHTS_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.serviceAccountName)')" = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"
+          if [[ "$ASSOCIATION_WRITER_PROVISIONED" == "false" ]]; then
+            bash ./scripts/verify_optional_association_writer_dev.sh \
+              "$EXPECTED_PROJECT" \
+              "$EXPECTED_REGION" \
+              "$ASSOCIATION_SERVICE_NAME"
+          fi
 
       - name: Configure Artifact Registry
         run: gcloud auth configure-docker "$EXPECTED_REGION-docker.pkg.dev" --quiet
@@ -173,6 +192,7 @@ jobs:
             --quiet
 
       - name: Deploy private association writer disabled
+        if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -206,6 +226,7 @@ jobs:
             --quiet
 
       - name: Reconcile private association-writer invoker policy
+        if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -258,6 +279,29 @@ jobs:
               --condition=None \
               --quiet >/dev/null
           fi
+
+      - name: Reconcile the six-hour refresh job to the immutable image
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
+            --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/refresh_daily.py \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=10m \
+            --cpu=1 \
+            --memory=1Gi \
+            --labels=product=mfdataindia,environment=dev,operation=nav-refresh,managed-by=github-actions \
+            --quiet
 
       - name: Deploy and execute the internal zero-retry smoke job
         shell: bash
@@ -314,6 +358,27 @@ jobs:
           esac
           deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
           test "$deployed_sha" = "$GITHUB_SHA"
+
+          refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          refresh_image="$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$refresh_json")"
+          case "$refresh_image" in
+            *"@${{ steps.image.outputs.digest }}") ;;
+            *) echo "Unexpected refresh image: $refresh_image" >&2; exit 1 ;;
+          esac
+          refresh_identity="$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$refresh_json")"
+          test "$refresh_identity" = "${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"
+          refresh_scope="$(jq -er '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_SNAPSHOT_SCOPE") | .value' <<<"$refresh_json")"
+          test "$refresh_scope" = "FULL"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].command == ["/app/.venv/bin/python"]' <<<"$refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_daily.py"]' <<<"$refresh_json" >/dev/null
+          echo "MFDataIndia private DEV read service and refresh job reconciled"
+
+      - name: Reconcile the optional association writer revision
+        if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
           writer_json="$(gcloud run services describe "$ASSOCIATION_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
           jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$writer_json" >/dev/null
           jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$writer_json" >/dev/null
@@ -328,4 +393,4 @@ jobs:
           jq -e --arg insights "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
             '([.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | sort) == ([$insights] | sort)' \
             <<<"$writer_policy" >/dev/null
-          echo "MFDataIndia private DEV deployment reconciled"
+          echo "MFDataIndia optional association writer reconciled disabled"
