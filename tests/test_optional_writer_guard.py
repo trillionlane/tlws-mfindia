@@ -152,7 +152,31 @@ def test_guard_checks_every_traffic_serving_revision(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert "2 serving revision(s)" in result.stdout
+    assert "2 reachable revision(s)" in result.stdout
+
+
+def test_guard_rejects_enabled_zero_traffic_tagged_revision(tmp_path: Path) -> None:
+    service = _writer_service(
+        template="false",
+        latest="writer-current",
+        traffic=[
+            {"revisionName": "writer-current", "percent": 100},
+            {"revisionName": "writer-enabled-tag", "percent": 0, "tag": "candidate"},
+        ],
+    )
+    result = _run_guard(
+        tmp_path,
+        {
+            "service": service,
+            "revisions": {
+                "writer-current": _writer_revision("false"),
+                "writer-enabled-tag": _writer_revision("true"),
+            },
+        },
+    )
+
+    assert result.returncode != 0
+    assert "writer-enabled-tag is not disabled" in result.stderr
 
 
 def test_guard_rejects_enabled_latest_template(tmp_path: Path) -> None:

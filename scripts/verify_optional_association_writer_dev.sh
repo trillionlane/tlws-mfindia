@@ -49,16 +49,19 @@ if [[ "$template_enabled" != "false" ]]; then
   exit 1
 fi
 
-serving_revisions="$(jq -er '
+reachable_revisions="$(jq -er '
   .status.latestReadyRevisionName as $latest
   | [.status.traffic[]?
-      | select((.percent // 0) > 0)
+      | select(
+          ((.percent // 0) > 0) or
+          (((.tag // "") | length) > 0)
+        )
       | if ((.revisionName // "") | length) > 0 then .revisionName
         elif .latestRevision == true and (($latest // "") | length) > 0 then $latest
-        else error("unable to resolve a traffic-serving writer revision")
+        else error("unable to resolve a traffic-serving or tagged writer revision")
         end]
   | unique
-  | if length > 0 then join("\n") else error("writer has no traffic-serving revision") end
+  | if length > 0 then join("\n") else error("writer has no reachable revision") end
 ' <<<"$writer_json")"
 
 checked=0
@@ -75,15 +78,15 @@ while IFS= read -r revision; do
     | if length == 1 then .[0] else error("writer revision flag is missing or duplicated") end
   ' <<<"$revision_json")"
   if [[ "$revision_enabled" != "false" ]]; then
-    echo "Association writer traffic revision $revision is not disabled" >&2
+    echo "Association writer reachable revision $revision is not disabled" >&2
     exit 1
   fi
   checked=$((checked + 1))
-done <<<"$serving_revisions"
+done <<<"$reachable_revisions"
 
 if [[ "$checked" -lt 1 ]]; then
-  echo "Association writer has no verified traffic-serving revision" >&2
+  echo "Association writer has no verified reachable revision" >&2
   exit 1
 fi
 
-echo "Optional association writer is disabled on its template and $checked serving revision(s)"
+echo "Optional association writer is disabled on its template and $checked reachable revision(s)"
