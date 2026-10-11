@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: tlws-mf-data-nav-refresh-dev
+  group: tlws-mf-data-dev-mutations
   cancel-in-progress: false
 
 env:
@@ -24,6 +24,7 @@ env:
   EXPECTED_REGION: asia-south1
   SERVICE_NAME: tlws-mf-data-dev
   REFRESH_JOB: tlws-mf-data-nav-refresh-dev
+  PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
 
 jobs:
   refresh:
@@ -67,8 +68,6 @@ jobs:
             "$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/mfdataindia@sha256:"*) ;;
             *) echo "Unexpected live image: $image" >&2; exit 1 ;;
           esac
-          service_url="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(status.url)')"
-          curl --fail --silent --show-error "$service_url/api/stats" > "$RUNNER_TEMP/before.json"
           gcloud run jobs deploy "$REFRESH_JOB" \
             --project="$EXPECTED_PROJECT" \
             --region="$EXPECTED_REGION" \
@@ -87,16 +86,34 @@ jobs:
             --memory=1Gi \
             --labels=product=mfdataindia,environment=dev,operation=nav-refresh,managed-by=github-actions \
             --quiet
+
+          refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$refresh_json")" = "$image"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_SNAPSHOT_SCOPE") | .value' <<<"$refresh_json")" = "FULL"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
+
+      - name: Execute the governed refresh with transactional integrity checks
+        shell: bash
+        run: |
+          set -euo pipefail
           gcloud run jobs execute "$REFRESH_JOB" \
             --project="$EXPECTED_PROJECT" \
             --region="$EXPECTED_REGION" \
             --wait \
             --quiet
-          curl --fail --silent --show-error "$service_url/api/stats" > "$RUNNER_TEMP/after.json"
-          jq -e --slurpfile before "$RUNNER_TEMP/before.json" '
-            .schemes_total >= $before[0].schemes_total and
-            .nav_rows >= $before[0].nav_rows and
-            .nav_last >= $before[0].nav_last
-          ' "$RUNNER_TEMP/after.json" >/dev/null
-          echo "Before: $(jq -c . "$RUNNER_TEMP/before.json")"
-          echo "After:  $(jq -c . "$RUNNER_TEMP/after.json")"
+
+      - name: Verify the refreshed private API from the internal smoke job
+        shell: bash
+        run: |
+          set -euo pipefail
+          live_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
+          smoke_json="$(gcloud run jobs describe "$PRIVATE_SMOKE_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          smoke_image="$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$smoke_json")"
+          test "$smoke_image" = "$live_image"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$smoke_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/smoke_private_api.py"]' <<<"$smoke_json" >/dev/null
+          gcloud run jobs execute "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --wait \
+            --quiet

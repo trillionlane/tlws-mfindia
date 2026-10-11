@@ -65,6 +65,12 @@ def test_association_writer_is_separate_private_and_default_off() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
     assert "ASSOCIATION_SERVICE_NAME: tlws-mf-data-association-writer-dev" in workflow
+    assert "MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED || 'false'" in workflow
+    assert "if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'" in workflow
+    required_variables = next(
+        line for line in workflow.splitlines() if line.strip().startswith("for name in PROJECT_ID")
+    )
+    assert "ASSOCIATION_WRITER_SERVICE_ACCOUNT" not in required_variables
     assert "tlws-mf-data-association-writer-dsn-dev:latest" in workflow
     assert "mfdataindia.api.association_app:create_association_app" in workflow
     assert "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=false" in workflow
@@ -74,6 +80,21 @@ def test_association_writer_is_separate_private_and_default_off() -> None:
     assert "([$insights] | sort)" in workflow
     assert "ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-assoc-writer-dev@" in workflow
     assert "--to-latest" in workflow
+    assert "Association writer is enabled but is outside this deployment contract" in workflow
+
+
+def test_read_deployment_reconciles_refresh_job_without_executing_it() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
+
+    assert "REFRESH_JOB: tlws-mf-data-nav-refresh-dev" in workflow
+    assert "Reconcile the six-hour refresh job to the immutable image" in workflow
+    assert '--image="${{ steps.image.outputs.uri }}"' in workflow
+    assert '--service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"' in workflow
+    assert "--set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL" in workflow
+    assert "--args=/app/scripts/refresh_daily.py" in workflow
+    assert "refresh_scope" in workflow
+    assert 'gcloud run jobs execute "$REFRESH_JOB"' not in workflow
+    assert "gcloud scheduler" not in workflow
 
 
 def test_association_activation_is_manual_exact_sha_bound() -> None:
@@ -123,3 +144,15 @@ def test_association_writer_gets_dedicated_identity_and_database_principal() -> 
 def test_supervised_refresh_is_explicitly_a_full_snapshot_candidate() -> None:
     workflow = (ROOT / ".github" / "workflows" / "refresh-nav-dev.yml").read_text()
     assert "MFDATAINDIA_SNAPSHOT_SCOPE=FULL" in workflow
+
+
+def test_supervised_refresh_uses_internal_api_verification() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "refresh-nav-dev.yml").read_text()
+
+    assert "group: tlws-mf-data-dev-mutations" in workflow
+    assert "PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev" in workflow
+    assert 'gcloud run jobs execute "$REFRESH_JOB"' in workflow
+    assert 'gcloud run jobs execute "$PRIVATE_SMOKE_JOB"' in workflow
+    assert "smoke_private_api.py" in workflow
+    assert "curl " not in workflow
+    assert "/api/stats" not in workflow

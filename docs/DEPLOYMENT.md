@@ -68,20 +68,30 @@ The repository keeps these operations separate:
    region, deployer, repository and branch, publishes one SHA-tagged image, runs
    only pending forward migrations with `maxRetries=0`, deploys Cloud Run with
    internal ingress and authentication required, reconciles its exact invoker
-   policy, and verifies the deployed digest and source SHA. Functional smoke
-   requests run from a zero-retry Cloud Run job attached to the approved VPC;
-   the public GitHub runner must not reach the service. Automatic deployment remains
-   disabled unless `MFDATAINDIA_DEV_AUTO_DEPLOY=true`; supervised manual dispatch
-   is the first-deployment path.
+   policy, and verifies the deployed digest and source SHA. It also reconciles
+   the existing NAV refresh job to the same immutable image with explicit
+   `FULL` snapshot scope, but does not execute the job or change its scheduler.
+   Functional smoke requests run from a zero-retry Cloud Run job attached to
+   the approved VPC; the public GitHub runner must not reach the service.
+   Automatic deployment remains disabled unless
+   `MFDATAINDIA_DEV_AUTO_DEPLOY=true`; supervised manual dispatch is the
+   first-deployment path. The optional association writer is included only
+   after its separate infrastructure gate sets
+   `MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED=true`; a read deployment does
+   not require writer infrastructure.
 3. `restore-dev-snapshot.yml` is manual-only and requires typed project,
    database, object and generation confirmation. It verifies remote and local
    object checksums, refuses a non-empty database, uses PostgreSQL 18 tooling and
    a dedicated restore identity, validates the restored data manifest, records
    the verified migration baseline, and runs with `maxRetries=0`.
 4. `refresh-nav-dev.yml` deploys the exact live image as a zero-retry ingestion
-   job and performs one supervised refresh. `enable-nav-schedule-dev.yml` refuses
-   activation until that execution succeeded, then creates the temporary
-   six-hour `Asia/Kolkata` schedule with a dedicated invoker identity.
+   job and performs one supervised refresh. The refresh process validates and
+   compares its database manifests transactionally; after it commits, the
+   workflow executes the internal authenticated smoke job rather than trying
+   to call the private service from the public GitHub runner.
+   `enable-nav-schedule-dev.yml` refuses activation until that execution
+   succeeded, then creates the temporary six-hour `Asia/Kolkata` schedule with
+   a dedicated invoker identity.
 5. `enable-association-writes-dev.yml` is manual-only, exact-SHA-bound and
    changes only the already-deployed private writer's default-off runtime flag.
 
