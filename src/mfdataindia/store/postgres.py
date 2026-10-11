@@ -66,6 +66,8 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "017_source_snapshot_runs.sql",
     # Partner-authored family associations, isolated from generated tags.
     "018_fund_family_association_tags.sql",
+    # Reconcile grants when the optional writer role is provisioned after 018.
+    "019_reconcile_association_writer_privileges.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
