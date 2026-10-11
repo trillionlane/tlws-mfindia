@@ -110,6 +110,9 @@ The repository keeps these operations separate:
 - Provisioning explicitly removes Cloud SQL's automatic `cloudsqlsuperuser`
   membership from the writer principal. Migration 018 clears `CREATEROLE` and
   `CREATEDB` before granting only the object privileges listed above.
+- Migration 019 reconciles the optional late-provisioning sequence. If
+  migration 018 predates the writer role, the next deployment strips elevated
+  attributes and applies the same bounded grants before the service is used.
 - No `allUsers` Cloud Run invoker binding is permitted. MFDataIndia uses internal
   ingress, and callers authenticate with short-lived Google-signed OIDC tokens.
 - The migration identity owns schema changes but is not used by the API.

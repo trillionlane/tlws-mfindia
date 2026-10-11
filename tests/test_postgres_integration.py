@@ -199,15 +199,23 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
     ).fetchone()
     if not cloudsql_role_preexisting:
         admin.execute(f'CREATE ROLE "{cloudsql_role}" NOLOGIN')
-    admin.execute(f'CREATE ROLE "{role}" NOLOGIN CREATEDB CREATEROLE')
-    admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
     admin.execute(f'CREATE DATABASE "{dbname}"')
     params = conninfo_to_dict(pg_dsn)
     params["dbname"] = dbname
     scratch_dsn = make_conninfo(**params)
     try:
         with PostgresStore(scratch_dsn) as scratch:
-            scratch.apply_migrations(Path(repo_root) / "sql")
+            # Reproduce the live provisioning order: association tables and
+            # migration 018 exist before the optional writer role is created.
+            scratch.apply_migrations(
+                Path(repo_root) / "sql",
+                files=DEFAULT_MIGRATIONS[:-1],
+            )
+            admin.execute(f'CREATE ROLE "{role}" NOLOGIN CREATEDB CREATEROLE')
+            admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
+            assert scratch.apply_migrations(Path(repo_root) / "sql") == [
+                "019_reconcile_association_writer_privileges.sql"
+            ]
             conn = scratch.connect()
             checks = conn.execute(
                 """

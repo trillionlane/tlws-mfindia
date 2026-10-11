@@ -125,7 +125,7 @@ def test_association_activation_is_manual_exact_sha_bound() -> None:
 
 def test_association_writer_gets_dedicated_identity_and_database_principal() -> None:
     provision = (ROOT / "scripts" / "provision_dev_infra.sh").read_text()
-    migration = (ROOT / "sql" / "018_fund_family_association_tags.sql").read_text()
+    migration = (ROOT / "sql" / "019_reconcile_association_writer_privileges.sql").read_text()
 
     assert "tlws-mf-assoc-writer-dev@" in provision
     assert "tlws-mf-data-association-writer-dev@" not in provision
@@ -139,6 +139,9 @@ def test_association_writer_gets_dedicated_identity_and_database_principal() -> 
     assert "GRANT SELECT ON mf.fund_family TO mfdata_association_writer" in migration
     assert "GRANT SELECT, INSERT ON mf.fund_family_association_tags" in migration
     assert "DELETE ON mf.fund_family_association_tags" not in migration
+    assert '"019_reconcile_association_writer_privileges.sql"' in (
+        ROOT / "src" / "mfdataindia" / "store" / "postgres.py"
+    ).read_text()
 
 
 def test_supervised_refresh_is_explicitly_a_full_snapshot_candidate() -> None:
