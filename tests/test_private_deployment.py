@@ -80,7 +80,7 @@ def test_association_writer_is_separate_private_and_default_off() -> None:
     assert "([$insights] | sort)" in workflow
     assert "ASSOCIATION_RUNTIME_SERVICE_ACCOUNT: tlws-mf-assoc-writer-dev@" in workflow
     assert "--to-latest" in workflow
-    assert "Association writer is enabled but is outside this deployment contract" in workflow
+    assert "verify_optional_association_writer_dev.sh" in workflow
 
 
 def test_read_deployment_reconciles_refresh_job_without_executing_it() -> None:

@@ -115,13 +115,11 @@ jobs:
           test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
           test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
           test "$(gcloud run services describe "$INSIGHTS_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.serviceAccountName)')" = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"
-          if [[ "$ASSOCIATION_WRITER_PROVISIONED" == "false" ]] && \
-             writer_json="$(gcloud run services describe "$ASSOCIATION_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json 2>/dev/null)"; then
-            writer_enabled="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_ASSOCIATION_WRITES_ENABLED") | .value' <<<"$writer_json")"
-            test "$writer_enabled" = "false" || {
-              echo "Association writer is enabled but is outside this deployment contract" >&2
-              exit 1
-            }
+          if [[ "$ASSOCIATION_WRITER_PROVISIONED" == "false" ]]; then
+            bash ./scripts/verify_optional_association_writer_dev.sh \
+              "$EXPECTED_PROJECT" \
+              "$EXPECTED_REGION" \
+              "$ASSOCIATION_SERVICE_NAME"
           fi
 
       - name: Configure Artifact Registry
