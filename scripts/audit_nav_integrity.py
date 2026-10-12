@@ -99,9 +99,17 @@ def main() -> int:
         action="store_true",
         help="read-only exact comparison of persisted assessments with a fresh full scan",
     )
+    parser.add_argument(
+        "--report-dataset-version",
+        action="store_true",
+        help="read-only lock-protected report of the current dataset version",
+    )
     args = parser.parse_args()
-    if args.dry_run and args.certify_current:
-        parser.error("--dry-run and --certify-current are mutually exclusive")
+    selected_modes = sum((args.dry_run, args.certify_current, args.report_dataset_version))
+    if selected_modes > 1:
+        parser.error(
+            "--dry-run, --certify-current and --report-dataset-version are mutually exclusive"
+        )
 
     try:
         dsn = resolve_dsn(args.dsn, purpose="the NAV-integrity audit")
@@ -127,13 +135,31 @@ def main() -> int:
             conn.execute("SET LOCAL statement_timeout = '120s'")
             acquire_nav_data_operation_lock(conn)
             before = source_manifest(conn)
-            summary = nav_integrity.assess(
-                conn,
-                write=not (args.dry_run or args.certify_current),
-                expected_dataset_version=args.expected_dataset_version,
-                skip_if_current=not (args.dry_run or args.certify_current),
-                verify_current=args.certify_current,
-            )
+            if args.report_dataset_version:
+                observed_version = int(before["dataset_version"])
+                if observed_version <= 0:
+                    raise RuntimeError("the dataset has no positive version")
+                if (
+                    args.expected_dataset_version is not None
+                    and observed_version != args.expected_dataset_version
+                ):
+                    raise RuntimeError(
+                        "dataset version changed before activation: "
+                        f"expected={args.expected_dataset_version} actual={observed_version}"
+                    )
+                summary = {
+                    "status": "NAV_DATASET_VERSION_CURRENT",
+                    "dataset_version": observed_version,
+                    "assessments_written": 0,
+                }
+            else:
+                summary = nav_integrity.assess(
+                    conn,
+                    write=not (args.dry_run or args.certify_current),
+                    expected_dataset_version=args.expected_dataset_version,
+                    skip_if_current=not (args.dry_run or args.certify_current),
+                    verify_current=args.certify_current,
+                )
             after = source_manifest(conn)
             if before != after:
                 raise RuntimeError("audit changed an authoritative source-data manifest")

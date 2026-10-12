@@ -113,23 +113,61 @@ jobs:
           jq -e '.spec.template.spec.taskCount == 1' <<<"$job_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/audit_nav_integrity.py", "--summary-only"]' <<<"$job_json" >/dev/null
 
-          latest="$(gcloud run jobs executions list --job="$AUDIT_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --limit=1 --format='value(metadata.name)')"
-          test -n "$latest"
-          execution_json="$(gcloud run jobs executions describe "$latest" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
-          jq -e '.status.conditions[] | select(.type == "Completed") | .status == "True"' <<<"$execution_json" >/dev/null
-
-          logs="$(gcloud logging read \
-            "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$latest\"" \
-            --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
-          result="$(jq -r '[.[] | select(.logName | endswith("%2Fstdout")) | .textPayload? | select(type == "string" and test("^\\{.*\\}$"))] | last // empty' <<<"$logs")"
-          test -n "$result"
-          canonical="$(jq -ceS . <<<"$result")"
-          actual_sha256="$(printf '%s' "$canonical" | sha256sum | cut -d' ' -f1)"
-          test "$actual_sha256" = "$expected_certificate"
+          certificate_result=""
+          certificate_execution=""
+          mapfile -t recent_executions < <(gcloud run jobs executions list \
+            --job="$AUDIT_JOB" --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" --limit=20 --format='value(metadata.name)')
+          test "${#recent_executions[@]}" -gt 0
+          for execution in "${recent_executions[@]}"; do
+            execution_json="$(gcloud run jobs executions describe "$execution" \
+              --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+            if ! jq -e '.status.conditions[] | select(.type == "Completed") | .status == "True"' \
+              <<<"$execution_json" >/dev/null; then
+              continue
+            fi
+            logs="$(gcloud logging read \
+              "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$execution\"" \
+              --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
+            result="$(bash scripts/extract_cloud_run_json_result.sh <<<"$logs")"
+            test -n "$result" || continue
+            canonical="$(jq -ceS . <<<"$result")"
+            actual_sha256="$(printf '%s' "$canonical" | sha256sum | cut -d' ' -f1)"
+            if [[ "$actual_sha256" == "$expected_certificate" ]]; then
+              certificate_result="$canonical"
+              certificate_execution="$execution"
+              break
+            fi
+          done
+          test -n "$certificate_execution"
+          test -n "$certificate_result"
           jq -e --argjson version "$expected_version" '
             .status == "NAV_INTEGRITY_AUDIT_CERTIFIED" and
             .dataset_version == $version and .assessments_written == 0
-          ' <<<"$canonical" >/dev/null
+          ' <<<"$certificate_result" >/dev/null
+
+          # Read the live version through the same least-privilege audit
+          # identity, under the refresh/audit advisory lock. A refresh that
+          # advanced the dataset after certification therefore fails this gate.
+          probe_execution="$(gcloud run jobs execute "$AUDIT_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --args=/app/scripts/audit_nav_integrity.py,--summary-only,--expected-dataset-version,"$expected_version",--report-dataset-version \
+            --wait --format='value(metadata.name)')"
+          test -n "$probe_execution"
+          probe_result=""
+          for attempt in 1 2 3 4 5; do
+            logs="$(gcloud logging read \
+              "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$probe_execution\"" \
+              --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
+            probe_result="$(bash scripts/extract_cloud_run_json_result.sh <<<"$logs")"
+            test -n "$probe_result" && break
+            sleep 3
+          done
+          test -n "$probe_result"
+          jq -e --argjson version "$expected_version" '
+            .status == "NAV_DATASET_VERSION_CURRENT" and
+            .dataset_version == $version and .assessments_written == 0
+          ' <<<"$probe_result" >/dev/null
 
       - name: Enable offset six-hour schedule
         shell: bash

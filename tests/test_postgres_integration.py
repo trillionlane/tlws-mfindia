@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
@@ -511,6 +513,55 @@ def test_migrations_are_idempotent(store, repo_root):
     assert [row["migration_name"] for row in ledger] == sorted(DEFAULT_MIGRATIONS)
     # A second runner pass verifies checksums and performs no schema replay.
     assert store.apply_migrations(Path(repo_root) / "sql") == []
+
+
+def test_dataset_version_probe_is_read_only_and_rejects_stale_version(
+    store, pg_dsn, repo_root
+):
+    current = store.refresh_dataset_summary("dataset_version_probe_test")
+    before = store.connect().execute(
+        "SELECT dataset_version, nav_rows FROM mf.dataset_summary WHERE singleton"
+    ).fetchone()
+    env = os.environ | {"MFDATAINDIA_DSN": pg_dsn}
+    command = [
+        sys.executable,
+        str(Path(repo_root) / "scripts" / "audit_nav_integrity.py"),
+        "--summary-only",
+        "--expected-dataset-version",
+        str(current["dataset_version"]),
+        "--report-dataset-version",
+    ]
+    result = subprocess.run(
+        command,
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "NAV_DATASET_VERSION_CURRENT"
+    assert payload["dataset_version"] == current["dataset_version"]
+    assert payload["assessments_written"] == 0
+    after = store.connect().execute(
+        "SELECT dataset_version, nav_rows FROM mf.dataset_summary WHERE singleton"
+    ).fetchone()
+    assert after == before
+
+    stale = command.copy()
+    stale[stale.index(str(current["dataset_version"]))] = str(
+        current["dataset_version"] - 1
+    )
+    rejected = subprocess.run(
+        stale,
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
+    assert "dataset version changed before activation" in rejected.stderr
 
 
 def test_snapshot_run_is_linked_to_exact_fetch_and_preserves_notes(store):

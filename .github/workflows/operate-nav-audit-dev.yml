@@ -170,7 +170,7 @@ jobs:
             logs="$(gcloud logging read \
               "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$latest\"" \
               --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
-            prior_result="$(jq -r '[.[] | select(.logName | endswith("%2Fstdout")) | .textPayload? | select(type == "string" and test("^\\{.*\\}$"))] | last // empty' <<<"$logs")"
+            prior_result="$(bash scripts/extract_cloud_run_json_result.sh <<<"$logs")"
             test -n "$prior_result" && break
             sleep 3
           done
@@ -218,7 +218,7 @@ jobs:
             logs="$(gcloud logging read \
               "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$execution\"" \
               --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
-            result="$(jq -r '[.[] | select(.logName | endswith("%2Fstdout")) | .textPayload? | select(type == "string" and test("^\\{.*\\}$"))] | last // empty' <<<"$logs")"
+            result="$(bash scripts/extract_cloud_run_json_result.sh <<<"$logs")"
             test -n "$result" && break
             sleep 3
           done

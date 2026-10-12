@@ -123,8 +123,11 @@ Schedule activation is separate from deployment and certification. Dispatch
 dataset version, certification-result hash, and literal schedule
 `10 */6 * * *`.
 
-The workflow independently reads the most recent successful audit execution and
-re-hashes its canonical JSON before creating or updating the scheduler. The
+The workflow independently locates the supplied certificate among recent
+successful audit executions and re-hashes its canonical JSON before creating or
+updating the scheduler. It then uses the audit identity and shared refresh/audit
+lock for a read-only probe of the live `mf.dataset_summary.dataset_version`;
+activation fails if that version has advanced beyond the certificate. The
 schedule uses `Asia/Kolkata`, invokes the audit at minute 10 after the refresh at
 minute 0, and has zero retry attempts. It may be activated only while the job's
 default remains the approved apply command.

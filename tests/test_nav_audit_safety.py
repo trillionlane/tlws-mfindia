@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -74,6 +75,9 @@ def test_nav_audit_workflows_keep_deploy_operate_and_schedule_separate() -> None
     assert 'SCHEDULE: "10 */6 * * *"' in enable
     assert "NAV_INTEGRITY_AUDIT_CERTIFIED" in enable
     assert "certification_result_sha256" in enable
+    assert "--report-dataset-version" in enable
+    assert "NAV_DATASET_VERSION_CURRENT" in enable
+    assert "--limit=20" in enable
     assert "--max-retry-attempts=0" in enable
     assert "gcloud scheduler jobs pause" in disable
     assert "trap rollback_on_exit EXIT" in enable
@@ -160,3 +164,46 @@ esac
     calls = log_path.read_text()
     assert "scheduler jobs create http tlws-mf-data-nav-audit-dev" in calls
     assert "scheduler jobs pause tlws-mf-data-nav-audit-dev" in calls
+
+
+def test_cloud_run_result_parser_accepts_structured_and_text_payloads() -> None:
+    parser = ROOT / "scripts/extract_cloud_run_json_result.sh"
+    structured_logs = [
+        {
+            "logName": "projects/test/logs/run.googleapis.com%2Fstderr",
+            "jsonPayload": {"status": "WRONG_STREAM"},
+        },
+        {
+            "logName": "projects/test/logs/run.googleapis.com%2Fstdout",
+            "jsonPayload": {"status": "STRUCTURED", "dataset_version": 8},
+        },
+    ]
+    structured = subprocess.run(
+        ["bash", str(parser)],
+        input=json.dumps(structured_logs),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(structured.stdout) == {
+        "dataset_version": 8,
+        "status": "STRUCTURED",
+    }
+
+    text_logs = [
+        {
+            "logName": "projects/test/logs/run.googleapis.com%2Fstdout",
+            "textPayload": '{"status":"TEXT_FALLBACK","dataset_version":7}',
+        }
+    ]
+    fallback = subprocess.run(
+        ["bash", str(parser)],
+        input=json.dumps(text_logs),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(fallback.stdout) == {
+        "dataset_version": 7,
+        "status": "TEXT_FALLBACK",
+    }
