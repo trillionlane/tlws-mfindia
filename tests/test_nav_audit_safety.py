@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -78,6 +79,9 @@ def test_nav_audit_workflows_keep_deploy_operate_and_schedule_separate() -> None
     assert "--report-dataset-version" in enable
     assert "NAV_DATASET_VERSION_CURRENT" in enable
     assert "--limit=20" in enable
+    assert ".spec.template.spec.containers[0].image" in enable
+    assert 'certificate_digest" != "$requested_digest' in enable
+    assert 'certificate_sha" != "$requested_sha' in enable
     assert "--max-retry-attempts=0" in enable
     assert "gcloud scheduler jobs pause" in disable
     assert "trap rollback_on_exit EXIT" in enable
@@ -164,6 +168,156 @@ esac
     calls = log_path.read_text()
     assert "scheduler jobs create http tlws-mf-data-nav-audit-dev" in calls
     assert "scheduler jobs pause tlws-mf-data-nav-audit-dev" in calls
+
+
+def test_schedule_activation_rejects_certificate_from_older_image(tmp_path) -> None:
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/enable-nav-audit-schedule-dev.yml").read_text()
+    )
+    steps = workflow["jobs"]["enable"]["steps"]
+    gate = next(
+        step
+        for step in steps
+        if step.get("name") == "Require the exact certified audit execution"
+    )
+
+    requested_digest = f"sha256:{'b' * 64}"
+    requested_sha = "b" * 40
+    old_digest = f"sha256:{'a' * 64}"
+    old_sha = "a" * 40
+    certificate = {
+        "assessments_written": 0,
+        "dataset_version": 7,
+        "status": "NAV_INTEGRITY_AUDIT_CERTIFIED",
+    }
+    canonical = json.dumps(certificate, sort_keys=True, separators=(",", ":"))
+    certificate_hash = hashlib.sha256(canonical.encode()).hexdigest()
+    event_path = tmp_path / "event.json"
+    event_path.write_text(
+        json.dumps(
+            {
+                "inputs": {
+                    "certification_result_sha256": certificate_hash,
+                    "expected_dataset_version": 7,
+                    "expected_git_sha": requested_sha,
+                    "expected_image_digest": requested_digest,
+                }
+            }
+        )
+    )
+
+    job_path = tmp_path / "job.json"
+    job_path.write_text(
+        json.dumps(
+            {
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "taskCount": 1,
+                            "template": {
+                                "spec": {
+                                    "containers": [
+                                        {
+                                            "args": [
+                                                "/app/scripts/audit_nav_integrity.py",
+                                                "--summary-only",
+                                            ],
+                                            "env": [
+                                                {
+                                                    "name": "DEPLOYMENT_GIT_SHA",
+                                                    "value": requested_sha,
+                                                }
+                                            ],
+                                            "image": (
+                                                "example.invalid/audit@"
+                                                f"{requested_digest}"
+                                            ),
+                                        }
+                                    ],
+                                    "maxRetries": 0,
+                                    "serviceAccountName": "audit@example.invalid",
+                                }
+                            },
+                        }
+                    }
+                }
+            }
+        )
+    )
+    execution_path = tmp_path / "execution.json"
+    execution_path.write_text(
+        json.dumps(
+            {
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "env": [
+                                        {"name": "DEPLOYMENT_GIT_SHA", "value": old_sha}
+                                    ],
+                                    "image": f"example.invalid/audit@{old_digest}",
+                                }
+                            ]
+                        }
+                    }
+                },
+                "status": {
+                    "conditions": [{"status": "True", "type": "Completed"}]
+                },
+            }
+        )
+    )
+    logs_path = tmp_path / "logs.json"
+    logs_path.write_text(
+        json.dumps(
+            [
+                {
+                    "jsonPayload": certificate,
+                    "logName": "projects/test/logs/run.googleapis.com%2Fstdout",
+                }
+            ]
+        )
+    )
+    call_log = tmp_path / "gcloud.log"
+    gcloud = tmp_path / "gcloud"
+    gcloud.write_text(
+        """#!/usr/bin/env bash
+set -u
+printf '%s\\n' "$*" >> "$MOCK_GCLOUD_LOG"
+case "$*" in
+  "run jobs describe "*) cat "$MOCK_JOB_JSON" ;;
+  "run jobs executions list "*) printf 'audit-old-certificate\\n' ;;
+  "run jobs executions describe "*) cat "$MOCK_EXECUTION_JSON" ;;
+  "logging read "*) cat "$MOCK_LOGS_JSON" ;;
+  "run jobs execute "*) printf 'unexpected-probe\\n' ;;
+  *) exit 1 ;;
+esac
+"""
+    )
+    gcloud.chmod(0o755)
+    env = os.environ | {
+        "PATH": f"{tmp_path}:{os.environ['PATH']}",
+        "GITHUB_EVENT_PATH": str(event_path),
+        "MOCK_GCLOUD_LOG": str(call_log),
+        "MOCK_JOB_JSON": str(job_path),
+        "MOCK_EXECUTION_JSON": str(execution_path),
+        "MOCK_LOGS_JSON": str(logs_path),
+        "AUDIT_JOB": "tlws-mf-data-nav-audit-dev",
+        "AUDIT_SERVICE_ACCOUNT": "audit@example.invalid",
+        "EXPECTED_PROJECT": "trillionlane-dev",
+        "EXPECTED_REGION": "asia-south1",
+    }
+    result = subprocess.run(
+        ["bash", "-c", gate["run"]],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "run jobs execute" not in call_log.read_text()
 
 
 def test_cloud_run_result_parser_accepts_structured_and_text_payloads() -> None:

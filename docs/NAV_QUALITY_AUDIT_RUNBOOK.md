@@ -124,9 +124,11 @@ dataset version, certification-result hash, and literal schedule
 `10 */6 * * *`.
 
 The workflow independently locates the supplied certificate among recent
-successful audit executions and re-hashes its canonical JSON before creating or
-updating the scheduler. It then uses the audit identity and shared refresh/audit
-lock for a read-only probe of the live `mf.dataset_summary.dataset_version`;
+successful audit executions, verifies that its execution snapshot used the
+exact immutable image digest and `DEPLOYMENT_GIT_SHA`, and re-hashes its
+canonical JSON before creating or updating the scheduler. It then uses the audit
+identity and shared refresh/audit lock for a read-only probe of the live
+`mf.dataset_summary.dataset_version`;
 activation fails if that version has advanced beyond the certificate. The
 schedule uses `Asia/Kolkata`, invokes the audit at minute 10 after the refresh at
 minute 0, and has zero retry attempts. It may be activated only while the job's

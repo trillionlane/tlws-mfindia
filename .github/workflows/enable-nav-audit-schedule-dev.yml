@@ -115,11 +115,12 @@ jobs:
 
           certificate_result=""
           certificate_execution=""
-          mapfile -t recent_executions < <(gcloud run jobs executions list \
+          recent_executions="$(gcloud run jobs executions list \
             --job="$AUDIT_JOB" --project="$EXPECTED_PROJECT" \
-            --region="$EXPECTED_REGION" --limit=20 --format='value(metadata.name)')
-          test "${#recent_executions[@]}" -gt 0
-          for execution in "${recent_executions[@]}"; do
+            --region="$EXPECTED_REGION" --limit=20 --format='value(metadata.name)')"
+          test -n "$recent_executions"
+          while IFS= read -r execution; do
+            test -n "$execution" || continue
             execution_json="$(gcloud run jobs executions describe "$execution" \
               --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
             if ! jq -e '.status.conditions[] | select(.type == "Completed") | .status == "True"' \
@@ -134,11 +135,23 @@ jobs:
             canonical="$(jq -ceS . <<<"$result")"
             actual_sha256="$(printf '%s' "$canonical" | sha256sum | cut -d' ' -f1)"
             if [[ "$actual_sha256" == "$expected_certificate" ]]; then
+              # The execution snapshot, not the mutable current job, is the
+              # provenance boundary for this certificate. Continue searching
+              # when an older image produced the same result content.
+              certificate_image="$(jq -r '.spec.template.spec.containers[0].image // empty' <<<"$execution_json")"
+              certificate_digest=""
+              case "$certificate_image" in
+                *@sha256:*) certificate_digest="${certificate_image##*@}" ;;
+              esac
+              certificate_sha="$(jq -r '[.spec.template.spec.containers[0].env[]? | select(.name == "DEPLOYMENT_GIT_SHA") | .value] | last // empty' <<<"$execution_json")"
+              if [[ "$certificate_digest" != "$requested_digest" || "$certificate_sha" != "$requested_sha" ]]; then
+                continue
+              fi
               certificate_result="$canonical"
               certificate_execution="$execution"
               break
             fi
-          done
+          done <<<"$recent_executions"
           test -n "$certificate_execution"
           test -n "$certificate_result"
           jq -e --argjson version "$expected_version" '
