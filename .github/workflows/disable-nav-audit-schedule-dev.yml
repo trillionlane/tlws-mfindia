@@ -1,0 +1,67 @@
+name: Disable MFDataIndia NAV Audit Schedule DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_scheduler:
+        description: "Type tlws-mf-data-nav-audit-dev"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-dev-mutations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  AUDIT_SCHEDULER: tlws-mf-data-nav-audit-dev
+
+jobs:
+  disable:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Validate bounded disable request
+        shell: bash
+        run: |
+          set -euo pipefail
+          requested_project="$(jq -er '.inputs.confirm_project' "$GITHUB_EVENT_PATH")"
+          requested_scheduler="$(jq -er '.inputs.confirm_scheduler' "$GITHUB_EVENT_PATH")"
+          test "$requested_project" = "$EXPECTED_PROJECT"
+          test "$requested_scheduler" = "$AUDIT_SCHEDULER"
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REF" = "refs/heads/main"
+
+      - name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ env.EXPECTED_PROJECT }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Pause schedule without deleting evidence or job state
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud scheduler jobs pause "$AUDIT_SCHEDULER" \
+            --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --quiet
+          test "$(gcloud scheduler jobs describe "$AUDIT_SCHEDULER" \
+            --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" \
+            --format='value(state)')" = "PAUSED"

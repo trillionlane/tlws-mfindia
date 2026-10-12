@@ -209,11 +209,14 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
             # migration 018 exist before the optional writer role is created.
             scratch.apply_migrations(
                 Path(repo_root) / "sql",
-                files=DEFAULT_MIGRATIONS[:-1],
+                files=DEFAULT_MIGRATIONS[:-2],
             )
             admin.execute(f'CREATE ROLE "{role}" NOLOGIN CREATEDB CREATEROLE')
             admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
-            assert scratch.apply_migrations(Path(repo_root) / "sql") == [
+            assert scratch.apply_migrations(
+                Path(repo_root) / "sql",
+                files=DEFAULT_MIGRATIONS[:-1],
+            ) == [
                 "019_reconcile_association_writer_privileges.sql"
             ]
             conn = scratch.connect()
@@ -267,6 +270,135 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
         )
         admin.execute(f'DROP DATABASE IF EXISTS "{dbname}"')
         admin.execute(f'DROP ROLE IF EXISTS "{role}"')
+        if not cloudsql_role_preexisting:
+            admin.execute(f'DROP ROLE IF EXISTS "{cloudsql_role}"')
+        admin.close()
+
+
+def test_nav_audit_migration_grants_only_derived_table_writes(pg_dsn, repo_root):
+    if not pg_dsn:
+        pytest.skip("MF_TEST_DSN not set")
+    psycopg = pytest.importorskip("psycopg")
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    admin = psycopg.connect(pg_dsn, autocommit=True)
+    role = "mfdata_audit"
+    ingest_role = "mfdata_ingest"
+    cloudsql_role = "cloudsqlsuperuser"
+    dbname = f"mfdata_nav_audit_privileges_{os.getpid()}"
+    preexisting = admin.execute(
+        "SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)
+    ).fetchone()
+    if preexisting:
+        admin.close()
+        pytest.skip(f"role {role} already exists; refusing to alter shared cluster state")
+    ingest_preexisting = admin.execute(
+        "SELECT 1 FROM pg_roles WHERE rolname = %s", (ingest_role,)
+    ).fetchone()
+    if ingest_preexisting:
+        admin.close()
+        pytest.skip(
+            f"role {ingest_role} already exists; refusing to alter shared cluster state"
+        )
+    cloudsql_role_preexisting = admin.execute(
+        "SELECT 1 FROM pg_roles WHERE rolname = %s", (cloudsql_role,)
+    ).fetchone()
+    if not cloudsql_role_preexisting:
+        admin.execute(f'CREATE ROLE "{cloudsql_role}" NOLOGIN')
+    admin.execute(f'CREATE ROLE "{ingest_role}" NOLOGIN')
+    admin.execute(f'CREATE DATABASE "{dbname}"')
+    params = conninfo_to_dict(pg_dsn)
+    params["dbname"] = dbname
+    scratch_dsn = make_conninfo(**params)
+    try:
+        with PostgresStore(scratch_dsn) as scratch:
+            scratch.apply_migrations(
+                Path(repo_root) / "sql",
+                files=DEFAULT_MIGRATIONS[:-1],
+            )
+            admin.execute(
+                f'CREATE ROLE "{role}" NOLOGIN INHERIT CREATEDB CREATEROLE REPLICATION BYPASSRLS'
+            )
+            admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
+            assert scratch.apply_migrations(Path(repo_root) / "sql") == [
+                "020_nav_quality_audit_privileges.sql"
+            ]
+            conn = scratch.connect()
+            assert conn.execute(
+                "SELECT has_table_privilege('mfdata_ingest', "
+                "'mf.nav_quality_assessments', 'INSERT,UPDATE,DELETE') AS can_write"
+            ).fetchone()["can_write"] is False
+            attributes = conn.execute(
+                """
+                SELECT rolinherit, rolcreatedb, rolcreaterole, rolsuper,
+                       rolreplication, rolbypassrls,
+                       pg_has_role(%s, 'cloudsqlsuperuser', 'member')
+                           AS cloudsqlsuperuser_member,
+                       has_database_privilege(%s, current_database(), 'CREATE')
+                           AS database_create,
+                       has_schema_privilege(%s, 'mf', 'CREATE') AS schema_create
+                  FROM pg_roles
+                 WHERE rolname = %s
+                """,
+                (role, role, role, role),
+            ).fetchone()
+            assert attributes == {
+                "rolinherit": False,
+                "rolcreatedb": False,
+                "rolcreaterole": False,
+                "rolsuper": False,
+                "rolreplication": False,
+                "rolbypassrls": False,
+                "cloudsqlsuperuser_member": False,
+                "database_create": False,
+                "schema_create": False,
+            }
+
+            rows = conn.execute(
+                """
+                SELECT tablename,
+                       has_table_privilege(%s, format('mf.%%I', tablename), 'SELECT')
+                           AS can_select,
+                       has_table_privilege(%s, format('mf.%%I', tablename), 'INSERT')
+                           AS can_insert,
+                       has_table_privilege(%s, format('mf.%%I', tablename), 'UPDATE')
+                           AS can_update,
+                       has_table_privilege(%s, format('mf.%%I', tablename), 'DELETE')
+                           AS can_delete,
+                       has_table_privilege(%s, format('mf.%%I', tablename), 'TRUNCATE')
+                           AS can_truncate
+                  FROM pg_tables
+                 WHERE schemaname = 'mf'
+                 ORDER BY tablename
+                """,
+                (role,) * 5,
+            ).fetchall()
+        read_tables = {
+            "dataset_summary",
+            "fund_family",
+            "fund_variants",
+            "funds",
+            "nav_history",
+            "nav_quality_assessments",
+        }
+        assert read_tables.issubset({row["tablename"] for row in rows})
+        for row in rows:
+            name = row["tablename"]
+            assert row["can_select"] is (name in read_tables)
+            if name == "nav_quality_assessments":
+                assert row["can_insert"] and row["can_update"] and row["can_delete"]
+            else:
+                assert not (row["can_insert"] or row["can_update"] or row["can_delete"])
+            assert row["can_truncate"] is False
+    finally:
+        admin.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = %s AND pid <> pg_backend_pid()",
+            (dbname,),
+        )
+        admin.execute(f'DROP DATABASE IF EXISTS "{dbname}"')
+        admin.execute(f'DROP ROLE IF EXISTS "{role}"')
+        admin.execute(f'DROP ROLE IF EXISTS "{ingest_role}"')
         if not cloudsql_role_preexisting:
             admin.execute(f'DROP ROLE IF EXISTS "{cloudsql_role}"')
         admin.close()
