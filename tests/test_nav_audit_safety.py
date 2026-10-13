@@ -137,8 +137,11 @@ case "$*" in
     grep -q '^scheduler jobs create http ' "$MOCK_GCLOUD_LOG"
     ;;
   "scheduler jobs create http "*|"scheduler jobs update http "*|\
-  "scheduler jobs pause "*|"scheduler jobs resume "*|\
-  "run jobs add-iam-policy-binding "*) exit 0 ;;
+  "scheduler jobs pause "*|"scheduler jobs resume "*) exit 0 ;;
+  "run jobs add-iam-policy-binding "*)
+    # Cloud Run Jobs does not support the service IAM --condition flag.
+    [[ "$*" != *"--condition"* ]]
+    ;;
   *) exit 1 ;;
 esac
 """
