@@ -320,6 +320,48 @@ esac
     assert "run jobs execute" not in call_log.read_text()
 
 
+def test_dry_run_validation_normalizes_absent_optional_inputs(tmp_path) -> None:
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/operate-nav-audit-dev.yml").read_text()
+    )
+    steps = workflow["jobs"]["operate"]["steps"]
+    validation = next(
+        step
+        for step in steps
+        if step.get("name") == "Validate exact bounded request"
+    )
+    git_sha = "a" * 40
+    event_path = tmp_path / "event.json"
+    event_path.write_text(
+        json.dumps(
+            {
+                "inputs": {
+                    "confirm_job": "tlws-mf-data-nav-audit-dev",
+                    "confirm_project": "trillionlane-dev",
+                    "expected_dataset_version": "8",
+                    "expected_git_sha": git_sha,
+                    "expected_image_digest": f"sha256:{'b' * 64}",
+                    "mode": "dry-run",
+                }
+            }
+        )
+    )
+    env = os.environ | {
+        "AUDIT_JOB": "tlws-mf-data-nav-audit-dev",
+        "EXPECTED_PROJECT": "trillionlane-dev",
+        "GITHUB_EVENT_PATH": str(event_path),
+        "GITHUB_SHA": git_sha,
+    }
+    subprocess.run(
+        ["bash", "-c", validation["run"]],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
 def test_cloud_run_result_parser_accepts_structured_and_text_payloads() -> None:
     parser = ROOT / "scripts/extract_cloud_run_json_result.sh"
     structured_logs = [
