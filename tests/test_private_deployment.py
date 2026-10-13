@@ -11,10 +11,8 @@ def test_dev_deployment_is_internal_and_authenticated_only() -> None:
     assert "--ingress=all" not in workflow
     assert "--allow-unauthenticated" not in workflow
     assert 'member="serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"' in workflow
-    assert (
-        'member="serviceAccount:${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}"' in workflow
-    )
-    assert 'member="allUsers"' in workflow
+    assert "bash scripts/private_read_invokers_dev.sh reconcile" in workflow
+    assert "bash scripts/private_read_invokers_dev.sh required" in workflow
     assert "roles/run.invoker" in workflow
 
 
@@ -26,6 +24,8 @@ def test_dev_preflight_verifies_the_deployed_insights_identity_without_iam_read(
     assert "value(spec.template.spec.serviceAccountName)" in workflow
     assert ' = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"' in workflow
     assert "gcloud iam service-accounts describe" not in workflow
+    assert "gcloud run services describe tl-dwf-dev-api" in workflow
+    assert ' = "tl-dwf-dev-runtime@trillionlane-dev.iam.gserviceaccount.com"' in workflow
 
 
 def test_dev_deployment_uses_internal_zero_retry_smoke_job() -> None:

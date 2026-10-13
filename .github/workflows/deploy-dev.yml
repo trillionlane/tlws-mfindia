@@ -85,6 +85,7 @@ jobs:
           test "$REGION" = "$EXPECTED_REGION"
           test "$ARTIFACT_REPOSITORY" = "tlws-mf-data-dev"
           test "$CLOUD_SQL_INSTANCE" = "trillionlane-dev:asia-south1:tlws-mf-data-dev"
+          test "$RUNTIME_SERVICE_ACCOUNT" = "tlws-mf-data-runtime-dev@trillionlane-dev.iam.gserviceaccount.com"
           test "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" = "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com"
           test "$VPC_NETWORK" = "tl-dev-vpc"
           test "$VPC_SUBNET" = "tl-dev-mumbai"
@@ -115,12 +116,17 @@ jobs:
           test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = "${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}"
           test "$(gcloud sql instances describe tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(connectionName)')" = "${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}"
           test "$(gcloud run services describe "$INSIGHTS_SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.serviceAccountName)')" = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"
+          test "$(gcloud run services describe tl-dwf-dev-api --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.serviceAccountName)')" = "tl-dwf-dev-runtime@trillionlane-dev.iam.gserviceaccount.com"
           if [[ "$ASSOCIATION_WRITER_PROVISIONED" == "false" ]]; then
             bash ./scripts/verify_optional_association_writer_dev.sh \
               "$EXPECTED_PROJECT" \
               "$EXPECTED_REGION" \
               "$ASSOCIATION_SERVICE_NAME"
           fi
+
+      - name: Verify private-read access before publishing
+        shell: bash
+        run: bash scripts/private_read_invokers_dev.sh preflight
 
       - name: Configure Artifact Registry
         run: gcloud auth configure-docker "$EXPECTED_REGION-docker.pkg.dev" --quiet
@@ -250,35 +256,7 @@ jobs:
 
       - name: Reconcile private invoker policy
         shell: bash
-        run: |
-          set -euo pipefail
-          gcloud run services add-iam-policy-binding "$SERVICE_NAME" \
-            --project="$EXPECTED_PROJECT" \
-            --region="$EXPECTED_REGION" \
-            --member="serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
-            --role=roles/run.invoker \
-            --condition=None \
-            --quiet >/dev/null
-          gcloud run services add-iam-policy-binding "$SERVICE_NAME" \
-            --project="$EXPECTED_PROJECT" \
-            --region="$EXPECTED_REGION" \
-            --member="serviceAccount:${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
-            --role=roles/run.invoker \
-            --condition=None \
-            --quiet >/dev/null
-          policy="$(gcloud run services get-iam-policy "$SERVICE_NAME" \
-            --project="$EXPECTED_PROJECT" \
-            --region="$EXPECTED_REGION" \
-            --format=json)"
-          if jq -e '[.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | index("allUsers") != null' <<<"$policy" >/dev/null; then
-            gcloud run services remove-iam-policy-binding "$SERVICE_NAME" \
-              --project="$EXPECTED_PROJECT" \
-              --region="$EXPECTED_REGION" \
-              --member="allUsers" \
-              --role=roles/run.invoker \
-              --condition=None \
-              --quiet >/dev/null
-          fi
+        run: bash scripts/private_read_invokers_dev.sh reconcile
 
       - name: Reconcile the six-hour refresh job to the immutable image
         shell: bash
@@ -341,12 +319,7 @@ jobs:
           jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$service_json" >/dev/null
           jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$service_json" >/dev/null
           jq -e '.status.traffic | length == 1 and .[0].percent == 100' <<<"$service_json" >/dev/null
-          policy="$(gcloud run services get-iam-policy "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
-          jq -e \
-            --arg insights "serviceAccount:$INSIGHTS_RUNTIME_SERVICE_ACCOUNT" \
-            --arg runtime "serviceAccount:${{ vars.GCP_TLWS_MF_DATA_RUNTIME_SERVICE_ACCOUNT }}" \
-            '([.bindings[]? | select(.role == "roles/run.invoker") | .members[]?] | sort) == ([$insights, $runtime] | sort)' \
-            <<<"$policy" >/dev/null
+          bash scripts/private_read_invokers_dev.sh required
           external_status="$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$service_url/api/health" || true)"
           case "$external_status" in
             2*) echo "MFDataIndia unexpectedly reachable from the public runner: HTTP $external_status" >&2; exit 1 ;;
