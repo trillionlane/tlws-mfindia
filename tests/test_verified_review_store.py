@@ -201,6 +201,77 @@ def test_reviews_replay_conflicts_proposals_and_revalidation(verified_db):
 
 
 @pytest.mark.postgres
+@pytest.mark.parametrize('drift', ['facts', 'nav'])
+def test_fresh_proposals_do_not_renew_the_latest_actual_review(verified_db, drift):
+    old = generate(verified_db)
+    request = {'expected_version': 0, 'expected_input_hash': old['input_hash'], 'result_id': old['result_id'],
+               'status': 'reviewed', 'disposition': 'consistent_with_evidence',
+               'reason': 'Fixture inspection', 'evidence': ['fixture://archive']}
+
+    def post(payload, kind, key):
+        with connection(verified_db, ROLES[2]) as conn:
+            return review.record_event(conn, 1, payload, kind=kind, caller='insights', actor='admin-1', idempotency_key=key)
+
+    first = post(request, 'review', 'original-review-key')
+    # Deliberate changes affect only this disposable synthetic fixture.
+    with connection(verified_db) as conn:
+        if drift == 'facts':
+            conn.execute('UPDATE mf.fund_facts SET aum=999 WHERE amfi_scheme_code=1')
+        else:
+            conn.execute("UPDATE mf.nav_history SET nav=101 WHERE amfi_scheme_code=1 AND nav_date='2024-01-01'")
+        preserved = source_state(conn)
+    fresh = generate(verified_db)
+    assert fresh['input_hash'] != old['input_hash']
+    proposal = {'expected_version': 1, 'expected_input_hash': fresh['input_hash'], 'result_id': fresh['result_id'],
+                'reason': 'Proposed enrichment, not a review', 'evidence': [],
+                'fields': [{'field': 'aum', 'proposed_value': '321'}]}
+    receipt = post(proposal, 'proposal', 'fresh-proposal-key')
+    assert receipt['version'] == 2 and receipt['status'] == 'reviewed'
+    for version in (2, 3):
+        with connection(verified_db, ROLES[1], readonly=True) as conn:
+            # The actual review is outside this history page, but still governs freshness.
+            state = review.get_review(conn, 1, after_version=1, limit=1)
+            assert state['version'] == version and state['status'] == 'reviewed'
+            assert state['needs_revalidation'] is True
+            assert state['history'][0]['kind'] == 'proposal'
+            assert state['history'][0]['result_id'] == fresh['result_id']
+            queued = review.queue(conn, after_code=0, limit=10, status='reviewed', signal=None)['items']
+            assert len(queued) == 1 and queued[0]['version'] == version
+            assert queued[0]['reviewed_input_hash'] == old['input_hash']
+            assert queued[0]['needs_revalidation'] is True
+        assert post(proposal, 'proposal', 'fresh-proposal-key') == receipt
+        assert post(request, 'review', 'original-review-key') == first
+        if version == 2:
+            post(dict(proposal, expected_version=2), 'proposal', 'second-fresh-proposal-key')
+    post(dict(request, expected_version=3, expected_input_hash=fresh['input_hash'], result_id=fresh['result_id']),
+         'review', 'renewed-review-key')
+    with connection(verified_db, ROLES[1], readonly=True) as conn:
+        state = review.get_review(conn, 1)
+        assert state['version'] == 4 and state['needs_revalidation'] is False
+        item = review.queue(conn, after_code=0, limit=10, status='reviewed', signal=None)['items'][0]
+        assert item['reviewed_input_hash'] == fresh['input_hash']
+        assert item['needs_revalidation'] is None  # Summary never claims full freshness.
+    with connection(verified_db, readonly=True) as conn:
+        assert source_state(conn) == preserved
+
+
+@pytest.mark.postgres
+def test_proposal_without_actual_review_remains_pending(verified_db):
+    result = generate(verified_db)
+    proposal = {'expected_version': 0, 'expected_input_hash': result['input_hash'], 'result_id': result['result_id'],
+                'reason': 'Proposal only', 'evidence': [], 'fields': [{'field': 'aum', 'proposed_value': '321'}]}
+    with connection(verified_db, ROLES[2]) as conn:
+        receipt = review.record_event(conn, 1, proposal, kind='proposal', caller='insights', actor='admin-1', idempotency_key='proposal-only-key')
+        assert receipt['status'] == 'pending_review'
+    with connection(verified_db, ROLES[1], readonly=True) as conn:
+        state = review.get_review(conn, 1)
+        assert state['version'] == 1 and state['status'] == 'pending_review'
+        assert state['needs_revalidation'] is False  # There is no actual review to revalidate.
+        item = review.queue(conn, after_code=0, limit=10, status='pending_review', signal=None)['items'][0]
+        assert item['reviewed_input_hash'] is None and item['needs_revalidation'] is None
+
+
+@pytest.mark.postgres
 def test_publication_refuses_preexisting_repeatable_read_snapshot(verified_db):
     with connection(verified_db,readonly=True) as conn:
         captured=review.capture(conn,1)

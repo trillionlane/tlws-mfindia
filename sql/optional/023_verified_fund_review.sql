@@ -184,7 +184,11 @@ BEGIN
             RAISE EXCEPTION 'reviewed status requires evidence and disposition';
         END IF;
     ELSIF p_kind='proposal' AND p_document->>'execution'='not_executable' THEN
-        next_status:=COALESCE(previous.status,'pending_review');
+        -- Proposal lineage belongs to its own result, not to a new review.
+        -- Only actual review decisions define human status and its dependencies.
+        SELECT status INTO next_status FROM mf_review.events
+          WHERE amfi_scheme_code=p_code AND kind='review' ORDER BY version DESC LIMIT 1;
+        next_status:=COALESCE(next_status,'pending_review');
     ELSE RAISE EXCEPTION 'unsupported review action'; END IF;
     INSERT INTO mf_review.events(amfi_scheme_code,version,kind,status,result_id,caller,actor,idempotency_key,request_hash,document)
       VALUES(p_code,COALESCE(previous.version,0)+1,p_kind,next_status,result.result_id,p_caller,p_actor,p_key,p_hash,p_document)

@@ -154,18 +154,21 @@ def get_result(conn, code: int, result_id: str | None = None) -> dict:
 
 def get_review(conn, code: int, *, after_version: int = 0, limit: int = 50) -> dict:
     snapshot = capture(conn, code)
-    head = conn.execute("SELECT version,status,result_id FROM mf_review.events WHERE amfi_scheme_code=%s ORDER BY version DESC LIMIT 1", (code,)).fetchone()
+    head = conn.execute("SELECT version FROM mf_review.events WHERE amfi_scheme_code=%s ORDER BY version DESC LIMIT 1", (code,)).fetchone()
+    # Proposals advance optimistic concurrency but never renew a human review.
+    # Query independently of the requested history page and latest event/result.
+    latest_review = conn.execute(
+        "SELECT e.status,r.input_hash FROM mf_review.events e JOIN mf_review.results r USING(result_id) "
+        "WHERE e.amfi_scheme_code=%s AND e.kind='review' ORDER BY e.version DESC LIMIT 1", (code,),
+    ).fetchone()
     rows = conn.execute(
         "SELECT version,kind,status,result_id,caller,actor,document,recorded_at FROM mf_review.events "
         "WHERE amfi_scheme_code=%s AND version>%s ORDER BY version LIMIT %s", (code, after_version, limit),
     ).fetchall()
-    reviewed_hash = None
-    if head:
-        reviewed_hash = conn.execute("SELECT input_hash FROM mf_review.results WHERE result_id=%s", (head["result_id"],)).fetchone()["input_hash"]
     current_hash = fingerprint(snapshot)
     return {"code": code, "version": head["version"] if head else 0,
-            "status": head["status"] if head else "pending_review",
-            "needs_revalidation": head is not None and reviewed_hash != current_hash,
+            "status": latest_review["status"] if latest_review else "pending_review",
+            "needs_revalidation": latest_review is not None and latest_review["input_hash"] != current_hash,
             "current_input_hash": current_hash, "identity": snapshot["identity"],
             "original_facts": snapshot["facts"], "context": snapshot["context"],
             "history": [_json_source(r) for r in rows],
@@ -186,11 +189,14 @@ def record_event(conn, code: int, request: dict, *, kind: str, caller: str, acto
     current = get_result(conn, code, request["result_id"])
     if current["input_status"] != "current" or current["current_input_hash"] != request["expected_input_hash"]:
         raise Conflict("reviewed inputs changed; refresh before recording a decision")
-    head = conn.execute("SELECT version,status FROM mf_review.events WHERE amfi_scheme_code=%s ORDER BY version DESC LIMIT 1", (code,)).fetchone()
+    head = conn.execute("SELECT version FROM mf_review.events WHERE amfi_scheme_code=%s ORDER BY version DESC LIMIT 1", (code,)).fetchone()
     version = head["version"] if head else 0
     if request["expected_version"] != version:
         raise Conflict("review version changed")
-    status = request["status"] if kind == "review" else head["status"] if head else "pending_review"
+    latest_review = conn.execute(
+        "SELECT status FROM mf_review.events WHERE amfi_scheme_code=%s AND kind='review' ORDER BY version DESC LIMIT 1", (code,),
+    ).fetchone() if kind == "proposal" else None
+    status = request["status"] if kind == "review" else latest_review["status"] if latest_review else "pending_review"
     payload = {**request, "execution": "not_executable"} if kind == "proposal" else request
     # Status validation happens in the typed API and table constraints. The
     # owner-executed function independently enforces replay/version/dependency
@@ -208,9 +214,9 @@ def queue(conn, *, after_code: int, limit: int, status: str | None, signal: str 
     # One set-based query; no per-fund NAV reads/calculation or N+1 history fetch.
     rows = conn.execute(
         "SELECT f.amfi_scheme_code AS code,f.scheme_name,f.option_type,"
-        "COALESCE(e.version,0) AS version,COALESCE(e.status,'pending_review') AS status,"
+        "COALESCE(e.version,0) AS version,COALESCE(reviewed.status,'pending_review') AS status,"
         "q.signals,r.document->>'input_hash' AS reviewed_input_hash,"
-        "CASE WHEN e.version IS NULL THEN NULL ELSE "
+        "CASE WHEN reviewed.version IS NULL THEN NULL ELSE "
         "s.source_revision IS DISTINCT FROM rev.revision OR "
         "(s.document->>'dataset_version')::bigint IS DISTINCT FROM ds.dataset_version OR "
         "s.document->'identity' IS DISTINCT FROM jsonb_build_object(" +
@@ -219,12 +225,14 @@ def queue(conn, *, after_code: int, limit: int, status: str | None, signal: str 
         "ELSE jsonb_build_object(" + ",".join("'"+c+"',CASE WHEN ff."+c+" IS NULL THEN NULL ELSE ff."+c+"::text END" for c in FACT_COLUMNS) + ") END "
         "OR (s.document->'context'->'nav_quality'->>'assessed_at')::timestamptz IS DISTINCT FROM q.assessed_at END AS dependency_changed "
         "FROM mf.funds f CROSS JOIN mf.dataset_summary ds "
-        "LEFT JOIN LATERAL(SELECT * FROM mf_review.events WHERE amfi_scheme_code=f.amfi_scheme_code ORDER BY version DESC LIMIT 1)e ON true "
-        "LEFT JOIN mf_review.results r ON r.result_id=e.result_id LEFT JOIN mf_review.snapshots s USING(input_hash) "
+        "LEFT JOIN LATERAL(SELECT version FROM mf_review.events WHERE amfi_scheme_code=f.amfi_scheme_code ORDER BY version DESC LIMIT 1)e ON true "
+        "LEFT JOIN LATERAL(SELECT version,status,result_id FROM mf_review.events WHERE amfi_scheme_code=f.amfi_scheme_code "
+        "AND kind='review' ORDER BY version DESC LIMIT 1)reviewed ON true "
+        "LEFT JOIN mf_review.results r ON r.result_id=reviewed.result_id LEFT JOIN mf_review.snapshots s USING(input_hash) "
         "LEFT JOIN mf.nav_source_revisions rev ON rev.amfi_scheme_code=f.amfi_scheme_code "
         "LEFT JOIN mf.nav_quality_assessments q ON q.amfi_scheme_code=f.amfi_scheme_code "
         "LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code=f.amfi_scheme_code "
-        "WHERE ds.singleton AND f.amfi_scheme_code>%s AND (%s::text IS NULL OR COALESCE(e.status,'pending_review')=%s) "
+        "WHERE ds.singleton AND f.amfi_scheme_code>%s AND (%s::text IS NULL OR COALESCE(reviewed.status,'pending_review')=%s) "
         "AND (%s::text IS NULL OR %s=ANY(q.signals)) ORDER BY f.amfi_scheme_code LIMIT %s",
         (after_code, status, status, signal, signal, limit),
     ).fetchall()

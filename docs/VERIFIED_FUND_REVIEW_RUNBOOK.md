@@ -158,6 +158,14 @@ in the input snapshot; each proposal records `execution: not_executable`.
 Applying overlays, changing original fields, assignment workflows and bulk admin
 editing are not provided. Reviews/proposals persist independently of sessions.
 
+The event version advances for both reviews and proposals. Human status and
+review revalidation depend only on the latest actual review decision and its
+input snapshot, independently of history pagination. A proposal retains its own
+result as evidence but cannot renew review freshness, even after fresh analytics
+are published. Only a new review of the current inputs can clear revalidation.
+With no actual review, status remains pending_review and there are no reviewed
+dependencies to revalidate; this does not mean the fund has been validated.
+
 Queue `needs_revalidation: true` proves detected dependency drift; null means
 unchecked, never current/clean. Detail compares the full input fingerprint and
 returns an exact boolean. Missing analytics returns 404, not on-demand generation.
