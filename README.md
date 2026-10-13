@@ -274,6 +274,12 @@ repairs, deletes, merges, or rewrites source data. The operator gates and
 failure procedure are in
 [`docs/NAV_QUALITY_AUDIT_RUNBOOK.md`](docs/NAV_QUALITY_AUDIT_RUNBOOK.md).
 
+DATA-02 provides certified case exports, original-evidence archives, an
+append-only review/proposal ledger, and scratch-only rollback rehearsal through
+`scripts/review_nav_remediation.py`. It has no live NAV correction action and
+does not change API or UI behavior. See
+[`docs/NAV_REMEDIATION_RUNBOOK.md`](docs/NAV_REMEDIATION_RUNBOOK.md).
+
 Lifecycle presence is anchored to the latest successfully committed **full**
 AMFI snapshot. Newer partial payloads may update the schemes they contain but
 cannot make omitted schemes look absent; the refresh job rejects materially

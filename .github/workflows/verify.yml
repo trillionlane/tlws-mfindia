@@ -77,6 +77,14 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; import mfdataindia; from mfdataindia.api.association_app import create_association_app; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert callable(create_association_app); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/scripts/smoke_private_api.py").is_file(); assert Path("/app/scripts/verify_optional_association_writer_dev.sh").is_file(); assert Path("/app/scripts/audit_nav_integrity.py").is_file(); assert Path("/app/scripts/reconcile_nav_audit_privileges.py").is_file(); assert Path("/app/scripts/verify_nav_audit_privileges.py").is_file(); assert Path("/app/sql/018_fund_family_association_tags.sql").is_file(); assert Path("/app/sql/019_reconcile_association_writer_privileges.sql").is_file(); assert Path("/app/sql/020_nav_quality_audit_privileges.sql").is_file()'
 
+      - name: Verify dormant DATA-02 operator tools in the image
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; import mfdataindia.audit.remediation; import mfdataindia.audit.remediation_evidence; import mfdataindia.audit.remediation_rehearsal; assert Path("/app/sql/021_nav_remediation_review.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/review_nav_remediation.py --help
+
       - name: Build and verify PostgreSQL 18 restore image
         run: |
           set -euo pipefail

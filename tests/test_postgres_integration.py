@@ -211,13 +211,13 @@ def test_association_writer_migration_grants_only_required_privileges(pg_dsn, re
             # migration 018 exist before the optional writer role is created.
             scratch.apply_migrations(
                 Path(repo_root) / "sql",
-                files=DEFAULT_MIGRATIONS[:-2],
+                files=tuple(f for f in DEFAULT_MIGRATIONS if f < "019_"),
             )
             admin.execute(f'CREATE ROLE "{role}" NOLOGIN CREATEDB CREATEROLE')
             admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
             assert scratch.apply_migrations(
                 Path(repo_root) / "sql",
-                files=DEFAULT_MIGRATIONS[:-1],
+                files=tuple(f for f in DEFAULT_MIGRATIONS if f < "020_"),
             ) == [
                 "019_reconcile_association_writer_privileges.sql"
             ]
@@ -316,13 +316,16 @@ def test_nav_audit_migration_grants_only_derived_table_writes(pg_dsn, repo_root)
         with PostgresStore(scratch_dsn) as scratch:
             scratch.apply_migrations(
                 Path(repo_root) / "sql",
-                files=DEFAULT_MIGRATIONS[:-1],
+                files=tuple(f for f in DEFAULT_MIGRATIONS if f < "020_"),
             )
             admin.execute(
                 f'CREATE ROLE "{role}" NOLOGIN INHERIT CREATEDB CREATEROLE REPLICATION BYPASSRLS'
             )
             admin.execute(f'GRANT "{cloudsql_role}" TO "{role}"')
-            assert scratch.apply_migrations(Path(repo_root) / "sql") == [
+            assert scratch.apply_migrations(
+                Path(repo_root) / "sql",
+                files=tuple(f for f in DEFAULT_MIGRATIONS if f < "021_"),
+            ) == [
                 "020_nav_quality_audit_privileges.sql"
             ]
             conn = scratch.connect()
