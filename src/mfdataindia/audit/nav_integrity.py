@@ -231,6 +231,11 @@ def detect_duplicate_variant_series(conn, run: AssessmentRun) -> None:
             }
 
 
+def _findings_sha256(findings: dict[str, Any]) -> str:
+    blob = json.dumps(findings, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
 def build_summary(run: AssessmentRun, *, duration_ms: Optional[int] = None) -> dict[str, Any]:
     """Finite, sorted JSON summary: methodology, dataset, counts, codes."""
     findings = {
@@ -240,14 +245,13 @@ def build_summary(run: AssessmentRun, *, duration_ms: Optional[int] = None) -> d
         }
         for code in sorted(run.signals)
     }
-    findings_blob = json.dumps(findings, sort_keys=True, separators=(",", ":"), default=str)
     summary: dict[str, Any] = {
         "status": "NAV_INTEGRITY_AUDIT_OK",
         "methodology_version": METHODOLOGY_VERSION,
         "dataset_version": run.dataset_version,
         "nav_rows_scanned": run.nav_rows,
         "schemes_assessed": len(run.series),
-        "findings_sha256": hashlib.sha256(findings_blob.encode()).hexdigest(),
+        "findings_sha256": _findings_sha256(findings),
         "signals": {
             SIGNAL_CONSTANT: {
                 "count": len(run.signal_codes(SIGNAL_CONSTANT)),
@@ -356,6 +360,16 @@ def _current_assessment_summary(conn, *, dataset_version: int) -> Optional[dict[
         nav["schemes"]
     ):
         return None
+    # A no-op apply still needs exact evidence for the dry-run/apply/certify
+    # chain. Hash the persisted findings using the same canonical form as a
+    # fresh scan; certification independently recomputes and compares them.
+    findings = {
+        str(r['amfi_scheme_code']): {'signals': sorted(r['signals']), 'evidence': r['evidence']}
+        for r in conn.execute(
+            "SELECT amfi_scheme_code,signals,evidence FROM mf.nav_quality_assessments "
+            "WHERE cardinality(signals)>0 ORDER BY amfi_scheme_code"
+        ).fetchall()
+    }
     return {
         "status": "NAV_INTEGRITY_AUDIT_ALREADY_CURRENT",
         "methodology_version": METHODOLOGY_VERSION,
@@ -369,6 +383,7 @@ def _current_assessment_summary(conn, *, dataset_version: int) -> Optional[dict[
         },
         "affected_count": int(row["affected"]),
         "assessments_written": 0,
+        "findings_sha256": _findings_sha256(findings),
     }
 
 

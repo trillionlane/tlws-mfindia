@@ -14,6 +14,74 @@ from mfdataindia.store.locks import DataOperationBusy, acquire_nav_data_operatio
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize('status,written,accepted', [
+    ('NAV_INTEGRITY_AUDIT_OK', 3, True),
+    ('NAV_INTEGRITY_AUDIT_ALREADY_CURRENT', 0, True),
+    ('NAV_INTEGRITY_AUDIT_OK', 0, False),
+    ('NAV_INTEGRITY_AUDIT_OK', 2, False),
+    ('NAV_INTEGRITY_AUDIT_ALREADY_CURRENT', 1, False),
+    ('NAV_INTEGRITY_AUDIT_CERTIFIED', 0, False),
+])
+def test_apply_result_gate_accepts_only_complete_write_or_exact_current_noop(status, written, accepted):
+    value = {'status':status, 'assessments_written':written, 'schemes_assessed':3,
+        'nav_rows_scanned':8, 'dataset_version':10, 'methodology_version':'1', 'findings_sha256':'a'*64}
+    result = subprocess.run(['bash',str(ROOT/'scripts/validate_nav_audit_apply_result.sh')],
+                            input=json.dumps(value), text=True, capture_output=True)
+    assert (result.returncode == 0) is accepted
+
+
+@pytest.mark.parametrize('field,value', [
+    ('findings_sha256', None), ('findings_sha256','not-a-hash'),
+    ('dataset_version',0), ('dataset_version',True), ('dataset_version',1.5),
+    ('schemes_assessed',0), ('nav_rows_scanned',0), ('methodology_version','unsupported'),
+])
+def test_current_noop_cannot_omit_or_weaken_evidence(field, value):
+    result_value = {'status':'NAV_INTEGRITY_AUDIT_ALREADY_CURRENT','assessments_written':0,
+        'schemes_assessed':3,'nav_rows_scanned':8,'dataset_version':10,
+        'methodology_version':'1','findings_sha256':'a'*64,field:value}
+    result = subprocess.run(['bash',str(ROOT/'scripts/validate_nav_audit_apply_result.sh')],
+                            input=json.dumps(result_value), text=True, capture_output=True)
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize('stage', ['apply-result', 'certify-prior'])
+@pytest.mark.parametrize('with_hash', [True, False])
+def test_real_workflow_steps_handle_a_baseline_current_apply(tmp_path, stage, with_hash):
+    workflow = yaml.safe_load((ROOT/'.github/workflows/operate-nav-audit-dev.yml').read_text())
+    steps = workflow['jobs']['operate']['steps']
+    name = 'Execute exactly once and retain bounded evidence' if stage == 'apply-result' else 'Verify the exact preceding gate'
+    script = next(s['run'] for s in steps if s.get('name') == name)
+    result = {'status':'NAV_INTEGRITY_AUDIT_ALREADY_CURRENT','assessments_written':0,
+        'schemes_assessed':3,'nav_rows_scanned':8,'dataset_version':10,'methodology_version':'1'}
+    if with_hash:
+        result['findings_sha256'] = 'a'*64
+    canonical = subprocess.check_output(['jq','-cS','.'], input=json.dumps(result), text=True).strip()
+    event = {'inputs':{'mode':'apply' if stage == 'apply-result' else 'certify',
+        'expected_dataset_version':'10','prior_result_sha256':hashlib.sha256(canonical.encode()).hexdigest()}}
+    event_file = tmp_path/'event.json'
+    event_file.write_text(json.dumps(event))
+    logs_file = tmp_path/'logs.json'
+    logs_file.write_text(json.dumps([{'logName':'projects/test/logs/run.googleapis.com%2Fstdout','jsonPayload':result}]))
+    gcloud = tmp_path/'gcloud'
+    gcloud.write_text('''#!/usr/bin/env bash
+set -euo pipefail
+case "$*" in
+  "run jobs execute "*|"run jobs executions list "*) echo mock-apply ;;
+  "run jobs executions describe "*) echo '{"status":{"conditions":[{"type":"Completed","status":"True"}]}}' ;;
+  "logging read "*) cat "$MOCK_LOGS_JSON" ;;
+  *) exit 1 ;;
+esac
+''')
+    gcloud.chmod(0o755)
+    script = script.replace('${{ steps.prior.outputs.findings_sha256 }}','a'*64)
+    env = os.environ | {'PATH':str(tmp_path)+':'+os.environ['PATH'],
+        'GITHUB_EVENT_PATH':str(event_file),'GITHUB_OUTPUT':str(tmp_path/'output'),
+        'RUNNER_TEMP':str(tmp_path),'MOCK_LOGS_JSON':str(logs_file),
+        'AUDIT_JOB':'audit','EXPECTED_PROJECT':'trillionlane-dev','EXPECTED_REGION':'asia-south1'}
+    execution = subprocess.run(['bash','-c',script], cwd=ROOT, env=env, text=True, capture_output=True)
+    assert (execution.returncode == 0) is with_hash, execution.stderr
+
+
 class _LockConnection:
     def __init__(self, acquired: bool):
         self.acquired = acquired
