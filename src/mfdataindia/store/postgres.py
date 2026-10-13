@@ -71,6 +71,8 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     # Dedicated NAV-audit principal: source tables are read-only and the
     # derived assessment table is its sole write target.
     "020_nav_quality_audit_privileges.sql",
+    # Append-only investigation and proposal ledger; never grants source writes.
+    "021_nav_remediation_review.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
