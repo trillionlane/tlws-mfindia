@@ -198,6 +198,15 @@ def build_proposal(
         raise ValueError("dataset changed before proposal construction")
     if case["dataset_version"] != expected_dataset_version:
         raise ValueError("case snapshot is stale; regenerate and review it")
+    revisions = case.get("reviewed_source_revisions")
+    if (not isinstance(revisions, dict) or set(revisions) != {str(c) for c in case["scheme_codes"]}
+            or any(type(v) is not int or v < 0 for v in revisions.values())):
+        raise ValueError("case has no exact reviewed source dependencies; export and review a fresh case")
+    current = {str(r['amfi_scheme_code']): r['revision'] for r in conn.execute(
+        "SELECT * FROM mf.nav_source_revisions WHERE amfi_scheme_code=ANY(%s)", (case['scheme_codes'],)
+    ).fetchall()}
+    if current != revisions:
+        raise ValueError("reviewed source dependencies changed before proposal construction")
     rows = conn.execute(
         "SELECT * FROM mf.nav_history WHERE amfi_scheme_code = ANY(%s) ORDER BY amfi_scheme_code,nav_date",
         (case["scheme_codes"],),
@@ -233,6 +242,7 @@ def build_proposal(
             "case_snapshot_sha256": case["sha256"],
             "decision_sha256": decision["sha256"],
             "expected_dataset_version": expected_dataset_version,
+            "reviewed_source_revisions": revisions,
             "evidence": reference,
             "changes": changes,
             "matched_observations": covered,

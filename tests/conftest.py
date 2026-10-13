@@ -48,3 +48,23 @@ def pg_dsn() -> str | None:
 @pytest.fixture(scope="session")
 def repo_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def certify_comparison_fixture(conn):
+    """Establish synthetic full-feed/audit evidence for ranking test fixtures."""
+    from mfdataindia.audit import nav_integrity
+
+    ref = conn.execute("SELECT max(nav_date) AS day FROM mf.nav_history").fetchone()["day"]
+    conn.execute("UPDATE mf.funds SET last_seen_in_source=%s", (ref,))
+    fetch = conn.execute(
+        "INSERT INTO mf.source_metadata(source,endpoint,entity_kind,entity_key,content_hash) "
+        "VALUES('AMFI','FIXTURE_ONLY','LATEST_NAV','comparison-fixture',%s) RETURNING fetch_id",
+        ("e" * 64,),
+    ).fetchone()["fetch_id"]
+    conn.execute(
+        "INSERT INTO mf.source_snapshot_runs(source_fetch_id,source,snapshot_scope,snapshot_date,"
+        "latest_nav_date,content_hash,records_in,records_ok,records_quarantined,distinct_amcs,distinct_categories) "
+        "VALUES(%s,'AMFI','FULL',%s,%s,%s,1,1,0,1,1)", (fetch, ref, ref, "e" * 64),
+    )
+    conn.execute("SELECT mf.refresh_dataset_summary('synthetic_comparison_fixture')")
+    nav_integrity.assess(conn)

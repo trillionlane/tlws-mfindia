@@ -178,6 +178,9 @@ def build_register(
                     "source_manifest_sha256": fingerprint(source_manifest),
                     "signal": signal,
                     "scheme_codes": codes,
+                    "reviewed_source_revisions": {
+                        str(code): by_code[code].get("assessed_source_revision") for code in codes
+                    },
                     "family": family,
                     "priority": priority,
                     "review_state": "pending_review",
@@ -239,6 +242,12 @@ def export_register(conn, *, expected_dataset_version: int, expected_findings_sh
     population = conn.execute(
         "SELECT count(DISTINCT amfi_scheme_code) AS schemes, count(*) AS nav_rows FROM mf.nav_history"
     ).fetchone()
+    if conn.execute(
+        "SELECT 1 FROM mf.nav_source_revisions r LEFT JOIN mf.nav_quality_assessments q USING(amfi_scheme_code) "
+        "WHERE q.assessed_source_revision IS DISTINCT FROM r.revision "
+        "AND EXISTS(SELECT 1 FROM mf.nav_history n WHERE n.amfi_scheme_code=r.amfi_scheme_code) LIMIT 1"
+    ).fetchone():
+        raise ValueError("source dependencies changed after assessment; reassess before export")
     if len(rows) != population["schemes"] or population["nav_rows"] != manifest["nav_rows"]:
         raise ValueError("assessment population or source manifest is incomplete")
     return build_register(
@@ -375,6 +384,11 @@ def record_proposal(conn, proposal: dict) -> str:
     case = decision["case_payload"]
     if proposal["expected_dataset_version"] != case["dataset_version"]:
         raise ValueError("proposal version differs from reviewed case")
+    revisions = proposal.get("reviewed_source_revisions")
+    if (not isinstance(revisions, dict) or set(revisions) != {str(c) for c in case['scheme_codes']}
+            or any(type(v) is not int or v < 0 for v in revisions.values())
+            or revisions != case.get("reviewed_source_revisions")):
+        raise ValueError("proposal dependencies differ from reviewed case")
     changes = proposal["changes"]
     keys = {(c["amfi_scheme_code"], c["nav_date"]) for c in changes}
     if (

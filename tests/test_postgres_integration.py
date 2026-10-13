@@ -884,6 +884,9 @@ def test_category_movers_groups_by_family(store, scheme_factory):
                        scheme_category="Equity Scheme - Mid Cap Fund",
                        nav=200.0, nav_date=day2, **base)], source_date=day2)
 
+    from conftest import certify_comparison_fixture
+
+    certify_comparison_fixture(store.connect())
     res = queries.category_movers(store.connect(), period="1m", limit=5)
     fams = {c["category"]: c for c in res["categories"]}
 
@@ -945,6 +948,9 @@ def test_category_movers_collapses_variants(store, scheme_factory):
                        nav=102.0, nav_date=day2, **base),   # +2%
     ], source_date=day2)
 
+    from conftest import certify_comparison_fixture
+
+    certify_comparison_fixture(store.connect())
     res = queries.category_movers(store.connect(), period="1m", limit=5)
     hybrid = next(c for c in res["categories"] if c["category"] == "Hybrid")
     # Small universe: with <5 funds a fund can land in BOTH the top gainers and

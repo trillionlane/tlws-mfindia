@@ -78,11 +78,18 @@ def validate_proposal(proposal: dict, archive) -> None:
     ):
         raise ValueError("unsupported proposal")
     changes = proposal["changes"]
+    revisions = proposal.get("reviewed_source_revisions")
+    if (not isinstance(revisions, dict) or not revisions
+            or any(not k.isdecimal() or int(k) <= 0 or type(v) is not int or v < 0
+                   for k, v in revisions.items())):
+        raise ValueError("proposal requires exact reviewed source dependencies")
     if not isinstance(changes, list) or not 0 < len(changes) <= 100:
         raise ValueError("proposal must contain 1..100 exact updates")
     keys = {(c["amfi_scheme_code"], c["nav_date"]) for c in changes}
     if len(keys) != len(changes) or len({c[0] for c in keys}) > 5:
         raise ValueError("duplicate keys or more than 5 schemes")
+    if any(str(c[0]) not in revisions for c in keys):
+        raise ValueError("proposal changes are outside reviewed source dependencies")
     observations = load_amfi_observations(proposal["evidence"], archive)
     for change in changes:
         before = change["before"]
@@ -133,6 +140,12 @@ def rehearse(
             ).fetchone()["dataset_version"]
             if before_version != proposal["expected_dataset_version"]:
                 raise ValueError("scratch dataset version differs from proposal")
+            revisions = {str(r['amfi_scheme_code']): r['revision'] for r in conn.execute(
+                "SELECT * FROM mf.nav_source_revisions WHERE amfi_scheme_code=ANY(%s)",
+                ([int(c) for c in proposal['reviewed_source_revisions']],),
+            ).fetchall()}
+            if revisions != proposal['reviewed_source_revisions']:
+                raise ValueError("scratch reviewed source dependencies changed")
             before = [_row(conn, change) for change in proposal["changes"]]
             after = _trial_apply(conn, proposal["changes"], fail_after=simulate_failure_after)
             replay = _trial_apply(conn, proposal["changes"], replay_images=after)

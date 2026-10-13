@@ -180,6 +180,8 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             p = request.url.path
             if p.startswith("/static/") or p in _UI_PATHS or p.startswith("/fund/"):
                 response.headers["Cache-Control"] = "no-cache"
+            elif p.startswith("/api/"):
+                response.headers["Cache-Control"] = "no-store"
             return response
 
     app.add_middleware(_NoCacheUI)
@@ -199,7 +201,9 @@ def create_app(dsn: Optional[str] = None) -> FastAPI:
             if metrics is not None:
                 metrics.pool_wait_ms += (query_started - wait_started) * 1000
             try:
-                return callback(conn)
+                with conn.transaction():
+                    conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+                    return callback(conn)
             finally:
                 if metrics is not None:
                     metrics.db_ms += (perf_counter() - query_started) * 1000

@@ -38,6 +38,8 @@ def main() -> int:
         if principal is None:
             raise RuntimeError("mfdata_audit must be provisioned before privilege reconciliation")
         conn.execute(sql)
+        if conn.execute("SELECT to_regclass('mf.nav_source_revisions')").fetchone()[0] is not None:
+            conn.execute("GRANT SELECT ON mf.nav_source_revisions TO mfdata_audit")
 
     print("NAV_AUDIT_PRIVILEGES_RECONCILED")
     print(f"reconciled target database: {describe_dsn(dsn)}", file=sys.stderr)

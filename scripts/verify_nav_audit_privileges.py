@@ -20,6 +20,7 @@ READ_TABLES = {
     "funds",
     "nav_history",
     "nav_quality_assessments",
+    "nav_source_revisions",
 }
 WRITE_TABLE = "nav_quality_assessments"
 

@@ -186,6 +186,33 @@ ALTER DEFAULT PRIVILEGES FOR ROLE mfdata_admin IN SCHEMA mf
     GRANT USAGE, SELECT ON SEQUENCES TO mfdata_ingest;
 ALTER DEFAULT PRIVILEGES FOR ROLE mfdata_admin IN SCHEMA mf
     GRANT EXECUTE ON FUNCTIONS TO mfdata_app, mfdata_ingest;
+-- Broad restore/default grants must not reopen governed evidence or mutation
+-- capabilities. Guard each optional object so old snapshot schemas still work.
+DO $$ DECLARE object_name text; function_name text; BEGIN
+    FOREACH object_name IN ARRAY ARRAY['nav_remediation_snapshots','nav_remediation_decisions','nav_remediation_proposals',
+        'nav_correction_approvals','nav_remediation_operations','nav_correction_heads','nav_correction_commit_checks','nav_ingestion_conflicts',
+        'nav_source_revisions','nav_calculations'] LOOP
+        IF to_regclass('mf.'||object_name) IS NOT NULL THEN
+            EXECUTE format('REVOKE ALL ON mf.%I FROM mfdata_app,mfdata_ingest',object_name);
+        END IF;
+    END LOOP;
+    FOREACH function_name IN ARRAY ARRAY['mf.correct_nav_batch(text,bigint,boolean)','mf.correct_nav_observation(text,integer,date,bigint,boolean)',
+        'mf.enforce_nav_correction_commit()','mf.reject_remediation_rewrite()','mf.track_nav_revision()','mf.track_nav_inception()',
+        'mf.protect_nav_correction()','mf.bind_nav_assessment_revision()','mf.track_nav_identity()'] LOOP
+        IF to_regprocedure(function_name) IS NOT NULL THEN
+            EXECUTE format('REVOKE ALL ON FUNCTION %s FROM mfdata_app,mfdata_ingest',function_name);
+        END IF;
+    END LOOP;
+    IF to_regclass('mf.nav_quality_assessments') IS NOT NULL THEN
+        REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON mf.nav_quality_assessments FROM mfdata_ingest;
+    END IF;
+    IF to_regclass('mf.nav_source_revisions') IS NOT NULL THEN
+        GRANT SELECT ON mf.nav_source_revisions TO mfdata_app,mfdata_ingest;
+        GRANT SELECT,INSERT,UPDATE ON mf.nav_calculations TO mfdata_ingest;
+        GRANT EXECUTE ON FUNCTION mf.quarantine_nav_conflict(integer,date,numeric,text) TO mfdata_ingest;
+        REVOKE EXECUTE ON FUNCTION mf.quarantine_nav_conflict(integer,date,numeric,text) FROM mfdata_app;
+    END IF;
+END $$;
 COMMIT;
 """
     run(

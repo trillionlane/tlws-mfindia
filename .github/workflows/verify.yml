@@ -92,3 +92,11 @@ jobs:
           docker build --file Dockerfile.restore --tag "$image" .
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
           docker run --rm --entrypoint pg_restore "$image" --version | grep -F 'pg_restore (PostgreSQL) 18.'
+
+      - name: Verify dormant DATA-03/04 operator tools in the image
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; import mfdataindia.audit.nav_corrections; import mfdataindia.jobs.nav_calculations; assert Path("/app/sql/022_nav_correction_consistency.sql").is_file(); assert Path("/app/scripts/sql/reconcile_nav_correction_privileges.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/correct_nav_data.py --help

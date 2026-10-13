@@ -365,14 +365,17 @@ def test_sibling_usable_via_expense_ratio_alone(fallback_db):
     assert float(d["facts"]["expense_ratio"]) == 0.9
 
 
-def test_own_per_code_facts_survive_borrow(fallback_db):
+def test_unversioned_own_metrics_are_not_served_or_borrowed(fallback_db):
     # 900031 has only its own Sharpe (not an identity field) so it falls back
     # to 900030 for fund-level facts, but its own sharpe must be preserved.
     d = queries.fund_detail(fallback_db, 900031)
     assert d is not None
     assert d["facts_source_code"] == 900030
     assert float(d["facts"]["aum"]) == 50.0         # borrowed from 900030
-    assert float(d["facts"]["sharpe_ratio"]) == 3.3  # its own, not 900030's
+    assert d["facts"]["sharpe_ratio"] is None
+    # Published/source facts remain untouched, but cannot masquerade as a
+    # calculation verified against the current NAV revision.
+    assert float(fallback_db.execute("SELECT sharpe_ratio FROM mf.fund_facts WHERE amfi_scheme_code=900031").fetchone()["sharpe_ratio"]) == 3.3
 
 
 def test_code_specific_fields_not_borrowed(fallback_db):

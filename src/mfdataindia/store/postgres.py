@@ -73,6 +73,7 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "020_nav_quality_audit_privileges.sql",
     # Append-only investigation and proposal ledger; never grants source writes.
     "021_nav_remediation_review.sql",
+    "022_nav_correction_consistency.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.
@@ -111,6 +112,7 @@ class LoadResult:
     inserted: int = 0
     updated: int = 0
     unchanged: int = 0
+    quarantined: int = 0
     errors: list[str] = field(default_factory=list)
 
     @property
@@ -124,6 +126,7 @@ class LoadResult:
             "inserted": self.inserted,
             "updated": self.updated,
             "unchanged": self.unchanged,
+            "quarantined": self.quarantined,
             "errors": self.errors,
         }
 
@@ -795,6 +798,13 @@ class PostgresStore:
                 return res
 
             before = self._count(cur, "nav_history")
+            # Preserve conflicting incoming values durably, but never replace
+            # an independently approved correction. Direct DML is guarded too.
+            cur.execute(
+                "DELETE FROM mf.stg_nav WHERE mf.quarantine_nav_conflict("
+                "amfi_scheme_code,nav_date,nav,source)"
+            )
+            res.quarantined = cur.rowcount
             cur.execute(
                 """
                 INSERT INTO mf.nav_history AS n (
@@ -820,7 +830,21 @@ class PostgresStore:
             written = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
             res.inserted = self._count(cur, "nav_history") - before
             res.updated = max(0, written - res.inserted)
-            res.unchanged = max(0, res.staged - written)
+            res.unchanged = max(0, res.staged - written - res.quarantined)
+            # Publish every affected fund from its complete current series in
+            # the same transaction as normal ingestion. No separate stale
+            # interval, and no extra scheduler or GitHub environment gate.
+            from mfdataindia.jobs.nav_calculations import recompute
+
+            codes = [r["amfi_scheme_code"] for r in cur.execute(
+                "SELECT r.amfi_scheme_code FROM mf.nav_source_revisions r "
+                "LEFT JOIN mf.nav_calculations c USING(amfi_scheme_code) "
+                "WHERE (c.amfi_scheme_code IS NULL OR c.source_revision<>r.revision OR c.methodology_version<>'1') "
+                "AND EXISTS(SELECT 1 FROM mf.nav_history n WHERE n.amfi_scheme_code=r.amfi_scheme_code) "
+                "ORDER BY r.amfi_scheme_code"
+            ).fetchall()]
+            if codes:
+                recompute(conn, codes)
             self._drop(cur, "stg_nav")
 
         log.info(
