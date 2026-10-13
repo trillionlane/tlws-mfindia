@@ -328,12 +328,14 @@ def _current_assessment_summary(conn, *, dataset_version: int) -> Optional[dict[
         """
         SELECT count(*)::bigint AS assessments,
                count(*) FILTER (WHERE assessed_dataset_version = %(version)s
-                                AND methodology_version = %(methodology)s)::bigint AS current_rows,
+                                AND methodology_version = %(methodology)s
+                                AND assessed_source_revision = r.revision)::bigint AS current_rows,
                count(*) FILTER (WHERE cardinality(signals) > 0)::bigint AS affected,
                count(*) FILTER (WHERE signals @> ARRAY[%(constant)s]::text[])::bigint AS constant_count,
                count(*) FILTER (WHERE signals @> ARRAY[%(duplicate)s]::text[])::bigint AS duplicate_count,
                count(*) FILTER (WHERE signals @> ARRAY[%(terminal)s]::text[])::bigint AS terminal_count
           FROM mf.nav_quality_assessments
+          LEFT JOIN mf.nav_source_revisions r USING(amfi_scheme_code)
         """,
         {
             "version": dataset_version,

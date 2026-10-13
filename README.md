@@ -280,6 +280,11 @@ append-only review/proposal ledger, and scratch-only rollback rehearsal through
 does not change API or UI behavior. See
 [`docs/NAV_REMEDIATION_RUNBOOK.md`](docs/NAV_REMEDIATION_RUNBOOK.md).
 
+Combined DATA-03/04 provides separately approved finite corrections and conditional
+rollback, atomic dependent calculations/audit publication, and version-bound
+private API projections. It does not authorize a live correction or enable an
+admin UI. See [`docs/NAV_CORRECTION_RUNBOOK.md`](docs/NAV_CORRECTION_RUNBOOK.md).
+
 Lifecycle presence is anchored to the latest successfully committed **full**
 AMFI snapshot. Newer partial payloads may update the schemes they contain but
 cannot make omitted schemes look absent; the refresh job rejects materially

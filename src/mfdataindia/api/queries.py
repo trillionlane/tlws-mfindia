@@ -164,7 +164,22 @@ _COMPARISON_ELIGIBLE_OPTION = "GROWTH"
 
 
 def _comparison_eligible_predicate(alias: str = "f") -> str:
-    return f"{alias}.option_type = '{_COMPARISON_ELIGIBLE_OPTION}'"
+    # Same lifecycle/freshness/quality requirements as detail methodology.
+    # Unassessed/stale quality cannot establish comparison readiness.
+    return f"""({alias}.option_type = '{_COMPARISON_ELIGIBLE_OPTION}'
+        AND NOT {alias}.is_defunct
+        AND {alias}.last_seen_in_source >= (SELECT max(snapshot_date) FROM mf.source_snapshot_runs
+            WHERE source='AMFI' AND snapshot_scope='FULL')
+        AND NOT EXISTS(SELECT 1 FROM mf.quality_flags q WHERE q.amfi_scheme_code={alias}.amfi_scheme_code
+            AND q.flag_type='LIFECYCLE_ENDED' AND q.source='AMFI' AND q.resolved_at IS NULL)
+        AND EXISTS(SELECT 1 FROM mf.nav_quality_assessments q CROSS JOIN mf.dataset_summary ds
+            WHERE q.amfi_scheme_code={alias}.amfi_scheme_code AND ds.singleton
+              AND q.assessed_dataset_version=ds.dataset_version AND q.methodology_version='1'
+              AND q.assessed_source_revision=(SELECT revision FROM mf.nav_source_revisions r
+                  WHERE r.amfi_scheme_code={alias}.amfi_scheme_code)
+              AND cardinality(q.signals)=0)
+        AND (SELECT max(nav_date) FROM mf.nav_history n WHERE n.amfi_scheme_code={alias}.amfi_scheme_code)
+            >= (SELECT nav_last - 7 FROM mf.dataset_summary WHERE singleton))"""
 
 
 def _latest_full_source_date(conn) -> Optional[date]:
@@ -273,7 +288,8 @@ def _nav_quality(conn, code: int, *, dataset_version: int) -> dict[str, Any]:
     """
     row = conn.execute(
         """
-        SELECT methodology_version, assessed_dataset_version, assessed_at,
+        SELECT methodology_version, assessed_dataset_version, assessed_at, assessed_source_revision,
+               (SELECT revision FROM mf.nav_source_revisions r WHERE r.amfi_scheme_code=%(code)s) AS source_revision,
                observation_count, distinct_nav_count, signals
         FROM mf.nav_quality_assessments
         WHERE amfi_scheme_code = %(code)s
@@ -290,7 +306,10 @@ def _nav_quality(conn, code: int, *, dataset_version: int) -> dict[str, Any]:
             "distinct_nav_count": None,
             "signals": None,
         }
-    status = "current" if row["assessed_dataset_version"] >= dataset_version else "stale"
+    status = "current" if (row["assessed_dataset_version"] == dataset_version
+                           and row["methodology_version"] == "1"
+                           and row["assessed_source_revision"] is not None
+                           and row["assessed_source_revision"] == row["source_revision"]) else "stale"
     return {
         "assessment_status": status,
         "methodology_version": row["methodology_version"],
@@ -336,11 +355,9 @@ def _methodology(
             limitations.append(LIMITATION_LIFECYCLE_NOT_ACTIVE)
         if freshness["status"] != "current":
             limitations.append(LIMITATION_NAV_FRESHNESS_LAG)
-        # An absent durable assessment is not a gate failure: no signal is
-        # recorded, and the governed audit is the verification mechanism.
         if quality["signals"]:
             limitations.append(LIMITATION_NAV_QUALITY_SIGNAL)
-        comparison_eligible = not limitations
+        comparison_eligible = not limitations and quality.get("assessment_status") == "current"
     else:
         distribution_adjustment = "unavailable"
         limitations.append(LIMITATION_DISTRIBUTION_HISTORY_UNAVAILABLE)
@@ -445,7 +462,7 @@ _ALL_FACTS_FIELDS = (
 _FACTS_SELECT = (
     "SELECT "
     + ", ".join(_ALL_FACTS_FIELDS)
-    + " FROM mf.fund_facts WHERE amfi_scheme_code = %(code)s"
+    + " FROM mf.current_fund_facts WHERE amfi_scheme_code = %(code)s"
 )
 
 #: Fields safe to borrow from a sibling. These are the fund-level factsheet
@@ -497,7 +514,7 @@ _SIBLING_SOURCE_SQL = f"""
          ON v2.group_key = v1.group_key
         AND v2.amfi_scheme_code <> v1.amfi_scheme_code
     JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
-    JOIN mf.fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
+    JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
     WHERE v1.amfi_scheme_code = %(code)s
       AND f.plan_type = f1.plan_type
       AND f.option_type = f1.option_type
@@ -523,7 +540,7 @@ _BATCH_SIBLING_SOURCE_SQL = f"""
              ON v2.group_key = v1.group_key
             AND v2.amfi_scheme_code <> v1.amfi_scheme_code
         JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
-        JOIN mf.fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
+        JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
         WHERE v1.amfi_scheme_code = ANY(%(codes)s::int[])
           AND f.plan_type = f1.plan_type
           AND f.option_type = f1.option_type
@@ -696,7 +713,7 @@ def list_funds(
     # join: a name sort needs no join; a facts/NAV sort needs its column available
     # before ORDER BY. ``pos`` preserves page order through the outer joins.
     if sort in ("aum", "expense", "return_5y"):
-        sort_join = "LEFT JOIN mf.fund_facts fs ON fs.amfi_scheme_code = f.amfi_scheme_code"
+        sort_join = "LEFT JOIN mf.current_fund_facts fs ON fs.amfi_scheme_code = f.amfi_scheme_code"
         order = {
             "aum": "fs.aum DESC NULLS LAST",
             "expense": "fs.expense_ratio ASC NULLS LAST",
@@ -738,7 +755,7 @@ def list_funds(
             WHERE n.amfi_scheme_code = p.amfi_scheme_code
             ORDER BY n.nav_date DESC LIMIT 1
         ) lt ON true
-        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = p.amfi_scheme_code
+        LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = p.amfi_scheme_code
         ORDER BY p.pos
         """,
         params,
@@ -1145,7 +1162,7 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
         """
         SELECT f.amfi_scheme_code, f.option_type, ff.sebi_category_name,
                ff.return_1year, ff.return_3year, ff.return_5year
-        FROM mf.funds f LEFT JOIN mf.fund_facts ff
+        FROM mf.funds f LEFT JOIN mf.current_fund_facts ff
              ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE f.amfi_scheme_code = %(code)s
         """,
@@ -1166,7 +1183,10 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
     # population size, but no beats_pct/rank.
     peer_plan = _plan_predicate()
     peer_eligible = _comparison_eligible_predicate("f")
-    subject_eligible = row["option_type"] == _COMPARISON_ELIGIBLE_OPTION
+    subject_eligible = bool(conn.execute(
+        f"SELECT {_comparison_eligible_predicate('f')} AS eligible FROM mf.funds f WHERE amfi_scheme_code=%(code)s",
+        {"code": code},
+    ).fetchone()["eligible"])
     colmap = {
         "1Y": ("return_1year", row["return_1year"]),
         "3Y": ("return_3year", row["return_3year"]),
@@ -1178,7 +1198,7 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
             r["r"]
             for r in conn.execute(
                 f"""
-            SELECT {col} AS r FROM mf.fund_facts ff
+            SELECT {col} AS r FROM mf.current_fund_facts ff
             JOIN mf.funds f ON f.amfi_scheme_code = ff.amfi_scheme_code
             WHERE ff.sebi_category_name = %(cat)s
               AND f.in_scope AND NOT f.is_defunct AND {peer_plan}
@@ -1205,7 +1225,7 @@ def fund_peers(conn, code: int) -> dict[str, Any]:
 def risk_reward(conn, code: int) -> dict[str, Any]:
     """Category risk-reward map: (annualized volatility, CAGR) per peer fund.
 
-    Data comes from the derived ``mf.fund_risk_profile`` table (refreshed by
+    Data comes from the derived ``mf.current_risk_profile`` table (refreshed by
     scripts/refresh_risk_profile.py). Points are the fund's own SEBI-category
     peers; the fund itself is flagged so the client can highlight it. AUM is
     attached for bubble sizing. Returns ``{"category": ...}`` with an empty
@@ -1218,7 +1238,7 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
     me = conn.execute(
         """
         SELECT f.amfi_scheme_code, f.scheme_name, ff.sebi_category_name, ff.aum
-        FROM mf.funds f LEFT JOIN mf.fund_facts ff
+        FROM mf.funds f LEFT JOIN mf.current_fund_facts ff
              ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE f.amfi_scheme_code = %(code)s
         """,
@@ -1231,9 +1251,9 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
         f"""
         SELECT f.amfi_scheme_code, f.scheme_name, ff.aum,
                rp.annual_vol, rp.cagr, rp.max_drawdown, rp.points AS nav_points
-        FROM mf.fund_risk_profile rp
+        FROM mf.current_risk_profile rp
         JOIN mf.funds f ON f.amfi_scheme_code = rp.amfi_scheme_code
-        JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
+        JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
         WHERE ff.sebi_category_name = %(cat)s
           AND f.in_scope AND NOT f.is_defunct
           AND {_plan_predicate()}
@@ -1297,7 +1317,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
                lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
-        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
+        LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
         LEFT JOIN LATERAL (
             SELECT n.nav, n.nav_date FROM mf.nav_history n
             WHERE n.amfi_scheme_code = f.amfi_scheme_code
@@ -1362,7 +1382,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
                     "SELECT amfi_scheme_code, aum, expense_ratio, base_expense_ratio,"
                     " COALESCE(benchmark_name, benchmark) AS benchmark_name,"
                     " risk_level, fund_manager_name, inception_date"
-                    " FROM mf.fund_facts WHERE amfi_scheme_code = ANY(%(codes)s::int[])",
+                    " FROM mf.current_fund_facts WHERE amfi_scheme_code = ANY(%(codes)s::int[])",
                     {"codes": sorted(set(facts_source.values()))},
                 ).fetchall()
             }
@@ -1799,7 +1819,7 @@ def compare(conn, codes: list[int], *, years: float = 1.0) -> dict[str, Any]:
                    lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
             FROM mf.funds f
             JOIN mf.amcs a ON a.amc_id = f.amc_id
-            LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
+            LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
             LEFT JOIN LATERAL (
                 SELECT n.nav, n.nav_date FROM mf.nav_history n
                 WHERE n.amfi_scheme_code = f.amfi_scheme_code
@@ -1944,7 +1964,7 @@ def list_fund_families(
             WHERE n.amfi_scheme_code = s.amfi_scheme_code
             ORDER BY n.nav_date DESC LIMIT 1
         ) lt ON true
-        LEFT JOIN mf.fund_facts ff ON ff.amfi_scheme_code = s.amfi_scheme_code
+        LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = s.amfi_scheme_code
         ORDER BY {order}, s.amfi_scheme_code
         LIMIT %(per)s OFFSET %(off)s
         """,

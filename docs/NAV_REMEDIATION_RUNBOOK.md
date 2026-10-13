@@ -175,6 +175,11 @@ status, proposal hash and execution proof; synthetic tests are not that proof.
 
 ## Deferred DATA-03 / DATA-04
 
+Combined implementation and operational prerequisites are documented in
+[NAV_CORRECTION_RUNBOOK.md](NAV_CORRECTION_RUNBOOK.md). DATA-02's scratch-only
+CLI remains unchanged; the separate correction operator requires recorded,
+independently reviewed finite-batch approval and operational restore evidence.
+
 Before actual corrections: review exact proposals, test a current backup, verify
 a narrowly scoped writer, implement a durable applied/rollback ledger and
 incoming-refresh conflict handling, and approve a finite batch. Recheck original

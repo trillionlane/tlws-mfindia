@@ -1,10 +1,11 @@
-"""Compute missing risk/return metrics from our own NAV series.
+"""Preserve legacy fill-only facts and publish current, version-bound metrics.
 
 Fills NULL ``fund_facts`` fields (``sharpe_ratio``, ``std_deviation`` and the
 ``return_*`` columns) for in-scope live funds from ``mf.nav_history`` — the
 AMFI-sourced daily NAV. Conventions are identical to the API's on-the-fly
-analytics (:func:`mfdataindia.api.queries.fund_analytics` and ``returns``), so
-a stored value always equals what the API already computes for the same fund:
+analytics (:func:`mfdataindia.api.queries.fund_analytics` and ``returns``).
+The API now reads the revision-bound ``nav_calculations`` projection rather
+than treating old/non-NULL fact values as current computations:
 
 * daily log returns over the fund's full history; annualised ``*252`` /
   ``*sqrt(252)`` (sample stdev, n-1)
@@ -116,7 +117,7 @@ def compute_for_series(dates: list[date], navs: list[float],
     """
     out: dict[str, Optional[float]] = {f: None for f in TARGET_FIELDS}
     rets = log_returns(navs)
-    if rets:
+    if len(rets) > 1:
         ann_return, ann_vol = annualize(rets)
         out["std_deviation"] = round(ann_vol * 100, 2)
         s = sharpe_of(ann_return, ann_vol)
@@ -248,16 +249,20 @@ def compute_fund_metrics(
                    and (current is None or current[f] is None)}
         if not to_fill:
             report["funds_no_gaps"] += 1
-            continue
-        report["funds_filled"] += 1
-        if current is None:
+        else:
+            report["funds_filled"] += 1
+        if current is None and to_fill:
             report["rows_inserted"] += 1
         for f, v in to_fill.items():
             report["filled_by_field"][f] = report["filled_by_field"].get(f, 0) + 1
         if dry_run:
             continue
+        from mfdataindia.jobs.nav_calculations import recompute
+
         with store.transaction() as conn, conn.cursor() as cur:
-            _fill_fund(cur, code, current, to_fill, dates[-1])
+            if to_fill:
+                _fill_fund(cur, code, current, to_fill, dates[-1])
+            recompute(conn, [code])
 
     report["elapsed_s"] = round(time.monotonic() - report["started_at"], 1)
     log.info("compute_metrics: %s", report)

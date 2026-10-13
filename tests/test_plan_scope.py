@@ -201,6 +201,9 @@ def scope_db_with_nav(scope_db):
     cur.execute("SELECT max(nav_date) AS mx FROM mf.nav_history")
     ref = cur.fetchone()["mx"] or date.today()
     _insert_nav(cur, ref=ref)
+    from conftest import certify_comparison_fixture
+
+    certify_comparison_fixture(scope_db)
     return scope_db
 
 
@@ -474,4 +477,3 @@ def test_rollback_leaves_no_rows(pg_dsn, repo_root):
         assert cur.fetchone()[0] == 0
     finally:
         conn.close()
-
