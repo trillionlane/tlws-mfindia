@@ -70,15 +70,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          input() { jq -er --arg name "$1" '.inputs[$name]' "$GITHUB_EVENT_PATH"; }
-          requested_project="$(input confirm_project)"
-          requested_job="$(input confirm_job)"
-          requested_sha="$(input expected_git_sha)"
-          image_digest="$(input expected_image_digest)"
-          dataset_version="$(input expected_dataset_version)"
-          mode="$(input mode)"
-          prior="$(input prior_result_sha256)"
-          approval="$(input approval_reference)"
+          required_input() { jq -er --arg name "$1" '.inputs[$name]' "$GITHUB_EVENT_PATH"; }
+          optional_input() { jq -r --arg name "$1" '.inputs[$name] // ""' "$GITHUB_EVENT_PATH"; }
+          requested_project="$(required_input confirm_project)"
+          requested_job="$(required_input confirm_job)"
+          requested_sha="$(required_input expected_git_sha)"
+          image_digest="$(required_input expected_image_digest)"
+          dataset_version="$(required_input expected_dataset_version)"
+          mode="$(required_input mode)"
+          prior="$(optional_input prior_result_sha256)"
+          approval="$(optional_input approval_reference)"
           test "$requested_project" = "$EXPECTED_PROJECT"
           test "$requested_job" = "$AUDIT_JOB"
           test "$requested_sha" = "$GITHUB_SHA"
