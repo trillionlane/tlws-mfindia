@@ -99,7 +99,11 @@ alter eligibility. Do not fabricate evidence or clear signals to reduce counts.
 ## Optional durable ledger
 
 Migration 021 adds only investigation tables and append-only triggers. If the
-optional `mfdata_remediation_review` principal exists, it strips inherited roles,
+restore administrator's default grants give API or ingestion access to new
+tables, migration 021 explicitly revokes that access from all runtime roles on
+the three review tables and trigger function, and rejects remaining effective
+ledger privileges. Ordinary source-ingestion default grants remain intact.
+If the optional `mfdata_remediation_review` principal exists, it strips inherited roles,
 elevated attributes and prior schema/table grants before granting SELECT/INSERT
 on the ledger only. No source writes are granted to any principal. Runtime
 provisioning must separately reject source-table ownership and unexpected

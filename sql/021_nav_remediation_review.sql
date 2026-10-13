@@ -65,6 +65,32 @@ CREATE TRIGGER nav_remediation_proposals_immutable
 REVOKE ALL ON mf.nav_remediation_snapshots, mf.nav_remediation_decisions,
     mf.nav_remediation_proposals FROM PUBLIC;
 REVOKE ALL ON FUNCTION mf.reject_remediation_rewrite() FROM PUBLIC;
+-- Restore grants ingestion/app access to future mfdata_admin-owned objects.
+-- Removing PUBLIC does not remove those role-specific default ACLs. Keep
+-- ordinary ingestion defaults intact, but isolate every review-ledger object.
+DO $$
+DECLARE runtime_role text;
+BEGIN
+    FOREACH runtime_role IN ARRAY ARRAY[
+        'mfdata_app', 'mfdata_ingest', 'mfdata_association_writer', 'mfdata_audit'
+    ] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname=runtime_role) THEN
+            EXECUTE format(
+                'REVOKE ALL ON mf.nav_remediation_snapshots, mf.nav_remediation_decisions, '
+                'mf.nav_remediation_proposals FROM %I', runtime_role
+            );
+            EXECUTE format(
+                'REVOKE ALL ON FUNCTION mf.reject_remediation_rewrite() FROM %I', runtime_role
+            );
+            IF has_table_privilege(runtime_role, 'mf.nav_remediation_snapshots', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+               OR has_table_privilege(runtime_role, 'mf.nav_remediation_decisions', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+               OR has_table_privilege(runtime_role, 'mf.nav_remediation_proposals', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') THEN
+                RAISE EXCEPTION 'runtime principal % retains effective review-ledger access', runtime_role;
+            END IF;
+        END IF;
+    END LOOP;
+END
+$$;
 -- Optional review principal is provisioned separately; no grants to the API,
 -- ingestion, association writer, or audit principal are introduced here.
 DO $$
