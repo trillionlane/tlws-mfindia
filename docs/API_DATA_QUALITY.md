@@ -158,18 +158,30 @@ assesses the **complete** database and is the sole writer of
 `mf.nav_quality_assessments` (migration 016):
 
 ```
-PYTHONPATH=src python scripts/audit_nav_integrity.py            # assess + persist
-PYTHONPATH=src python scripts/audit_nav_integrity.py --dry-run  # report only
+PYTHONPATH=src python scripts/audit_nav_integrity.py --dry-run
+PYTHONPATH=src python scripts/audit_nav_integrity.py --expected-dataset-version 7
+PYTHONPATH=src python scripts/audit_nav_integrity.py \
+  --expected-dataset-version 7 --certify-current
 ```
 
 Properties: deterministic and idempotent (same database → same signals and
 rows on every run); read-only over `mf.nav_history` (a dev-snapshot run
 verified zero NAV changes by full-content hash); finite sorted JSON summary
-(methodology version, dataset version, counts, affected codes); its only
-write target is the assessment table. The six-hour NAV refresh keeps only
-cheap incoming-feed guards; the full-history audit is **not** scheduled until
-its runtime is benchmarked and scheduling is separately approved (observed
-runtime on the 14,368-scheme / 4.2M-NAV dev snapshot: ~6.5 s).
+(methodology version, dataset version, counts, affected codes, and a
+deterministic findings hash); its only write target is the assessment table.
+The audit and NAV refresh share a transaction-scoped advisory lock and fail
+closed rather than overlap. Apply is one repeatable-read transaction, rejects
+an unexpected dataset version before writing, and exact certification
+recomputes the full result before comparing every persisted assessment.
+
+DATA-01 adds a separately deployed, zero-retry DEV audit job under a dedicated
+least-privilege database principal. Deployment leaves it dormant. Only the
+separate dry-run → approved apply → read-only certification sequence may admit
+schedule activation. Once explicitly activated, its schedule is
+`10 */6 * * *` in `Asia/Kolkata`, ten minutes after the NAV refresh; it is not
+created or resumed by an ordinary application deployment. Detection does not
+authorize NAV changes, duplicate cleanup, scheme merging, or any other data
+remediation. See [`NAV_QUALITY_AUDIT_RUNBOOK.md`](NAV_QUALITY_AUDIT_RUNBOOK.md).
 
 ## 6. Legacy transaction facts — not a buyability signal
 

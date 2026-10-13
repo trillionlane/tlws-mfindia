@@ -1,0 +1,243 @@
+name: Enable MFDataIndia NAV Audit Schedule DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_schedule:
+        description: "Type 10 */6 * * *"
+        required: true
+        type: string
+      expected_git_sha:
+        description: "Exact certified MFData SHA"
+        required: true
+        type: string
+      expected_image_digest:
+        description: "Exact certified sha256 image digest"
+        required: true
+        type: string
+      expected_dataset_version:
+        description: "Dataset version in the certification result"
+        required: true
+        type: string
+      certification_result_sha256:
+        description: "Exact canonical certification result hash"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-dev-mutations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  AUDIT_JOB: tlws-mf-data-nav-audit-dev
+  AUDIT_SERVICE_ACCOUNT: tlws-mf-data-audit-dev@trillionlane-dev.iam.gserviceaccount.com
+  SCHEDULER_SERVICE_ACCOUNT: tlws-mf-data-scheduler-dev@trillionlane-dev.iam.gserviceaccount.com
+  AUDIT_SCHEDULER: tlws-mf-data-nav-audit-dev
+  SCHEDULE: "10 */6 * * *"
+
+jobs:
+  enable:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate activation request
+        shell: bash
+        run: |
+          set -euo pipefail
+          input() { jq -er --arg name "$1" '.inputs[$name]' "$GITHUB_EVENT_PATH"; }
+          requested_project="$(input confirm_project)"
+          requested_schedule="$(input confirm_schedule)"
+          requested_sha="$(input expected_git_sha)"
+          digest="$(input expected_image_digest)"
+          version="$(input expected_dataset_version)"
+          certificate="$(input certification_result_sha256)"
+          test "$requested_project" = "$EXPECTED_PROJECT"
+          test "$requested_schedule" = "$SCHEDULE"
+          test "$requested_sha" = "$GITHUB_SHA"
+          case "$GITHUB_SHA" in *[!0-9a-f]*|'') exit 1 ;; esac
+          test "${#GITHUB_SHA}" = 40
+          hex="${digest#sha256:}"
+          test "$hex" != "$digest"
+          case "$hex" in *[!0-9a-f]*|'') exit 1 ;; esac
+          test "${#hex}" = 64
+          case "$version" in *[!0-9]*|'') exit 1 ;; esac
+          test "$version" -gt 0
+          case "$certificate" in *[!0-9a-f]*|'') exit 1 ;; esac
+          test "${#certificate}" = 64
+
+      - name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ env.EXPECTED_PROJECT }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Require the exact certified audit execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          requested_digest="$(jq -er '.inputs.expected_image_digest' "$GITHUB_EVENT_PATH")"
+          requested_sha="$(jq -er '.inputs.expected_git_sha' "$GITHUB_EVENT_PATH")"
+          expected_certificate="$(jq -er '.inputs.certification_result_sha256' "$GITHUB_EVENT_PATH")"
+          expected_version="$(jq -er '.inputs.expected_dataset_version' "$GITHUB_EVENT_PATH")"
+          job_json="$(gcloud run jobs describe "$AUDIT_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$job_json")" = "$AUDIT_SERVICE_ACCOUNT"
+          image="$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$job_json")"
+          case "$image" in
+            *@sha256:*) digest="${image##*@}" ;;
+            *) digest="$(gcloud artifacts docker images describe "$image" --project="$EXPECTED_PROJECT" --format='value(image_summary.digest)')" ;;
+          esac
+          test "$digest" = "$requested_digest"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$job_json")" = "$requested_sha"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.taskCount == 1' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/audit_nav_integrity.py", "--summary-only"]' <<<"$job_json" >/dev/null
+
+          certificate_result=""
+          certificate_execution=""
+          recent_executions="$(gcloud run jobs executions list \
+            --job="$AUDIT_JOB" --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" --limit=20 --format='value(metadata.name)')"
+          test -n "$recent_executions"
+          while IFS= read -r execution; do
+            test -n "$execution" || continue
+            execution_json="$(gcloud run jobs executions describe "$execution" \
+              --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+            if ! jq -e '.status.conditions[] | select(.type == "Completed") | .status == "True"' \
+              <<<"$execution_json" >/dev/null; then
+              continue
+            fi
+            logs="$(gcloud logging read \
+              "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$execution\"" \
+              --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
+            result="$(bash scripts/extract_cloud_run_json_result.sh <<<"$logs")"
+            test -n "$result" || continue
+            canonical="$(jq -ceS . <<<"$result")"
+            actual_sha256="$(printf '%s' "$canonical" | sha256sum | cut -d' ' -f1)"
+            if [[ "$actual_sha256" == "$expected_certificate" ]]; then
+              # The execution snapshot, not the mutable current job, is the
+              # provenance boundary for this certificate. Continue searching
+              # when an older image produced the same result content.
+              certificate_image="$(jq -r '.spec.template.spec.containers[0].image // empty' <<<"$execution_json")"
+              certificate_digest=""
+              case "$certificate_image" in
+                *@sha256:*) certificate_digest="${certificate_image##*@}" ;;
+              esac
+              certificate_sha="$(jq -r '[.spec.template.spec.containers[0].env[]? | select(.name == "DEPLOYMENT_GIT_SHA") | .value] | last // empty' <<<"$execution_json")"
+              if [[ "$certificate_digest" != "$requested_digest" || "$certificate_sha" != "$requested_sha" ]]; then
+                continue
+              fi
+              certificate_result="$canonical"
+              certificate_execution="$execution"
+              break
+            fi
+          done <<<"$recent_executions"
+          test -n "$certificate_execution"
+          test -n "$certificate_result"
+          jq -e --argjson version "$expected_version" '
+            .status == "NAV_INTEGRITY_AUDIT_CERTIFIED" and
+            .dataset_version == $version and .assessments_written == 0
+          ' <<<"$certificate_result" >/dev/null
+
+          # Read the live version through the same least-privilege audit
+          # identity, under the refresh/audit advisory lock. A refresh that
+          # advanced the dataset after certification therefore fails this gate.
+          probe_execution="$(gcloud run jobs execute "$AUDIT_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --args=/app/scripts/audit_nav_integrity.py,--summary-only,--expected-dataset-version,"$expected_version",--report-dataset-version \
+            --wait --format='value(metadata.name)')"
+          test -n "$probe_execution"
+          probe_result=""
+          for attempt in 1 2 3 4 5; do
+            logs="$(gcloud logging read \
+              "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AUDIT_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$probe_execution\"" \
+              --project="$EXPECTED_PROJECT" --limit=50 --order=asc --format=json)"
+            probe_result="$(bash scripts/extract_cloud_run_json_result.sh <<<"$logs")"
+            test -n "$probe_result" && break
+            sleep 3
+          done
+          test -n "$probe_result"
+          jq -e --argjson version "$expected_version" '
+            .status == "NAV_DATASET_VERSION_CURRENT" and
+            .dataset_version == $version and .assessments_written == 0
+          ' <<<"$probe_result" >/dev/null
+
+      - name: Enable offset six-hour schedule
+        shell: bash
+        run: |
+          set -euo pipefail
+          activation_succeeded=false
+          rollback_on_exit() {
+            status=$?
+            if [[ "$activation_succeeded" != true ]] && gcloud scheduler jobs describe \
+              "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" \
+              --location="$EXPECTED_REGION" >/dev/null 2>&1; then
+              gcloud scheduler jobs pause "$AUDIT_SCHEDULER" \
+                --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --quiet || \
+                echo "CRITICAL: failed to pause the audit scheduler during rollback" >&2
+            fi
+            exit "$status"
+          }
+          trap rollback_on_exit EXIT
+
+          if gcloud scheduler jobs describe "$AUDIT_SCHEDULER" \
+            --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" >/dev/null 2>&1; then
+            test "$(gcloud scheduler jobs describe "$AUDIT_SCHEDULER" \
+              --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" \
+              --format='value(state)')" = "PAUSED"
+          fi
+
+          gcloud run jobs add-iam-policy-binding "$AUDIT_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --member="serviceAccount:$SCHEDULER_SERVICE_ACCOUNT" \
+            --role=roles/run.invoker --condition=None --quiet >/dev/null
+          uri="https://run.googleapis.com/v2/projects/$EXPECTED_PROJECT/locations/$EXPECTED_REGION/jobs/$AUDIT_JOB:run"
+          if gcloud scheduler jobs describe "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" >/dev/null 2>&1; then
+            action=update
+          else
+            action=create
+          fi
+          gcloud scheduler jobs "$action" http "$AUDIT_SCHEDULER" \
+            --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" \
+            --schedule="$SCHEDULE" --time-zone=Asia/Kolkata \
+            --uri="$uri" --http-method=POST \
+            --oauth-service-account-email="$SCHEDULER_SERVICE_ACCOUNT" \
+            --oauth-token-scope=https://www.googleapis.com/auth/cloud-platform \
+            --max-retry-attempts=0 \
+            --description="MFDataIndia derived NAV-quality audit; ten minutes after six-hour refresh; zero retry" \
+            --quiet
+
+          if [[ "$(gcloud scheduler jobs describe "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(state)')" == "PAUSED" ]]; then
+            gcloud scheduler jobs resume "$AUDIT_SCHEDULER" \
+              --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --quiet
+          fi
+
+          scheduler="$(gcloud scheduler jobs describe "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format=json)"
+          jq -e --arg schedule "$SCHEDULE" --arg uri "$uri" --arg sa "$SCHEDULER_SERVICE_ACCOUNT" '
+            .state == "ENABLED" and .schedule == $schedule and
+            .timeZone == "Asia/Kolkata" and .httpTarget.uri == $uri and
+            .httpTarget.httpMethod == "POST" and
+            .httpTarget.oauthToken.serviceAccountEmail == $sa and
+            ((.retryConfig.maxRetryAttempts // 0) == 0)
+          ' <<<"$scheduler" >/dev/null
+          activation_succeeded=true

@@ -1,0 +1,186 @@
+name: Deploy MFDataIndia NAV Audit DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_job:
+        description: "Type tlws-mf-data-nav-audit-dev"
+        required: true
+        type: string
+      confirm_git_sha:
+        description: "Exact merged and already deployed MFData SHA"
+        required: true
+        type: string
+      confirm_image_digest:
+        description: "Exact deployed sha256 image digest"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-dev-mutations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  SERVICE_NAME: tlws-mf-data-dev
+  AUDIT_JOB: tlws-mf-data-nav-audit-dev
+  GRANTS_JOB: tlws-mf-data-nav-audit-grants-dev
+  AUDIT_SERVICE_ACCOUNT: tlws-mf-data-audit-dev@trillionlane-dev.iam.gserviceaccount.com
+  MIGRATE_SERVICE_ACCOUNT: tlws-mf-data-migrate-dev@trillionlane-dev.iam.gserviceaccount.com
+  CLOUD_SQL_INSTANCE: trillionlane-dev:asia-south1:tlws-mf-data-dev
+  AUDIT_SECRET: tlws-mf-data-audit-dsn-dev
+  ADMIN_SECRET: tlws-mf-data-admin-dsn-dev
+  AUDIT_SCHEDULER: tlws-mf-data-nav-audit-dev
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate exact dormant deployment request
+        shell: bash
+        run: |
+          set -euo pipefail
+          input() { jq -er --arg name "$1" '.inputs[$name]' "$GITHUB_EVENT_PATH"; }
+          requested_project="$(input confirm_project)"
+          requested_job="$(input confirm_job)"
+          requested_sha="$(input confirm_git_sha)"
+          image_digest="$(input confirm_image_digest)"
+          test "$requested_project" = "$EXPECTED_PROJECT"
+          test "$requested_job" = "$AUDIT_JOB"
+          test "$requested_sha" = "$GITHUB_SHA"
+          case "$requested_sha" in *[!0-9a-f]*|'') exit 1 ;; esac
+          test "${#GITHUB_SHA}" = 40
+          image_hex="${image_digest#sha256:}"
+          test "$image_hex" != "$image_digest"
+          case "$image_hex" in *[!0-9a-f]*|'') exit 1 ;; esac
+          test "${#image_hex}" = 64
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+
+      - name: Authenticate with GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ env.EXPECTED_PROJECT }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Verify deployed image and provisioned audit boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          requested_sha="$(jq -er '.inputs.confirm_git_sha' "$GITHUB_EVENT_PATH")"
+          requested_digest="$(jq -er '.inputs.confirm_image_digest' "$GITHUB_EVENT_PATH")"
+          service_json="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          image="$(jq -er '.spec.template.spec.containers[0].image' <<<"$service_json")"
+          deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
+          test "$deployed_sha" = "$requested_sha"
+          case "$image" in
+            *@sha256:*) digest="${image##*@}" ;;
+            *) digest="$(gcloud artifacts docker images describe "$image" --project="$EXPECTED_PROJECT" --format='value(image_summary.digest)')" ;;
+          esac
+          test "$digest" = "$requested_digest"
+          image_repository="${image%@sha256:*}"
+          test "$image_repository" != "$image"
+          echo "image=$image_repository@$requested_digest" >> "$GITHUB_ENV"
+
+          test "$(gcloud iam service-accounts describe "$AUDIT_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" --format='value(email)')" = "$AUDIT_SERVICE_ACCOUNT"
+          gcloud sql users list --instance=tlws-mf-data-dev --project="$EXPECTED_PROJECT" --format='value(name)' | grep -Fxq mfdata_audit
+
+          scheduler="$(gcloud scheduler jobs list --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --filter="name=$AUDIT_SCHEDULER" --format='value(name)')"
+          if [[ -n "$scheduler" ]]; then
+            state="$(gcloud scheduler jobs describe "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(state)')"
+            test "$state" = "PAUSED" || {
+              echo "Pause the audit schedule before replacing its certified image." >&2
+              exit 1
+            }
+          fi
+
+      - name: Reconcile exact database privileges after provisioning
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$GRANTS_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --image="$image" \
+            --service-account="$MIGRATE_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
+            --set-secrets=MFDATAINDIA_DSN="$ADMIN_SECRET":latest \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/reconcile_nav_audit_privileges.py \
+            --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=2m \
+            --cpu=1 --memory=512Mi \
+            --labels=product=mfdataindia,environment=dev,operation=nav-audit-grants,managed-by=github-actions \
+            --quiet
+          gcloud run jobs execute "$GRANTS_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --wait --quiet
+
+      - name: Stage dormant job with privilege verification as its only command
+        shell: bash
+        run: |
+          set -euo pipefail
+          requested_sha="$(jq -er '.inputs.confirm_git_sha' "$GITHUB_EVENT_PATH")"
+          gcloud run jobs deploy "$AUDIT_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --image="$image" \
+            --service-account="$AUDIT_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
+            --set-secrets=MFDATAINDIA_DSN="$AUDIT_SECRET":latest \
+            --set-env-vars=DEPLOYMENT_GIT_SHA="$requested_sha" \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/verify_nav_audit_privileges.py \
+            --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=3m \
+            --cpu=1 --memory=1Gi \
+            --labels=product=mfdataindia,environment=dev,operation=nav-quality-audit,managed-by=github-actions \
+            --quiet
+
+      - name: Verify effective privileges then arm the dormant audit command
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs execute "$AUDIT_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --wait --quiet
+          gcloud run jobs update "$AUDIT_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --args=/app/scripts/audit_nav_integrity.py,--summary-only \
+            --quiet
+          job_json="$(gcloud run jobs describe "$AUDIT_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$job_json")" = "$AUDIT_SERVICE_ACCOUNT"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$job_json")" = "$image"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.taskCount == 1' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/audit_nav_integrity.py", "--summary-only"]' <<<"$job_json" >/dev/null
+          scheduler="$(gcloud scheduler jobs list --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --filter="name=$AUDIT_SCHEDULER" --format='value(name)')"
+          if [[ -n "$scheduler" ]]; then
+            test "$(gcloud scheduler jobs describe "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" --format='value(state)')" = "PAUSED"
+          fi
+
+      - name: Remove the privileged one-shot grants job
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gcloud run jobs describe "$GRANTS_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" >/dev/null 2>&1; then
+            gcloud run jobs delete "$GRANTS_JOB" \
+              --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --quiet
+          fi

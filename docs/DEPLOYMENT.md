@@ -23,6 +23,7 @@ out of scope.
 Provisional resource names are `tlws-mf-data-dev` for the read Cloud Run service,
 `tlws-mf-data-association-writer-dev` for the private writer,
 `tlws-mf-data-nav-refresh-dev` for the scheduled job, and
+`tlws-mf-data-nav-audit-dev` for the separately gated derived-quality job, and
 `tlws-mf-data-restore-dev` for the one-shot restore job. Provisioning must first
 confirm that none of the names already exists.
 
@@ -94,6 +95,14 @@ The repository keeps these operations separate:
    a dedicated invoker identity.
 5. `enable-association-writes-dev.yml` is manual-only, exact-SHA-bound and
    changes only the already-deployed private writer's default-off runtime flag.
+6. `deploy-nav-audit-dev.yml` reconciles the dedicated audit database grants,
+   deploys the exact already-live image as a dormant zero-retry job, and proves
+   the runtime's effective privileges. It does not run the assessment or enable
+   a schedule. `operate-nav-audit-dev.yml` then keeps dry-run, approved apply,
+   and read-only certification as explicit evidence-linked operations.
+   `enable-nav-audit-schedule-dev.yml` admits only the exact certified SHA,
+   image digest, dataset version, and certification-result hash; the companion
+   disable workflow only pauses the schedule.
 
 ## Identity boundaries
 
@@ -113,12 +122,20 @@ The repository keeps these operations separate:
 - Migration 019 reconciles the optional late-provisioning sequence. If
   migration 018 predates the writer role, the next deployment strips elevated
   attributes and applies the same bounded grants before the service is used.
+- The NAV-audit runtime has its own DSN. It can select only the six declared
+  audit inputs and can insert, update, or delete only
+  `mf.nav_quality_assessments`; it has no source-table mutation, schema-create,
+  role-create, database-create, truncate, or `cloudsqlsuperuser` capability.
+  Migration 020 also removes the assessment-table write path from the ingestion
+  principal. Effective privileges are verified through the deployed audit DSN
+  before any assessment operation is admitted.
 - No `allUsers` Cloud Run invoker binding is permitted. MFDataIndia uses internal
   ingress, and callers authenticate with short-lived Google-signed OIDC tokens.
 - The migration identity owns schema changes but is not used by the API.
 - The restore identity may read only the approved snapshot bucket/object and the
   restore DSN secret.
-- The scheduler identity may invoke only the NAV refresh job.
+- The scheduler identity may invoke the NAV refresh and, only after DATA-01
+  activation, NAV-audit jobs; neither runtime receives scheduler credentials.
 - No user-managed service-account keys are permitted.
 - The writer admits only the TrillionInsights runtime as invoker and uses the
   same short-lived Google-signed OIDC boundary; no API key or shared secret is
@@ -148,3 +165,9 @@ runs every six hours in `Asia/Kolkata` with `maxRetries=0`; valid unchanged-feed
 executions are safe zero-row outcomes. The intended steady-state cadence remains
 19:30 `Asia/Kolkata`, Monday–Friday, and requires a separately reviewed schedule
 change.
+
+The derived NAV-quality job has an independent activation gate. Its approved
+initial cadence is ten minutes after each six-hour refresh (`10 */6 * * *`,
+`Asia/Kolkata`) with `maxRetries=0`. Refresh and audit serialize on the same
+database advisory lock. A lock conflict, dataset-version mismatch, timeout, or
+certification difference fails closed and is not automatically retried.

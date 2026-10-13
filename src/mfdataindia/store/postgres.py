@@ -68,6 +68,9 @@ DEFAULT_MIGRATIONS: tuple[str, ...] = (
     "018_fund_family_association_tags.sql",
     # Reconcile grants when the optional writer role is provisioned after 018.
     "019_reconcile_association_writer_privileges.sql",
+    # Dedicated NAV-audit principal: source tables are read-only and the
+    # derived assessment table is its sole write target.
+    "020_nav_quality_audit_privileges.sql",
 )
 
 #: Columns the loader may write on mf.funds. GENERATED/derived columns omitted.

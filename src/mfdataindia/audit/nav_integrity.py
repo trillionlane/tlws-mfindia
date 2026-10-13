@@ -22,6 +22,7 @@ verification fetches for the small candidate set) and its only write target is
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import date
@@ -232,12 +233,21 @@ def detect_duplicate_variant_series(conn, run: AssessmentRun) -> None:
 
 def build_summary(run: AssessmentRun, *, duration_ms: Optional[int] = None) -> dict[str, Any]:
     """Finite, sorted JSON summary: methodology, dataset, counts, codes."""
+    findings = {
+        str(code): {
+            "signals": sorted(run.signals.get(code, [])),
+            "evidence": run.evidence.get(code, {}),
+        }
+        for code in sorted(run.signals)
+    }
+    findings_blob = json.dumps(findings, sort_keys=True, separators=(",", ":"), default=str)
     summary: dict[str, Any] = {
         "status": "NAV_INTEGRITY_AUDIT_OK",
         "methodology_version": METHODOLOGY_VERSION,
         "dataset_version": run.dataset_version,
         "nav_rows_scanned": run.nav_rows,
         "schemes_assessed": len(run.series),
+        "findings_sha256": hashlib.sha256(findings_blob.encode()).hexdigest(),
         "signals": {
             SIGNAL_CONSTANT: {
                 "count": len(run.signal_codes(SIGNAL_CONSTANT)),
@@ -257,6 +267,144 @@ def build_summary(run: AssessmentRun, *, duration_ms: Optional[int] = None) -> d
     if duration_ms is not None:
         summary["duration_ms"] = duration_ms
     return summary
+
+
+def summary_without_codes(summary: dict[str, Any]) -> dict[str, Any]:
+    """Return bounded evidence while retaining exact counts and findings hash."""
+
+    bounded = dict(summary)
+    bounded["signals"] = {
+        signal: {"count": details["count"]}
+        for signal, details in summary["signals"].items()
+    }
+    bounded.pop("affected_codes", None)
+    return bounded
+
+
+def validate_run(run: AssessmentRun, *, expected_dataset_version: Optional[int]) -> None:
+    """Reject an incomplete or internally inconsistent assessment before writes."""
+
+    if run.dataset_version <= 0:
+        raise RuntimeError("the dataset has no positive version to assess")
+    if expected_dataset_version is not None and run.dataset_version != expected_dataset_version:
+        raise RuntimeError(
+            "dataset version changed before audit: "
+            f"expected={expected_dataset_version} actual={run.dataset_version}"
+        )
+    if not run.series or run.nav_rows <= 0:
+        raise RuntimeError("the NAV history is empty")
+    if set(run.series) - set(run.family):
+        raise RuntimeError("one or more NAV series have no fund identity")
+
+    allowed = {SIGNAL_CONSTANT, SIGNAL_DUPLICATE, SIGNAL_TERMINAL_RESET}
+    for code, signals in run.signals.items():
+        if code not in run.series or len(signals) != len(set(signals)):
+            raise RuntimeError(f"invalid signal assignment for scheme {code}")
+        if set(signals) - allowed:
+            raise RuntimeError(f"unsupported signal assignment for scheme {code}")
+        if SIGNAL_DUPLICATE not in signals:
+            continue
+        duplicate = run.evidence[code][SIGNAL_DUPLICATE]
+        counterparts = duplicate.get("counterpart_codes") or []
+        if not counterparts:
+            raise RuntimeError(f"duplicate signal for scheme {code} has no counterpart")
+        for counterpart in counterparts:
+            other = run.evidence.get(counterpart, {}).get(SIGNAL_DUPLICATE)
+            if (
+                other is None
+                or code not in (other.get("counterpart_codes") or [])
+                or other.get("family") != duplicate.get("family")
+                or other.get("fingerprint") != duplicate.get("fingerprint")
+            ):
+                raise RuntimeError(
+                    f"duplicate evidence is not symmetric for schemes {code} and {counterpart}"
+                )
+
+
+def _current_assessment_summary(conn, *, dataset_version: int) -> Optional[dict[str, Any]]:
+    """Return a zero-write result when this exact dataset is already assessed."""
+
+    row = conn.execute(
+        """
+        SELECT count(*)::bigint AS assessments,
+               count(*) FILTER (WHERE assessed_dataset_version = %(version)s
+                                AND methodology_version = %(methodology)s)::bigint AS current_rows,
+               count(*) FILTER (WHERE cardinality(signals) > 0)::bigint AS affected,
+               count(*) FILTER (WHERE signals @> ARRAY[%(constant)s]::text[])::bigint AS constant_count,
+               count(*) FILTER (WHERE signals @> ARRAY[%(duplicate)s]::text[])::bigint AS duplicate_count,
+               count(*) FILTER (WHERE signals @> ARRAY[%(terminal)s]::text[])::bigint AS terminal_count
+          FROM mf.nav_quality_assessments
+        """,
+        {
+            "version": dataset_version,
+            "methodology": METHODOLOGY_VERSION,
+            "constant": SIGNAL_CONSTANT,
+            "duplicate": SIGNAL_DUPLICATE,
+            "terminal": SIGNAL_TERMINAL_RESET,
+        },
+    ).fetchone()
+    nav = conn.execute(
+        """
+        SELECT count(DISTINCT amfi_scheme_code)::bigint AS schemes,
+               count(*)::bigint AS nav_rows
+          FROM mf.nav_history
+        """
+    ).fetchone()
+    if int(row["assessments"]) != int(nav["schemes"]) or int(row["current_rows"]) != int(
+        nav["schemes"]
+    ):
+        return None
+    return {
+        "status": "NAV_INTEGRITY_AUDIT_ALREADY_CURRENT",
+        "methodology_version": METHODOLOGY_VERSION,
+        "dataset_version": dataset_version,
+        "nav_rows_scanned": int(nav["nav_rows"]),
+        "schemes_assessed": int(nav["schemes"]),
+        "signals": {
+            SIGNAL_CONSTANT: {"count": int(row["constant_count"])},
+            SIGNAL_DUPLICATE: {"count": int(row["duplicate_count"])},
+            SIGNAL_TERMINAL_RESET: {"count": int(row["terminal_count"])},
+        },
+        "affected_count": int(row["affected"]),
+        "assessments_written": 0,
+    }
+
+
+def validate_persisted_assessments(conn, run: AssessmentRun) -> None:
+    """Verify the complete derived table before the transaction may commit."""
+
+    rows = conn.execute(
+        """
+        SELECT amfi_scheme_code, methodology_version, assessed_dataset_version,
+               observation_count, distinct_nav_count, first_nav_date, last_nav_date,
+               signals, evidence
+          FROM mf.nav_quality_assessments
+         ORDER BY amfi_scheme_code
+        """
+    ).fetchall()
+    expected = len(run.series)
+    if len(rows) != expected:
+        raise RuntimeError(
+            "persisted assessment set is incomplete: "
+            f"expected={expected} rows={len(rows)}"
+        )
+    for row in rows:
+        code = int(row["amfi_scheme_code"])
+        series = run.series.get(code)
+        if series is None:
+            raise RuntimeError(f"unexpected persisted assessment for scheme {code}")
+        exact = (
+            row["methodology_version"] == METHODOLOGY_VERSION
+            and int(row["assessed_dataset_version"]) == run.dataset_version
+            and int(row["observation_count"]) == series.observation_count
+            and int(row["distinct_nav_count"]) == series.distinct_nav_count
+            and row["first_nav_date"] == series.first_nav_date
+            and row["last_nav_date"] == series.last_nav_date
+            and list(row["signals"] or []) == sorted(run.signals.get(code, []))
+            and dict(row["evidence"] or {}) == run.evidence.get(code, {})
+        )
+        if not exact:
+            raise RuntimeError(f"persisted assessment differs for scheme {code}")
 
 
 def persist_assessments(conn, run: AssessmentRun) -> int:
@@ -314,7 +462,14 @@ def persist_assessments(conn, run: AssessmentRun) -> int:
     return len(rows)
 
 
-def assess(conn, *, write: bool = True) -> dict[str, Any]:
+def assess(
+    conn,
+    *,
+    write: bool = True,
+    expected_dataset_version: Optional[int] = None,
+    skip_if_current: bool = False,
+    verify_current: bool = False,
+) -> dict[str, Any]:
     """Run the complete assessment on the current database.
 
     ``conn`` must use the dict_row factory (as PostgresStore connections do)
@@ -329,14 +484,28 @@ def assess(conn, *, write: bool = True) -> dict[str, Any]:
     ).fetchone()
     run = AssessmentRun()
     run.dataset_version = int(dataset["dataset_version"]) if dataset else 0
+    if expected_dataset_version is not None and run.dataset_version != expected_dataset_version:
+        raise RuntimeError(
+            "dataset version changed before audit: "
+            f"expected={expected_dataset_version} actual={run.dataset_version}"
+        )
+    if write and skip_if_current:
+        current = _current_assessment_summary(conn, dataset_version=run.dataset_version)
+        if current is not None:
+            return current
     run.series, run.nav_rows = scan_aggregates(conn)
     run.family = load_families(conn)
     detect_constant_series(run)
     detect_terminal_face_value_resets(run)
     detect_duplicate_variant_series(conn, run)
+    validate_run(run, expected_dataset_version=expected_dataset_version)
     written = persist_assessments(conn, run) if write else 0
+    if write or verify_current:
+        validate_persisted_assessments(conn, run)
     summary = build_summary(run)
     summary["assessments_written"] = written
-    if not write:
+    if verify_current:
+        summary["status"] = "NAV_INTEGRITY_AUDIT_CERTIFIED"
+    elif not write:
         summary["status"] = "NAV_INTEGRITY_AUDIT_DRY_RUN"
     return summary

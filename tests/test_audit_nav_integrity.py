@@ -257,6 +257,13 @@ def test_summary_is_finite_sorted_json(audit_run):
     assert summary["affected_codes"] == sorted(summary["affected_codes"])
     assert summary["methodology_version"] == nav_integrity.METHODOLOGY_VERSION
     assert summary["schemes_assessed"] >= len(_CODES)
+    assert len(summary["findings_sha256"]) == 64
+    assert set(summary["findings_sha256"]) <= set("0123456789abcdef")
+
+    bounded = nav_integrity.summary_without_codes(summary)
+    assert "affected_codes" not in bounded
+    assert all("codes" not in value for value in bounded["signals"].values())
+    assert bounded["findings_sha256"] == summary["findings_sha256"]
 
 
 def test_audit_never_mutates_nav_history(audit_run):
@@ -285,3 +292,68 @@ def test_rerun_is_idempotent(audit_run):
     assert strip(first) == strip(second)
     # and nav_history is still untouched after the second pass
     assert db["nav_after"] == _nav_history_state(db["cur"])
+
+
+def test_apply_skips_an_exact_current_dataset_without_writes(audit_run):
+    db = audit_run
+    current = nav_integrity.assess(
+        db["conn"],
+        write=True,
+        expected_dataset_version=db["summary"]["dataset_version"],
+        skip_if_current=True,
+    )
+    assert current["status"] == "NAV_INTEGRITY_AUDIT_ALREADY_CURRENT"
+    assert current["assessments_written"] == 0
+    assert current["schemes_assessed"] == db["summary"]["schemes_assessed"]
+    assert db["nav_after"] == _nav_history_state(db["cur"])
+
+
+def test_expected_dataset_version_fails_before_writes(audit_run):
+    db = audit_run
+    assessed_at = db["cur"].execute(
+        "SELECT assessed_at FROM mf.nav_quality_assessments "
+        "WHERE amfi_scheme_code = 900400"
+    ).fetchone()["assessed_at"]
+    with pytest.raises(RuntimeError, match="dataset version changed before audit"):
+        nav_integrity.assess(
+            db["conn"],
+            write=True,
+            expected_dataset_version=db["summary"]["dataset_version"] + 1,
+        )
+    assert db["cur"].execute(
+        "SELECT assessed_at FROM mf.nav_quality_assessments "
+        "WHERE amfi_scheme_code = 900400"
+    ).fetchone()["assessed_at"] == assessed_at
+
+
+def test_certification_detects_tampered_derived_assessment(audit_run):
+    db = audit_run
+    db["cur"].execute("SAVEPOINT nav_audit_tamper")
+    try:
+        db["cur"].execute(
+            "UPDATE mf.nav_quality_assessments SET signals = ARRAY[]::text[] "
+            "WHERE amfi_scheme_code = 900400"
+        )
+        with pytest.raises(RuntimeError, match="persisted assessment differs"):
+            nav_integrity.assess(
+                db["conn"],
+                write=False,
+                expected_dataset_version=db["summary"]["dataset_version"],
+                verify_current=True,
+            )
+    finally:
+        db["cur"].execute("ROLLBACK TO SAVEPOINT nav_audit_tamper")
+        db["cur"].execute("RELEASE SAVEPOINT nav_audit_tamper")
+
+
+def test_certification_exactly_matches_current_derived_assessments(audit_run):
+    db = audit_run
+    certified = nav_integrity.assess(
+        db["conn"],
+        write=False,
+        expected_dataset_version=db["summary"]["dataset_version"],
+        verify_current=True,
+    )
+    assert certified["status"] == "NAV_INTEGRITY_AUDIT_CERTIFIED"
+    assert certified["assessments_written"] == 0
+    assert certified["findings_sha256"] == db["summary"]["findings_sha256"]

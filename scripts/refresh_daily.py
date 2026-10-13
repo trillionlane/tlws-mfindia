@@ -27,6 +27,7 @@ from mfdataindia.ingest.amfi_navall import AmfiScheme, ParseReport, parse_navall
 from mfdataindia.load.amfi_to_store import load_parsed_amfi, nav_rows  # noqa: E402
 from mfdataindia.load.fund_family import build_fund_family  # noqa: E402
 from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn  # noqa: E402
+from mfdataindia.store.locks import acquire_nav_data_operation_lock  # noqa: E402
 from mfdataindia.store.postgres import PostgresStore  # noqa: E402
 
 log = logging.getLogger("daily_refresh")
@@ -271,7 +272,10 @@ def main() -> int:
             )
         # One outer transaction makes data, provenance, family identity, exact
         # summary and integrity validation a single success-or-rollback unit.
-        with store.transaction():
+        with store.transaction() as conn:
+            # A quality audit must describe one committed dataset version.
+            # Fail closed instead of overlapping its full-history scan.
+            acquire_nav_data_operation_lock(conn)
             load_report = load_parsed_amfi(
                 store,
                 schemes,
