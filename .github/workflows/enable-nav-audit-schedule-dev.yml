@@ -210,7 +210,7 @@ jobs:
           gcloud run jobs add-iam-policy-binding "$AUDIT_JOB" \
             --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
             --member="serviceAccount:$SCHEDULER_SERVICE_ACCOUNT" \
-            --role=roles/run.invoker --condition=None --quiet >/dev/null
+            --role=roles/run.invoker --quiet >/dev/null
           uri="https://run.googleapis.com/v2/projects/$EXPECTED_PROJECT/locations/$EXPECTED_REGION/jobs/$AUDIT_JOB:run"
           if gcloud scheduler jobs describe "$AUDIT_SCHEDULER" --project="$EXPECTED_PROJECT" --location="$EXPECTED_REGION" >/dev/null 2>&1; then
             action=update
