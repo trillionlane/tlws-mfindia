@@ -97,7 +97,13 @@ and that approval reference.
 The operation recomputes the complete result and upserts exactly one derived
 assessment row per scheme with NAV history. It also removes only obsolete rows
 from the derived assessment table. Accept only
-`status=NAV_INTEGRITY_AUDIT_OK` with `assessments_written=schemes_assessed`.
+`status=NAV_INTEGRITY_AUDIT_OK` with `assessments_written=schemes_assessed`,
+or `NAV_INTEGRITY_AUDIT_ALREADY_CURRENT` with zero writes when every assessment
+matches the exact dataset, methodology and source revision. Both paths require
+positive complete-population counts and the canonical findings hash matching
+the preceding independent dry-run. A migration baseline may legitimately make
+apply a no-op. A no-op is not certification: Gate 4 still performs the full
+read-only source scan and exact persisted-evidence comparison.
 
 There is no automatic repair or rerun. A process, SQL, validation, or evidence
 failure rolls back the assessment transaction. Source tables remain protected

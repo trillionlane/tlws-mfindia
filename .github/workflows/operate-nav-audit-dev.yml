@@ -188,9 +188,7 @@ jobs:
             jq -e '.status == "NAV_INTEGRITY_AUDIT_DRY_RUN" and
                    .assessments_written == 0' <<<"$canonical" >/dev/null
           else
-            jq -e '.status == "NAV_INTEGRITY_AUDIT_OK" and
-                   .assessments_written == .schemes_assessed' \
-              <<<"$canonical" >/dev/null
+            bash scripts/validate_nav_audit_apply_result.sh <<<"$canonical"
           fi
           echo "findings_sha256=$(jq -er '.findings_sha256' <<<"$canonical")" \
             >> "$GITHUB_OUTPUT"
@@ -239,12 +237,7 @@ jobs:
               ' "$evidence" >/dev/null
               ;;
             apply)
-              jq -e '
-                .status == "NAV_INTEGRITY_AUDIT_OK" and
-                .assessments_written == .schemes_assessed and
-                .schemes_assessed > 0 and .nav_rows_scanned > 0 and
-                (.findings_sha256 | test("^[0-9a-f]{64}$"))
-              ' "$evidence" >/dev/null
+              bash scripts/validate_nav_audit_apply_result.sh <"$evidence"
               ;;
             certify)
               jq -e '

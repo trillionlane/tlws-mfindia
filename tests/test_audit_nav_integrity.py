@@ -305,6 +305,10 @@ def test_apply_skips_an_exact_current_dataset_without_writes(audit_run):
     assert current["status"] == "NAV_INTEGRITY_AUDIT_ALREADY_CURRENT"
     assert current["assessments_written"] == 0
     assert current["schemes_assessed"] == db["summary"]["schemes_assessed"]
+    assert current["findings_sha256"] == db["summary"]["findings_sha256"]
+    certified = nav_integrity.assess(db['conn'], write=False, verify_current=True)
+    assert certified['status'] == 'NAV_INTEGRITY_AUDIT_CERTIFIED'
+    assert certified['findings_sha256'] == current['findings_sha256']
     assert db["nav_after"] == _nav_history_state(db["cur"])
 
 
