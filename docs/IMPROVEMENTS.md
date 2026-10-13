@@ -129,9 +129,9 @@ deployed and accepted, with evidence for each claimed milestone.
 
 | Sprint | Status | Implementation PRs | Release / acceptance evidence |
 | --- | --- | --- | --- |
-| ENH-01 | Implemented; review pending | `codex/verified-fund-review-api` | Local synthetic preservation/replay tests; operational-sized clone and live privilege verification pending. |
-| ANA-01 | Initial seven-metric slice implemented; monthly/rolling audit remains | Same provider bundle | Independent reference fixtures; no live cohort generation or consumer acceptance. |
-| DATA-05 | Initial review/proposal API implemented; review pending | Same provider bundle | Local HTTP, concurrency and session-independent history tests; no UI or executable overrides. |
+| ENH-01 | Implemented; review pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local synthetic preservation/replay tests; operational-sized clone and live privilege verification pending. |
+| ANA-01 | Initial seven-metric slice implemented; monthly/rolling audit remains | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Independent reference fixtures; no live cohort generation or consumer acceptance. |
+| DATA-05 | Initial review/proposal API implemented; review pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local HTTP, concurrency and session-independent history tests; no UI or executable overrides. |
 | UI-01 | Planned | — | — |
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
