@@ -164,6 +164,12 @@ def execute(conn, proposal: dict, archive, *, expected_version: int,
         case = conn.execute("SELECT payload FROM mf.nav_remediation_snapshots WHERE snapshot_sha256=%s",
                             (proposal['case_snapshot_sha256'],)).fetchone()['payload']
         case_codes = case['scheme_codes']
+        reviewed = proposal['reviewed_source_revisions']
+        revisions = {str(r['amfi_scheme_code']): r['revision'] for r in conn.execute(
+            "SELECT * FROM mf.nav_source_revisions WHERE amfi_scheme_code=ANY(%s)", (case_codes,)
+        ).fetchall()}
+        if reviewed != case.get('reviewed_source_revisions') or revisions != reviewed:
+            raise ValueError('reviewed source dependencies changed; obtain a fresh review')
         if conn.execute(
             "SELECT 1 FROM mf.nav_source_revisions r LEFT JOIN mf.nav_quality_assessments q USING(amfi_scheme_code) "
             "WHERE r.amfi_scheme_code=ANY(%s) AND (q.assessed_source_revision IS DISTINCT FROM r.revision "
@@ -207,11 +213,13 @@ def execute(conn, proposal: dict, archive, *, expected_version: int,
     after = [_row(conn, c) for c in proposal["changes"]]
     receipt = seal({
         "format": "mfdata-nav-correction-receipt-v1", "action": action,
+        "transaction_id": conn.execute("SELECT pg_current_xact_id()::text AS id").fetchone()['id'],
         "proposal_sha256": proposal["sha256"], "approval_sha256": approval_sha256,
         "before_dataset_version": live_version, "dataset_version": version,
         "before_images": before_images, "after_images": after,
         "source_revisions": {c: r["source_revision"] for c,r in calculations.items() if int(c) in codes},
         "calculation_sha256": fingerprint(calculations), "audit": audit,
+        "calculations": calculations,
         "calculated_codes": affected,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "status": "SOURCE_AND_DERIVED_DATA_COMMITTED_TOGETHER",

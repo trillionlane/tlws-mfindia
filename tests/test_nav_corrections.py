@@ -141,7 +141,145 @@ def state(db):
     with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
         return fingerprint([conn.execute('SELECT * FROM mf.'+t+' ORDER BY 1,2').fetchall() for t in
             ('nav_history','nav_source_revisions','nav_calculations','dataset_summary','nav_quality_assessments',
-             'nav_remediation_operations','nav_correction_heads')])
+             'nav_remediation_operations','nav_correction_heads','nav_correction_commit_checks')])
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize('rollback', [False, True])
+def test_direct_batch_cannot_commit_without_publication_and_receipt(correction_db, rollback):
+    db = correction_db
+    version = db['proposal']['expected_dataset_version']
+    if rollback:
+        version = operation(db)['dataset_version']
+    baseline = state(db)
+    with psycopg.connect(db['dsn']) as conn:
+        conn.execute('SET LOCAL ROLE mfdata_nav_correction_writer')
+        conn.execute('SELECT mf.correct_nav_batch(%s,%s,%s)', (db['proposal']['sha256'], version, rollback))
+        with pytest.raises(psycopg.errors.RaiseException, match='same-transaction publication and receipt'):
+            conn.commit()
+    assert state(db) == baseline
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize('missing', ['version', 'calculations', 'audit', 'receipt_calculations', 'transaction_id'])
+def test_commit_guard_rejects_incomplete_or_mismatched_publication(correction_db, monkeypatch, missing):
+    from mfdataindia.audit import nav_corrections
+    from psycopg.types.json import Jsonb
+
+    db = correction_db
+    baseline = state(db)
+    if missing == 'calculations':
+        # Let the Python path reach receipt insertion without publishing.
+        def fake_recompute(conn, codes):
+            return {str(r['amfi_scheme_code']): {'source_revision': r['source_revision'],
+                'as_of': r['as_of'].isoformat(), 'metrics': r['metrics'], 'profile': r['profile']}
+                for r in conn.execute('SELECT * FROM mf.nav_calculations WHERE amfi_scheme_code=ANY(%s)', (codes,))}
+        monkeypatch.setattr(nav_corrections, 'recompute', fake_recompute)
+    with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
+        conn.execute('SET LOCAL ROLE mfdata_nav_correction_writer')
+        receipt = execute(conn, db['proposal'], db['archive'],
+            expected_version=db['proposal']['expected_dataset_version'], approval_sha256=db['approval']['sha256'])
+        # Owner-only sabotage simulates interrupted/misbound downstream code;
+        # neither the writer nor ingestion can rewrite the internal obligation.
+        conn.execute('RESET ROLE')
+        if missing == 'version':
+            conn.execute('UPDATE mf.dataset_summary SET dataset_version=dataset_version-1')
+        elif missing == 'audit':
+            conn.execute('DELETE FROM mf.nav_quality_assessments WHERE amfi_scheme_code=4')
+        elif missing in ('receipt_calculations', 'transaction_id'):
+            conn.execute('ALTER TABLE mf.nav_remediation_operations DISABLE TRIGGER USER')
+            receipt[missing if missing == 'transaction_id' else 'calculations'] = 'wrong' if missing == 'transaction_id' else {}
+            conn.execute('UPDATE mf.nav_remediation_operations SET payload=%s', (Jsonb(receipt),))
+            conn.execute('ALTER TABLE mf.nav_remediation_operations ENABLE TRIGGER USER')
+        conn.execute('SET LOCAL ROLE mfdata_nav_correction_writer')
+        with pytest.raises(psycopg.errors.RaiseException, match='correction commit'):
+            conn.commit()
+    assert state(db) == baseline
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize('counterpart', [False, True])
+def test_reassessment_cannot_replace_exact_reviewed_dependencies(correction_db, counterpart):
+    from mfdataindia.audit import nav_integrity
+
+    db = correction_db
+    assert db['proposal']['reviewed_source_revisions'] == {'4': 400}
+    with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
+        code = 4
+        if counterpart:
+            # Peer series is outside the correction's target keys and case;
+            # conservative family revision invalidation binds that dependency.
+            conn.execute("UPDATE mf.fund_variants SET group_key='4' WHERE amfi_scheme_code=2")
+            code = 2
+        conn.execute('UPDATE mf.nav_history SET nav=nav+1 WHERE amfi_scheme_code=%s AND nav_date=%s',
+                     (code, DAY + timedelta(days=10)))
+        recompute(conn, [2, 4] if counterpart else [4])
+        nav_integrity.assess(conn)
+        row = conn.execute('SELECT r.revision,q.assessed_source_revision FROM mf.nav_source_revisions r '
+            'JOIN mf.nav_quality_assessments q USING(amfi_scheme_code) WHERE amfi_scheme_code=4').fetchone()
+        assert row['revision'] == row['assessed_source_revision'] != 400
+    baseline = state(db)
+    with pytest.raises(ValueError, match='reviewed source dependencies changed'):
+        operation(db)
+    with psycopg.connect(db['dsn']) as conn:
+        conn.execute('SET LOCAL ROLE mfdata_nav_correction_writer')
+        with pytest.raises(psycopg.errors.RaiseException, match='reviewed source dependencies changed'):
+            conn.execute('SELECT mf.correct_nav_batch(%s,%s,false)',
+                         (db['proposal']['sha256'], db['proposal']['expected_dataset_version']))
+    assert state(db) == baseline
+
+
+@pytest.mark.postgres
+def test_unbound_historical_proposal_requires_a_fresh_review(correction_db):
+    from mfdataindia.audit.remediation_rehearsal import validate_proposal
+
+    db = correction_db
+    unbound = seal({k: v for k, v in db['proposal'].items() if k not in ('sha256', 'reviewed_source_revisions')})
+    with pytest.raises(ValueError, match='exact reviewed source dependencies'):
+        validate_proposal(unbound, db['archive'])
+    mismatched = seal({k: v for k, v in db['proposal'].items() if k != 'sha256'} |
+                      {'reviewed_source_revisions': {'4': 399}})
+    with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
+        conn.execute('SET LOCAL ROLE mfdata_remediation_review')
+        with pytest.raises(ValueError, match='dependencies differ from reviewed case'):
+            record_proposal(conn, mismatched)
+
+
+@pytest.mark.postgres
+def test_commit_obligation_cannot_be_removed_or_disabled_by_runtime(correction_db):
+    db = correction_db
+    with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
+        for role in (WRITER, REVIEWER, 'mfdata_app', 'mfdata_ingest', 'mfdata_audit', 'mfdata_association_writer'):
+            assert not conn.execute("SELECT has_table_privilege(%s,'mf.nav_correction_commit_checks',"
+                "'INSERT,UPDATE,DELETE,TRUNCATE') AS ok", (role,)).fetchone()['ok']
+            assert not conn.execute("SELECT has_function_privilege(%s,'mf.enforce_nav_correction_commit()',"
+                "'EXECUTE') AS ok", (role,)).fetchone()['ok']
+    baseline = state(db)
+    with psycopg.connect(db['dsn']) as conn:
+        conn.execute('SET LOCAL ROLE mfdata_nav_correction_writer')
+        conn.execute('SET CONSTRAINTS ALL IMMEDIATE')
+        with pytest.raises(psycopg.errors.RaiseException, match='same-transaction publication and receipt'):
+            conn.execute('SELECT mf.correct_nav_batch(%s,%s,false)',
+                         (db['proposal']['sha256'], db['proposal']['expected_dataset_version']))
+    assert state(db) == baseline
+
+
+@pytest.mark.postgres
+def test_review_export_ignores_revision_entries_without_nav_history(correction_db):
+    from mfdataindia.audit import nav_integrity
+
+    db = correction_db
+    with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
+        conn.execute("INSERT INTO mf.funds(amfi_scheme_code,amc_id,scheme_name,scheme_name_norm,"
+                     "scheme_type,scheme_category,plan_type,option_type) "
+                     "VALUES(13,1,'No history','NO HISTORY','OPEN_ENDED','Debt','REGULAR','GROWTH')")
+        conn.execute("INSERT INTO mf.fund_facts(amfi_scheme_code,source) VALUES(13,'MANUAL')")
+        conn.execute("UPDATE mf.fund_facts SET inception_date=%s WHERE amfi_scheme_code=13", (DAY,))
+        summary = nav_integrity.assess(conn)
+    with psycopg.connect(db['dsn'], row_factory=dict_row) as conn:
+        register = export_register(conn, expected_dataset_version=summary['dataset_version'],
+                                   expected_findings_sha256=summary['findings_sha256'])
+    assert all('13' not in case['reviewed_source_revisions'] for case in register['cases'])
 
 
 @pytest.mark.postgres
@@ -324,7 +462,9 @@ def test_restored_broad_grants_do_not_reopen_correction_capabilities(correction_
         conn.execute(grants)
         for role in ('mfdata_app','mfdata_ingest'):
             assert conn.execute("SELECT has_function_privilege(%s,'mf.correct_nav_observation(text,integer,date,bigint,boolean)','EXECUTE') AS ok",(role,)).fetchone()['ok'] is False
-            for table in ('nav_correction_approvals','nav_remediation_operations','nav_remediation_proposals','nav_correction_heads'):
+            assert not conn.execute("SELECT has_function_privilege(%s,'mf.enforce_nav_correction_commit()',"
+                "'EXECUTE') AS ok", (role,)).fetchone()['ok']
+            for table in ('nav_correction_approvals','nav_remediation_operations','nav_remediation_proposals','nav_correction_heads','nav_correction_commit_checks'):
                 assert conn.execute('SELECT has_table_privilege(%s,%s,\'INSERT,UPDATE,DELETE,TRUNCATE\') AS ok',(role,'mf.'+table)).fetchone()['ok'] is False
         assert conn.execute("SELECT has_table_privilege('mfdata_ingest','mf.nav_quality_assessments','UPDATE') AS ok").fetchone()['ok'] is False
         conn.execute('SET LOCAL ROLE mfdata_app')
@@ -454,7 +594,7 @@ def test_database_capability_rejects_reassessed_but_unreviewed_identity(correcti
     baseline = state(db)
     with psycopg.connect(db['dsn']) as conn:
         conn.execute('SET LOCAL ROLE mfdata_nav_correction_writer')
-        with pytest.raises(psycopg.errors.RaiseException, match='identity changed'):
+        with pytest.raises(psycopg.errors.RaiseException, match='identity changed|reviewed source dependencies changed'):
             conn.execute('SELECT mf.correct_nav_batch(%s,%s,false)',
                          (db['proposal']['sha256'],db['proposal']['expected_dataset_version']))
     assert state(db) == baseline

@@ -38,6 +38,12 @@ environment variable or automatically provisioned correction identity.
 
 Migration 022 adds revision counters, calculation sidecars, approval/operation
 ledgers, protected observation heads and append-only ingestion conflicts.
+An owner-only immutable commit-obligation ledger and deferred constraint trigger
+prevent even a direct writer call to `correct_nav_batch()` from committing an
+incomplete correction. The same transaction must publish exact current
+calculations, advance the dataset version once, reassess the complete population,
+and insert a matching transaction-bound receipt. Apply and rollback are both
+covered; ordinary ingestion does not create correction obligations.
 Approvals, operation receipts and conflicts cannot be updated/deleted/truncated.
 Original published `fund_facts` and the legacy risk profile are retained.
 
@@ -45,6 +51,12 @@ NAV INSERT/UPDATE/DELETE, inception edits and identity/family changes invalidate
 affected source dependencies under the existing shared operation lock. Duplicate
 counterparts are invalidated conservatively. A counter is not just `nav_last`:
 an edit five years back is detected even when the latest date does not change.
+Each new case and proposal seals `reviewed_source_revisions`, an exact map for
+all case members. Proposal construction, scratch rehearsal and both SQL/Python
+apply checks compare against these original reviewed revisions, not merely the
+latest reassessment. Reassessment cannot renew an old review after historical
+or counterpart drift. Historical artifacts without this binding remain evidence
+but cannot become executable proposals; export and review a fresh case.
 Privileged administrative bypasses (DDL, disabling triggers or direct TRUNCATE)
 are not supported data operations. Runtime source mutation must use the guarded
 ingestion/correction paths; do not grant runtime TRUNCATE or DDL authority beyond
@@ -171,6 +183,8 @@ Required proofs include multi-observation apply/replay/rollback, all 19 private
 read routes, source-vs-derived agreement, unchanged published/unrelated facts,
 failures after source/calculation/audit/receipt stages, concurrent snapshots,
 stale proposals, superseded decisions, protected conflicts, later target changes,
+direct SQL commits without full publication, receipt/transaction mismatches,
+and reassessment after non-target historical or counterpart changes,
 later other-date preservation, restored default grants and per-source audit
 skip rejection. Lint, both OpenAPI pins, dependency audit and non-root production
 image/CLI checks must pass. UI/admin editing remains a separate future sprint.

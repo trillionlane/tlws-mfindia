@@ -48,6 +48,17 @@ CREATE TABLE mf.nav_correction_heads (
     proposal_sha256 text NOT NULL REFERENCES mf.nav_correction_approvals(proposal_sha256),
     PRIMARY KEY(amfi_scheme_code, nav_date)
 );
+-- Owner-only commit obligations. A batch capability may change source rows,
+-- but it cannot commit until the same transaction publishes and receipts them.
+CREATE TABLE mf.nav_correction_commit_checks (
+    proposal_sha256 text NOT NULL REFERENCES mf.nav_correction_approvals(proposal_sha256),
+    action text NOT NULL CHECK(action IN ('apply','rollback')),
+    transaction_id text NOT NULL,
+    before_dataset_version bigint NOT NULL,
+    source_revisions jsonb NOT NULL,
+    target_images jsonb NOT NULL,
+    PRIMARY KEY(proposal_sha256,action)
+);
 CREATE TABLE mf.nav_ingestion_conflicts (
     amfi_scheme_code integer NOT NULL, nav_date date NOT NULL,
     proposal_sha256 text NOT NULL,
@@ -59,11 +70,73 @@ CREATE TABLE mf.nav_ingestion_conflicts (
 );
 -- Nothing can rewrite the historical approval, receipt or conflict evidence.
 DO $$ DECLARE t text; BEGIN
-    FOREACH t IN ARRAY ARRAY['nav_correction_approvals','nav_remediation_operations','nav_ingestion_conflicts'] LOOP
+    FOREACH t IN ARRAY ARRAY['nav_correction_approvals','nav_remediation_operations','nav_ingestion_conflicts','nav_correction_commit_checks'] LOOP
         EXECUTE format('CREATE TRIGGER %I BEFORE UPDATE OR DELETE OR TRUNCATE ON mf.%I '
             'FOR EACH STATEMENT EXECUTE FUNCTION mf.reject_remediation_rewrite()',t||'_immutable',t);
     END LOOP;
 END $$;
+
+CREATE FUNCTION mf.enforce_nav_correction_commit() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,mf AS $$
+DECLARE receipt jsonb; calculations jsonb; image jsonb; actual mf.nav_history%ROWTYPE;
+BEGIN
+    SELECT payload INTO receipt FROM mf.nav_remediation_operations
+        WHERE proposal_sha256=NEW.proposal_sha256 AND action=NEW.action;
+    IF receipt IS NULL
+       OR receipt->>'transaction_id' IS DISTINCT FROM NEW.transaction_id
+       OR NEW.transaction_id IS DISTINCT FROM pg_current_xact_id()::text
+       OR receipt->>'format' IS DISTINCT FROM 'mfdata-nav-correction-receipt-v1'
+       OR receipt->>'status' IS DISTINCT FROM 'SOURCE_AND_DERIVED_DATA_COMMITTED_TOGETHER'
+       OR (receipt->>'before_dataset_version')::bigint IS DISTINCT FROM NEW.before_dataset_version
+       OR (receipt->>'dataset_version')::bigint IS DISTINCT FROM NEW.before_dataset_version+1
+       OR (SELECT dataset_version FROM mf.dataset_summary WHERE singleton) IS DISTINCT FROM NEW.before_dataset_version+1
+       OR receipt->'audit'->>'status' IS DISTINCT FROM 'NAV_INTEGRITY_AUDIT_CERTIFIED'
+       OR (receipt->'audit'->>'dataset_version')::bigint IS DISTINCT FROM NEW.before_dataset_version+1
+       OR receipt->>'approval_sha256' IS DISTINCT FROM
+          (SELECT payload->'approval'->>'sha256' FROM mf.nav_correction_approvals WHERE proposal_sha256=NEW.proposal_sha256)
+    THEN RAISE EXCEPTION 'correction commit requires same-transaction publication and receipt'; END IF;
+    -- Bind the publication to the exact post-batch revisions, including dirty
+    -- counterparts. A receipt alone, stale calculation, or partial audit fails.
+    IF EXISTS(SELECT 1 FROM jsonb_each_text(NEW.source_revisions) v
+        LEFT JOIN mf.nav_source_revisions r ON r.amfi_scheme_code=v.key::integer
+        LEFT JOIN mf.nav_calculations c ON c.amfi_scheme_code=r.amfi_scheme_code
+        WHERE r.revision IS DISTINCT FROM v.value::bigint
+           OR c.source_revision IS DISTINCT FROM r.revision OR c.methodology_version IS DISTINCT FROM '1')
+       OR EXISTS(SELECT 1 FROM mf.nav_source_revisions r
+        LEFT JOIN mf.nav_quality_assessments q USING(amfi_scheme_code)
+        WHERE EXISTS(SELECT 1 FROM mf.nav_history n WHERE n.amfi_scheme_code=r.amfi_scheme_code)
+          AND (q.assessed_source_revision IS DISTINCT FROM r.revision
+            OR q.assessed_dataset_version IS DISTINCT FROM NEW.before_dataset_version+1
+            OR q.methodology_version IS DISTINCT FROM '1'))
+    THEN RAISE EXCEPTION 'correction commit requires current calculations and complete reassessment'; END IF;
+    SELECT jsonb_object_agg(c.amfi_scheme_code::text,jsonb_build_object(
+        'source_revision',c.source_revision,'as_of',c.as_of,'metrics',c.metrics,'profile',c.profile))
+        INTO calculations FROM mf.nav_calculations c WHERE NEW.source_revisions ? c.amfi_scheme_code::text;
+    IF receipt->'calculations' IS DISTINCT FROM calculations
+       OR receipt->'source_revisions' IS DISTINCT FROM
+          (SELECT jsonb_object_agg(v->>'amfi_scheme_code',NEW.source_revisions->(v->>'amfi_scheme_code'))
+           FROM jsonb_array_elements(NEW.target_images) v)
+       OR (SELECT array_agg(value::integer ORDER BY value::integer) FROM jsonb_array_elements_text(receipt->'calculated_codes'))
+          IS DISTINCT FROM (SELECT array_agg(key::integer ORDER BY key::integer) FROM jsonb_each(NEW.source_revisions))
+       OR jsonb_array_length(receipt->'after_images') IS DISTINCT FROM jsonb_array_length(NEW.target_images)
+    THEN RAISE EXCEPTION 'correction commit publication differs from receipt'; END IF;
+    FOR image IN SELECT value FROM jsonb_array_elements(NEW.target_images) LOOP
+        SELECT * INTO actual FROM mf.nav_history WHERE amfi_scheme_code=(image->>'amfi_scheme_code')::integer
+            AND nav_date=(image->>'nav_date')::date;
+        IF to_jsonb(actual) IS DISTINCT FROM image OR NOT EXISTS(
+            SELECT 1 FROM jsonb_array_elements(receipt->'after_images') a WHERE
+                (a.value->>'amfi_scheme_code')::integer=actual.amfi_scheme_code
+                AND (a.value->>'nav_date')::date=actual.nav_date
+                AND (a.value->>'nav')::numeric=actual.nav AND a.value->>'source'=actual.source
+                AND (a.value->>'is_cross_verified')::boolean=actual.is_cross_verified
+                AND (a.value->>'ingested_at')::timestamptz=actual.ingested_at)
+        THEN RAISE EXCEPTION 'correction commit target differs from receipt'; END IF;
+    END LOOP;
+    RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER require_nav_correction_publication
+    AFTER INSERT ON mf.nav_correction_commit_checks DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION mf.enforce_nav_correction_commit();
 
 CREATE FUNCTION mf.track_nav_revision() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,mf AS $$
@@ -230,6 +303,12 @@ BEGIN
         RAISE EXCEPTION 'reviewed source dependencies changed';
     END IF;
     IF NOT p_rollback THEN
+        IF jsonb_typeof(proposal->'reviewed_source_revisions') IS DISTINCT FROM 'object'
+           OR proposal->'reviewed_source_revisions' IS DISTINCT FROM case_payload->'reviewed_source_revisions'
+           OR proposal->'reviewed_source_revisions' IS DISTINCT FROM
+              (SELECT jsonb_object_agg(r.amfi_scheme_code::text,r.revision) FROM mf.nav_source_revisions r
+               WHERE r.amfi_scheme_code IN(SELECT value::integer FROM jsonb_array_elements_text(case_payload->'scheme_codes')))
+        THEN RAISE EXCEPTION 'reviewed source dependencies changed'; END IF;
         FOR member IN SELECT value FROM jsonb_array_elements(case_payload->'members') LOOP
             SELECT jsonb_build_object('scheme_name',f.scheme_name,'amc_id',f.amc_id,'amc_name',am.amfi_amc_name,
                 'scheme_type',f.scheme_type,'scheme_category',f.scheme_category,'plan_type',f.plan_type,
@@ -245,6 +324,15 @@ BEGIN
         PERFORM mf.correct_nav_observation(p_hash,(change->>'amfi_scheme_code')::integer,
             (change->>'nav_date')::date,p_version,p_rollback);
     END LOOP;
+    INSERT INTO mf.nav_correction_commit_checks
+        SELECT p_hash,CASE WHEN p_rollback THEN 'rollback' ELSE 'apply' END,pg_current_xact_id()::text,p_version,
+            (SELECT jsonb_object_agg(r.amfi_scheme_code::text,r.revision) FROM mf.nav_source_revisions r
+             LEFT JOIN mf.nav_calculations c USING(amfi_scheme_code)
+             WHERE EXISTS(SELECT 1 FROM mf.nav_history n WHERE n.amfi_scheme_code=r.amfi_scheme_code)
+               AND (c.source_revision IS DISTINCT FROM r.revision OR c.methodology_version IS DISTINCT FROM '1'
+                 OR r.amfi_scheme_code IN(SELECT (v->>'amfi_scheme_code')::integer FROM jsonb_array_elements(proposal->'changes') v))),
+            (SELECT jsonb_agg(to_jsonb(n) ORDER BY v.ordinality) FROM jsonb_array_elements(proposal->'changes') WITH ORDINALITY v(change,ordinality)
+             JOIN mf.nav_history n ON n.amfi_scheme_code=(v.change->>'amfi_scheme_code')::integer AND n.nav_date=(v.change->>'nav_date')::date);
 END $$;
 CREATE FUNCTION mf.protect_nav_correction() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,mf AS $$
@@ -296,16 +384,16 @@ CREATE VIEW mf.current_risk_profile AS
     WHERE c.source_revision=r.revision AND c.methodology_version='1' AND c.profile IS NOT NULL;
 
 REVOKE ALL ON mf.nav_source_revisions,mf.nav_calculations,mf.nav_correction_approvals,mf.nav_remediation_operations,
-    mf.nav_correction_heads,mf.nav_ingestion_conflicts,mf.current_fund_facts,mf.current_risk_profile FROM PUBLIC;
+    mf.nav_correction_heads,mf.nav_correction_commit_checks,mf.nav_ingestion_conflicts,mf.current_fund_facts,mf.current_risk_profile FROM PUBLIC;
 REVOKE ALL ON FUNCTION mf.correct_nav_batch(text,bigint,boolean),mf.track_nav_identity(),mf.bind_nav_assessment_revision(),mf.track_nav_revision(),mf.track_nav_inception(),mf.correct_nav_observation(text,integer,date,bigint,boolean),
-    mf.protect_nav_correction(),mf.quarantine_nav_conflict(integer,date,numeric,text) FROM PUBLIC;
+    mf.enforce_nav_correction_commit(),mf.protect_nav_correction(),mf.quarantine_nav_conflict(integer,date,numeric,text) FROM PUBLIC;
 DO $$ DECLARE role_name text; BEGIN
     FOREACH role_name IN ARRAY ARRAY['mfdata_app','mfdata_ingest','mfdata_association_writer','mfdata_audit','mfdata_nav_correction_writer'] LOOP
         IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=role_name) THEN
             EXECUTE format('REVOKE ALL ON mf.nav_source_revisions,mf.nav_calculations,mf.nav_correction_approvals,'
-                'mf.nav_remediation_operations,mf.nav_correction_heads,mf.nav_ingestion_conflicts,mf.current_fund_facts,mf.current_risk_profile FROM %I',role_name);
+                'mf.nav_remediation_operations,mf.nav_correction_heads,mf.nav_correction_commit_checks,mf.nav_ingestion_conflicts,mf.current_fund_facts,mf.current_risk_profile FROM %I',role_name);
             EXECUTE format('REVOKE ALL ON FUNCTION mf.correct_nav_batch(text,bigint,boolean),mf.correct_nav_observation(text,integer,date,bigint,boolean),'
-                'mf.quarantine_nav_conflict(integer,date,numeric,text),mf.track_nav_revision(),mf.track_nav_inception(),mf.protect_nav_correction(),mf.bind_nav_assessment_revision(),mf.track_nav_identity() FROM %I',role_name);
+                'mf.enforce_nav_correction_commit(),mf.quarantine_nav_conflict(integer,date,numeric,text),mf.track_nav_revision(),mf.track_nav_inception(),mf.protect_nav_correction(),mf.bind_nav_assessment_revision(),mf.track_nav_identity() FROM %I',role_name);
         END IF;
     END LOOP;
     IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='mfdata_app') THEN
