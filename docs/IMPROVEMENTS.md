@@ -7,12 +7,14 @@ today. This file is the forward-looking "next" list.
 
 ## Additive product enhancement roadmap (decision, 2026-10-13)
 
-**Status: planned / not started.** The user-approved direction is to enhance the
+**Status: implementation started for the initial backend bundle; remaining work
+is planned.** The user-approved direction is to enhance the
 existing product, not replace its base or rewrite its data. Existing stored
 source data, identities, histories, published facts and calculation outputs must
 be preserved. Enrichment, analytics and features are additive and versioned.
-This roadmap authorizes documentation only, not implementation, provisioning,
-deployment, activation, source corrections or a production rollout. API/backend
+The separately approved implementation combines ENH-01, an initial ANA-01 slice
+and DATA-05 into one provider PR. It does not authorize provisioning, deployment,
+activation, source corrections or a production rollout. API/backend
 and Insights UI retain separate ownership, contracts and PRs.
 
 This decision supersedes the earlier DATA-06 source-correction pilot and DATA-07
@@ -127,9 +129,9 @@ deployed and accepted, with evidence for each claimed milestone.
 
 | Sprint | Status | Implementation PRs | Release / acceptance evidence |
 | --- | --- | --- | --- |
-| ENH-01 | Planned | — | — |
-| ANA-01 | Planned | — | — |
-| DATA-05 | Planned | — | — |
+| ENH-01 | Implemented; review pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local synthetic preservation/replay tests; operational-sized clone and live privilege verification pending. |
+| ANA-01 | Initial seven-metric slice implemented; monthly/rolling audit remains | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Independent reference fixtures; no live cohort generation or consumer acceptance. |
+| DATA-05 | Initial review/proposal API implemented; review pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local HTTP, concurrency and session-independent history tests; no UI or executable overrides. |
 | UI-01 | Planned | — | — |
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
@@ -138,6 +140,12 @@ deployed and accepted, with evidence for each claimed milestone.
 | CALC-02 | Planned | — | — |
 | CALC-03 | Planned | — | — |
 | NEWS-01 | Planned | — | — |
+
+Initial backend bundle: see [verified fund review runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md).
+The opt-in schema is outside automatic migrations; current v2 reads, source
+ingestion and source-write/correction paths are unchanged. Runtime authorization
+and an operational rollout require separate gates. Wider field-edit workflows,
+automatic enrichment execution and live policy selection are not implemented.
 
 ### Analytics and enrichment decisions
 
