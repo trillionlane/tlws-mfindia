@@ -16,7 +16,7 @@ out of scope.
 | GCP region | `asia-south1` |
 | Database engine | Dedicated Cloud SQL for PostgreSQL 18 |
 | Application | Private read-only API plus a separate default-off association writer; internal ingress only |
-| API consumer | Trillion Insights backend through VPC egress and Google-signed OIDC |
+| API consumers | Trillion Insights and TDW backends through VPC egress and Google-signed OIDC |
 | Browser access | No direct MFDataIndia access; the Insights UI uses its own backend |
 | Production | Out of scope until the production gate is approved |
 
@@ -111,8 +111,9 @@ The repository keeps these operations separate:
 - The runtime identity may connect to only the MFDataIndia database and read only
   its runtime DSN secret. It may invoke the MFDataIndia service only to run the
   bounded private deployment smoke.
-- The Trillion Insights runtime identity may invoke the MFDataIndia service. It
-  receives no database, migration, ingestion or secret access from this project.
+- The Trillion Insights and TDW runtime identities may invoke the MFDataIndia
+  read service. They receive no database, migration, ingestion or secret access
+  from this project. Only Insights may invoke the separate association writer.
 - The association-writer runtime has a separate DSN and may only read family
   identity plus select/insert/update the normalized association state. It has
   no generated-family, NAV, ingest, migration or DELETE privilege.
@@ -159,6 +160,18 @@ Before the first DEV deployment, evidence must include:
   long-lived client/service-account secret;
 - deployed image digest and `DEPLOYMENT_GIT_SHA` reconciliation;
 - a documented database backup and revision rollback path.
+
+The DEV read-service invokers are exactly the MFData smoke/runtime identity,
+Trillion Insights runtime, and TDW runtime (`tl-dwf-dev-runtime`). The shared
+`scripts/private_read_invokers_dev.sh` guard runs before publication/migration,
+reconciles only those three grants, and verifies the full set after deployment.
+Unexpected/public/conditional grants and unavailable lookups stop deployment;
+they are not silently revoked. The deploy preflight verifies the configured
+Insights and TDW service identities without changing either consumer.
+The association-writer allowlist remains Insights-only; neither TDW nor the
+read runtime receives write-service access. This PR does not certify TDW's
+runtime requests: that requires a separately bounded, authenticated read using
+the actual TDW identity/network after reviewed deployment.
 
 Scheduling is a later gate. During the initial DEV observation period, the job
 runs every six hours in `Asia/Kolkata` with `maxRetries=0`; valid unchanged-feed

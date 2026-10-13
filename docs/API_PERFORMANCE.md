@@ -114,9 +114,10 @@ the exact values returned.
 
 ## API-PERF-03 private Insights integration
 
-MFDataIndia is an internal data service for the Trillion Insights backend. Its
+MFDataIndia is an internal data service for the Trillion Insights and TDW backends. Its
 Cloud Run ingress is `internal`, unauthenticated invocation is disabled, and the
-service-level invoker policy contains only the Trillion Insights runtime and the
+service-level invoker policy contains exactly the Trillion Insights runtime,
+`tl-dwf-dev-runtime@trillionlane-dev.iam.gserviceaccount.com`, and the
 MFDataIndia runtime used by the bounded private smoke job. Browser code never
 calls MFDataIndia directly.
 
@@ -124,6 +125,18 @@ The caller routes through `tl-dev-vpc` / `tl-dev-mumbai` and supplies a
 short-lived Google-signed OIDC token whose audience exactly matches the service
 origin. No API key, client secret or user-managed service-account key is part of
 the contract.
+
+`scripts/private_read_invokers_dev.sh` owns the fixed DEV caller set. Before
+image publication or migration, `preflight` rejects unknown, public or
+conditional invoker grants, non-internal ingress and a disabled IAM check.
+Missing approved grants may be restored by `reconcile`; `required` demands
+all three unconditional callers after deployment. Lookup failures fail closed,
+and confirmed absence is allowed only during first-deployment preflight. No
+unknown grants are silently removed. There are no new GitHub gate variables.
+
+TDW is a read consumer only: this grant supplies no database/secret access,
+association-writer invocation, audit-job invocation or NAV-correction capability.
+The separate association writer remains Insights-only and default-off.
 
 The GitHub deployment runner cannot perform functional HTTP smoke requests after
 the service becomes private. Instead, the deployment updates and executes one

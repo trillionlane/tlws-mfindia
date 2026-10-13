@@ -85,6 +85,11 @@ jobs:
             'from pathlib import Path; import mfdataindia.audit.remediation; import mfdataindia.audit.remediation_evidence; import mfdataindia.audit.remediation_rehearsal; assert Path("/app/sql/021_nav_remediation_review.sql").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/review_nav_remediation.py --help
 
+      - name: Verify private read access guard in the image
+        run: |
+          docker run --rm --entrypoint python "tlws-mf-data:${{ github.sha }}" -c \
+            'from pathlib import Path; assert Path("/app/scripts/private_read_invokers_dev.sh").is_file()'
+
       - name: Build and verify PostgreSQL 18 restore image
         run: |
           set -euo pipefail
