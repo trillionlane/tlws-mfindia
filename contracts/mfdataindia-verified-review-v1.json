@@ -1,0 +1,1450 @@
+{
+  "components": {
+    "schemas": {
+      "Context": {
+        "properties": {
+          "lifecycle": {
+            "$ref": "#/components/schemas/FundLifecycle"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/FundMethodology"
+          },
+          "nav_freshness": {
+            "$ref": "#/components/schemas/FundNavFreshness"
+          },
+          "nav_quality": {
+            "$ref": "#/components/schemas/FundNavQuality"
+          }
+        },
+        "required": [
+          "lifecycle",
+          "nav_freshness",
+          "nav_quality",
+          "methodology"
+        ],
+        "title": "Context",
+        "type": "object"
+      },
+      "EnrichmentField": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "enum": [
+              "aum",
+              "expense_ratio",
+              "benchmark",
+              "benchmark_name",
+              "fund_manager_name",
+              "inception_date",
+              "scheme_name",
+              "scheme_category"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "proposed_value": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Proposed Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "proposed_value"
+        ],
+        "title": "EnrichmentField",
+        "type": "object"
+      },
+      "EventResponse": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "review",
+              "proposal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "kind",
+          "status",
+          "result_id"
+        ],
+        "title": "EventResponse",
+        "type": "object"
+      },
+      "FundLifecycle": {
+        "description": "Evidence-backed lifecycle. Absence or a stale NAV alone yields\n``unknown`` \u2014 there is deliberately no \"matured\" boolean in the contract.",
+        "properties": {
+          "evidence": {
+            "enum": [
+              "amfi_current_feed",
+              "amfi_redeemed_marker",
+              "amfi_defunct_marker",
+              "not_seen_in_latest_feed",
+              "insufficient_evidence"
+            ],
+            "title": "Evidence",
+            "type": "string"
+          },
+          "last_seen_in_source": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen In Source"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "redeemed",
+              "defunct",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "evidence"
+        ],
+        "title": "FundLifecycle",
+        "type": "object"
+      },
+      "FundMethodology": {
+        "description": "How the NAV-derived numeric fields must be read. Only confirmed Growth\ncan be eligible; other options lack required distribution/unit-event truth.",
+        "properties": {
+          "basis": {
+            "const": "nav_change",
+            "title": "Basis",
+            "type": "string"
+          },
+          "comparison_eligible": {
+            "title": "Comparison Eligible",
+            "type": "boolean"
+          },
+          "distribution_adjustment": {
+            "enum": [
+              "not_applicable",
+              "unavailable"
+            ],
+            "title": "Distribution Adjustment",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "enum": [
+                "distribution_history_unavailable",
+                "lifecycle_not_active",
+                "nav_freshness_lag",
+                "nav_quality_signal",
+                "nav_series_unavailable"
+              ],
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "basis",
+          "distribution_adjustment",
+          "comparison_eligible",
+          "limitations"
+        ],
+        "title": "FundMethodology",
+        "type": "object"
+      },
+      "FundNavFreshness": {
+        "description": "Objective NAV freshness. The bands are server-owned (see\nqueries.FRESHNESS_*_DAYS); consumers must not redefine them.",
+        "properties": {
+          "dataset_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset As Of"
+          },
+          "lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lag Days"
+          },
+          "latest_nav_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav Date"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "delayed",
+              "stale",
+              "very_stale",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "FundNavFreshness",
+        "type": "object"
+      },
+      "FundNavQuality": {
+        "description": "Durable NAV-quality assessment read-through. Signals are DETECTION\nsignals, not proof that a stored NAV is wrong; ``assessment_status``\ndescribes the assessment's currency, never the fund's cleanliness.",
+        "properties": {
+          "assessed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed At"
+          },
+          "assessed_dataset_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed Dataset Version"
+          },
+          "assessment_status": {
+            "enum": [
+              "current",
+              "stale",
+              "not_assessed"
+            ],
+            "title": "Assessment Status",
+            "type": "string"
+          },
+          "distinct_nav_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distinct Nav Count"
+          },
+          "methodology_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Methodology Version"
+          },
+          "observation_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Count"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "constant_nav_series",
+                    "duplicate_variant_series",
+                    "terminal_face_value_reset_candidate"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          }
+        },
+        "required": [
+          "assessment_status"
+        ],
+        "title": "FundNavQuality",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HistoryEvent": {
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "caller": {
+            "title": "Caller",
+            "type": "string"
+          },
+          "document": {
+            "additionalProperties": true,
+            "title": "Document",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "review",
+              "proposal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "kind",
+          "status",
+          "result_id",
+          "caller",
+          "actor",
+          "document",
+          "recorded_at"
+        ],
+        "title": "HistoryEvent",
+        "type": "object"
+      },
+      "Metrics": {
+        "properties": {
+          "annual_volatility_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Volatility Pct"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "calmar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calmar"
+          },
+          "cumulative_return_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cumulative Return Pct"
+          },
+          "max_drawdown_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown Pct"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "sortino": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sortino"
+          }
+        },
+        "required": [
+          "cumulative_return_pct",
+          "cagr_pct",
+          "annual_volatility_pct",
+          "sharpe",
+          "sortino",
+          "max_drawdown_pct",
+          "calmar"
+        ],
+        "title": "Metrics",
+        "type": "object"
+      },
+      "PolicyResponse": {
+        "properties": {
+          "document": {
+            "additionalProperties": true,
+            "title": "Document",
+            "type": "object"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy_hash",
+          "policy_id",
+          "policy_version",
+          "document"
+        ],
+        "title": "PolicyResponse",
+        "type": "object"
+      },
+      "ProposalMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "expected_input_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Input Hash",
+            "type": "string"
+          },
+          "expected_version": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/EnrichmentField"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "result_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Result Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "expected_input_hash",
+          "result_id",
+          "reason",
+          "fields"
+        ],
+        "title": "ProposalMutation",
+        "type": "object"
+      },
+      "QueueItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "needs_revalidation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Revalidation"
+          },
+          "option_type": {
+            "title": "Option Type",
+            "type": "string"
+          },
+          "reviewed_input_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed Input Hash"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "scheme_name",
+          "option_type",
+          "version",
+          "status",
+          "signals",
+          "reviewed_input_hash",
+          "needs_revalidation"
+        ],
+        "title": "QueueItem",
+        "type": "object"
+      },
+      "QueueResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_after_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After Code"
+          },
+          "revalidation_basis": {
+            "title": "Revalidation Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "next_after_code",
+          "revalidation_basis"
+        ],
+        "title": "QueueResponse",
+        "type": "object"
+      },
+      "ResultDocument": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "eligible_at_capture": {
+            "title": "Eligible At Capture",
+            "type": "boolean"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "engine_fingerprint": {
+            "title": "Engine Fingerprint",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "format": {
+            "const": "verified-nav-result-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "unavailable": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Unavailable",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result_id",
+          "format",
+          "code",
+          "input_hash",
+          "policy_hash",
+          "engine_version",
+          "engine_fingerprint",
+          "engine",
+          "source_revision",
+          "dataset_version",
+          "first_date",
+          "as_of",
+          "points",
+          "context",
+          "eligible_at_capture",
+          "metrics",
+          "unavailable"
+        ],
+        "title": "ResultDocument",
+        "type": "object"
+      },
+      "ResultResponse": {
+        "properties": {
+          "comparison_eligible": {
+            "title": "Comparison Eligible",
+            "type": "boolean"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "input_status": {
+            "enum": [
+              "current",
+              "stale"
+            ],
+            "title": "Input Status",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ResultDocument"
+          }
+        },
+        "required": [
+          "result",
+          "input_status",
+          "current_input_hash",
+          "comparison_eligible"
+        ],
+        "title": "ResultResponse",
+        "type": "object"
+      },
+      "ReviewMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "not_determined",
+              "consistent_with_evidence",
+              "discrepancy_candidate",
+              "insufficient_evidence"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "expected_input_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Input Hash",
+            "type": "string"
+          },
+          "expected_version": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "result_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "expected_input_hash",
+          "result_id",
+          "reason",
+          "status",
+          "disposition"
+        ],
+        "title": "ReviewMutation",
+        "type": "object"
+      },
+      "ReviewResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEvent"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "identity": {
+            "additionalProperties": true,
+            "title": "Identity",
+            "type": "object"
+          },
+          "needs_revalidation": {
+            "title": "Needs Revalidation",
+            "type": "boolean"
+          },
+          "next_after_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After Version"
+          },
+          "original_facts": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Facts"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "version",
+          "status",
+          "needs_revalidation",
+          "current_input_hash",
+          "identity",
+          "original_facts",
+          "context",
+          "history",
+          "next_after_version"
+        ],
+        "title": "ReviewResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "MFData Verified Fund Review",
+    "version": "1.0.0",
+    "x-contract-id": "mfdataindia-verified-review-v1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/review/v1/funds": {
+      "get": {
+        "operationId": "list_queue_api_review_v1_funds_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after_code",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending_review",
+                    "in_review",
+                    "reviewed",
+                    "needs_evidence"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(constant_nav_series|duplicate_variant_series|terminal_face_value_reset_candidate)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Queue"
+      }
+    },
+    "/api/review/v1/funds/{code}": {
+      "get": {
+        "operationId": "detail_api_review_v1_funds__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_version",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Detail"
+      }
+    },
+    "/api/review/v1/funds/{code}/analytics": {
+      "get": {
+        "operationId": "get_analytics_api_review_v1_funds__code__analytics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Analytics"
+      }
+    },
+    "/api/review/v1/funds/{code}/enrichment-proposals": {
+      "post": {
+        "operationId": "proposal_api_review_v1_funds__code__enrichment_proposals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalMutation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Proposal"
+      }
+    },
+    "/api/review/v1/funds/{code}/reviews": {
+      "post": {
+        "operationId": "review_api_review_v1_funds__code__reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewMutation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review"
+      }
+    },
+    "/api/review/v1/policies/{policy_hash}": {
+      "get": {
+        "operationId": "get_policy_api_review_v1_policies__policy_hash__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "policy_hash",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Policy Hash",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Policy"
+      }
+    }
+  },
+  "x-source-mutations": false
+}

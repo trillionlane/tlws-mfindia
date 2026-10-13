@@ -296,6 +296,17 @@ idempotent contract is documented in
 [`docs/ASSOCIATION_TAGS_API.md`](docs/ASSOCIATION_TAGS_API.md) and exported as
 `contracts/mfdataindia-association-tags-v1.json`.
 
+## Verified fund review enhancement
+
+The opt-in `mfdataindia.review` feature adds stored deterministic policies,
+append-only seven-metric analytics and persistent human review/proposal APIs.
+It uses a separate signed-assertion contract and application entrypoint; the
+existing 19 private read endpoints and source data paths are unchanged.
+Its schema is outside automatic migrations, and no UI, source correction,
+cloud provisioning or automatic generation is enabled. See the
+[operator and consumer runbook](docs/VERIFIED_FUND_REVIEW_RUNBOOK.md) for the
+initial scope, policy assumptions, authorization and separate rollout gates.
+
 ## Tests
 
 ```bash
@@ -305,12 +316,13 @@ MF_TEST_DSN=… pytest -m postgres          # + PostgreSQL integration
 
 ## Roadmap
 
-Planned improvements live in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) —
-led by the **AMC monthly-portfolio parser** (the official source for full
-holdings, which unblocks retiring the Scripbox/Groww aggregators) and extending
-the AMC factsheet parser (risk metrics) to the other 52 AMCs. The governing
-decision: **official sources only in prod** (AMFI + AMC disclosures);
-aggregators are dev-only, diff-pushed whenever needed.
+Implementation tracking lives in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md).
+The additive roadmap prioritizes preservation and deterministic policies,
+verified analytics, admin review, official AMC/benchmark enrichment, calculators
+and holdings-aware news. API/backend and Insights UI remain separate tracks.
+Existing data and results are retained; enrichment and improved methods create
+new versioned records. Official AMFI/AMC sources remain authoritative, and
+retired aggregator scraping is not an enhancement dependency.
 
 Aggregator identity is fully purged from the DB (migration 013): no
 `scripbox*`/`groww_*` columns, no `SCRIPBOX`/`GROWW` source values, and no
