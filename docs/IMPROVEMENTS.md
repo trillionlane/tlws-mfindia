@@ -5,7 +5,184 @@ Version-controlled backlog of planned improvements. Each item states the
 `RESEARCH.md` holds the source research; `README.md` documents what ships
 today. This file is the forward-looking "next" list.
 
+## Additive product enhancement roadmap (decision, 2026-10-13)
+
+**Status: planned / not started.** The user-approved direction is to enhance the
+existing product, not replace its base or rewrite its data. Existing stored
+source data, identities, histories, published facts and calculation outputs must
+be preserved. Enrichment, analytics and features are additive and versioned.
+This roadmap authorizes documentation only, not implementation, provisioning,
+deployment, activation, source corrections or a production rollout. API/backend
+and Insights UI retain separate ownership, contracts and PRs.
+
+This decision supersedes the earlier DATA-06 source-correction pilot and DATA-07
+live cleanup batches: both are removed from the active plan. The implemented
+DATA-03/04 correction safeguards remain in place, but no correction writer is
+to be provisioned or activated. The recorded DEV rollout at
+`e7f5e67ee2977ac369e6bed9d364749015456d22` made no NAV corrections. Provider
+read certification is not Insights strict-consumer or TDW application acceptance.
+Older dated sections below are historical context; any overwrite, replacement,
+column-drop or source-correction proposal is superseded by this preservation
+decision. No existing runtime behavior has been changed by this roadmap.
+
+### Layer ownership and boundaries
+
+| Layer | Responsibility | Boundary |
+| --- | --- | --- |
+| Data — MFData | Retain source evidence and existing records; add versioned AMFI/AMC disclosures, benchmark observations, provenance and identifier mappings. | No destructive reload, source-history rewrite, identity merge, duplicate deletion or inferred replacement value. New differing source values are retained separately for review, not silently substituted. |
+| Analytics — provider-owned canonical engine | Derive reproducible metrics from an exact input snapshot under a stored policy. Expose results and limitations through private APIs. | Append new results; retain old outputs. Do not overwrite published facts or let UI formulas silently redefine authoritative metrics. |
+| Admin — MFData review API / Insights admin UI | Maintain human review status, evidence, annotations and versioned enrichment/override proposals. | No direct source-table edits. Any future approved override is a separately identified overlay with original values still retrievable; it is not an automatically activated correction. |
+| Calculators — shared policy-bound engine / Insights experience | Produce reproducible projections and separately labelled historical simulations. | No mutation of fund data; declared assumptions, cash-flow timing and unavailable states. Choose the engine host during contract design; do not duplicate implementations across UI and services. |
+
+Admin is a cross-cutting governance capability, not an extra source of financial
+truth. Calculators use policies and, for historical mode, eligible data/analytics;
+they do not need an admin UI to function. Insights owns presentation, including
+the existing-shell admin grid. The retiring MFData UI is not an enhancement target.
+
+### Preservation and publication contract
+
+- Take an inventory and preservation baseline before each new framework or
+  migration. Test on a restored clone first; compare all pre-existing records and
+  values, not just row counts. Retain operational backup/restore evidence.
+- New schemas use sidecars, append-only events or versioned snapshots. Do not
+  truncate/reload existing holdings, overwrite non-NULL or NULL source fields,
+  drop existing columns, replace old calculated outputs, or repurpose old IDs.
+  Empty fields may be enriched through separately recorded facts/projections.
+- Audit existing write paths, including normal ingestion and calculation
+  sidecar upserts, against this new requirement. Existing immutability is not
+  assumed. Flag incompatible paths before integrating new processors; this plan
+  does not silently change existing schedulers or ingestion behavior.
+- Policy/input changes create a new result version. Stage and validate the
+  complete dependent result set before selecting it for an API projection.
+  Make dataset, input and policy versions consistent within each read. Preserve
+  the prior projection target for reversible publication without deleting data.
+- Missing, stale, unassessed and invalid-for-calculation are distinct states.
+  Keep `signals: null` for unassessed data. Human review status is separate from
+  lifecycle, freshness and computed quality. Flags are leads, not proof of error.
+- Extend least-privilege runtime identities and existing transaction/publication
+  checks. Do not introduce unrestricted admin writes, a new public MFData API,
+  per-gate GitHub variable proliferation or blanket automatic remediation.
+
+### Stored deterministic policy requirement
+
+Every mathematical derivation must resolve an immutable, stored policy version,
+not hidden constants or a formula existing only in UI code or documentation.
+Maintain source-controlled policy definitions and a persisted policy registry
+with canonical-content hashes, validation and lifecycle state. Exact storage and
+API shapes are deliverables of ENH-01, not already implemented capabilities.
+
+Each policy specifies:
+
+- Identity/version/hash, applicability and effective selection rules; engine
+  code/build version and the exact input snapshot/source revisions.
+- Formula/algorithm and metric units; simple versus log returns; cumulative
+  versus annualized return; windows, calendar/day-count and observation rules.
+- Sampling frequency, gap handling, imputation restrictions, eligibility,
+  minimum coverage and behavior for unavailable/undefined results.
+- Risk-free or target-rate assumptions, rate units and conversion conventions;
+  any dated rates must be captured inputs, not ambient live values.
+- Numeric precision, rounding stage/mode, computation-library/runtime versions,
+  deterministic ordering and independent expected-result test fixtures.
+- Calculator cash-flow timing, compounding convention, inflation, step-up,
+  fees/taxes treatment and historical execution assumptions where applicable.
+
+Given the same declared inputs, parameters, engine and policy versions, replay
+must produce the same canonical financial result. Dates/rates must be explicit;
+execution timestamps and operational metadata are not financial inputs. Persist
+derived dataset results with policy/input lineage. Calculator results must carry
+the same reproducibility envelope; saving personal scenarios is a separate
+privacy/product choice, not mandatory storage of every interactive keystroke.
+New methods never silently relabel or replace earlier results.
+
+### Prioritized delivery plan
+
+| Priority / sprint | Deliverable | Acceptance and dependencies |
+| --- | --- | --- |
+| P0 — ENH-01 Preservation and policy foundation | Inventory existing capabilities/write paths; restored-clone preservation tests; stored immutable policy registry, reproducibility envelope and canonical calculation contracts. | Existing values preserved; replay deterministic; conflicting write paths identified and resolved within an approved implementation scope before enhancement publication. No live source corrections. |
+| P0 — ANA-01 Analytics verification | Audit/reuse existing return, CAGR, volatility, Sharpe, Sortino, drawdown, Calmar, monthly and rolling calculations; implement independently verified methods as new policy/result versions. | Reference fixtures cover boundaries, gaps, zero volatility, short histories and nulls. API/job/UI semantics agree; old results retained; no silent consumer contract switch. Depends on ENH-01. |
+| P1 — DATA-05 Review backend/API | Per-fund human status, queue/detail/evidence/history, annotations and enrichment proposals. Define field policies, status transitions, identity binding, authorization, idempotency and optimistic version checks. | Review records persist independently of sessions and cannot mutate original data. Reuse existing evidence/ledger mechanisms where suitable. Can parallel ANA-01 after ENH-01 contracts. |
+| P1 — UI-01 Insights admin grid | Existing Insights admin area: Excel-like list, search/filter, status column, field/source inspection, annotations, proposals and history. | Real admin-only backend integration; originals visible, no direct DB writes, no fake edit/save functionality. Separate consumer PR after DATA-05 contracts are agreed. |
+| P1 — ENR-01 Official AMC enrichment | Append dated complete portfolio disclosures and factsheet enrichment, starting with a bounded high-value AMC cohort; identifier mapping, provenance, coverage and parser validation. | Archived source bytes, exact scheme/plan matching, full-versus-partial coverage, cash/liability/derivative-aware checks and as-of dates. Existing holdings/facts remain intact. Depends on preservation contract; acquisition design can parallel ANA-01. |
+| P1 — ENR-02 Benchmark inputs | Acquire permitted authoritative TRI histories, map each fund to the appropriate dated benchmark and persist coverage/source evidence. | No fabricated TRI, guessed benchmark or undocumented price-index substitution. Assess access/licensing before acquisition. No calculated benchmark claims when required inputs are missing. |
+| P1 — ANA-02 Rich research analytics | Weighted security-level overlap alongside existing Jaccard; aligned benchmark comparisons, beta/alpha and suitable category-relative analytics. Publish policy-bound rolling analytics from the canonical engine. | Compatible holdings dates/fullness, identifier-based matching, aligned return windows and explicit limitations. Depends on ANA-01 and relevant ENR-01/02 coverage. Never call top-20 Jaccard full weighted overlap. |
+| P2 — CALC-01 Core projections | Shared deterministic SIP and lumpsum engine with explicit nominal/effective rates, contribution timing, rounding and assumptions; separate Insights controls/results. | Independently verified schedules, zero/negative-rate cases and meaningful validation. Illustrative projection, not forecast or actual execution. Engine follows ENH-01; can precede richer enrichment. |
+| P2 — CALC-02 Planning features | Step-up SIP, inflation-adjusted goal/reverse SIP and SWP with depletion timelines. | Reuse the same cash-flow/policy engine; test step boundaries, infeasible goals, partial final withdrawals and depleted corpus. Depends on CALC-01. |
+| P2 — CALC-03 Historical simulations | Growth-first historical SIP/lumpsum simulations and money-weighted return/XIRR; extend step-up/SWP modes only after shared execution rules pass. | Published NAV observations, declared business-day/funds-availability assumptions, no look-ahead or invented allotment; cash-flow, coverage, XIRR failure/multiple-root and fee/tax rules explicit. Depends on analytics/data policies, not forward-fill of source history. |
+| P2 — NEWS-01 Holdings-aware news relevance | Insights combines existing family association tags with dated security/issuer mappings and holdings coverage; retain evidence for links. | Ownership/exposure links distinguished from inferred relevance; stale holdings and confidence visible. Does not confer end-user write access or require a new public provider endpoint. Depends on ENR-01 and consumer integration. |
+
+**Recommended approach:** finish operational closeout and deliver ENH-01 first,
+then ANA-01. Start DATA-05 and bounded enrichment work in parallel once shared
+contracts are stable; UI-01 remains a separate PR. Rich analytics follows proven
+input coverage. Calculators and news are feature tracks, not prerequisites for
+safe source reads or admin review. Each row requires a bounded implementation
+plan; this table is not approval to execute all sprints in one release.
+
+### Implementation tracking
+
+Update this register in each implementation PR. Link the provider and consumer
+PRs separately where applicable. Track code, merge, deployment and acceptance
+as separate milestones; merging this roadmap does not complete any sprint.
+Use explicit statuses such as planned, in progress, implemented, merged,
+deployed and accepted, with evidence for each claimed milestone.
+
+| Sprint | Status | Implementation PRs | Release / acceptance evidence |
+| --- | --- | --- | --- |
+| ENH-01 | Planned | — | — |
+| ANA-01 | Planned | — | — |
+| DATA-05 | Planned | — | — |
+| UI-01 | Planned | — | — |
+| ENR-01 | Planned | — | — |
+| ENR-02 | Planned | — | — |
+| ANA-02 | Planned | — | — |
+| CALC-01 | Planned | — | — |
+| CALC-02 | Planned | — | — |
+| CALC-03 | Planned | — | — |
+| NEWS-01 | Planned | — | — |
+
+### Analytics and enrichment decisions
+
+- Keep raw NAV observations unchanged. Optional carried-forward display or
+  valuation values live in labelled derived projections, never in source
+  history or as purported new observations/transaction prices. Do not inject
+  weekend zero returns into a trading-day risk calculation.
+- Define expected-feed completeness by snapshot scope, lifecycle, scheme
+  calendar and publication deadline; alert on missing expected observations,
+  not an assumed universal 100% population. A partial feed does not prove absence.
+- Add configurable NAV-move review signals without treating a 20% move as an
+  error or silently repairing/rejecting genuine market events. Validate ISIN
+  format, checksum and mapping separately; optional identifier failures must not
+  silently delete otherwise valid NAV evidence.
+- Audit cumulative versus CAGR labels, exact anniversary/month-end windows,
+  consistent periodic excess-return Sharpe/Sortino conventions, sampling and
+  annualization. Risk-free Sharpe does not require an equity benchmark; beta,
+  alpha and benchmark-relative comparisons do require aligned benchmark inputs.
+- Standardize a disclosed versioned risk-free assumption initially. Defer live
+  rate streaming; historical dated rates, if introduced, must be stored inputs.
+- Preserve Growth-first eligibility and IDCW limitations. Defer adjusted IDCW
+  total returns until authoritative distribution/unit-event data and policies
+  exist. Do not infer payouts from drops, copy Growth history, or adjust fund NAV
+  for a corporate action affecting only an underlying holding.
+- Do not claim unverified 38,000-scheme coverage or generic 1st-7th disclosure
+  availability. Measure coverage and use applicable official source deadlines.
+- Defer all-calculator historical modes, tax-complete transaction simulation and
+  live rates until bounded product requirements justify them. Retired aggregator
+  scraping and a new MFData UI are not enhancement dependencies.
+
+### Operational / API closeout remains separate
+
+- Observe the restored normal refresh and full audit cycle; activation probes
+  are not scheduled-cycle evidence. Reconcile current state before future runs.
+- Obtain fresh consumer-owned strict v2 Insights certification through a bounded
+  reusable gate, distinguishing runtime SHA from schema provenance and never
+  reusing consumed approvals/execution budgets.
+- Association-tag writer restoration remains a separately approved operation.
+  TDW runtime-identity checks do not substitute for consumer application testing.
+
 ## Source-of-record strategy (decision, 2026-10-08)
+
+Historical strategy below. For future enhancements, the 2026-10-13 additive
+roadmap above governs: no aggregator reactivation or mutation of retained source
+records is authorized by these older proposals.
 
 **Official sources only in prod:** AMFI (NAV + identity) and each AMC's own
 disclosures (factsheet + monthly portfolio). Aggregators (**Scripbox /
@@ -40,8 +217,9 @@ exist yet.
 the factsheet parser in `mfdataindia/ingest/amc_factsheets/`) that:
 - downloads the AMC's latest monthly portfolio disclosure,
 - parses the full per-scheme security list,
-- **replaces** `fund_holdings` for that scheme (a full snapshot — a wholesale
-  replace per fund is correct, unlike the aggregator top-10),
+- **adds a versioned complete portfolio snapshot** for that scheme, retaining
+  existing `fund_holdings` and all earlier snapshots (supersedes the earlier
+  wholesale-replacement proposal under the 2026-10-13 preservation decision),
 - records provenance (AMC, portfolio period, as-of date, source URL).
 
 **Payoff:** full holdings become an **official source**. This is what lets us
@@ -74,8 +252,9 @@ A small set of fields are not in a single-month factsheet and are currently
 Groww-only: `registrar_agent`, `expense_ratio_history` (~84 funds each).
 `portfolio_turnover` (48) may also be Groww-only today, but the factsheet
 carries turnover too, so it is likely closable via P1. Decide per field:
-(a) close via the AMC factsheet, (b) keep a **thin, dev-only** Groww fetch +
-diff-push, or (c) drop the column.
+(a) add official AMC enrichment with provenance, or (b) preserve the existing
+field with explicit missing/stale coverage. Earlier dev-only fetch/diff-push and
+column-drop options are superseded by the 2026-10-13 additive roadmap.
 
 ## P3 — Retire Groww/Scripbox
 
