@@ -140,10 +140,52 @@ Existing source work was identified after #53: `research/amfi_amc_directory.json
 is a 2025 archived AMFI seed; `ingest/amc_factsheets/download.py` discovers ABSL
 documents and `absl.py` parses extracted PDF text. Its legacy writer updates
 `mf.fund_facts` and provenance, and must **not** be run under preservation-first
-scope. The legacy CLI also requires `pypdf`, absent from the current lock/runtime.
+scope. The legacy CLI required `pypdf`, initially absent from the lock/runtime.
 Reuse discovery/parsing with versioned sidecars rather than invoke that loader.
 The live ABSL discovery probe did not find the expected datasource identifier;
 the old parser's passing fixture tests do not prove the current downloader works.
+
+### Discovery repair and bounded PDF bridge
+
+A later live probe found the datasource identifier, but the Sitecore API
+returned `ReturnCode: "1"` with `Record Retrieved Successfully`, unlike the
+legacy client's accepted `"0"`. Both observed success variants now require a
+validated document-list schema. Titles must identify a unique known month in the
+requested year. Links stay in the exact official ABSL factsheet media tree;
+queries, unrelated hosts and path traversal are rejected. Period sorting is
+year-first. No datasource GUID is hardcoded.
+
+`capture_official_sources.py --archive PRIVATE_DIR discover-absl --year 2026`
+uses pinned-DNS/bounded transport for two requests. Only the exact constructed
+Sitecore datasource/year query is allowed; general acquisition rejects queries.
+Original landing/API bytes are retained. No PDF or database import is automatic.
+On 2026-10-14 this adapter retained nine documents, January–September 2026.
+September is **latest listed**, not proof of current October or all-AMC coverage.
+A bounded September-PDF attempt timed out; no partial document was accepted.
+
+`capture_official_sources.py --archive PRIVATE_DIR extract-pdf --document PDF
+--expected-sha SHA [--absl-period 'September 2026']` checks the original hash and
+archives text separately. The immutable policy records implementation/version,
+page/text/decoded-stream bounds, 20-second CPU and 30-second subprocess deadline.
+Linux additionally enforces 512 MiB address space; macOS has CPU/deadline/size
+controls but no address-space cap. This is **not an OS security sandbox**.
+Encrypted, malformed and oversized documents fail closed; image-only pages
+retain empty text without OCR or inferred content. No scripts or external
+document retrieval are executed. The lock now includes pypdf 6.20.1.
+
+The legacy ABSL pure parser emits **unmapped scheme candidates** only. Its
+float-based numeric fields and name matcher are not used for fact publication.
+Exact variant mapping and decimal/raw-token, field/date/unit evidence remain
+E06 requirements. Extracted narrative stays private and is not served by APIs.
+
+The SBI PDF produced 61 pages (60 nonempty); rendered cover inspection agrees
+with text's `FACTSHEET AS ON APRIL 30, 2026`. This confirms the document date,
+not every field. Some pages say `For Internal Circulation Only`; retain that
+notice alongside the operator's reported SBI permission and resolve intended
+use before accepted-field publication. Extraction is not source-use clearance
+or fund identity proof. SQL 027/PDF classification and the 15-route contract
+are unchanged. Local extracted text has not been imported as accepted facts;
+this bridge alone does not close MF-E05's DEV acceptance.
 
 AMFI [NAV history](https://www.amfiindia.com/net-asset-value/nav-download) limits
 each request to 90 days, not history retention to the latest 90 days. The existing

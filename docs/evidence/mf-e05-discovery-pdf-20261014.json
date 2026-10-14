@@ -1,0 +1,46 @@
+{
+  "format": "mf-e05-discovery-pdf-checkpoint-v1",
+  "evidence_level": "REAL_LOCAL_SOURCE_ACQUISITION_AND_EXTRACTION_NOT_DEV_ACCEPTANCE",
+  "observed_at": "2026-10-14T19:28:44.006411+00:00",
+  "absl": {
+    "landing_content_hash": "db9ca75ff1c6beaa6d05857edb5531e34755f02adac86ad1455a06819556091f",
+    "landing_receipt_hash": "6e8412accd8815a7e838d65d4806e612bdc514185332dc57aac3d86efed42817",
+    "api_content_hash": "8ba6c47987898858313717870cf2e05d43d5cdb7fc746be00ed4e7f5ba1303aa",
+    "api_receipt_hash": "3718d436e2171d98985adeec3af972328e910c73c5da12a68fd8f2771d38b72c",
+    "listed_documents": 9,
+    "listed_period_range": ["January 2026", "September 2026"],
+    "latest_listed_period": "September 2026",
+    "latest_pdf_attempt": "bounded GET body timed out; no partial document retained",
+    "pdf_downloaded": false,
+    "coverage_complete": false
+  },
+  "sbi": {
+    "source_content_hash": "7c229959507331127b2b33a9127b9990236ce44b6a29227d58e1c4f54885236d",
+    "extraction_content_hash": "c13f6cda254062315d962b42a1b4220bc6eb987a51b106587351659e6013252b",
+    "extraction_result_hash": "b24f54281257fe86b042ffc5ef1872135a1ce1d10315a5c575f18641a8755576",
+    "extraction_receipt_hash": "7a4d4b453fb583334c2d6b3e427b61e97252131a3f6b992ec78a287ee7640433",
+    "extractor": "pypdf",
+    "extractor_version": "6.20.1",
+    "policy_hash": "c37805762592c24690149898bd88df4eccee0b1d6a3b616dd20b7131dca6caff",
+    "pages": 61,
+    "text_pages": 60,
+    "cover_date": "2026-04-30",
+    "cover_date_evidence": "extracted text and rendered cover independently inspected",
+    "source_notice": "some pages say For Internal Circulation Only; retain with operator-reported SBI authority before field acceptance",
+    "exact_scheme_variants_mapped": 0,
+    "facts_accepted": false
+  },
+  "retention": "Original files and extraction retained separately in task-owned private archive; all three new archived content hashes independently rechecked",
+  "database_imported": false,
+  "source_rows_changed": 0,
+  "api_contracts_changed": false,
+  "dev_serving_revision": "tlws-mf-review-dev-dev-hist-20261014a-historical",
+  "dev_deployment_changed": false,
+  "nav_schedule": "0 */6 * * * Asia/Kolkata ENABLED",
+  "sprint_complete": false,
+  "pending": [
+    "Current AMFI directory acquisition and all-AMC discovery",
+    "Exact source variant and field-level evidence acceptance",
+    "Fresh backup, restored-clone rehearsal and private DEV evidence API certification"
+  ]
+}

@@ -23,14 +23,19 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from urllib.parse import urlencode, urljoin, urlsplit, unquote
 import requests
+
+from mfdataindia.enrichment.evidence import public_url
 
 BASE = "https://mutualfund.adityabirlacapital.com"
 _LANDING = "/forms-and-downloads/factsheets"
 _API_MONTHLY = "/api/sitecore/CalculatorPage/GetMonthlyFactsheetsByYear"
 
-_DS_ID_RE = re.compile(r"factsheetDatasourceId\s*=\s*'\{[0-9A-Fa-f-]+\}'")
-_TITLE_RE = re.compile(r"for the Month of ([A-Z][a-z]+ \d{4})")
+_DS_ID_RE = re.compile(
+    r'''\bfactsheetDatasourceId\s*=\s*(['"])(\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\})\1'''
+)
+_TITLE_RE = re.compile(r"Empower for the Month of ([A-Z][a-z]+ \d{4})")
 _MONTH_ORDER = {
     m: i + 1 for i, m in enumerate(
         ("January", "February", "March", "April", "May", "June", "July",
@@ -43,6 +48,57 @@ class FactsheetDocument:
     title: str
     url: str
     period: str            # "September 2026" — parsed from the title
+
+
+def monthly_api_url(html: str, year: int) -> str:
+    if type(year) is not int or not 1900 <= year <= 2100:
+        raise ValueError("bounded integer factsheet year required")
+    ids = {match[1].upper() for match in _DS_ID_RE.findall(html)}
+    if len(ids) != 1:
+        raise ValueError("one unambiguous factsheetDatasourceId required")
+    return BASE + _API_MONTHLY + "?" + urlencode({"datasourceId": ids.pop(), "year": year})
+
+
+def monthly_documents(data: dict, year: int) -> list[FactsheetDocument]:
+    """Accept observed Sitecore success variants, never arbitrary links/periods."""
+    if type(year) is not int or not 1900 <= year <= 2100:
+        raise ValueError("bounded integer factsheet year required")
+    if not isinstance(data, dict) or str(data.get("ReturnCode")) not in ("0", "1"):
+        raise ValueError("ABSL monthly API did not report success")
+    items = data.get("MonthlyFactsheets")
+    if not isinstance(items, list) or len(items) > 24:
+        raise ValueError("bounded monthly document list required")
+    out, periods = [], set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("invalid monthly document entry")
+        link, title = item.get("DocumentLink"), item.get("DocumentTitle")
+        if link in (None, "", "NA"):
+            continue
+        if not isinstance(link, str) or not isinstance(title, str):
+            raise ValueError("document link and title required")
+        if any(part in (".", "..") for part in unquote(link).split("/")):
+            raise ValueError("factsheet path traversal not permitted")
+        match = _TITLE_RE.fullmatch(title)
+        if not match:
+            raise ValueError("unrecognized factsheet period title")
+        period = match[1]
+        month, listed_year = period.split()
+        if month not in _MONTH_ORDER or int(listed_year) != year or period in periods:
+            raise ValueError("ambiguous or out-of-year factsheet period")
+        url = public_url(urljoin(BASE + "/", link), {"mutualfund.adityabirlacapital.com"})
+        if not url.startswith(BASE + "/-/media/bsl/files/resources/factsheets/"):
+            raise ValueError("document outside official factsheet media tree")
+        decoded = unquote(urlsplit(url).path)
+        if (
+            any(part in (".", "..") for part in decoded.split("/"))
+            or any(c in decoded for c in "\\%?#")
+            or not decoded.lower().endswith((".pdf", ".ashx"))
+        ):
+            raise ValueError("unsafe factsheet media path")
+        periods.add(period)
+        out.append(FactsheetDocument(title=title, url=url, period=period))
+    return out
 
 
 class AbSLFactsheetClient:
@@ -69,29 +125,7 @@ class AbSLFactsheetClient:
 
     def list_by_year(self, year: int) -> list[FactsheetDocument]:
         html = self._get(BASE + _LANDING).text
-        m = _DS_ID_RE.search(html)
-        if not m:
-            raise RuntimeError(
-                "factsheetDatasourceId not found on the ABSL landing page — "
-                "site layout changed; update the discovery regex")
-        ds_id = m.group(0).split("=", 1)[1].strip().strip("'")
-        import urllib.parse
-        api = (BASE + _API_MONTHLY + "?"
-               + urllib.parse.urlencode({"datasourceId": ds_id, "year": year}))
-        data = self._get(api).json()
-        if str(data.get("ReturnCode")) != "0":
-            raise RuntimeError(f"ABSL API error: {data.get('ReturnMsg')}")
-        out: list[FactsheetDocument] = []
-        for item in data.get("MonthlyFactsheets") or []:
-            link = item.get("DocumentLink") or ""
-            title = item.get("DocumentTitle") or ""
-            if not link or link == "NA" or not title:
-                continue
-            tm = _TITLE_RE.search(title)
-            period = tm.group(1) if tm else title
-            out.append(FactsheetDocument(
-                title=title, url=BASE + link, period=period))
-        return out
+        return monthly_documents(self._get(monthly_api_url(html, year)).json(), year)
 
     def latest(self, year: int) -> FactsheetDocument:
         docs = self.list_by_year(year)
@@ -104,7 +138,7 @@ class AbSLFactsheetClient:
         m = re.match(r"([A-Z][a-z]+) (\d{4})", period)
         if not m:
             return (0, 0)
-        return (_MONTH_ORDER.get(m.group(1), 0), int(m.group(2)))
+        return (int(m.group(2)), _MONTH_ORDER.get(m.group(1), 0))
 
     def download(self, doc: FactsheetDocument) -> bytes:
         return self._get(doc.url).content

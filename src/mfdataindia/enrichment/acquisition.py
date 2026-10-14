@@ -32,13 +32,41 @@ class PinnedHTTPS(http.client.HTTPSConnection):
 
 
 def fetch(url, official_hosts, *, timeout=20, maximum=MAX_BYTES):
+    return _fetch(url, official_hosts, timeout=timeout, maximum=maximum)
+
+
+def fetch_absl_monthly(html, year):
+    """One constructed public Sitecore query; no general query/redirect exception."""
+    from mfdataindia.ingest.amc_factsheets.download import monthly_api_url
+
+    url = monthly_api_url(html, year)
+
+    def validate(value, hosts):
+        if value != url:
+            raise ValueError("Sitecore API redirect not permitted")
+        public_url(value.split("?", 1)[0], hosts)
+        return value
+
+    return _fetch(
+        url,
+        ["mutualfund.adityabirlacapital.com"],
+        maximum=1024 * 1024,
+        validate=validate,
+        media_types=("application/json",),
+    )
+
+
+def _fetch(
+    url, official_hosts, *, timeout=20, maximum=MAX_BYTES,
+    validate=public_url, media_types=("text/html", "application/pdf"),
+):
     if not 0 < maximum <= MAX_BYTES or not 0 < timeout <= 30:
         raise ValueError("bounded acquisition limits required")
     hosts = set(official_hosts)
-    public_url(url, hosts)
+    validate(url, hosts)
     start, chain = time.monotonic(), []
     for _ in range(4):
-        public_url(url, hosts)
+        validate(url, hosts)
         parsed = urlsplit(url)
         records = socket.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM)
         addresses = sorted({record[4][0] for record in records})
@@ -50,11 +78,11 @@ def fetch(url, official_hosts, *, timeout=20, maximum=MAX_BYTES):
         with closing(PinnedHTTPS(parsed.hostname, addresses[0], remaining)) as conn:
             conn.request(
                 "GET",
-                parsed.path,
+                parsed.path + ("?" + parsed.query if parsed.query else ""),
                 headers={
                     "User-Agent": "MFDataIndia-Evidence/1.0",
                     "Accept-Encoding": "identity",
-                    "Accept": "text/html,application/pdf",
+                    "Accept": ",".join(media_types),
                 },
             )
             response = conn.getresponse()
@@ -63,7 +91,7 @@ def fetch(url, official_hosts, *, timeout=20, maximum=MAX_BYTES):
                 destination = response.getheader("Location")
                 if not destination:
                     raise ValueError("redirect without destination")
-                url = public_url(urljoin(url, destination), hosts)
+                url = validate(urljoin(url, destination), hosts)
                 continue
             if response.status != 200:
                 raise ValueError("official-source HTTP acquisition failed")
@@ -73,7 +101,7 @@ def fetch(url, official_hosts, *, timeout=20, maximum=MAX_BYTES):
             if declared and (not declared.isdigit() or not 0 < int(declared) <= maximum):
                 raise ValueError("declared document size exceeds bound")
             media = response.getheader("Content-Type", "").split(";", 1)[0].strip().lower()
-            if media not in ("text/html", "application/pdf"):
+            if media not in media_types:
                 raise ValueError("unsupported document media type")
             data = bytearray()
             while True:
