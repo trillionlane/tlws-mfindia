@@ -201,6 +201,31 @@ def test_job_accepts_only_exact_completed_execution_and_its_certificate(tmp_path
 
 
 @pytest.mark.postgres
+def test_binary_stream_matches_complete_retained_v1_manifest(verified_db):
+    reference_spec = importlib.util.spec_from_file_location(
+        'preservation_v1_reference', ROOT / 'tests/fixtures/preservation_v1_reference.py')
+    reference = importlib.util.module_from_spec(reference_spec)
+    reference_spec.loader.exec_module(reference)
+    with connection(verified_db) as conn:
+        conn.execute('CREATE TABLE mf."Preservation no key" (value text, amount numeric(12,4), details jsonb)')
+        conn.execute('CREATE TABLE mf."Preservation keyed" (name text PRIMARY KEY, value text)')
+        for value in ('α₹🙂', 'quote"backslash\\', 'tab\tline\ncontrol\x01', ''):
+            conn.execute('INSERT INTO mf."Preservation no key" VALUES (%s,1.2300,%s::jsonb)',
+                         (value, json.dumps({'text': value, 'array': [None, True, 1]})))
+            conn.execute('INSERT INTO mf."Preservation keyed" VALUES (%s,%s)', (value, value))
+        conn.execute('INSERT INTO mf."Preservation no key" SELECT value,amount,details FROM mf."Preservation no key"')
+        conn.execute('CREATE MATERIALIZED VIEW mf."Preservation stored view" AS SELECT * FROM mf."Preservation keyed"')
+        conn.execute('CREATE VIEW mf."Preservation plain view" AS SELECT * FROM mf."Preservation keyed"')
+    with connection(verified_db, readonly=True) as conn:
+        legacy = reference.capture_preservation(conn)
+        streamed = capture_preservation(conn)
+        assert streamed == legacy
+        assert streamed['tables']['Preservation no key']['rows'] == 8
+        assert streamed['tables']['Preservation stored view']['rows'] == 4
+        assert 'Preservation plain view' not in streamed['tables']
+
+
+@pytest.mark.postgres
 def test_streaming_preservation_detects_data_structure_and_grant_changes(verified_db):
     m = manifest()
     with connection(verified_db, readonly=True) as conn:

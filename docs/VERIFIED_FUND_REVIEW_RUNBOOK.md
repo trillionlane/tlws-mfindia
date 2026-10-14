@@ -332,6 +332,16 @@ another DEV infrastructure deployment; reconcile their authoritative status
 before execution. Scheduled refresh/audit remains enabled and is guarded by the
 existing source-operation locks and input revalidation.
 
+The operational preservation capture uses read-only binary `COPY TO` for the
+ordered JSON-text column, decoded to the same UTF-8 length-prefixed row hash as
+v1's named cursor. Catalog reads are batched without changing per-object ordering
+or the manifest shape. A frozen v1 reference proves complete-manifest equality
+on isolated PostgreSQL, including Unicode/control text, duplicates, keyed and
+unkeyed tables, views, materialized views, ownership, sequences and ACLs.
+This removes thousands of off-region `FETCH 1000` round trips, not integrity
+checks. Source lock/statement/transaction bounds remain unchanged; measure actual
+DEV capture/rehearsal before installation and stop if they cannot meet the bounds.
+
 The JSON shape below is a template, not executable configuration. Replace every
 placeholder from reviewed image preparation, the supported policy command,
 SHA-256 of the checked-in contract/migration, immutable secret versions and the

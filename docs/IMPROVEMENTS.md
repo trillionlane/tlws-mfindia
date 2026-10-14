@@ -323,6 +323,13 @@ executor is being implemented/reviewed; this avoids any new provider-deployer
 control of Insights. Permission probes are diagnostic, not rollout acceptance.
 No trust creation, backup, schema install or source operation is claimed yet.
 
+The read-only operational probe exposed v1 preservation transport's off-region
+`FETCH 1000` round-trip overhead. The task-owned probe was interrupted without
+source writes. A batched-catalog/read-only binary stream replacement retains the
+same v1 checksums and manifest; its full-manifest equivalence and preservation
+regressions passed against isolated PostgreSQL. This is part of MF-E01 readiness,
+not a reason to extend live source-lock bounds or claim rollout success.
+
 ### Operational / API closeout remains separate
 
 - Observe the restored normal refresh and full audit cycle; activation probes
