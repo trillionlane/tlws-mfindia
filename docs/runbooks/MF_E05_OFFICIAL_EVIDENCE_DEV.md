@@ -2,6 +2,29 @@
 
 ## Scope and current evidence level
 
+**DEV checkpoint:** PR #56's private provenance/coverage release is deployed at
+`3e589fb529b59a61d7360dd7180d904b143d4ffd`. Fresh backup, operational restored
+clone, restricted installation, document append/replay, candidate/fixed/restored
+private HTTP, real traffic recovery and final whole-source/prior-layer comparison
+passed. [Release evidence](../evidence/mf-e05-dev-evi-261014a.json). The service
+currently runs `create_enrichment_app` with fifteen route patterns, 100% untagged
+traffic and the existing private IAM/ingress/assertion controls. The new four
+patterns are `/api/enrichment/v1/policy`, `/documents`, `/documents/{document_id}`
+and `/funds/{code}/coverage` under that prefix. Original-document bytes are not
+served. Use the existing consumer-owned signing key and Cloud Run default-service
+audience; this release does not wire an Insights application client or certify
+its end-user RBAC. No new GitHub gate variables were added.
+
+The two requested ABSL variants are 103174 (Regular Growth) and 103173 (Regular
+IDCW). Their stored v1 mappings remain `unmapped/pdf_parser_not_implemented`.
+The local text extraction under a newer policy is not silently substituted for
+an accepted v1 mapping. This checkpoint completes the **metadata-only deployment**,
+not exact source-field acceptance or the whole MF-E05/15-sprint goal. Continue
+with verified identity/field publication; do not repeat this accepted rollout.
+
+The evidence-index documentation commit may be newer than the deployed code SHA.
+Do not redeploy identical runtime code solely to match a documentation-only head.
+
 This is a backend-only, opt-in implementation. It introduces a private evidence
 store and four read routes, not accepted official fund facts. Existing eleven-route
 profiles and all previous contracts stay frozen. All-AMC coverage is the target;
