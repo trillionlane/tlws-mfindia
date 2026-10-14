@@ -315,6 +315,27 @@ def test_optional_install_registration_acl_replay_and_source_preservation(verifi
 
 
 @pytest.mark.postgres
+def test_caught_validation_failure_cannot_commit_partial_extension(verified_db, monkeypatch):
+    with connection(verified_db) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        before = publication_operations.capture_review(conn)
+
+        def reject(*args, **kwargs):
+            raise ValueError("synthetic privilege failure after schema creation")
+
+        monkeypatch.setattr(publication_operations, "verify_principal", reject)
+        with pytest.raises(ValueError, match="synthetic privilege failure"):
+            publication_operations.install(conn, ROOT)
+        assert (
+            conn.execute("SELECT to_regclass('mf_review.certifications') AS relation").fetchone()[
+                "relation"
+            ]
+            is None
+        )
+        assert publication_operations.capture_review(conn) == before
+
+
+@pytest.mark.postgres
 def test_api_certified_context_snapshot_is_coherent_across_committed_refresh(verified_db):
     # Distinct synthetic variants establish a genuinely eligible Growth control.
     with connection(verified_db) as conn:

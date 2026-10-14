@@ -99,6 +99,13 @@ def compare_review(before, after, *, added_policy=None):
 
 
 def install(conn, root: Path):
+    # Even a caller catching a Python validation failure cannot commit a
+    # partially installed schema/policy or failed preservation check.
+    with conn.transaction():
+        return _install(conn, root)
+
+
+def _install(conn, root: Path):
     identity = conn.execute('SELECT session_user AS principal,current_user=session_user AS dedicated').fetchone()
     if not identity['dedicated'] or identity['principal'] not in ('mfdata_admin','postgres'):
         raise ValueError('extension installation requires direct migration-owner login')
