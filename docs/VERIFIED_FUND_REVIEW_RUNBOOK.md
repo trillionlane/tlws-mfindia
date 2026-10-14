@@ -773,7 +773,9 @@ Post-registration reads were certified again.
 
 The eight-route profile serves 100% untagged traffic at
 `tlws-mf-review-dev-dev-cal-20261014a-calendar`, with internal ingress, the dedicated
-reader runtime and the existing sole explicit Insights invoker. AMFI 101762 has
+restricted review runtime and the existing sole explicit Insights invoker. The
+mixed original review profile uses the restricted `mfdata_verified_admin` login;
+independent read-only certifiers use `mfdata_verified_reader`. AMFI 101762 has
 64 available periods and 11 reasoned unavailable periods in the retained audit
 artifact; its ordinary calendar projection is eligible. The other three controls
 remain ineligible and ordinary reads withhold their numeric calendar objects.
@@ -798,3 +800,43 @@ Future source/context changes must remain dated or require recertification under
 the stored policy. MF-E04 rolling analytics is next; MF-E04–MF-E15 are not completed
 by this record. No Insights/TDW application authorization, UI, licensed-source
 acquisition, whole-universe analytics coverage or production claim is made.
+
+### MF-E04 finite scope — implementation in progress, no DEV acceptance yet
+
+Add immutable anniversary rolling-return artifacts for 1-, 3- and 5-year terms.
+The schedule is completed Gregorian month ends, independent of chart settings;
+it is explicitly not a daily rolling series. Start targets subtract calendar years
+and clamp leap-day anniversaries. Both prices must be actual observations on or
+before their target, with at most seven disclosed calendar days of lag. Annualize
+the endpoint ratio using actual observed elapsed days and a stored 365.2425-day
+year; do not substitute trading-day counts. Disclose interior gaps without
+claiming daily continuity or inventing observations.
+
+The stored policy defines Decimal precision/rounding, bounds, source/context/code
+lineage and replay. Summary min/max/median/arithmetic mean/positive-window share
+uses unrounded window values, requires at least two covered windows and complete
+scheduled endpoint coverage. Incomplete summaries are null with a reason.
+The positive-window share describes this fund's observed monthly windows; it is
+not a probability forecast or whole-market statement. Unsupported IDCW, absent
+history, missing endpoints and source quality restrictions remain explicit.
+
+Use a separate append-only `mf_rolling` namespace to retain the accepted calendar
+schema and its ACL boundary unchanged. Restricted generation may append sealed
+results; only the migration owner may register verified fixed-origin conformance
+evidence. Add a private opt-in read profile without changing existing frozen
+six/seven/eight-route or source-v2 contracts. Bounded paging must bind the retained
+result/term and reject inconsistent cursors; ordinary readers cannot bypass
+eligibility through retained audit access. No new per-gate environment flags.
+Normal response comparison eligibility applies to the requested term: another
+term's complete summary cannot make an unavailable five-year request eligible.
+
+Acceptance remains fresh archive/restored-clone preservation and replay, owner
+installation, bounded generation, original/additive private candidate/final
+certification, exact immutable-execution registration, recovery/restoration,
+public/reader/admin denial and full-source/prior-sidecar comparison. Real restored
+DEV data supplies 48 one-year and 24 three-year covered windows for AMFI 101762,
+but no five-year completed-month window yet. Five-year arithmetic has independent
+fixtures; do not relabel a fixture as real DEV coverage or invent a longer history.
+No UI, source correction, source acquisition, whole-dataset or consumer RBAC claim
+is included. The live Sprint 3 service remains the accepted serving profile until
+these separate Sprint 4 gates pass.

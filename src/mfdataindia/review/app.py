@@ -24,7 +24,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -47,6 +47,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if calendar:
                         from mfdataindia.analytics.store import verify_acl
                         verify_acl(conn)
+                    if rolling:
+                        from mfdataindia.analytics.rolling_store import verify_acl as verify_rolling_acl
+                        verify_rolling_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -147,6 +150,21 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                 raise HTTPException(403, 'admin assertion required for retained audit artifacts')
             return run(lambda conn: calendar_store.get_calendar(conn,code,result_id))
 
+    if rolling:
+        from mfdataindia.analytics import rolling_schemas, rolling_store
+
+        @app.get('/api/research/v1/funds/{code}/rolling-returns', response_model=rolling_schemas.PagedResponse | rolling_schemas.AuditResponse)
+        def rolling_returns(code: Code, principal: Principal = Depends(identity),
+                            years: int = Query(1,ge=1,le=5,json_schema_extra={'enum':[1,3,5]}), limit: int = Query(100,ge=1,le=100),
+                            cursor: Annotated[str | None, Query(max_length=512)] = None,
+                            result_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
+            if result_id and 'review:admin' not in principal.scopes:
+                raise HTTPException(403, 'admin assertion required for retained audit artifacts')
+            if result_id and cursor:
+                raise HTTPException(422, 'retained audit and normal cursor cannot be combined')
+            return run(lambda conn: rolling_store.get_rolling(conn,code,result_id) if result_id else
+                       rolling_store.page(rolling_store.get_rolling(conn,code),years=years,limit=limit,cursor=cursor))
+
     return app
 
 
@@ -158,3 +176,8 @@ def create_research_app(dsn: str | None = None, *, verifier: AssertionVerifier |
 def create_calendar_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Additive eight-route profile; old factories/contracts stay unchanged."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True)
+
+
+def create_rolling_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Additive nine-route profile; all earlier factories/contracts unchanged."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True)
