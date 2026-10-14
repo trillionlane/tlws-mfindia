@@ -61,6 +61,7 @@ jobs:
           uv run python scripts/export_calendar_openapi.py --check
           uv run python scripts/export_rolling_openapi.py --check
           uv run python scripts/export_forward_calculator_openapi.py --check
+          uv run python scripts/export_historical_calculator_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -151,6 +152,12 @@ jobs:
           image="tlws-mf-data:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_calculator_app; from mfdataindia.calculators.forward import policy,validate_policy; import mfdataindia.calculators.operations; import mfdataindia.calculators.certification; assert len(create_calculator_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 10; validate_policy(policy()); assert Path("/app/scripts/install_forward_calculator_policy_dev.py").is_file(); assert Path("/app/scripts/certify_forward_calculators_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-forward-calculators-v1.json").is_file()'
+      - name: Verify dormant additive historical-calculator profile
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_historical_calculator_app; from mfdataindia.calculators.historical import policy,validate_policy; import mfdataindia.calculators.historical_operations; import mfdataindia.calculators.historical_certification; assert len(create_historical_calculator_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 11; validate_policy(policy()); assert Path("/app/scripts/install_historical_calculator_policy_dev.py").is_file(); assert Path("/app/scripts/certify_historical_calculators_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-historical-calculators-v1.json").is_file()'
       - name: Build and verify dormant PostgreSQL 18 review-backup tools
         run: |
           set -euo pipefail

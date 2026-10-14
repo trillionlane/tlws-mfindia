@@ -1053,3 +1053,66 @@ are introduced. This acceptance covers provider DEV conformance and preservation
 not investor execution/forecasting, human fund correctness, consumer application
 RBAC, whole-universe analytics, new licensed imports or production. MF-E14 is next
 under the execution refinement. MF-E05–12 and final MF-E15 remain required.
+
+### MF-E14 — finite historical Growth simulation release (implementation only)
+
+The explicit eleven-route `create_historical_calculator_app` profile adds
+`POST /api/calculators/v1/backtests`; all previous profiles/contracts remain
+frozen. Two request variants accept only scheme code, inclusive ISO date range
+and integer INR paise: one lumpsum or regular monthly SIP with day 1..31.
+Ranges are bounded to 600 calendar months and source capture to 30,000 NAVs.
+Personal fields, float/bool money, malformed dates and unsupported input fail.
+The signed read/admin backend assertion and private IAM boundary remain; this
+POST runs one coherent read-only transaction and never inserts a scenario.
+
+The stored `historical-growth-observed-cashflows` v1 policy is deliberately
+conservative: confirmed Growth, explicit current signal-free assessment of the
+current dataset and current source-methodology eligibility. This is not an
+inference about a retired fund's historical eligibility. IDCW, missing/null
+quality evidence, signals, stale assessments or ineligible current methodology
+yield explicit unavailable results with no partial schedule or numeric summary.
+No Growth counterpart is substituted and no withheld IDCW analytics are unlocked.
+
+Each SIP target is the requested day of a Gregorian month, clamped to month end.
+Targets outside the inclusive range are not scheduled. A purchase uses the first
+actual NAV on/after its target, within seven calendar days and never after the
+requested end. Cash is assumed available for that actual purchase date; this
+is not an AMC cutoff/execution quote. Terminal valuation uses the last actual
+NAV on/before end, within seven days; end cannot exceed captured last observation.
+Every observed gap between first purchase and terminal must be at most seven
+days. That is a disclosed observed-interval coverage rule, not licensed trading-
+calendar completeness. An uncovered instalment withholds the entire simulation
+rather than silently dropping it or using a future price. No NAV forward-fill
+or source-row insertion occurs.
+
+Purchased units and their sum are exact rational quantities. Only terminal
+value is rounded once, exact HALF_EVEN to integer paise. Twelve-place displayed
+units never feed back into arithmetic. Period gain uses the rounded monetary
+ledger, not a hidden unrounded valuation. Contributions are negative flows on
+actual purchase dates; one rounded positive terminal amount is dated to the
+actual valuation date. Same-date cash flows are aggregated before XIRR.
+
+XIRR is annualized ACT/365, explicitly distinct from earlier risk/rolling day
+counts. Its admitted class has exactly one negative-to-positive sign change;
+nonstandard/multiple-root flows are withheld, not solved from a Newton guess.
+Fifty-digit Decimal bisection is bounded to rates [-0.999999999999,1000000] and
+256 iterations, with residual tolerance max(0.000001 paise, invested*1e-30).
+Zero rate, nonconvergence, same-day horizons and out-of-bracket roots are explicit.
+Outputs are eight-place percent strings with unrounded residual evidence.
+
+The policy is the only persisted addition to the existing immutable registry;
+owner-only installation preserves all prior rows/sequence. Result IDs bind the
+normalized request, complete captured source/context hash, policy and code/runtime.
+Money-weighted investor simulations are never marked eligible for current peer
+comparison. This release adds no schema/grants, private signer retrieval, UI,
+fees/tax/load execution model, new data import or original record modification.
+
+Acceptance still requires exact-head tests/review/merge and prepared image pins,
+fresh backup and new empty restored clone, restricted direct-reader evidence,
+zero-traffic/private fixed-origin real Growth SIP/lumpsum samples with XIRR,
+IDCW/unassessed/signalled controls, forward/earlier-route compatibility, actual
+ten-route recovery and restoration, public GET/POST denial and whole-source plus
+prior-layer/sequence preservation. No mock fixture or code-only check is DEV
+acceptance. Runtime-specific result identities must be recorded separately from
+clone identities. The finite provider feature is not whole-universe, investor
+execution, human correctness, consumer RBAC, licensed-source or production approval.
