@@ -130,10 +130,10 @@ deployed and accepted, with evidence for each claimed milestone.
 
 | Sprint | Status | Implementation PRs | Release / acceptance evidence |
 | --- | --- | --- | --- |
-| ENH-01 | Core implementation merged; operational rollout pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local synthetic preservation/replay tests; operational-sized clone and live privilege verification pending. |
-| ANA-01 | Initial seven-metric slice implemented; monthly/rolling audit remains | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Independent reference fixtures; no live cohort generation or consumer acceptance. |
-| DATA-05 | Initial review/proposal API merged; operational rollout pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local HTTP, concurrency and session-independent history tests; no UI or executable overrides. |
-| DEV review rollout | Manual preservation-first tooling implemented; review/execution pending | [Provider PR #34](https://github.com/trillionlane/tlws-mfindia/pull/34), [runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md#preservation-first-dev-rollout) | Fresh backup/restore, restricted live identities/schema, finite cohort and six-route certification are separate operational gates; no live evidence yet. |
+| ENH-01 | Foundation accepted for bounded provider DEV scope | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33), rollout PRs #34–#37 | MF-E01 completed fresh archive, operational restored-clone preservation/replay and actual restricted-login checks. [Evidence](evidence/mf-e01-dev-review-20261014d.json). Not whole-dataset or consumer acceptance. |
+| ANA-01 | Initial seven-metric slice accepted for the DEV cohort; monthly/rolling remains | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33), publication PRs #39–#40 | Independent fixtures and real four-fund generation/certification; MF-E02 certified new v13 artifacts after a normal cycle. Calendar/monthly and rolling are MF-E03/MF-E04. |
+| DATA-05 | Initial review/proposal backend accepted for bounded private DEV scope | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33), rollout PRs #34–#37 | Actual six-route checks, diagnostic-only canary history, replay/concurrency and persistent source-bound records. No UI, human fund correctness approval, Insights RBAC acceptance or executable overrides. |
+| DEV review rollout | Complete — private provider DEV acceptance | [Provider PR #34](https://github.com/trillionlane/tlws-mfindia/pull/34), rollout fixes #35–#37, [runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md#preservation-first-dev-rollout) | Fresh archive/restored clone, restricted identities/schema, finite generation, six-route certification and live non-destructive recovery passed in MF-E01. |
 | UI-01 | Planned | — | — |
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
@@ -303,7 +303,7 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | Sprint | Current status | Implementation / evidence |
 | --- | --- | --- |
 | MF-E01 | Complete — bounded provider DEV acceptance, 2026-10-14 | PRs #34–#37; fresh immutable backup, operational restored-clone preservation/replay, restricted direct logins, private deployment, four-fund generation, candidate/final six-route certification and live non-destructive recovery/recertification. [Closeout evidence index](evidence/mf-e01-dev-review-20261014d.json). Not whole-DB or Insights RBAC acceptance. |
-| MF-E02 | In progress — private DEV profile/recovery certified; normal cycle pending | PR #39 plus candidate-audience fix #40 merged. Fresh archive/restored-clone preservation, compatible six-route baseline, restricted additive installation, actual certificate registration and candidate/final/recovered seven-route private checks passed. [Dated runtime evidence](evidence/mf-e02-dev-pub-20261014b-runtime.json). Normal refresh/audit observation at 06:30/06:40 UTC remains required; not sprint completion. |
+| MF-E02 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #39 plus candidate-audience fix #40, runtime checkpoint #41. Fresh archive/clone, compatible baseline, restricted additive installation, private candidate/final/recovery checks and the real 06:30/06:40 normal cycle passed. Old v12 artifacts remained dated/not current; new v13 artifacts were generated, certified and registered without replacing old rows. [Closeout evidence](evidence/mf-e02-dev-pub-cycle-20261014.json). |
 | MF-E03–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
 
 The notes below are historical execution records, not the current status. The
@@ -440,12 +440,47 @@ unchanged result IDs. No data/schema/revision/backup deletion or restore over DE
 was used. A separate baseline evidence-observation failure was reconciled using
 the original immutable successful execution, not by rerunning its mutations.
 
-This checkpoint does not close MF-E02. The pre-cycle reference is dataset v12,
-NAV as of 2026-10-13; current and retained input hashes still agree. The next normal
-refresh/audit cycle must demonstrate live current-versus-historical behavior and
-fresh certification where required. No manual refresh, audit, recomputation or
-source correction is authorized merely to accelerate this observation. MF-E03
-implementation waits for the complete MF-E02 acceptance gate.
+That initial checkpoint did not close MF-E02. The pre-cycle reference was dataset
+v12, NAV as of 2026-10-13; current and retained input hashes agreed at that point.
+The next normal refresh/audit cycle was still required to demonstrate live
+current-versus-historical behavior and fresh certification where needed. No manual
+refresh, audit, recomputation or source correction was dispatched to accelerate
+the observation. MF-E03 implementation waited for the complete MF-E02 gate.
+
+**MF-E02 closeout — 2026-10-14:** the normal refresh execution
+`tlws-mf-data-nav-refresh-dev-94qxz` completed at 06:31:03 UTC and advanced the
+dataset to v13. The scheduled audit `tlws-mf-data-nav-audit-dev-wtnhl` completed
+at 06:40:49 UTC. Actual database observations and separate private HTTP jobs
+before/after the audit verified that retained v12 artifacts did not become current
+v13 evidence: Growth's unchanged historical window remained explicitly dated,
+current comparisons were disabled, and the ineligible controls withheld metrics.
+All existing review rows and sequence state remained unchanged through the cycle.
+
+A fresh bounded manifest generated four v13 snapshots/results. Six-route
+conformance, immutable-execution verification, owner-only certificate registration
+and the seventh private read all passed. Only AMFI 101762 is current comparison
+eligible; IDCW 101763, duplicate-signalled 139889 and unassessed 154701 remain
+ineligible, including explicit `signals: null` for 154701. Its two new diagnostic
+events are not a human review approval or executable source override. Old results,
+snapshots, events and certificates remain retained.
+
+The fresh pre/post-append comparison covered all 4,236,069 NAV rows, 14,390 funds,
+other stored `mf` relations, structure/functions/triggers/sequences/ownership/ACLs
+and all prior review artifacts. No source row, schema or serving configuration
+changed during this bounded append/certification; no data was deleted. The local
+wrapper's final checker omitted a required checksum argument after the cloud
+steps passed. Its failure is retained; a new read-only comparison supplied the
+argument and passed, without rerunning any mutating job. The runtime remains SHA
+`8bb1f680dae5605563e7a0cc2e97f3ef254b2007`; documentation merges do not redeploy it.
+See the [closeout index](evidence/mf-e02-dev-pub-cycle-20261014.json). MF-E03 is now
+next; MF-E03–MF-E15 are not completed by this closeout.
+
+**Future source-access gate:** HDFC's [published terms](https://www.hdfcfund.com/disclaimer),
+checked on 2026-10-14, require written permission for commercial reuse. No such
+permission evidence was supplied during MF-E02. Confirm existing approved rights
+or a permitted authoritative supplier before its enrichment/distribution imports;
+public web access and an old robots.txt research note are not permission proof.
+This does not prevent policy-bound calculations from already-held NAV data.
 
 ### Operational / API closeout remains separate
 

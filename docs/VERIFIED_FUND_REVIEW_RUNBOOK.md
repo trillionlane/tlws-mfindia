@@ -609,7 +609,7 @@ manual source rewrites, legacy recomputation or quality-signal clearing is part 
 that observation. Neither the implementation/tests nor a staged private revision
 are MF-E02 acceptance evidence until the complete live chain succeeds.
 
-### MF-E02 runtime checkpoint — normal cycle still pending
+### MF-E02 initial runtime checkpoint — normal cycle was still pending
 
 The [dated runtime evidence index](evidence/mf-e02-dev-pub-20261014b-runtime.json)
 records actual backup, clone, installation, compatible baseline, private profile
@@ -639,7 +639,47 @@ unchanged historical windows may remain explicitly dated/reusable, never current
 comparison eligible. Preserve signals/nulls and retain original result artifacts.
 Do not dispatch source writes or change schedules merely to speed up acceptance.
 
-Remaining gates are real normal-cycle observation and any resulting bounded
+At that checkpoint the remaining gates were real normal-cycle observation and any resulting bounded
 generation/certification/registration needed to establish current publication.
-MF-E02 stays in progress until these pass; MF-E03–MF-E15 are not started. A
+Those gates passed in the closeout below; MF-E03–MF-E15 are not started. A
 documentation-only checkpoint merge does not redeploy or recertify a new SHA.
+
+### MF-E02 DEV acceptance — normal cycle and fresh current publication
+
+The [closeout evidence index](evidence/mf-e02-dev-pub-cycle-20261014.json) links the
+initial archive/clone/deployment/recovery proof and actual 2026-10-14 normal cycle.
+Refresh `tlws-mf-data-nav-refresh-dev-94qxz` completed at 06:31:03 UTC; audit
+`tlws-mf-data-nav-audit-dev-wtnhl` completed at 06:40:49 UTC. Dataset v12 became
+v13. A database observation at 06:36:12 UTC and an independent private HTTP
+execution observed the pre-audit state; another pair verified post-audit behavior.
+Prior review records stayed intact. No manual refresh or audit was dispatched.
+
+Retained v12 inputs/results did not certify v13. AMFI 101762's unchanged window
+remained `historical_certified` but not current-comparison eligible. The IDCW,
+duplicate-signalled and unassessed controls became `historical_invalidated`, with
+metrics withheld and original artifacts retained for audit. This is artifact
+publication policy, not an assertion that all flagged NAVs are erroneous.
+
+Manifest `dev-pub-cycle-20261014` then generated four new v13 artifacts under the
+same immutable policy/runtime image. Its fresh canary is AMFI 154701, previously
+without review history; two `in_review`/non-executable no-op diagnostic events do
+not approve a fund or change original fields. Actual six-route conformance,
+immutable execution/source/identity verification, certificate registration and
+current seven-route HTTP reads passed. The new certificate is
+`d16536ed50a97e20c157f88b3cb84db57609bbd495a351a357503a98c8d9c8e4`.
+Exactly 101762 is current comparison eligible. 101763, 139889 and 154701 remain
+ineligible; 154701 remains `not_assessed` with an explicit null `signals` field.
+
+The append phase preserved the complete `mf` manifest (4,236,069 NAV rows, 14,390
+funds and all other source objects/values/ACLs) and every prior review row. It
+added only four snapshots, four results, two diagnostic events and one certificate;
+no source rows, schema, IAM or traffic changed. A local wrapper signature error in
+the final read-only check was retained. A separate corrected read-only check passed
+without repeating any mutating execution. Cloud job completion and actual provider
+certification are recorded separately from that local wrapper outcome.
+
+MF-E02 is accepted for this bounded provider DEV scope. Runtime/source SHA remains
+`8bb1f680dae5605563e7a0cc2e97f3ef254b2007`; the serving and compatible revisions,
+source-v2 service, association writer and six-hour schedules are unchanged. This
+does not certify all funds, Insights/TDW application authorization, new UI or
+production. Start MF-E03 from the merged closeout; retain all prior artifacts.
