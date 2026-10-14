@@ -132,7 +132,7 @@ deployed and accepted, with evidence for each claimed milestone.
 | ENH-01 | Core implementation merged; operational rollout pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local synthetic preservation/replay tests; operational-sized clone and live privilege verification pending. |
 | ANA-01 | Initial seven-metric slice implemented; monthly/rolling audit remains | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Independent reference fixtures; no live cohort generation or consumer acceptance. |
 | DATA-05 | Initial review/proposal API merged; operational rollout pending | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33) | Local HTTP, concurrency and session-independent history tests; no UI or executable overrides. |
-| DEV review rollout | Manual preservation-first tooling implemented; review/execution pending | [Runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md#preservation-first-dev-rollout) | Fresh backup/restore, restricted live identities/schema, finite cohort and six-route certification are separate operational gates; no live evidence yet. |
+| DEV review rollout | Manual preservation-first tooling implemented; review/execution pending | [Provider PR #34](https://github.com/trillionlane/tlws-mfindia/pull/34), [runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md#preservation-first-dev-rollout) | Fresh backup/restore, restricted live identities/schema, finite cohort and six-route certification are separate operational gates; no live evidence yet. |
 | UI-01 | Planned | — | — |
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
