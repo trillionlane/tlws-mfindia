@@ -33,9 +33,10 @@ UTI/SBI/Kotak are the operator's reported confirmations, not the universe limit.
 
 Local tests use **synthetic documents and a disposable PostgreSQL 18 database**.
 They do not certify downloaded factsheets, legal permission, Cloud IAM, live
-deployment, whole-AMC coverage or consumer business acceptance. The first live
-AMFI directory retrieval timed out on 2026-10-14; no document was substituted
-with a search snippet and no new document was imported into DEV.
+deployment, whole-AMC coverage or consumer business acceptance. At the initial
+#53 implementation checkpoint, AMFI directory retrieval timed out on 2026-10-14;
+no search snippet was substituted and no document had then been imported into
+DEV. The completed metadata-only release above supersedes that no-import state.
 
 ## Preservation and capability boundaries
 
