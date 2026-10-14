@@ -75,6 +75,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         review_baseline = capture_review(conn)
         from mfdataindia.analytics.operations import capture_calendar
         analytics_baseline = capture_calendar(conn)
+        from mfdataindia.analytics.rolling_operations import capture_rolling
+        rolling_baseline = capture_rolling(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
             raise ValueError('operational backup must contain actual fund/NAV records')
         # Role names only. Password hashes and global role attributes are never
@@ -89,6 +91,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         evidence['review_baseline'] = review_baseline
     if analytics_baseline is not None:
         evidence['analytics_baseline'] = analytics_baseline
+    if rolling_baseline is not None:
+        evidence['rolling_baseline'] = rolling_baseline
     return evidence
 
 
