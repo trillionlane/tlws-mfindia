@@ -57,8 +57,8 @@
     "cover_date_evidence": "extracted text and rendered cover independently inspected",
     "source_notice": "some pages say For Internal Circulation Only; retain with operator-reported SBI authority before field acceptance",
     "exact_scheme_variants_mapped": 0,
-    "facts_accepted": false
-    ,"version_2_extraction": {
+    "facts_accepted": false,
+    "version_2_extraction": {
       "content_hash": "b3b6b93711b560e68dff024db17a1fdf56e9b3344e6bdbbb13dbb1b5a3c89429",
       "result_hash": "5c8517a5953be9129f175129823d89a5f3bed05e2dfb72028d14c32a143b2cb6",
       "receipt_hash": "53dffa9ca62479dd46d97ad7f9f1bfaf34d911803ca33203fc035cb57aa420d1",
@@ -66,7 +66,7 @@
       "policy_hash": "547f56d87d45a702480b29463ca4d266f95652095563575b7554eb58851c3b71"
     }
   },
-  "retention": "Original files and extraction retained separately in task-owned private archive; all three new archived content hashes independently rechecked",
+  "retention": "Original files and extractions retained separately in task-owned private archive; referenced original, discovery and extraction hashes independently rechecked",
   "database_imported": false,
   "source_rows_changed": 0,
   "api_contracts_changed": false,
