@@ -910,3 +910,67 @@ licensed-source acquisition or production acceptance is claimed. MF-E05–MF-E15
 remain pending. MF-E05 must retain the source-access gate above: written reuse/
 retention permission or a permitted authoritative source is required before AMC
 enrichment imports; this closeout does not supply or waive that permission.
+
+### MF-E13 — finite forward-calculator release (implementation, not DEV acceptance)
+
+Under the roadmap's execution refinement, this already-approved source-independent
+release follows MF-E04 while AMC/TRI/distribution imports remain rights-gated.
+MF-E14 follows accepted MF-E13; MF-E05–12 and MF-E15 remain required, not replaced.
+
+The explicit `create_calculator_app` ten-route profile adds only
+`POST /api/calculators/v1/projections`. Earlier factories/contracts stay frozen.
+Signed backend `review:read`/`review:admin` assertions may calculate; this POST is
+not a database mutation and needs no idempotency writer or per-gate feature flag.
+All replies are no-store. Extra personal/identifying fields, float money/rates,
+non-finite values and unsupported budgets fail validation.
+
+Requests select lumpsum, SIP, annual percent/fixed step-up SIP, SWP, or a current-cost
+inflation goal with regular/step-up reverse SIP. They explicitly state effective
+annual or nominal-annual/monthly-compounding rate and beginning/end cashflow timing.
+The stored `assumed-monthly-cashflow-planning` v1 policy fixes 50-digit Decimal
+arithmetic for effective-rate roots and monthly interest credit rounded HALF_EVEN
+to integer INR paise. Nominal annual rates use exact rational division by 1200
+before integer rounding so repeating decimals cannot bias a half-paise tie.
+This is deliberately a monthly rounded cashflow schedule, not an unrounded
+closed-form FV secretly presented as an account ledger. Each month reconciles
+opening + contribution + interest - payment = closing, and totals reconcile gain.
+Annual step changes occur before months 13/25/etc. SWP pays at most available
+integer corpus and discloses partial final withdrawals and first depletion month.
+
+Inflated cost is rounded upward in paise. Reverse goals search for the smallest
+integer starting contribution that meets that target under the same engine;
+an exponential upper bracket avoids rejecting a feasible small contribution
+because a speculative full-budget projection overflows the balance limit;
+the immediately smaller contribution is checked too. Infeasible goals and
+derived-cashflow/balance budget breaches are explicit failures, never fabricated
+zero answers. Zero/negative rates, timing, integer rounding, annual boundaries,
+step-up minimality and deterministic replay have independent reference fixtures.
+These are hypothetical assumptions, not forecasts, advice or observed NAV returns.
+Fees, taxes, execution cutoffs and fund-specific performance are not modelled.
+
+The only persisted object is an immutable executable policy in the existing
+registry, installed through a fixed owner-only DEV script. No new tables, source
+edits, permission grants or scenario/result persistence are introduced. The runtime
+loads the registered exact policy before calculation. Dedicated-reader consumer
+certification recomputes eight nonpersonal cases, checks replay, invalid-input/PII/
+infeasible denials, private auth/no-store and an unchanged review ledger. The actual
+installer entrypoint is tested hermetically, not just its underlying store function.
+
+The calculator certifier additionally compares all seven existing read routes
+with exact coherent database projections for the declared cohort and requires
+read-scope rejection on both existing mutation routes (nine prior paths total).
+It does not recertify an older derived artifact as current, repeat a canary write,
+or force regeneration to hide a normal scheduled-refresh transition. Existing
+stale/historical/withheld states must survive the deployment honestly. HTTP replay
+must preserve status, no-store and exact result content, not just its JSON body.
+
+DEV acceptance remains separate: exact merged SHA/digests, fresh create-only
+archive, new empty memory-bounded restored clone, source and all retained-layer
+preservation, direct restricted logins, owner policy install, zero-traffic candidate,
+fixed-origin calculator plus retained original-contract checks, public denial and
+non-destructive recovery to the accepted nine-route profile. Never restore over
+DEV or delete a retained clone/archive. Snapshot/certificate execution/source
+versions and actual coverage must be recorded before closeout. Runtime-specific
+result hashes remain distinguishable from clone hashes; both bind exact policy,
+normalized request and code/runtime identity. No consumer RBAC, UI, production or
+licensed-source/data-enrichment acceptance follows from this implementation.

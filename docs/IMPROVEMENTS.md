@@ -291,6 +291,15 @@ licensing constraint or unresolved P1/P2. No bypass of repository protections,
 Owner/Editor grants, provider control of Insights runtime, new per-gate variables
 or automatic deletion as cleanup.
 
+**Execution refinement — 2026-10-14:** MF-E01–04 are accepted. MF-E05–12's new
+official-source imports remain gated on documented reuse/retention authority.
+MF-E13's assumed forward calculators do not depend on those sources, and MF-E14
+uses already-held Growth NAV snapshots. Execute MF-E13, then MF-E14 as the next
+two independently reviewed/merged/certified finite releases; resume MF-E05–12
+when their source gate is satisfied and close MF-E15 only after every deliverable
+is accepted. This changes delivery order only, not the fifteen feature scopes,
+source-access gates, preservation boundaries or overall completion definition.
+
 **Initial execution record:** PR #34 merged at
 `88eb8ad02cbddec09a25d7e1724cf1a91892fedb`; exact-merge verification passed and
 automatic DEV deployment was skipped. MF-E01 preflight on 2026-10-14 found no
@@ -306,7 +315,9 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | MF-E02 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #39 plus candidate-audience fix #40, runtime checkpoint #41. Fresh archive/clone, compatible baseline, restricted additive installation, private candidate/final/recovery checks and the real 06:30/06:40 normal cycle passed. Old v12 artifacts remained dated/not current; new v13 artifacts were generated, certified and registered without replacing old rows. [Closeout evidence](evidence/mf-e02-dev-pub-cycle-20261014.json). |
 | MF-E03 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #43; fresh immutable archive and operational restored-clone rehearsal, restricted additive installation, four calendar artifacts, original/new candidate and final private HTTP checks, certificate registration, recovery/restoration and whole-source/prior-review preservation passed. [Closeout evidence](evidence/mf-e03-dev-cal-20261014a.json). Not whole-dataset analytics or consumer RBAC acceptance. |
 | MF-E04 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #45 plus dispatch fix #46; 833 CI tests passed with one documented skip. Fresh archive and operational clone, restricted installation/generation, original/new private checks, registration, recovery and regional whole-source/prior-layer preservation passed. [Closeout evidence](evidence/mf-e04-dev-roll-20261014b.json). AMFI 101762 has 48 one-year and 24 three-year windows; five-year real coverage remains unavailable. |
-| MF-E05–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
+| MF-E05–MF-E12 | Pending source-access authority — not started | No new AMC/distribution/TRI imports; all original acceptance gates retained. |
+| MF-E13 | In progress — deterministic forward calculators | Next finite release under the execution refinement; no source dependency, scenario persistence or UI. No deployment/acceptance claimed yet. |
+| MF-E14–MF-E15 | Planned — not started | MF-E14 follows accepted MF-E13; final handover cannot hide unresolved source-dependent deliverables. |
 
 The notes below are historical execution records, not the current status. The
 successful `dev-review-20261014d` chain supersedes the stopped attempts without
