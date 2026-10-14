@@ -684,7 +684,7 @@ source-v2 service, association writer and six-hour schedules are unchanged. This
 does not certify all funds, Insights/TDW application authorization, new UI or
 production. Start MF-E03 from the merged closeout; retain all prior artifacts.
 
-### MF-E03 canonical calendar returns — implementation, not DEV acceptance
+### MF-E03 canonical calendar returns — implementation and bounded DEV acceptance
 
 The opt-in `create_calendar_app` profile adds one route to the seven-route private
 profile: `GET /api/research/v1/funds/{code}/calendar-returns`. The existing review
@@ -744,3 +744,57 @@ DEV rollout sequence under the standing fifteen-sprint approval:
 No UI, source correction, public MFData API, consumer RBAC or whole-dataset
 analytics acceptance is included in this implementation. Source acquisition and
 IDCW adjustment remain later gated work; calculations use already-held NAV data.
+
+#### MF-E03 DEV closeout — 2026-10-14
+
+[PR #43](https://github.com/trillionlane/tlws-mfindia/pull/43) merged as
+`a4d253a2a26baaa6e88bbe472a71a3335279000c`. Exact-head CI passed 772 tests,
+with one skip, and all three image builds. The [retained live evidence index](evidence/mf-e03-dev-cal-20261014a.json)
+records actual archive/clone, database and private HTTP acceptance, not another
+locally manufactured certificate. Runtime SHA is the implementation merge SHA;
+this documentation-only closeout does not redeploy or relabel it.
+
+The create-only archive retained GCS generation `1791967896140980` and SHA-256
+`774419bd497ab0279a68ac9bdb3bfb5605cee78bc45443209444f843eac6b4e8`.
+An operational PostgreSQL 18 restored clone rehearsed the additive installation,
+actual restricted logins, replay, API authorization and preservation. The private
+dump, credentials, signer and full raw certificates stay outside Git. No restore
+over DEV, deletion, IAM expansion or original source correction was performed.
+
+Migration-owner execution `mf-cal-install-dev-cal-20261014a-7rl54` installed
+the optional extension. Restricted generation appended exactly four calendar
+results for `[101762,101763,139889,154701]`. Core compatibility generation replayed
+the already-held core results; it did not append or replace core snapshots/results.
+Candidate and fixed-origin original-six, publication and calendar certificates
+passed independently. Owner registration accepted only the verified immutable
+fixed-origin execution, producing certificate
+`a522817116e4697e2f56c4158c8f8e92bec21b8693ddf57dcde6485a9ff75124`.
+Post-registration reads were certified again.
+
+The eight-route profile serves 100% untagged traffic at
+`tlws-mf-review-dev-dev-cal-20261014a-calendar`, with internal ingress, the dedicated
+reader runtime and the existing sole explicit Insights invoker. AMFI 101762 has
+64 available periods and 11 reasoned unavailable periods in the retained audit
+artifact; its ordinary calendar projection is eligible. The other three controls
+remain ineligible and ordinary reads withhold their numeric calendar objects.
+AMFI 154701 retains explicit `signals: null` and `not_assessed`. Certification
+does not clear a duplicate signal, invent missing history or unlock IDCW.
+
+Recovery actually promoted the retained accepted seven-route revision and ran
+its private publication check, then restored the exact eight-route revision and
+ran another calendar certificate. Recovery changed traffic only: source, schema,
+artifacts, credentials and IAM were retained. External unauthenticated review and
+calendar probes returned 404 after restoration; there are no retained tags.
+
+The final read-only comparison against the fresh archive preserved every original
+source value/object/sequence/owner/ACL, including 4,236,069 NAV rows and 14,390 funds,
+and every prior review row. Allowed additions were one calendar policy, four
+calendar results, one calendar certificate and two bounded diagnostic canary
+events for AMFI 101763. These `in_review`/no-op proposal events are conformance
+fixtures, not human correctness approval or executable data corrections.
+
+MF-E03 is accepted only for this declared provider DEV cohort at dataset v13.
+Future source/context changes must remain dated or require recertification under
+the stored policy. MF-E04 rolling analytics is next; MF-E04–MF-E15 are not completed
+by this record. No Insights/TDW application authorization, UI, licensed-source
+acquisition, whole-universe analytics coverage or production claim is made.

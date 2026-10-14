@@ -1,0 +1,187 @@
+{
+  "format": "mfdata-calendar-runtime-evidence-index-v1",
+  "record_kind": "INDEX_OF_RETAINED_LIVE_EVIDENCE_NOT_A_NEW_CERTIFICATE",
+  "sprint": "MF-E03",
+  "date": "2026-10-14",
+  "status": "ACCEPTED_BOUNDED_PROVIDER_DEV",
+  "sprint_complete": true,
+  "runtime_git_sha": "a4d253a2a26baaa6e88bbe472a71a3335279000c",
+  "runtime_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:5fac55357356c8046591e7da0d4028482b80dcaf0a726a83b81282734a4402f9",
+  "implementation_pr": "https://github.com/trillionlane/tlws-mfindia/pull/43",
+  "exact_head_ci": "https://github.com/trillionlane/tlws-mfindia/actions/runs/38536472191",
+  "ci_python_tests_passed": 772,
+  "ci_python_tests_skipped": 1,
+  "service": "tlws-mf-review-dev",
+  "revision": "tlws-mf-review-dev-dev-cal-20261014a-calendar",
+  "recovery_revision": "tlws-mf-review-dev-dev-pub-20261014b-research",
+  "project": "trillionlane-dev",
+  "region": "asia-south1",
+  "ingress": "internal",
+  "explicit_invoker": "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com",
+  "cohort": [
+    101762,
+    101763,
+    139889,
+    154701
+  ],
+  "dataset_version": 13,
+  "manifest_hash": "cc101e46d541043888dc7ca85f51852073747ed21217ec7039b50b8b84bf0458",
+  "calendar_policy_hash": "84c3ed8d14d8d2af67eecf03657a16caea9f3dbf1968e7682e24799dcc4658ed",
+  "calendar_schema_sha256": "8dcbdc09d485089bbffdc9c5cd9e3730bbd70b8cec3849d66b2f61f123c48ac9",
+  "backup": {
+    "object": {
+      "generation": "1791967896140980",
+      "md5": "fdMI/uGTg/qIjWTQCLEU+Q==",
+      "sha256": "774419bd497ab0279a68ac9bdb3bfb5605cee78bc45443209444f843eac6b4e8",
+      "size": 48773565,
+      "uri": "gs://tlws_mf_data_source/verified-review-rollouts/dev-cal-20261014a/snapshot.dump"
+    },
+    "sha256": "774419bd497ab0279a68ac9bdb3bfb5605cee78bc45443209444f843eac6b4e8",
+    "bytes": 48773565
+  },
+  "stages": [
+    {
+      "stage": "calendar-preflight",
+      "sha256": "a51e94a63a01ad37c918592e948c2bb6b5b61586fffcbabcfa690caa158abacd"
+    },
+    {
+      "stage": "calendar-backup",
+      "sha256": "1b2734400a793e9878b3a87ed0e1c7a7434a02becb79a3055e214140041d6081"
+    },
+    {
+      "stage": "calendar-rehearsal",
+      "sha256": "3c357e258e231648bfdc06c75454eb542180c6b2a22b04bb9c71b53d11ca75dd"
+    },
+    {
+      "stage": "calendar-installation-execution",
+      "sha256": "d23e51e41517f95738b1c8b43bae611ed9fad8bc7aad953bb41681a5d10cb3aa",
+      "execution": "mf-cal-install-dev-cal-20261014a-7rl54",
+      "certificate_sha256": "5daa6645b2d4b909e86e1dd0519c32beb8789c2e2618f5a05f4ae1095af91a96"
+    },
+    {
+      "stage": "calendar-generation-execution",
+      "sha256": "ea66d9c64484db81612898446dfe6b1d58fe13a1268b3790f70d67268106e8ca",
+      "execution": "mf-cal-gen-dev-cal-20261014a-dhjgv",
+      "certificate_sha256": "fa17ab167c1ffa72a4e8de838ffbf883eb5dac9bcfed0835217bdef16e260f95"
+    },
+    {
+      "stage": "calendar-core-generation",
+      "sha256": "a830acf979e60a3c1c94d29a83df9db7bf2a23307d5d2a2d2102244db7e195bb",
+      "execution": "mf-core-gen-dev-cal-20261014a-jwbxp",
+      "certificate_sha256": "e7c4535c814f556ba15963ed043444e771eb5c65003adaf36a3fd50ee3d6b414"
+    },
+    {
+      "stage": "calendar-staged",
+      "sha256": "f291f5ce25d6a62ff112518a4f9e87b5db80bd62788dabf9cab7e2bc81a43ef5"
+    },
+    {
+      "stage": "calendar-candidate-calendar",
+      "sha256": "904b4eb8e2fd9c66620a64235d86e00efa68f6635a425c2f8b8c691de790906e",
+      "execution": "mf-candidate-calendar-dev-cal-20261014a-lm9gl",
+      "certificate_sha256": "d0ef4937a37cc9c771d3c8a9ff8fdef0b79ade318d4a2609cd930fda4519c9a4"
+    },
+    {
+      "stage": "calendar-candidate-core",
+      "sha256": "0ae382c43d3724a7e44ae5bb1617bec4865d6a5f828fefd05f1495f673c90777",
+      "execution": "mf-candidate-core-dev-cal-20261014a-7chrv",
+      "certificate_sha256": "b6769df224627ca7d31366892803940dab03db8794dc6827ed7ab9c40a493e86"
+    },
+    {
+      "stage": "calendar-candidate-publication",
+      "sha256": "4c017fdce217f82439138d98ed4b991b2e012314391627c82cdaebbead09f09f",
+      "execution": "mf-candidate-publication-dev-cal-20261014a-m6d5w",
+      "certificate_sha256": "3bb597e1052b06050f9e9bc161925d357bc60b1d56c69209647ef96868c64442"
+    },
+    {
+      "stage": "calendar-promoted",
+      "sha256": "fb7657a3f2313836074fa523012b3fe9329c97f88eaeb9f5596b0788ac484e01"
+    },
+    {
+      "stage": "calendar-final-calendar",
+      "sha256": "111472ee8bbd913d523b7a03ca4012568884adc4a9f0a31b87f309730b005372",
+      "execution": "mf-final-calendar-dev-cal-20261014a-rrqq8",
+      "certificate_sha256": "64b67da90989e99aae89c9d2c6be9457c4e3aff453499da1641ed79de3dd6102"
+    },
+    {
+      "stage": "calendar-final-core",
+      "sha256": "3f1b737974ec891764c894b88f586e48e6021fc1781beb7c44dbe8c453b74a79",
+      "execution": "mf-final-core-dev-cal-20261014a-sl7p8",
+      "certificate_sha256": "99186671713344034968b3699d8ba303dc95c00085af3a5349e4077a9a2f45bc"
+    },
+    {
+      "stage": "calendar-final-publication",
+      "sha256": "54d1511faa08bbd4bdd21b14963b02bfa175cff9a73f903563457b200e6b1f8d",
+      "execution": "mf-final-publication-dev-cal-20261014a-56ltb",
+      "certificate_sha256": "cd3d81b7ee8085de6854f6f62fdc20ae30a1d5c2f12c3946beb1722ca54793eb"
+    },
+    {
+      "stage": "calendar-registration-execution",
+      "sha256": "e84e61618a04fc703c1b6f6f1e5828f68998442580f32cdaa00f4c65fd3c9a4a",
+      "execution": "mf-cal-register-dev-cal-20261014a-6fsgp",
+      "certificate_sha256": "b3cc6d0bf74065175a727e7ffae8c610e61d63bdb41e9d2c73950baab23b3f51"
+    },
+    {
+      "stage": "calendar-current-http",
+      "sha256": "9ab762a5ed60b6d0ef974dddfe6358364d2358a15419efe1700bbcdb7968f958",
+      "execution": "mf-cal-current-dev-cal-20261014a-r5vgk",
+      "certificate_sha256": "64b67da90989e99aae89c9d2c6be9457c4e3aff453499da1641ed79de3dd6102"
+    },
+    {
+      "stage": "calendar-recovery",
+      "sha256": "67e627351039d470b7aa057f6e799ef489f84ca56485bf2fa058c16bb95ae943",
+      "execution": "mf-cal-recovery-dev-cal-20261014a-6lvx8",
+      "certificate_sha256": "cd3d81b7ee8085de6854f6f62fdc20ae30a1d5c2f12c3946beb1722ca54793eb"
+    },
+    {
+      "stage": "calendar-recovery-restored",
+      "sha256": "e6f0434c5f4ea0fa8f6e5ade21bf549582ce9c6e50b70d394cc317e87295047f",
+      "execution": "mf-cal-restored-dev-cal-20261014a-g9xqf",
+      "certificate_sha256": "64b67da90989e99aae89c9d2c6be9457c4e3aff453499da1641ed79de3dd6102"
+    },
+    {
+      "stage": "calendar-preservation-complete",
+      "sha256": "88b4b206131886d725f0ccbe5e2c20138a67fa118c1fcd015409f9ef253c92c3"
+    }
+  ],
+  "certificate_id": "a522817116e4697e2f56c4158c8f8e92bec21b8693ddf57dcde6485a9ff75124",
+  "source_nav_rows_preserved": 4236069,
+  "source_fund_rows_preserved": 14390,
+  "all_source_values_structure_functions_triggers_sequences_owners_acls_preserved": true,
+  "all_prior_review_rows_preserved": true,
+  "review_appended": {
+    "certifications": 0,
+    "events": 2,
+    "policies": 1,
+    "results": 0,
+    "snapshots": 0
+  },
+  "calendar_results_appended": 4,
+  "calendar_certifications_appended": 1,
+  "current_comparison_eligible_codes": [
+    101762
+  ],
+  "ineligible_controls": [
+    101763,
+    139889,
+    154701
+  ],
+  "explicit_null_signals_control": 154701,
+  "public_denial": {
+    "calendar": 404,
+    "review": 404
+  },
+  "recovery_method": "Known retained seven-route traffic promotion and private publication check, then exact eight-route restoration and calendar recertification; no schema, IAM, artifact or source changes",
+  "source_writes": 0,
+  "data_deleted": 0,
+  "old_core_or_legacy_results_replaced": false,
+  "not_claimed": [
+    "MF-E04_through_MF-E15",
+    "whole_dataset_analytics_coverage",
+    "human_fund_correctness_approval",
+    "Insights_or_TDW_application_RBAC",
+    "IDCW_adjustment",
+    "licensed_source_acquisition",
+    "UI",
+    "production"
+  ]
+}
