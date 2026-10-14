@@ -121,6 +121,38 @@ class ResultResponse(BaseModel):
     comparison_eligible: bool
 
 
+class CertifiedWindow(BaseModel):
+    result_id: str
+    input_hash: str
+    certificate_id: str
+    certified_at: datetime
+    runtime_git_sha: str
+    source_revision: int
+    dataset_version: int
+    first_date: str | None
+    as_of: str | None
+    captured_context: Context
+    metric_policy_hash: str
+    metrics: Metrics | None
+    unavailable: dict[str, str]
+
+
+class PublicationResponse(BaseModel):
+    format: Literal['certified-research-publication-v1']
+    code: int
+    publication_policy_hash: str
+    certificate_scope: Literal['provider_contract_conformance_not_fund_correctness']
+    state: Literal['not_certified', 'current_artifact_certified', 'historical_certified', 'historical_invalidated']
+    current_input_hash: str
+    current_dataset_version: int
+    current_source_revision: int
+    current_context: Context
+    current_comparison_eligible: bool
+    historical_window_reusable: bool
+    last_certified: CertifiedWindow | None
+    withheld_reasons: list[str]
+
+
 class HistoryEvent(EventResponse):
     caller: str
     actor: str

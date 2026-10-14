@@ -24,6 +24,8 @@ def verify_artifact_acl(conn) -> None:
                 allowed = {'USAGE'}
             elif kind == 'table' and name in ('policies', 'snapshots', 'results', 'events'):
                 allowed = {'SELECT'} | ({'INSERT'} if role == 'mfdata_verified_generator' and name != 'events' else set())
+            elif kind == 'table' and name == 'certifications':
+                allowed = {'SELECT'}
             elif kind == 'function' and name == 'mf_review.append_event(integer,text,text,text,text,text,jsonb)' and role == 'mfdata_verified_admin':
                 allowed = {'EXECUTE'}
         if grant['owner'] != namespace['nspowner'] or permission not in allowed:

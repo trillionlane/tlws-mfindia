@@ -19,7 +19,7 @@ from mfdataindia.review.policy import fingerprint, policy
 from mfdataindia.review.preservation import canonical_constraint, capture_preservation, compare_preservation
 from mfdataindia.review.privileges import verify_artifact_acl
 from mfdataindia.review.rollout import API_SA, CONNECTION, GEN_SA, Manifest, load_manifest, seal_evidence, service_origin, verify_evidence
-from mfdataindia.review.rollout_cloud import Cloud, verify_revision
+from mfdataindia.review.rollout_cloud import Cloud, REVIEW_FACTORY, api_args, verify_revision
 from mfdataindia.review.rollout_database import install_and_reconcile, install_atomic, proxy_dsn, verify_logins
 from mfdataindia.store.postgres import PostgresStore
 from test_verified_review_api import runtime_dsn
@@ -105,7 +105,7 @@ def revision(m):
     return {'metadata': {'annotations': {'run.googleapis.com/cloudsql-instances': CONNECTION,
                 'run.googleapis.com/vpc-access-egress': 'all-traffic',
                 'run.googleapis.com/network-interfaces': json.dumps([{'network': 'tl-dev-vpc', 'subnetwork': 'tl-dev-mumbai'}])}},
-            'spec': {'serviceAccountName': API_SA, 'containers': [{'image': m.image, 'env': [
+            'spec': {'serviceAccountName': API_SA, 'containers': [{'image': m.image, 'command': ['uvicorn'], 'args': api_args(REVIEW_FACTORY), 'env': [
                 {'name': 'DEPLOYMENT_GIT_SHA', 'value': m.git_sha}, {'name': 'MFDATAINDIA_REVIEW_TRUST_FILE', 'value': '/trust/config.json'},
                 {'name': 'MFDATAINDIA_DSN', 'valueFrom': {'secretKeyRef': {'name': 'tlws-mf-review-admin-dsn-dev', 'key': '1'}}}]}],
                 'volumes': [{'secret': {'secretName': m.trust_secret, 'items': [{'key': '1', 'path': 'config.json'}]}}]},

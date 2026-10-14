@@ -71,6 +71,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
             raise ValueError('source database identity/version mismatch')
         snapshot = conn.execute('SELECT pg_export_snapshot() AS snapshot').fetchone()['snapshot']
         baseline = capture_preservation(conn)
+        from mfdataindia.review.publication_operations import capture_review
+        review_baseline = capture_review(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
             raise ValueError('operational backup must contain actual fund/NAV records')
         # Role names only. Password hashes and global role attributes are never
@@ -79,8 +81,11 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         tools.run('pg_dump', source_dsn, directory, ['--format=custom', '--snapshot=' + snapshot, '--file=/backup/snapshot.dump'])
     if dump.stat().st_size == 0:
         raise ValueError('empty backup')
-    return {'backup_sha256': file_sha256(dump), 'backup_bytes': dump.stat().st_size,
-            'source': identity, 'baseline': baseline, 'roles': roles}
+    evidence = {'backup_sha256': file_sha256(dump), 'backup_bytes': dump.stat().st_size,
+                'source': identity, 'baseline': baseline, 'roles': roles}
+    if review_baseline is not None:
+        evidence['review_baseline'] = review_baseline
+    return evidence
 
 
 def install_atomic(conn, root: Path, manifest: Manifest):

@@ -57,6 +57,7 @@ jobs:
           uv run python scripts/export_openapi.py --check
           uv run python scripts/export_association_openapi.py --check
           uv run python scripts/export_review_openapi.py --check
+          uv run python scripts/export_publication_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -123,6 +124,12 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_review_app; from mfdataindia.review.policy import policy, validate_policy; assert len(create_review_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 6; validate_policy(policy()); assert Path("/app/sql/optional/023_verified_fund_review.sql").is_file(); assert Path("/app/scripts/sql/reconcile_verified_review_privileges.sql").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/verified_fund_review.py --help
+      - name: Verify dormant additive research-publication profile
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_research_app; from mfdataindia.review.publication import policy; import mfdataindia.review.publication_operations; import mfdataindia.review.publication_certification; assert len(create_research_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 7; assert policy()["version"] == 1; assert Path("/app/sql/optional/024_research_publication.sql").is_file(); assert Path("/app/scripts/operate_research_publication_dev.py").is_file(); assert Path("/app/scripts/certify_research_publication_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-research-publication-v1.json").is_file()'
       - name: Build and verify dormant PostgreSQL 18 review-backup tools
         run: |
           set -euo pipefail
