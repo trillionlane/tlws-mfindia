@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 from pydantic import ValidationError
 
+from mfdataindia.calculators import schemas as calculator_schemas
 from mfdataindia.review import publication, schemas, store
 from mfdataindia.review.auth import AssertionVerifier, Principal
 from mfdataindia.review.privileges import verify_runtime
@@ -24,7 +25,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -50,6 +51,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if rolling:
                         from mfdataindia.analytics.rolling_store import verify_acl as verify_rolling_acl
                         verify_rolling_acl(conn)
+                    if calculators:
+                        from mfdataindia.calculators.store import installed_policy
+                        installed_policy(conn)
                 yield
             finally:
                 pool.close()
@@ -165,6 +169,20 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             return run(lambda conn: rolling_store.get_rolling(conn,code,result_id) if result_id else
                        rolling_store.page(rolling_store.get_rolling(conn,code),years=years,limit=limit,cursor=cursor))
 
+    if calculators:
+        from mfdataindia.calculators import forward as forward_calculator
+        from mfdataindia.calculators.store import installed_policy
+
+        @app.post('/api/calculators/v1/projections', response_model=calculator_schemas.Response)
+        def forward_projection(request: calculator_schemas.Request, principal: Principal = Depends(identity)):
+            def calculate(conn):
+                policy=installed_policy(conn)
+                try:
+                    return forward_calculator.derive(request.model_dump(mode='json'),policy)
+                except forward_calculator.CalculationUnavailable as exc:
+                    raise HTTPException(422,{'code':'CALCULATION_UNAVAILABLE','reason':str(exc)}) from None
+            return run(calculate)
+
     return app
 
 
@@ -181,3 +199,8 @@ def create_calendar_app(dsn: str | None = None, *, verifier: AssertionVerifier |
 def create_rolling_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Additive nine-route profile; all earlier factories/contracts unchanged."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True)
+
+
+def create_calculator_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Additive ten-route profile; computations are private and non-persisting."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True)
