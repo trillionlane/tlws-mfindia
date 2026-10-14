@@ -1,6 +1,7 @@
 """Hermetic transport tests. No provider contacted, no TLS/IAM certification claim."""
 
 import pytest
+import ssl
 
 from mfdataindia.enrichment import acquisition
 
@@ -148,6 +149,8 @@ def test_tls_uses_original_host_with_the_checked_numeric_connection(monkeypatch)
     # Preserve the real secure context initialization, then replace only
     # the socket wrapper in this hermetic test.
     connection = acquisition.PinnedHTTPS("official.example", "93.184.216.34", 10)
+    assert connection._context.check_hostname is True
+    assert connection._context.verify_mode == ssl.CERT_REQUIRED
     connection._context = TLS()
     monkeypatch.setattr(acquisition.socket, "create_connection", connect)
     connection.connect()

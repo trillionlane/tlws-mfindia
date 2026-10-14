@@ -95,6 +95,12 @@ weakening these boundaries.
 The transfer deadline accounts for elapsed connection/header/body time, but the
 OS DNS resolver itself has no independently cancellable deadline in this helper;
 run acquisition within a bounded operator job rather than a request handler.
+TLS uses the existing Requests dependency's public CA bundle with hostname
+verification enabled. A local system-store failure is not grounds for disabling
+verification or trusting a provider certificate manually. On 2026-10-14 an SBI
+factsheet HEAD request verified with this bundle; this is connectivity evidence,
+not a retained source import or a DEV certificate. Kotak's tested URL redirected
+to a third-party bot-protection challenge, which the transport refused to follow.
 
 ## Private read contract
 

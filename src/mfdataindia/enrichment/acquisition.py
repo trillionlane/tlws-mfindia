@@ -8,12 +8,16 @@ import time
 from contextlib import closing
 from urllib.parse import urljoin, urlsplit
 
+from requests.certs import where as public_ca_bundle
+
 from mfdataindia.enrichment.evidence import MAX_BYTES, public_url
 
 
 class PinnedHTTPS(http.client.HTTPSConnection):
     def __init__(self, host, address, timeout):
-        super().__init__(host, timeout=timeout, context=ssl.create_default_context())
+        super().__init__(
+            host, timeout=timeout, context=ssl.create_default_context(cafile=public_ca_bundle())
+        )
         self.address = address
 
     def connect(self):
