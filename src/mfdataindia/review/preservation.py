@@ -69,7 +69,7 @@ def capture_preservation(conn) -> dict:
     conn.execute("SET LOCAL DateStyle='ISO, YMD'")
     conn.execute("SET LOCAL IntervalStyle='postgres'")
     conn.execute('SET LOCAL search_path=pg_catalog')
-    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','pg_catalog','information_schema') "
+    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','pg_catalog','information_schema') "
                     "AND n.nspname NOT LIKE 'pg_%' AND c.relkind IN('r','p','m') AND c.relowner=(SELECT oid FROM pg_roles WHERE rolname=session_user) LIMIT 1").fetchone():
         raise ValueError('unmodelled administrator-owned source relation outside mf; expand preservation inventory first')
     # This explicitly recognized append-only layer is captured independently,
@@ -80,6 +80,9 @@ def capture_preservation(conn) -> dict:
     if conn.execute("SELECT to_regnamespace('mf_rolling') AS namespace").fetchone()['namespace']:
         from mfdataindia.analytics.rolling_operations import capture_rolling
         capture_rolling(conn)
+    if conn.execute("SELECT to_regnamespace('mf_enrichment') AS namespace").fetchone()['namespace']:
+        from mfdataindia.enrichment.operations import capture_enrichment
+        capture_enrichment(conn)
     relations = conn.execute(
         "SELECT c.oid,c.relname,c.relkind,c.relispartition FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
         "WHERE n.nspname='mf' AND c.relkind IN('r','p','v','m','S') ORDER BY c.relname COLLATE \"C\""

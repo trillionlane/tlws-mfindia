@@ -1,0 +1,4808 @@
+{
+  "components": {
+    "schemas": {
+      "Artifact": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "calendar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "certificate_id": {
+            "title": "Certificate Id",
+            "type": "string"
+          },
+          "certified_at": {
+            "format": "date-time",
+            "title": "Certified At",
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "runtime_git_sha": {
+            "title": "Runtime Git Sha",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result_id",
+          "input_hash",
+          "dataset_version",
+          "source_revision",
+          "first_date",
+          "as_of",
+          "policy_hash",
+          "engine",
+          "context",
+          "certificate_id",
+          "certified_at",
+          "runtime_git_sha",
+          "calendar"
+        ],
+        "title": "Artifact",
+        "type": "object"
+      },
+      "CalendarData": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Date"
+          },
+          "calendar_years": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "title": "Calendar Years",
+            "type": "array"
+          },
+          "current_month_complete": {
+            "title": "Current Month Complete",
+            "type": "boolean"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "year_to_date": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Period"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "analysis_date",
+          "current_month_complete",
+          "calendar_years",
+          "year_to_date",
+          "months",
+          "unavailable_reason"
+        ],
+        "title": "CalendarData",
+        "type": "object"
+      },
+      "CertifiedWindow": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "captured_context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "certificate_id": {
+            "title": "Certificate Id",
+            "type": "string"
+          },
+          "certified_at": {
+            "format": "date-time",
+            "title": "Certified At",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "metric_policy_hash": {
+            "title": "Metric Policy Hash",
+            "type": "string"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "runtime_git_sha": {
+            "title": "Runtime Git Sha",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "unavailable": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Unavailable",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result_id",
+          "input_hash",
+          "certificate_id",
+          "certified_at",
+          "runtime_git_sha",
+          "source_revision",
+          "dataset_version",
+          "first_date",
+          "as_of",
+          "captured_context",
+          "metric_policy_hash",
+          "metrics",
+          "unavailable"
+        ],
+        "title": "CertifiedWindow",
+        "type": "object"
+      },
+      "Context": {
+        "properties": {
+          "lifecycle": {
+            "$ref": "#/components/schemas/FundLifecycle"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/FundMethodology"
+          },
+          "nav_freshness": {
+            "$ref": "#/components/schemas/FundNavFreshness"
+          },
+          "nav_quality": {
+            "$ref": "#/components/schemas/FundNavQuality"
+          }
+        },
+        "required": [
+          "lifecycle",
+          "nav_freshness",
+          "nav_quality",
+          "methodology"
+        ],
+        "title": "Context",
+        "type": "object"
+      },
+      "Coverage": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "facts_available": {
+            "const": false,
+            "title": "Facts Available",
+            "type": "boolean"
+          },
+          "format": {
+            "const": "official-enrichment-coverage-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Mapping"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source_document_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Document As Of"
+          },
+          "state": {
+            "enum": [
+              "not_captured",
+              "matched_candidate",
+              "unmapped",
+              "identity_changed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "universe_complete": {
+            "const": false,
+            "title": "Universe Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "policy_hash",
+          "source_document_as_of",
+          "document_id",
+          "mapping",
+          "state",
+          "reason",
+          "facts_available",
+          "universe_complete"
+        ],
+        "title": "Coverage",
+        "type": "object"
+      },
+      "Document": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_length": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 8388608.0,
+            "title": "Byte Length",
+            "type": "integer"
+          },
+          "content_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "document_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "format": {
+            "const": "official-enrichment-document-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "intake": {
+            "$ref": "#/components/schemas/Intake"
+          },
+          "parsed_rows": {
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Parsed Rows",
+            "type": "integer"
+          },
+          "parser_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parser Reason"
+          },
+          "parser_state": {
+            "enum": [
+              "parsed",
+              "unsupported"
+            ],
+            "title": "Parser State",
+            "type": "string"
+          },
+          "policy_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "publication": {
+            "const": "evidence_only_not_accepted_facts",
+            "title": "Publication",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "document_id",
+          "policy_hash",
+          "content_hash",
+          "byte_length",
+          "intake",
+          "parser_state",
+          "parser_reason",
+          "parsed_rows",
+          "publication"
+        ],
+        "title": "Document",
+        "type": "object"
+      },
+      "DocumentPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After"
+          }
+        },
+        "required": [
+          "items",
+          "next_after"
+        ],
+        "title": "DocumentPage",
+        "type": "object"
+      },
+      "EnrichmentField": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "enum": [
+              "aum",
+              "expense_ratio",
+              "benchmark",
+              "benchmark_name",
+              "fund_manager_name",
+              "inception_date",
+              "scheme_name",
+              "scheme_category"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "proposed_value": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Proposed Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "proposed_value"
+        ],
+        "title": "EnrichmentField",
+        "type": "object"
+      },
+      "EventResponse": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "review",
+              "proposal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "kind",
+          "status",
+          "result_id"
+        ],
+        "title": "EventResponse",
+        "type": "object"
+      },
+      "FixedStep": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "annual_fixed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "value_paise": {
+            "maximum": 100000000000000.0,
+            "minimum": 0.0,
+            "title": "Value Paise",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "value_paise"
+        ],
+        "title": "FixedStep",
+        "type": "object"
+      },
+      "FundLifecycle": {
+        "description": "Evidence-backed lifecycle. Absence or a stale NAV alone yields\n``unknown`` \u2014 there is deliberately no \"matured\" boolean in the contract.",
+        "properties": {
+          "evidence": {
+            "enum": [
+              "amfi_current_feed",
+              "amfi_redeemed_marker",
+              "amfi_defunct_marker",
+              "not_seen_in_latest_feed",
+              "insufficient_evidence"
+            ],
+            "title": "Evidence",
+            "type": "string"
+          },
+          "last_seen_in_source": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen In Source"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "redeemed",
+              "defunct",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "evidence"
+        ],
+        "title": "FundLifecycle",
+        "type": "object"
+      },
+      "FundMethodology": {
+        "description": "How the NAV-derived numeric fields must be read. Only confirmed Growth\ncan be eligible; other options lack required distribution/unit-event truth.",
+        "properties": {
+          "basis": {
+            "const": "nav_change",
+            "title": "Basis",
+            "type": "string"
+          },
+          "comparison_eligible": {
+            "title": "Comparison Eligible",
+            "type": "boolean"
+          },
+          "distribution_adjustment": {
+            "enum": [
+              "not_applicable",
+              "unavailable"
+            ],
+            "title": "Distribution Adjustment",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "enum": [
+                "distribution_history_unavailable",
+                "lifecycle_not_active",
+                "nav_freshness_lag",
+                "nav_quality_signal",
+                "nav_series_unavailable"
+              ],
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "basis",
+          "distribution_adjustment",
+          "comparison_eligible",
+          "limitations"
+        ],
+        "title": "FundMethodology",
+        "type": "object"
+      },
+      "FundNavFreshness": {
+        "description": "Objective NAV freshness. The bands are server-owned (see\nqueries.FRESHNESS_*_DAYS); consumers must not redefine them.",
+        "properties": {
+          "dataset_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset As Of"
+          },
+          "lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lag Days"
+          },
+          "latest_nav_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Nav Date"
+          },
+          "status": {
+            "enum": [
+              "current",
+              "delayed",
+              "stale",
+              "very_stale",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "FundNavFreshness",
+        "type": "object"
+      },
+      "FundNavQuality": {
+        "description": "Durable NAV-quality assessment read-through. Signals are DETECTION\nsignals, not proof that a stored NAV is wrong; ``assessment_status``\ndescribes the assessment's currency, never the fund's cleanliness.",
+        "properties": {
+          "assessed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed At"
+          },
+          "assessed_dataset_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed Dataset Version"
+          },
+          "assessment_status": {
+            "enum": [
+              "current",
+              "stale",
+              "not_assessed"
+            ],
+            "title": "Assessment Status",
+            "type": "string"
+          },
+          "distinct_nav_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distinct Nav Count"
+          },
+          "methodology_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Methodology Version"
+          },
+          "observation_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Count"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "constant_nav_series",
+                    "duplicate_variant_series",
+                    "terminal_face_value_reset_candidate"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          }
+        },
+        "required": [
+          "assessment_status"
+        ],
+        "title": "FundNavQuality",
+        "type": "object"
+      },
+      "Goal": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_inflation_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Annual Inflation Pct",
+            "type": "string"
+          },
+          "annual_return_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Annual Return Pct",
+            "type": "string"
+          },
+          "cost_today_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Cost Today Paise",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "goal",
+            "title": "Kind",
+            "type": "string"
+          },
+          "months": {
+            "maximum": 600.0,
+            "minimum": 1.0,
+            "title": "Months",
+            "type": "integer"
+          },
+          "rate_mode": {
+            "enum": [
+              "effective_annual",
+              "nominal_annual_monthly"
+            ],
+            "title": "Rate Mode",
+            "type": "string"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "annual_fixed": "#/components/schemas/FixedStep",
+                    "annual_percent": "#/components/schemas/PercentStep"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/PercentStep"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FixedStep"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "timing": {
+            "enum": [
+              "beginning",
+              "end"
+            ],
+            "title": "Timing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "months",
+          "annual_return_pct",
+          "rate_mode",
+          "kind",
+          "cost_today_paise",
+          "annual_inflation_pct",
+          "timing"
+        ],
+        "title": "Goal",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HistoryEvent": {
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "caller": {
+            "title": "Caller",
+            "type": "string"
+          },
+          "document": {
+            "additionalProperties": true,
+            "title": "Document",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "review",
+              "proposal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "kind",
+          "status",
+          "result_id",
+          "caller",
+          "actor",
+          "document",
+          "recorded_at"
+        ],
+        "title": "HistoryEvent",
+        "type": "object"
+      },
+      "Identity": {
+        "additionalProperties": false,
+        "properties": {
+          "amc": {
+            "title": "Amc",
+            "type": "string"
+          },
+          "code": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2147483647.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "isins": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Isins",
+            "type": "array"
+          },
+          "option": {
+            "title": "Option",
+            "type": "string"
+          },
+          "plan": {
+            "title": "Plan",
+            "type": "string"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "amc",
+          "scheme_name",
+          "plan",
+          "option",
+          "isins"
+        ],
+        "title": "Identity",
+        "type": "object"
+      },
+      "Intake": {
+        "additionalProperties": false,
+        "properties": {
+          "amc": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Amc",
+            "type": "string"
+          },
+          "authority_reference": {
+            "maxLength": 500,
+            "minLength": 8,
+            "title": "Authority Reference",
+            "type": "string"
+          },
+          "codes": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Codes",
+            "type": "array"
+          },
+          "document_as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document As Of"
+          },
+          "expected_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Sha256",
+            "type": "string"
+          },
+          "final_url": {
+            "maxLength": 2048,
+            "title": "Final Url",
+            "type": "string"
+          },
+          "media_type": {
+            "enum": [
+              "application/pdf",
+              "text/html"
+            ],
+            "title": "Media Type",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "official_hosts": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Official Hosts",
+            "type": "array"
+          },
+          "source_conflict": {
+            "const": false,
+            "default": false,
+            "title": "Source Conflict",
+            "type": "boolean"
+          },
+          "source_url": {
+            "maxLength": 2048,
+            "title": "Source Url",
+            "type": "string"
+          },
+          "use_basis": {
+            "enum": [
+              "operator_reported_authorization",
+              "published_permission"
+            ],
+            "title": "Use Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_url",
+          "final_url",
+          "official_hosts",
+          "amc",
+          "observed_at",
+          "media_type",
+          "expected_sha256",
+          "codes",
+          "use_basis",
+          "authority_reference"
+        ],
+        "title": "Intake",
+        "type": "object"
+      },
+      "Mapping": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "identity": {
+            "$ref": "#/components/schemas/Identity"
+          },
+          "identity_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Identity Hash",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source_row": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Row"
+          },
+          "state": {
+            "enum": [
+              "matched_candidate",
+              "unmapped"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "identity",
+          "identity_hash",
+          "state",
+          "reason",
+          "source_row"
+        ],
+        "title": "Mapping",
+        "type": "object"
+      },
+      "Metrics": {
+        "properties": {
+          "annual_volatility_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Volatility Pct"
+          },
+          "cagr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cagr Pct"
+          },
+          "calmar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calmar"
+          },
+          "cumulative_return_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cumulative Return Pct"
+          },
+          "max_drawdown_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown Pct"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "sortino": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sortino"
+          }
+        },
+        "required": [
+          "cumulative_return_pct",
+          "cagr_pct",
+          "annual_volatility_pct",
+          "sharpe",
+          "sortino",
+          "max_drawdown_pct",
+          "calmar"
+        ],
+        "title": "Metrics",
+        "type": "object"
+      },
+      "Month": {
+        "additionalProperties": false,
+        "properties": {
+          "closing_paise": {
+            "title": "Closing Paise",
+            "type": "integer"
+          },
+          "contribution_paise": {
+            "title": "Contribution Paise",
+            "type": "integer"
+          },
+          "interest_paise": {
+            "title": "Interest Paise",
+            "type": "integer"
+          },
+          "month": {
+            "title": "Month",
+            "type": "integer"
+          },
+          "opening_paise": {
+            "title": "Opening Paise",
+            "type": "integer"
+          },
+          "paid_withdrawal_paise": {
+            "title": "Paid Withdrawal Paise",
+            "type": "integer"
+          },
+          "requested_withdrawal_paise": {
+            "title": "Requested Withdrawal Paise",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "opening_paise",
+          "contribution_paise",
+          "interest_paise",
+          "requested_withdrawal_paise",
+          "paid_withdrawal_paise",
+          "closing_paise"
+        ],
+        "title": "Month",
+        "type": "object"
+      },
+      "PagedResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicArtifact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "audit_only": {
+            "const": false,
+            "title": "Audit Only",
+            "type": "boolean"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "current_comparison_eligible": {
+            "title": "Current Comparison Eligible",
+            "type": "boolean"
+          },
+          "current_context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_dataset_version": {
+            "title": "Current Dataset Version",
+            "type": "integer"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "format": {
+            "const": "rolling-returns-response-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "historical_window_reusable": {
+            "title": "Historical Window Reusable",
+            "type": "boolean"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "policy_scope": {
+            "const": "provider_contract_conformance_not_fund_correctness",
+            "title": "Policy Scope",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "not_certified",
+              "current_artifact_certified",
+              "historical_certified",
+              "historical_invalidated"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/Window"
+            },
+            "title": "Windows",
+            "type": "array"
+          },
+          "withheld_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Withheld Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "current_input_hash",
+          "current_dataset_version",
+          "current_context",
+          "policy_hash",
+          "policy_scope",
+          "current_comparison_eligible",
+          "historical_window_reusable",
+          "withheld_reasons",
+          "artifact",
+          "audit_only",
+          "state",
+          "windows",
+          "pagination"
+        ],
+        "title": "PagedResponse",
+        "type": "object"
+      },
+      "Pagination": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "result_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Id"
+          },
+          "returned_windows": {
+            "title": "Returned Windows",
+            "type": "integer"
+          },
+          "total_windows": {
+            "title": "Total Windows",
+            "type": "integer"
+          },
+          "years": {
+            "enum": [
+              1,
+              3,
+              5
+            ],
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "years",
+          "result_id",
+          "limit",
+          "total_windows",
+          "returned_windows",
+          "next_cursor"
+        ],
+        "title": "Pagination",
+        "type": "object"
+      },
+      "PercentStep": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "annual_percent",
+            "title": "Kind",
+            "type": "string"
+          },
+          "value_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Value Pct",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "value_pct"
+        ],
+        "title": "PercentStep",
+        "type": "object"
+      },
+      "Period": {
+        "additionalProperties": false,
+        "properties": {
+          "end_boundary": {
+            "title": "End Boundary",
+            "type": "string"
+          },
+          "end_boundary_lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Boundary Lag Days"
+          },
+          "end_price_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Price Date"
+          },
+          "kind": {
+            "enum": [
+              "calendar_year",
+              "year_to_date",
+              "month"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "return_pct": {
+            "anyOf": [
+              {
+                "pattern": "^-?[0-9]+\\.[0-9]{8}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Pct"
+          },
+          "start_boundary": {
+            "title": "Start Boundary",
+            "type": "string"
+          },
+          "start_boundary_lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Boundary Lag Days"
+          },
+          "start_price_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Price Date"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "start_boundary",
+          "end_boundary",
+          "start_price_date",
+          "end_price_date",
+          "start_boundary_lag_days",
+          "end_boundary_lag_days",
+          "return_pct",
+          "unavailable_reason"
+        ],
+        "title": "Period",
+        "type": "object"
+      },
+      "ProposalMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "expected_input_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Input Hash",
+            "type": "string"
+          },
+          "expected_version": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/EnrichmentField"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "result_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Result Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "expected_input_hash",
+          "result_id",
+          "reason",
+          "fields"
+        ],
+        "title": "ProposalMutation",
+        "type": "object"
+      },
+      "PublicArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "certificate_id": {
+            "title": "Certificate Id",
+            "type": "string"
+          },
+          "certified_at": {
+            "format": "date-time",
+            "title": "Certified At",
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "rolling": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicRolling"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runtime_git_sha": {
+            "title": "Runtime Git Sha",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result_id",
+          "input_hash",
+          "dataset_version",
+          "source_revision",
+          "first_date",
+          "as_of",
+          "policy_hash",
+          "engine",
+          "context",
+          "certificate_id",
+          "certified_at",
+          "runtime_git_sha",
+          "rolling"
+        ],
+        "title": "PublicArtifact",
+        "type": "object"
+      },
+      "PublicRolling": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Date"
+          },
+          "schedule": {
+            "const": "completed_calendar_month_end",
+            "title": "Schedule",
+            "type": "string"
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/TermSummary"
+            },
+            "title": "Terms",
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "analysis_date",
+          "schedule",
+          "terms",
+          "unavailable_reason"
+        ],
+        "title": "PublicRolling",
+        "type": "object"
+      },
+      "PublicationResponse": {
+        "properties": {
+          "certificate_scope": {
+            "const": "provider_contract_conformance_not_fund_correctness",
+            "title": "Certificate Scope",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "current_comparison_eligible": {
+            "title": "Current Comparison Eligible",
+            "type": "boolean"
+          },
+          "current_context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_dataset_version": {
+            "title": "Current Dataset Version",
+            "type": "integer"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "current_source_revision": {
+            "title": "Current Source Revision",
+            "type": "integer"
+          },
+          "format": {
+            "const": "certified-research-publication-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "historical_window_reusable": {
+            "title": "Historical Window Reusable",
+            "type": "boolean"
+          },
+          "last_certified": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CertifiedWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publication_policy_hash": {
+            "title": "Publication Policy Hash",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "not_certified",
+              "current_artifact_certified",
+              "historical_certified",
+              "historical_invalidated"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "withheld_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Withheld Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "publication_policy_hash",
+          "certificate_scope",
+          "state",
+          "current_input_hash",
+          "current_dataset_version",
+          "current_source_revision",
+          "current_context",
+          "current_comparison_eligible",
+          "historical_window_reusable",
+          "last_certified",
+          "withheld_reasons"
+        ],
+        "title": "PublicationResponse",
+        "type": "object"
+      },
+      "Purchase": {
+        "additionalProperties": false,
+        "properties": {
+          "contribution_paise": {
+            "title": "Contribution Paise",
+            "type": "integer"
+          },
+          "nav_inr": {
+            "title": "Nav Inr",
+            "type": "string"
+          },
+          "price_date": {
+            "title": "Price Date",
+            "type": "string"
+          },
+          "requested_date": {
+            "title": "Requested Date",
+            "type": "string"
+          },
+          "shift_calendar_days": {
+            "title": "Shift Calendar Days",
+            "type": "integer"
+          },
+          "units_purchased_display": {
+            "title": "Units Purchased Display",
+            "type": "string"
+          }
+        },
+        "required": [
+          "requested_date",
+          "price_date",
+          "shift_calendar_days",
+          "nav_inr",
+          "contribution_paise",
+          "units_purchased_display"
+        ],
+        "title": "Purchase",
+        "type": "object"
+      },
+      "QueueItem": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "needs_revalidation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Revalidation"
+          },
+          "option_type": {
+            "title": "Option Type",
+            "type": "string"
+          },
+          "reviewed_input_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed Input Hash"
+          },
+          "scheme_name": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signals"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "scheme_name",
+          "option_type",
+          "version",
+          "status",
+          "signals",
+          "reviewed_input_hash",
+          "needs_revalidation"
+        ],
+        "title": "QueueItem",
+        "type": "object"
+      },
+      "QueueResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_after_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After Code"
+          },
+          "revalidation_basis": {
+            "title": "Revalidation Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "next_after_code",
+          "revalidation_basis"
+        ],
+        "title": "QueueResponse",
+        "type": "object"
+      },
+      "ResultResponse": {
+        "properties": {
+          "comparison_eligible": {
+            "title": "Comparison Eligible",
+            "type": "boolean"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "input_status": {
+            "enum": [
+              "current",
+              "stale"
+            ],
+            "title": "Input Status",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/mfdataindia__review__schemas__ResultDocument"
+          }
+        },
+        "required": [
+          "result",
+          "input_status",
+          "current_input_hash",
+          "comparison_eligible"
+        ],
+        "title": "ResultResponse",
+        "type": "object"
+      },
+      "ReviewMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "not_determined",
+              "consistent_with_evidence",
+              "discrepancy_candidate",
+              "insufficient_evidence"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "expected_input_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Input Hash",
+            "type": "string"
+          },
+          "expected_version": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "result_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Result Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "expected_input_hash",
+          "result_id",
+          "reason",
+          "status",
+          "disposition"
+        ],
+        "title": "ReviewMutation",
+        "type": "object"
+      },
+      "ReviewResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEvent"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "identity": {
+            "additionalProperties": true,
+            "title": "Identity",
+            "type": "object"
+          },
+          "needs_revalidation": {
+            "title": "Needs Revalidation",
+            "type": "boolean"
+          },
+          "next_after_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After Version"
+          },
+          "original_facts": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Facts"
+          },
+          "status": {
+            "enum": [
+              "pending_review",
+              "in_review",
+              "reviewed",
+              "needs_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "version",
+          "status",
+          "needs_revalidation",
+          "current_input_hash",
+          "identity",
+          "original_facts",
+          "context",
+          "history",
+          "next_after_version"
+        ],
+        "title": "ReviewResponse",
+        "type": "object"
+      },
+      "RollingData": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Date"
+          },
+          "schedule": {
+            "const": "completed_calendar_month_end",
+            "title": "Schedule",
+            "type": "string"
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/Term"
+            },
+            "title": "Terms",
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "analysis_date",
+          "schedule",
+          "terms",
+          "unavailable_reason"
+        ],
+        "title": "RollingData",
+        "type": "object"
+      },
+      "StepSip": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_return_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Annual Return Pct",
+            "type": "string"
+          },
+          "kind": {
+            "const": "stepup_sip",
+            "title": "Kind",
+            "type": "string"
+          },
+          "monthly_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Monthly Paise",
+            "type": "integer"
+          },
+          "months": {
+            "maximum": 600.0,
+            "minimum": 1.0,
+            "title": "Months",
+            "type": "integer"
+          },
+          "rate_mode": {
+            "enum": [
+              "effective_annual",
+              "nominal_annual_monthly"
+            ],
+            "title": "Rate Mode",
+            "type": "string"
+          },
+          "step": {
+            "discriminator": {
+              "mapping": {
+                "annual_fixed": "#/components/schemas/FixedStep",
+                "annual_percent": "#/components/schemas/PercentStep"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PercentStep"
+              },
+              {
+                "$ref": "#/components/schemas/FixedStep"
+              }
+            ],
+            "title": "Step"
+          },
+          "timing": {
+            "enum": [
+              "beginning",
+              "end"
+            ],
+            "title": "Timing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "months",
+          "annual_return_pct",
+          "rate_mode",
+          "kind",
+          "monthly_paise",
+          "timing",
+          "step"
+        ],
+        "title": "StepSip",
+        "type": "object"
+      },
+      "Swp": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_return_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Annual Return Pct",
+            "type": "string"
+          },
+          "initial_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Initial Paise",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "swp",
+            "title": "Kind",
+            "type": "string"
+          },
+          "months": {
+            "maximum": 600.0,
+            "minimum": 1.0,
+            "title": "Months",
+            "type": "integer"
+          },
+          "rate_mode": {
+            "enum": [
+              "effective_annual",
+              "nominal_annual_monthly"
+            ],
+            "title": "Rate Mode",
+            "type": "string"
+          },
+          "timing": {
+            "enum": [
+              "beginning",
+              "end"
+            ],
+            "title": "Timing",
+            "type": "string"
+          },
+          "withdrawal_paise": {
+            "maximum": 100000000000000.0,
+            "minimum": 0.0,
+            "title": "Withdrawal Paise",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "months",
+          "annual_return_pct",
+          "rate_mode",
+          "kind",
+          "initial_paise",
+          "withdrawal_paise",
+          "timing"
+        ],
+        "title": "Swp",
+        "type": "object"
+      },
+      "Term": {
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/mfdataindia__analytics__rolling_schemas__Summary"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/Window"
+            },
+            "title": "Windows",
+            "type": "array"
+          },
+          "years": {
+            "enum": [
+              1,
+              3,
+              5
+            ],
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "years",
+          "windows",
+          "summary"
+        ],
+        "title": "Term",
+        "type": "object"
+      },
+      "TermSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/mfdataindia__analytics__rolling_schemas__Summary"
+          },
+          "years": {
+            "enum": [
+              1,
+              3,
+              5
+            ],
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "years",
+          "summary"
+        ],
+        "title": "TermSummary",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "Window": {
+        "additionalProperties": false,
+        "properties": {
+          "annualized_return_pct": {
+            "anyOf": [
+              {
+                "pattern": "^-?[0-9]+\\.[0-9]{8}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annualized Return Pct"
+          },
+          "elapsed_calendar_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Calendar Days"
+          },
+          "end_boundary": {
+            "title": "End Boundary",
+            "type": "string"
+          },
+          "end_boundary_lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Boundary Lag Days"
+          },
+          "end_price_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Price Date"
+          },
+          "largest_observed_gap_calendar_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Largest Observed Gap Calendar Days"
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observations"
+          },
+          "start_boundary": {
+            "title": "Start Boundary",
+            "type": "string"
+          },
+          "start_boundary_lag_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Boundary Lag Days"
+          },
+          "start_price_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Price Date"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "end_boundary",
+          "start_boundary",
+          "start_price_date",
+          "end_price_date",
+          "start_boundary_lag_days",
+          "end_boundary_lag_days",
+          "elapsed_calendar_days",
+          "observations",
+          "largest_observed_gap_calendar_days",
+          "annualized_return_pct",
+          "unavailable_reason"
+        ],
+        "title": "Window",
+        "type": "object"
+      },
+      "mfdataindia__analytics__rolling_schemas__AuditResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_only": {
+            "const": true,
+            "title": "Audit Only",
+            "type": "boolean"
+          },
+          "current_context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "input_status": {
+            "enum": [
+              "current",
+              "stale"
+            ],
+            "title": "Input Status",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/mfdataindia__analytics__rolling_schemas__ResultDocument"
+          }
+        },
+        "required": [
+          "audit_only",
+          "result",
+          "current_input_hash",
+          "current_context",
+          "input_status"
+        ],
+        "title": "AuditResponse",
+        "type": "object"
+      },
+      "mfdataindia__analytics__rolling_schemas__ResultDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "eligible_at_capture": {
+            "title": "Eligible At Capture",
+            "type": "boolean"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "engine_fingerprint": {
+            "title": "Engine Fingerprint",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "format": {
+            "const": "rolling-nav-result-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "rolling": {
+            "$ref": "#/components/schemas/RollingData"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result_id",
+          "format",
+          "code",
+          "input_hash",
+          "policy_hash",
+          "engine_version",
+          "engine_fingerprint",
+          "engine",
+          "source_revision",
+          "dataset_version",
+          "context",
+          "eligible_at_capture",
+          "first_date",
+          "as_of",
+          "points",
+          "rolling"
+        ],
+        "title": "ResultDocument",
+        "type": "object"
+      },
+      "mfdataindia__analytics__rolling_schemas__Summary": {
+        "additionalProperties": false,
+        "properties": {
+          "arithmetic_mean_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arithmetic Mean Pct"
+          },
+          "available_windows": {
+            "title": "Available Windows",
+            "type": "integer"
+          },
+          "maximum_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Pct"
+          },
+          "median_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Pct"
+          },
+          "minimum_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Pct"
+          },
+          "positive_windows_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positive Windows Pct"
+          },
+          "scheduled_windows": {
+            "title": "Scheduled Windows",
+            "type": "integer"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "unavailable_windows": {
+            "title": "Unavailable Windows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scheduled_windows",
+          "available_windows",
+          "unavailable_windows",
+          "minimum_pct",
+          "maximum_pct",
+          "median_pct",
+          "arithmetic_mean_pct",
+          "positive_windows_pct",
+          "unavailable_reason"
+        ],
+        "title": "Summary",
+        "type": "object"
+      },
+      "mfdataindia__analytics__schemas__AuditResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_only": {
+            "const": true,
+            "title": "Audit Only",
+            "type": "boolean"
+          },
+          "current_context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "input_status": {
+            "enum": [
+              "current",
+              "stale"
+            ],
+            "title": "Input Status",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/mfdataindia__analytics__schemas__ResultDocument"
+          }
+        },
+        "required": [
+          "audit_only",
+          "result",
+          "current_input_hash",
+          "current_context",
+          "input_status"
+        ],
+        "title": "AuditResponse",
+        "type": "object"
+      },
+      "mfdataindia__analytics__schemas__Response": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Artifact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "audit_only": {
+            "const": false,
+            "title": "Audit Only",
+            "type": "boolean"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "current_comparison_eligible": {
+            "title": "Current Comparison Eligible",
+            "type": "boolean"
+          },
+          "current_context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "current_dataset_version": {
+            "title": "Current Dataset Version",
+            "type": "integer"
+          },
+          "current_input_hash": {
+            "title": "Current Input Hash",
+            "type": "string"
+          },
+          "format": {
+            "const": "calendar-returns-response-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "historical_window_reusable": {
+            "title": "Historical Window Reusable",
+            "type": "boolean"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "policy_scope": {
+            "const": "provider_contract_conformance_not_fund_correctness",
+            "title": "Policy Scope",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "not_certified",
+              "current_artifact_certified",
+              "historical_certified",
+              "historical_invalidated"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "withheld_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Withheld Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "current_input_hash",
+          "current_dataset_version",
+          "current_context",
+          "policy_hash",
+          "policy_scope",
+          "current_comparison_eligible",
+          "historical_window_reusable",
+          "withheld_reasons",
+          "artifact",
+          "audit_only",
+          "state"
+        ],
+        "title": "Response",
+        "type": "object"
+      },
+      "mfdataindia__analytics__schemas__ResultDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "calendar": {
+            "$ref": "#/components/schemas/CalendarData"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "eligible_at_capture": {
+            "title": "Eligible At Capture",
+            "type": "boolean"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "engine_fingerprint": {
+            "title": "Engine Fingerprint",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "format": {
+            "const": "calendar-nav-result-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result_id",
+          "format",
+          "code",
+          "input_hash",
+          "policy_hash",
+          "engine_version",
+          "engine_fingerprint",
+          "engine",
+          "source_revision",
+          "dataset_version",
+          "context",
+          "eligible_at_capture",
+          "first_date",
+          "as_of",
+          "points",
+          "calendar"
+        ],
+        "title": "ResultDocument",
+        "type": "object"
+      },
+      "mfdataindia__calculators__historical_schemas__Lumpsum": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2147483647.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "end_date": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "title": "End Date",
+            "type": "string"
+          },
+          "initial_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Initial Paise",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "lumpsum",
+            "title": "Kind",
+            "type": "string"
+          },
+          "start_date": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "start_date",
+          "end_date",
+          "kind",
+          "initial_paise"
+        ],
+        "title": "Lumpsum",
+        "type": "object"
+      },
+      "mfdataindia__calculators__historical_schemas__Response": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "basis": {
+            "const": "historical_observed_growth_nav_simulation_not_execution_or_forecast",
+            "title": "Basis",
+            "type": "string"
+          },
+          "comparison_eligible": {
+            "const": false,
+            "title": "Comparison Eligible",
+            "type": "boolean"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "format": {
+            "const": "historical-growth-calculator-result-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "personal_scenario_persisted": {
+            "const": false,
+            "title": "Personal Scenario Persisted",
+            "type": "boolean"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "purchases": {
+            "items": {
+              "$ref": "#/components/schemas/Purchase"
+            },
+            "title": "Purchases",
+            "type": "array"
+          },
+          "request": {
+            "discriminator": {
+              "mapping": {
+                "lumpsum": "#/components/schemas/mfdataindia__calculators__historical_schemas__Lumpsum",
+                "sip": "#/components/schemas/mfdataindia__calculators__historical_schemas__Sip"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/mfdataindia__calculators__historical_schemas__Lumpsum"
+              },
+              {
+                "$ref": "#/components/schemas/mfdataindia__calculators__historical_schemas__Sip"
+              }
+            ],
+            "title": "Request"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/mfdataindia__calculators__historical_schemas__Summary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "units": {
+            "const": "INR_paise",
+            "title": "Units",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "result_id",
+          "policy_hash",
+          "engine",
+          "request",
+          "input_hash",
+          "source_revision",
+          "dataset_version",
+          "context",
+          "basis",
+          "units",
+          "comparison_eligible",
+          "personal_scenario_persisted",
+          "available",
+          "unavailable_reason",
+          "purchases",
+          "summary"
+        ],
+        "title": "Response",
+        "type": "object"
+      },
+      "mfdataindia__calculators__historical_schemas__Sip": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2147483647.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "day_of_month": {
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Day Of Month",
+            "type": "integer"
+          },
+          "end_date": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "title": "End Date",
+            "type": "string"
+          },
+          "kind": {
+            "const": "sip",
+            "title": "Kind",
+            "type": "string"
+          },
+          "monthly_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Monthly Paise",
+            "type": "integer"
+          },
+          "start_date": {
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "start_date",
+          "end_date",
+          "kind",
+          "monthly_paise",
+          "day_of_month"
+        ],
+        "title": "Sip",
+        "type": "object"
+      },
+      "mfdataindia__calculators__historical_schemas__Summary": {
+        "additionalProperties": false,
+        "properties": {
+          "invested_paise": {
+            "title": "Invested Paise",
+            "type": "integer"
+          },
+          "largest_observed_gap_calendar_days": {
+            "title": "Largest Observed Gap Calendar Days",
+            "type": "integer"
+          },
+          "net_gain_paise": {
+            "title": "Net Gain Paise",
+            "type": "integer"
+          },
+          "period_gain_pct": {
+            "title": "Period Gain Pct",
+            "type": "string"
+          },
+          "terminal_paise": {
+            "title": "Terminal Paise",
+            "type": "integer"
+          },
+          "units_held_display": {
+            "title": "Units Held Display",
+            "type": "string"
+          },
+          "valuation_date": {
+            "title": "Valuation Date",
+            "type": "string"
+          },
+          "valuation_lag_calendar_days": {
+            "title": "Valuation Lag Calendar Days",
+            "type": "integer"
+          },
+          "valuation_nav_inr": {
+            "title": "Valuation Nav Inr",
+            "type": "string"
+          },
+          "xirr_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xirr Pct"
+          },
+          "xirr_residual_paise": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xirr Residual Paise"
+          },
+          "xirr_unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xirr Unavailable Reason"
+          }
+        },
+        "required": [
+          "invested_paise",
+          "terminal_paise",
+          "net_gain_paise",
+          "period_gain_pct",
+          "units_held_display",
+          "valuation_date",
+          "valuation_nav_inr",
+          "valuation_lag_calendar_days",
+          "largest_observed_gap_calendar_days",
+          "xirr_pct",
+          "xirr_unavailable_reason",
+          "xirr_residual_paise"
+        ],
+        "title": "Summary",
+        "type": "object"
+      },
+      "mfdataindia__calculators__schemas__Lumpsum": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_return_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Annual Return Pct",
+            "type": "string"
+          },
+          "initial_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Initial Paise",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "lumpsum",
+            "title": "Kind",
+            "type": "string"
+          },
+          "months": {
+            "maximum": 600.0,
+            "minimum": 1.0,
+            "title": "Months",
+            "type": "integer"
+          },
+          "rate_mode": {
+            "enum": [
+              "effective_annual",
+              "nominal_annual_monthly"
+            ],
+            "title": "Rate Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "months",
+          "annual_return_pct",
+          "rate_mode",
+          "kind",
+          "initial_paise"
+        ],
+        "title": "Lumpsum",
+        "type": "object"
+      },
+      "mfdataindia__calculators__schemas__Response": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "const": "assumed_projection_not_forecast_or_observed_fund_return",
+            "title": "Basis",
+            "type": "string"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "format": {
+            "const": "forward-calculator-result-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "personal_scenario_persisted": {
+            "const": false,
+            "title": "Personal Scenario Persisted",
+            "type": "boolean"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "request": {
+            "discriminator": {
+              "mapping": {
+                "goal": "#/components/schemas/Goal",
+                "lumpsum": "#/components/schemas/mfdataindia__calculators__schemas__Lumpsum",
+                "sip": "#/components/schemas/mfdataindia__calculators__schemas__Sip",
+                "stepup_sip": "#/components/schemas/StepSip",
+                "swp": "#/components/schemas/Swp"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/mfdataindia__calculators__schemas__Lumpsum"
+              },
+              {
+                "$ref": "#/components/schemas/mfdataindia__calculators__schemas__Sip"
+              },
+              {
+                "$ref": "#/components/schemas/StepSip"
+              },
+              {
+                "$ref": "#/components/schemas/Swp"
+              },
+              {
+                "$ref": "#/components/schemas/Goal"
+              }
+            ],
+            "title": "Request"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/Month"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/mfdataindia__calculators__schemas__Summary"
+          },
+          "units": {
+            "const": "INR_paise",
+            "title": "Units",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "result_id",
+          "policy_hash",
+          "engine",
+          "request",
+          "units",
+          "basis",
+          "schedule",
+          "summary",
+          "personal_scenario_persisted"
+        ],
+        "title": "Response",
+        "type": "object"
+      },
+      "mfdataindia__calculators__schemas__Sip": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_return_pct": {
+            "pattern": "^-?(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,4})?$",
+            "title": "Annual Return Pct",
+            "type": "string"
+          },
+          "kind": {
+            "const": "sip",
+            "title": "Kind",
+            "type": "string"
+          },
+          "monthly_paise": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000000.0,
+            "title": "Monthly Paise",
+            "type": "integer"
+          },
+          "months": {
+            "maximum": 600.0,
+            "minimum": 1.0,
+            "title": "Months",
+            "type": "integer"
+          },
+          "rate_mode": {
+            "enum": [
+              "effective_annual",
+              "nominal_annual_monthly"
+            ],
+            "title": "Rate Mode",
+            "type": "string"
+          },
+          "timing": {
+            "enum": [
+              "beginning",
+              "end"
+            ],
+            "title": "Timing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "months",
+          "annual_return_pct",
+          "rate_mode",
+          "kind",
+          "monthly_paise",
+          "timing"
+        ],
+        "title": "Sip",
+        "type": "object"
+      },
+      "mfdataindia__calculators__schemas__Summary": {
+        "additionalProperties": false,
+        "properties": {
+          "closing_paise": {
+            "title": "Closing Paise",
+            "type": "integer"
+          },
+          "depletion_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depletion Month"
+          },
+          "goal_met": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Met"
+          },
+          "inflated_goal_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inflated Goal Paise"
+          },
+          "invested_paise": {
+            "title": "Invested Paise",
+            "type": "integer"
+          },
+          "net_gain_paise": {
+            "title": "Net Gain Paise",
+            "type": "integer"
+          },
+          "required_starting_monthly_paise": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Starting Monthly Paise"
+          },
+          "withdrawn_paise": {
+            "title": "Withdrawn Paise",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "invested_paise",
+          "withdrawn_paise",
+          "closing_paise",
+          "net_gain_paise",
+          "depletion_month",
+          "inflated_goal_paise",
+          "required_starting_monthly_paise",
+          "goal_met"
+        ],
+        "title": "Summary",
+        "type": "object"
+      },
+      "mfdataindia__enrichment__schemas__PolicyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "document": {
+            "additionalProperties": true,
+            "title": "Document",
+            "type": "object"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_hash",
+          "document"
+        ],
+        "title": "PolicyResponse",
+        "type": "object"
+      },
+      "mfdataindia__review__schemas__PolicyResponse": {
+        "properties": {
+          "document": {
+            "additionalProperties": true,
+            "title": "Document",
+            "type": "object"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy_hash",
+          "policy_id",
+          "policy_version",
+          "document"
+        ],
+        "title": "PolicyResponse",
+        "type": "object"
+      },
+      "mfdataindia__review__schemas__ResultDocument": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "code": {
+            "title": "Code",
+            "type": "integer"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "eligible_at_capture": {
+            "title": "Eligible At Capture",
+            "type": "boolean"
+          },
+          "engine": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Engine",
+            "type": "object"
+          },
+          "engine_fingerprint": {
+            "title": "Engine Fingerprint",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "format": {
+            "const": "verified-nav-result-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "input_hash": {
+            "title": "Input Hash",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/Metrics"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "policy_hash": {
+            "title": "Policy Hash",
+            "type": "string"
+          },
+          "result_id": {
+            "title": "Result Id",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "unavailable": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Unavailable",
+            "type": "object"
+          }
+        },
+        "required": [
+          "result_id",
+          "format",
+          "code",
+          "input_hash",
+          "policy_hash",
+          "engine_version",
+          "engine_fingerprint",
+          "engine",
+          "source_revision",
+          "dataset_version",
+          "first_date",
+          "as_of",
+          "points",
+          "context",
+          "eligible_at_capture",
+          "metrics",
+          "unavailable"
+        ],
+        "title": "ResultDocument",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "MFData Verified Fund Review",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/calculators/v1/backtests": {
+      "post": {
+        "operationId": "historical_backtest_api_calculators_v1_backtests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "lumpsum": "#/components/schemas/mfdataindia__calculators__historical_schemas__Lumpsum",
+                    "sip": "#/components/schemas/mfdataindia__calculators__historical_schemas__Sip"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/mfdataindia__calculators__historical_schemas__Lumpsum"
+                  },
+                  {
+                    "$ref": "#/components/schemas/mfdataindia__calculators__historical_schemas__Sip"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/mfdataindia__calculators__historical_schemas__Response"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Historical Backtest"
+      }
+    },
+    "/api/calculators/v1/projections": {
+      "post": {
+        "operationId": "forward_projection_api_calculators_v1_projections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "goal": "#/components/schemas/Goal",
+                    "lumpsum": "#/components/schemas/mfdataindia__calculators__schemas__Lumpsum",
+                    "sip": "#/components/schemas/mfdataindia__calculators__schemas__Sip",
+                    "stepup_sip": "#/components/schemas/StepSip",
+                    "swp": "#/components/schemas/Swp"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/mfdataindia__calculators__schemas__Lumpsum"
+                  },
+                  {
+                    "$ref": "#/components/schemas/mfdataindia__calculators__schemas__Sip"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StepSip"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Swp"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Goal"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/mfdataindia__calculators__schemas__Response"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Forward Projection"
+      }
+    },
+    "/api/enrichment/v1/documents": {
+      "get": {
+        "operationId": "enrichment_documents_api_enrichment_v1_documents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": "",
+              "pattern": "^(?:[0-9a-f]{64})?$",
+              "title": "After",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enrichment Documents"
+      }
+    },
+    "/api/enrichment/v1/documents/{document_id}": {
+      "get": {
+        "operationId": "enrichment_document_api_enrichment_v1_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enrichment Document"
+      }
+    },
+    "/api/enrichment/v1/funds/{code}/coverage": {
+      "get": {
+        "operationId": "enrichment_coverage_api_enrichment_v1_funds__code__coverage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Coverage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enrichment Coverage"
+      }
+    },
+    "/api/enrichment/v1/policy": {
+      "get": {
+        "operationId": "enrichment_policy_api_enrichment_v1_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/mfdataindia__enrichment__schemas__PolicyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enrichment Policy"
+      }
+    },
+    "/api/research/v1/funds/{code}/calendar-returns": {
+      "get": {
+        "operationId": "calendar_returns_api_research_v1_funds__code__calendar_returns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/mfdataindia__analytics__schemas__Response"
+                    },
+                    {
+                      "$ref": "#/components/schemas/mfdataindia__analytics__schemas__AuditResponse"
+                    }
+                  ],
+                  "title": "Response Calendar Returns Api Research V1 Funds  Code  Calendar Returns Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Calendar Returns"
+      }
+    },
+    "/api/research/v1/funds/{code}/rolling-returns": {
+      "get": {
+        "operationId": "rolling_returns_api_research_v1_funds__code__rolling_returns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "years",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "enum": [
+                1,
+                3,
+                5
+              ],
+              "maximum": 5,
+              "minimum": 1,
+              "title": "Years",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PagedResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/mfdataindia__analytics__rolling_schemas__AuditResponse"
+                    }
+                  ],
+                  "title": "Response Rolling Returns Api Research V1 Funds  Code  Rolling Returns Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rolling Returns"
+      }
+    },
+    "/api/review/v1/funds": {
+      "get": {
+        "operationId": "list_queue_api_review_v1_funds_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after_code",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending_review",
+                    "in_review",
+                    "reviewed",
+                    "needs_evidence"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(constant_nav_series|duplicate_variant_series|terminal_face_value_reset_candidate)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Queue"
+      }
+    },
+    "/api/review/v1/funds/{code}": {
+      "get": {
+        "operationId": "detail_api_review_v1_funds__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after_version",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "After Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Detail"
+      }
+    },
+    "/api/review/v1/funds/{code}/analytics": {
+      "get": {
+        "operationId": "get_analytics_api_review_v1_funds__code__analytics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Analytics"
+      }
+    },
+    "/api/review/v1/funds/{code}/enrichment-proposals": {
+      "post": {
+        "operationId": "proposal_api_review_v1_funds__code__enrichment_proposals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalMutation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Proposal"
+      }
+    },
+    "/api/review/v1/funds/{code}/publication": {
+      "get": {
+        "operationId": "research_publication_api_review_v1_funds__code__publication_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Research Publication"
+      }
+    },
+    "/api/review/v1/funds/{code}/reviews": {
+      "post": {
+        "operationId": "review_api_review_v1_funds__code__reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewMutation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Review"
+      }
+    },
+    "/api/review/v1/policies/{policy_hash}": {
+      "get": {
+        "operationId": "get_policy_api_review_v1_policies__policy_hash__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "policy_hash",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Policy Hash",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/mfdataindia__review__schemas__PolicyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Policy"
+      }
+    }
+  }
+}
