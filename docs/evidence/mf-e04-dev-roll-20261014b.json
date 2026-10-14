@@ -1,0 +1,263 @@
+{
+  "format": "mfdata-rolling-runtime-evidence-index-v1",
+  "record_kind": "INDEX_OF_RETAINED_LIVE_EVIDENCE_NOT_A_NEW_CERTIFICATE",
+  "sprint": "MF-E04",
+  "date": "2026-10-14",
+  "status": "ACCEPTED_BOUNDED_PROVIDER_DEV",
+  "sprint_complete": true,
+  "runtime_git_sha": "dad7191576776dc4d36291557bfc6e5da03ab753",
+  "runtime_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:affefa6f1fb3bdb13fe44beb4cf6fef5ca907739ecc17a25e0ff727e70e441c4",
+  "implementation_pr": "https://github.com/trillionlane/tlws-mfindia/pull/45",
+  "operator_fix_pr": "https://github.com/trillionlane/tlws-mfindia/pull/46",
+  "exact_head_ci": "https://github.com/trillionlane/tlws-mfindia/actions/runs/38551056292",
+  "ci_python_tests_passed": 833,
+  "ci_python_tests_skipped": 1,
+  "service": "tlws-mf-review-dev",
+  "revision": "tlws-mf-review-dev-dev-roll-20261014b-rolling",
+  "recovery_revision": "tlws-mf-review-dev-dev-cal-20261014a-calendar",
+  "project": "trillionlane-dev",
+  "region": "asia-south1",
+  "ingress": "internal",
+  "explicit_invoker": "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com",
+  "cohort": [
+    101762,
+    101763,
+    139889,
+    154701
+  ],
+  "dataset_version": 13,
+  "manifest_hash": "606962ddae0aac8fa791e569f0a73880be095ff00c628390e1c644c038253bcd",
+  "rolling_policy_hash": "edfc335aec20c24cb9fe2d9edd6ed1c40dce336e3f59938b01e77778e4da6a41",
+  "rolling_schema_sha256": "45774437379f736c9f1465935c6071951072674e5affb9abeee60e99eba3af41",
+  "backup": {
+    "object": {
+      "generation": "1791975239462882",
+      "md5": "IePYZfVNCMy8IUV2JYqBPA==",
+      "sha256": "88d8bc6536730098069f1f47f75357272eeb80d2bc7a546b262a7200ff215d45",
+      "size": 48796618,
+      "uri": "gs://tlws_mf_data_source/verified-review-rollouts/dev-roll-20261014b/snapshot.dump"
+    },
+    "sha256": "88d8bc6536730098069f1f47f75357272eeb80d2bc7a546b262a7200ff215d45",
+    "bytes": 48796618
+  },
+  "post_rollout_backup": {
+    "object": {
+      "generation": "1791977421536391",
+      "md5": "cDOBdzJFKhDv2ramTwP/yg==",
+      "sha256": "6ac60cd17f4194bff779c0b5a4e2f447f3b35b8d2854334e25e9653a8d21cfe8",
+      "size": 48820008,
+      "uri": "gs://tlws_mf_data_source/verified-review-rollouts/dev-roll-close-20261014/snapshot.dump"
+    },
+    "sha256": "6ac60cd17f4194bff779c0b5a4e2f447f3b35b8d2854334e25e9653a8d21cfe8"
+  },
+  "stages": [
+    {
+      "stage": "rolling-preflight",
+      "sha256": "f4e504e2ec2b043ddbce0d36f91d4c915107f4d10bfcfbb043e24bb2ad3fde4c"
+    },
+    {
+      "stage": "rolling-backup",
+      "sha256": "87b42fe455e324ea7e33222b9a770ae15aea53d5cd179fc5671d3580464a8cb6"
+    },
+    {
+      "stage": "rolling-rehearsal-failed",
+      "sha256": "b68119a5cf52d462498f956ef3b9ba21e789055b5253a5c3534d307cc01ee367"
+    },
+    {
+      "stage": "rolling-rehearsal",
+      "sha256": "de4f8fe074def126a72b17c33a0a6967e20d24ae99db1c0fb690d505bb69a18c"
+    },
+    {
+      "stage": "rolling-installation-execution",
+      "sha256": "619bba2bf69b160efc64855be9e3ded4abee9be33dbbff387ecd5b937c9b739d",
+      "execution": "mf-roll-install-dev-roll-20261014b-bwb2l",
+      "certificate_sha256": "d0c302a47e968c29e2debbed0f58ce58add4b903b6840e51b2e6af409137a853"
+    },
+    {
+      "stage": "rolling-generation-execution",
+      "sha256": "40e110391a0ea8e93de0f808726a359ffdffab5abb38b8cbfbd0cf2262a44632",
+      "execution": "mf-roll-gen-dev-roll-20261014b-dxgqr",
+      "certificate_sha256": "d95bf52980912af9ad44ad9498f1c764cd8df94b0bf352f423210fdb6e831afc"
+    },
+    {
+      "stage": "rolling-compat-generation-calendar",
+      "sha256": "74c2227f4d32ba34d4fdeef68eccc08b8da70cc9870fc6c681067321047208a3",
+      "execution": "mf-compat-gen-calendar-dev-roll-20261014b-mk5pb",
+      "certificate_sha256": "26691410c18dc0686201ca00cdff3c51ec51deac2a3ba9cde12deeba0c09f716"
+    },
+    {
+      "stage": "rolling-compat-generation-core",
+      "sha256": "945036d302df446847d51b05c078341b8287cca9ae6357cbe8ffd4250cc115d0",
+      "execution": "mf-compat-gen-core-dev-roll-20261014b-p5grq",
+      "certificate_sha256": "9e72dad87bef9e58dedf4dcb66d80c00d16855113bea3ff1efa2e2516b0474cf"
+    },
+    {
+      "stage": "rolling-staged",
+      "sha256": "18314a247b74b4c1a510b4c1ea02275cf57fbacf13e66b30ccdbf9f9347debbc"
+    },
+    {
+      "stage": "rolling-candidate-calendar",
+      "sha256": "9e527b9f09f39c3e3a97ed95695bb85d89241deefe7f9d6ee1583705eb3dad77",
+      "execution": "mf-candidate-calendar-dev-roll-20261014b-2fnqh",
+      "certificate_sha256": "266d56ac4dd7ce17a9ad64f379282fbcedcf3362491de59a37bf4d95568a3311"
+    },
+    {
+      "stage": "rolling-candidate-core",
+      "sha256": "e8d80ef041cad757084d9344e53ba4a25f02c38db0c5f092cb1db5b872d8f803",
+      "execution": "mf-candidate-core-dev-roll-20261014b-vppxk",
+      "certificate_sha256": "676c5a210b3f88f91b92d472a958d397f3a147d1d21ffeca4a9710102ac0dfd2",
+      "compatibility_manifest": {
+        "git_sha": "a4d253a2a26baaa6e88bbe472a71a3335279000c",
+        "image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:5fac55357356c8046591e7da0d4028482b80dcaf0a726a83b81282734a4402f9",
+        "rollout_id": "dev-cal-20261014a"
+      }
+    },
+    {
+      "stage": "rolling-candidate-publication",
+      "sha256": "0026497556bae65e62f063fbfa375eb8ad0aa33fd6ddedb1468923dd85d4aea3",
+      "execution": "mf-candidate-publication-dev-roll-20261014b-pjggt",
+      "certificate_sha256": "d2d4702f53ffc84726ba71e1b4d90bdaa49bc6e5ca6096cc87a0308c44191cde"
+    },
+    {
+      "stage": "rolling-candidate-rolling",
+      "sha256": "4071dabded21abee1d3d3fe826653739186da0453da935149214e6659d20d2cb",
+      "execution": "mf-candidate-rolling-dev-roll-20261014b-zh2jr",
+      "certificate_sha256": "5abade5bc250d99f13924dd98846d19e97cc2ae8abe036db73450d86f56ed455"
+    },
+    {
+      "stage": "rolling-promoted",
+      "sha256": "d0e064bea763b01c074e693a2784773a3e8862ca98d2c4f2b45edc41f4992af2"
+    },
+    {
+      "stage": "rolling-final-calendar",
+      "sha256": "d74cda338b57bb695a7801d96c690a51d466e2bce44984c76d8d29fbe9b7139b",
+      "execution": "mf-final-calendar-dev-roll-20261014b-9rczf",
+      "certificate_sha256": "d5adef17e7b4b6d4a7317be059da8ef8b85cc0160864824f4c1e36f576ce6bb4"
+    },
+    {
+      "stage": "rolling-final-core",
+      "sha256": "37e101a325a62039d2e3dfaa75340d181fdb96cbd387a5dcf2b228fb188df2f9",
+      "execution": "mf-final-core-dev-roll-20261014b-h6fcv",
+      "certificate_sha256": "99186671713344034968b3699d8ba303dc95c00085af3a5349e4077a9a2f45bc",
+      "compatibility_manifest": {
+        "git_sha": "a4d253a2a26baaa6e88bbe472a71a3335279000c",
+        "image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:5fac55357356c8046591e7da0d4028482b80dcaf0a726a83b81282734a4402f9",
+        "rollout_id": "dev-cal-20261014a"
+      }
+    },
+    {
+      "stage": "rolling-final-publication",
+      "sha256": "dc69e58c50722efc453af89d62c70a3563cdb7231b67d97ebb6cc0ee552f7d98",
+      "execution": "mf-final-publication-dev-roll-20261014b-7hghh",
+      "certificate_sha256": "f6186e3c9e83b3d052c179fdf3eee264bc5aed03f93131c370c8946f81a787aa"
+    },
+    {
+      "stage": "rolling-final-rolling",
+      "sha256": "d4055295d1d0d93413a10d8b00e0b5351e3d5cfdfea0040403e10a9c7a7fc741",
+      "execution": "mf-final-rolling-dev-roll-20261014b-t4sx4",
+      "certificate_sha256": "b49f7ca90bdb93d407bb07a455c74ce0d61610730bbf81e7b7d381474264d2d0"
+    },
+    {
+      "stage": "rolling-registration-execution",
+      "sha256": "28cc56f1b3bd9e69b7dcfb83a5abaee3276faa68a90a9088e477fdf3faa8e30f",
+      "execution": "mf-roll-register-dev-roll-20261014b-drjzf",
+      "certificate_sha256": "f3e59184ef6958bdf9f56eec5983f131b2f4d8f89b12999c19e6eaeacde2aed7"
+    },
+    {
+      "stage": "rolling-current-http",
+      "sha256": "859b0d6dc900c95301ef3c9979266ae4e31d485585a5acd09f3444b293593d00",
+      "execution": "mf-roll-current-dev-roll-20261014b-5ldxd",
+      "certificate_sha256": "cb56502cc00838b4c7c6fb08fbd2af6ee437e810acbb3063c88c84ed96c8741c"
+    },
+    {
+      "stage": "rolling-recovery",
+      "sha256": "409b56cf5b8c533e8feb80692b6f32b4e2935a99bd93fe06a5f8f1018e238830",
+      "execution": "mf-roll-recovery-dev-roll-20261014b-l2qlp",
+      "certificate_sha256": "d5adef17e7b4b6d4a7317be059da8ef8b85cc0160864824f4c1e36f576ce6bb4"
+    },
+    {
+      "stage": "rolling-recovery-restored",
+      "sha256": "2b8dd2fe1c2f1a2f50771c4e82a973bb5a50bd7880c5fb2f59e54fdb79362f6b",
+      "execution": "mf-roll-restored-dev-roll-20261014b-8c472",
+      "certificate_sha256": "cb56502cc00838b4c7c6fb08fbd2af6ee437e810acbb3063c88c84ed96c8741c"
+    },
+    {
+      "stage": "rolling-preservation-complete",
+      "sha256": "5791ea5abc81cce8440f6e5b2cc75a826c224fe596f9a55da52237f0b8e11f88"
+    },
+    {
+      "stage": "rolling-regional-after-backup",
+      "sha256": "6c6e7f838824787a08e02ca755165e809adaebce1a0294692e897f6f848208ec"
+    },
+    {
+      "stage": "rolling-remote-preservation-failed",
+      "sha256": "89a588ec5c4c86aca350b5b998ecda69ccd068c61bdc4ee19534beebdc9ad77b"
+    }
+  ],
+  "certificate_id": "7414be4e2b41b6331e157c71aa1dc6a71c4f6351d8fa6dd6743968ddd5bbb10f",
+  "source_nav_rows_preserved": 4236069,
+  "source_fund_rows_preserved": 14390,
+  "all_source_values_structure_functions_triggers_sequences_owners_acls_preserved": true,
+  "all_prior_review_rows_preserved": true,
+  "all_prior_calendar_rows_preserved": true,
+  "review_appended": {
+    "certifications": 0,
+    "events": 0,
+    "policies": 1,
+    "results": 0,
+    "snapshots": 0
+  },
+  "rolling_results_appended": 4,
+  "rolling_certifications_appended": 1,
+  "original_six_route_canary_events_appended": 0,
+  "original_six_route_check": "Exact previous MF-E03 immutable consumer/manifest/canary-body replay against the new provider; no new decision or proposal",
+  "current_comparison_eligible_codes_for_one_and_three_year_terms": [
+    101762
+  ],
+  "ineligible_controls": [
+    101763,
+    139889,
+    154701
+  ],
+  "explicit_null_signals_control": 154701,
+  "growth_covered_windows": {
+    "1_year": 48,
+    "3_year": 24,
+    "5_year": 0
+  },
+  "five_year_unavailable_reason": "insufficient_covered_windows",
+  "requested_term_eligibility_enforced": true,
+  "clone_runtime": {
+    "python": "3.12.13",
+    "decimal_library": "4.0.0"
+  },
+  "deployed_derivation_runtime": {
+    "python": "3.12.15",
+    "decimal_library": "2.5.1"
+  },
+  "runtime_metadata_retained": "Clone/DEV share exact inputs/policy/code but retain different runtime-specific result IDs; final HTTP recomputes in deployed runtime",
+  "public_denial": {
+    "review": 404,
+    "rolling": 404
+  },
+  "recovery_method": "Retained eight-route traffic promotion and actual private calendar check, exact nine-route restoration and rolling recertification; no schema, IAM or data deletion",
+  "retained_failures": [
+    "Initial dev-roll-20261014a installation KeyError before DB connection; fixed in #46; fresh source check confirms no rolling schema at that point",
+    "Clone B pg_restore backend killed by local 2 GiB VM OOM; failed clone retained; positively task-owned idle clones stopped, not deleted; new bounded clone C passed",
+    "Final remote read-only COPY exceeded unchanged statement timeout; same reviewed regional MVCC backup/helper then proved whole-source/prior-layer preservation"
+  ],
+  "timeout_limits_relaxed": false,
+  "source_writes": 0,
+  "data_deleted": 0,
+  "old_core_or_calendar_results_replaced": false,
+  "not_claimed": [
+    "MF-E05_through_MF-E15",
+    "whole_dataset_analytics_coverage",
+    "human_fund_correctness_approval",
+    "Insights_or_TDW_application_RBAC",
+    "IDCW_adjustment",
+    "licensed_source_acquisition",
+    "UI",
+    "production"
+  ]
+}
