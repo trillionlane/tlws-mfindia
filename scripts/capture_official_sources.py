@@ -37,6 +37,8 @@ if __name__ == "__main__":
     extraction.add_argument("--document", type=Path, required=True)
     extraction.add_argument("--expected-sha", required=True)
     extraction.add_argument("--absl-period", default=None)
+    extraction.add_argument("--page-start", type=int, default=1)
+    extraction.add_argument("--page-end", type=int, default=None)
     args = parser.parse_args()
     if args.kind == "history":
         if (
@@ -77,6 +79,7 @@ if __name__ == "__main__":
     elif args.kind == "extract-pdf":
         print(json.dumps(extract_document(
             args.archive, args.document, args.expected_sha, absl_period=args.absl_period,
+            page_start=args.page_start, page_end=args.page_end,
         ), sort_keys=True))
     else:
         print(

@@ -171,7 +171,12 @@ def capture_document(
         raise ValueError(
             "AMFI document retention scope must be resolved separately from existing NAV acquisition"
         )
-    result = acquisition.fetch(url, hosts)
+    if urlsplit(url).hostname == "mutualfund.adityabirlacapital.com":
+        if "mutualfund.adityabirlacapital.com" not in hosts:
+            raise ValueError("explicit ABSL official host required")
+        result = acquisition.fetch_absl_document(url)
+    else:
+        result = acquisition.fetch(url, hosts)
     if urlsplit(result["final_url"]).hostname in amfi_hosts and use_basis != "published_permission":
         raise ValueError("AMFI document retention scope must be resolved separately")
     if result["media_type"] == "application/pdf" and not result["content"].startswith(b"%PDF-"):
@@ -238,7 +243,7 @@ def discover_absl(root: Path, year: int):
     }
 
 
-def extract_document(root: Path, document: Path, expected_sha: str, *, absl_period=None):
+def extract_document(root: Path, document: Path, expected_sha: str, *, absl_period=None, page_start=1, page_end=None):
     """Archive private extraction separately from original evidence; no SQL loader."""
     from mfdataindia.enrichment.pdf_evidence import extract_pdf, absl_candidates
     from mfdataindia.enrichment.evidence import MAX_BYTES
@@ -247,7 +252,7 @@ def extract_document(root: Path, document: Path, expected_sha: str, *, absl_peri
         content = source.read(MAX_BYTES + 1)
     if hashlib.sha256(content).hexdigest() != expected_sha:
         raise ValueError("original PDF hash does not match request")
-    result = extract_pdf(content)
+    result = extract_pdf(content, page_start=page_start, page_end=page_end)
     candidates = absl_candidates(result, absl_period) if absl_period else []
     payload = json.dumps({"extraction": result, "candidates": candidates}, sort_keys=True).encode()
     receipt = archive(root, payload, {
@@ -257,6 +262,9 @@ def extract_document(root: Path, document: Path, expected_sha: str, *, absl_peri
         "policy_hash": result["policy_hash"],
         "extractor_version": result["extractor_version"],
         "pages": len(result["pages"]),
+        "requested_page_range": result["requested_page_range"],
+        "document_pages": result["document_pages"],
+        "whole_document_text_extracted": result["whole_document_text_extracted"],
         "text_pages": sum(bool(p["text"].strip()) for p in result["pages"]),
         "unmapped_candidates": len(candidates),
         "declared_absl_period": absl_period,

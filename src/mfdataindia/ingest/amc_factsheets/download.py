@@ -59,6 +59,22 @@ def monthly_api_url(html: str, year: int) -> str:
     return BASE + _API_MONTHLY + "?" + urlencode({"datasourceId": ids.pop(), "year": year})
 
 
+def factsheet_media_url(link: str) -> str:
+    if any(part in (".", "..") for part in unquote(link).split("/")):
+        raise ValueError("factsheet path traversal not permitted")
+    url = public_url(urljoin(BASE + "/", link), {"mutualfund.adityabirlacapital.com"})
+    if not url.startswith(BASE + "/-/media/bsl/files/resources/factsheets/"):
+        raise ValueError("document outside official factsheet media tree")
+    decoded = unquote(urlsplit(url).path)
+    if (
+        any(part in (".", "..") for part in decoded.split("/"))
+        or any(c in decoded for c in "\\%?#")
+        or not decoded.lower().endswith((".pdf", ".ashx"))
+    ):
+        raise ValueError("unsafe factsheet media path")
+    return url
+
+
 def monthly_documents(data: dict, year: int) -> list[FactsheetDocument]:
     """Accept observed Sitecore success variants, never arbitrary links/periods."""
     if type(year) is not int or not 1900 <= year <= 2100:
@@ -77,8 +93,6 @@ def monthly_documents(data: dict, year: int) -> list[FactsheetDocument]:
             continue
         if not isinstance(link, str) or not isinstance(title, str):
             raise ValueError("document link and title required")
-        if any(part in (".", "..") for part in unquote(link).split("/")):
-            raise ValueError("factsheet path traversal not permitted")
         match = _TITLE_RE.fullmatch(title)
         if not match:
             raise ValueError("unrecognized factsheet period title")
@@ -86,16 +100,7 @@ def monthly_documents(data: dict, year: int) -> list[FactsheetDocument]:
         month, listed_year = period.split()
         if month not in _MONTH_ORDER or int(listed_year) != year or period in periods:
             raise ValueError("ambiguous or out-of-year factsheet period")
-        url = public_url(urljoin(BASE + "/", link), {"mutualfund.adityabirlacapital.com"})
-        if not url.startswith(BASE + "/-/media/bsl/files/resources/factsheets/"):
-            raise ValueError("document outside official factsheet media tree")
-        decoded = unquote(urlsplit(url).path)
-        if (
-            any(part in (".", "..") for part in decoded.split("/"))
-            or any(c in decoded for c in "\\%?#")
-            or not decoded.lower().endswith((".pdf", ".ashx"))
-        ):
-            raise ValueError("unsafe factsheet media path")
+        url = factsheet_media_url(link)
         periods.add(period)
         out.append(FactsheetDocument(title=title, url=url, period=period))
     return out

@@ -79,6 +79,24 @@ def test_period_sort_is_year_before_month():
     assert AbSLFactsheetClient._period_key("January 2026") > AbSLFactsheetClient._period_key("December 2025")
 
 
+def test_pdf_adapter_adds_only_fixed_public_same_origin_referer(monkeypatch):
+    calls = transport(monkeypatch, [Response(b"%PDF-fixture", headers={"Content-Type": "application/pdf"})])
+    result = acquisition.fetch_absl_document(BASE + LINK)
+    assert result["content"].startswith(b"%PDF-")
+    assert calls[0]["headers"]["Referer"] == BASE + "/forms-and-downloads/factsheets"
+    assert "Cookie" not in calls[0]["headers"] and "Authorization" not in calls[0]["headers"]
+    with pytest.raises(ValueError):
+        acquisition.fetch_absl_document("https://evil.example/factsheet.pdf")
+
+
+@pytest.mark.parametrize("location", ["/other.pdf", LINK.replace("september.pdf", "../other.pdf"), "https://evil.example/x.pdf"])
+def test_pdf_redirect_cannot_leave_approved_media_tree(monkeypatch, location):
+    calls = transport(monkeypatch, [Response(status=302, headers={"Location": location})])
+    with pytest.raises(ValueError):
+        acquisition.fetch_absl_document(BASE + LINK)
+    assert len(calls) == 1
+
+
 def pdf(*, encrypted=False, pages=1, stream=None):
     writer = PdfWriter()
     for _ in range(pages):
@@ -136,12 +154,28 @@ def test_absl_bridge_emits_only_unmapped_candidate_not_float_facts():
     from pathlib import Path
     from mfdataindia.review.policy import fingerprint
     text = (Path(__file__).parent / "fixtures/absl/detail_bankpsu.txt").read_text()
-    extracted = {"pages": [{"text": text}]}
+    extracted = {"pages": [{"page": 17, "text": text}]}
     extracted["result_hash"] = fingerprint(extracted)
     result = pdf_evidence.absl_candidates(extracted, "September 2026")
     assert len(result) == 1
     assert result[0]["state"] == "unmapped_candidate" and not result[0]["facts_accepted"]
+    assert result[0]["detail_page"] == 17
     assert "aum_crore" not in result[0] and "quant" not in result[0]
     extracted["pages"][0]["text"] = "altered"
     with pytest.raises(ValueError, match="seal"):
         pdf_evidence.absl_candidates(extracted, "September 2026")
+
+
+def test_selected_pages_keep_original_numbers_and_explicit_incompleteness():
+    result = pdf_evidence.extract_pdf(pdf(pages=5), page_start=3, page_end=4)
+    assert [p["page"] for p in result["pages"]] == [3, 4]
+    assert result["document_pages"] == 5 and not result["whole_document_text_extracted"]
+    assert result["requested_page_range"] == [3, 4]
+    with pytest.raises(ValueError):
+        pdf_evidence.extract_pdf(pdf(), page_start=2)
+
+
+@pytest.mark.parametrize("start,end", [(True, None), (0, 1), (2, 1), (1, 401), (1, False)])
+def test_invalid_page_selection_is_rejected_before_worker(start, end):
+    with pytest.raises(ValueError, match="selection"):
+        pdf_evidence.extract_pdf(pdf(), page_start=start, page_end=end)

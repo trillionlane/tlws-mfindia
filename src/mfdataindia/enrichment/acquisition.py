@@ -6,7 +6,7 @@ import socket
 import ssl
 import time
 from contextlib import closing
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlsplit, unquote
 
 from requests.certs import where as public_ca_bundle
 
@@ -56,9 +56,23 @@ def fetch_absl_monthly(html, year):
     )
 
 
+def fetch_absl_document(url):
+    """Official media uses a fixed, non-secret same-origin Referer (legacy behavior)."""
+    from mfdataindia.ingest.amc_factsheets.download import BASE, _LANDING, factsheet_media_url
+
+    hosts = ["mutualfund.adityabirlacapital.com"]
+    def validate(value, allowed):
+        public_url(value, allowed)
+        return factsheet_media_url(value)
+
+    return _fetch(url, hosts, timeout=30, referer=BASE + _LANDING,
+                  media_types=("application/pdf",), validate=validate)
+
+
 def _fetch(
     url, official_hosts, *, timeout=20, maximum=MAX_BYTES,
     validate=public_url, media_types=("text/html", "application/pdf"),
+    referer=None,
 ):
     if not 0 < maximum <= MAX_BYTES or not 0 < timeout <= 30:
         raise ValueError("bounded acquisition limits required")
@@ -83,6 +97,7 @@ def _fetch(
                     "User-Agent": "MFDataIndia-Evidence/1.0",
                     "Accept-Encoding": "identity",
                     "Accept": ",".join(media_types),
+                    **({"Referer": referer} if referer else {}),
                 },
             )
             response = conn.getresponse()
@@ -91,6 +106,8 @@ def _fetch(
                 destination = response.getheader("Location")
                 if not destination:
                     raise ValueError("redirect without destination")
+                if any(part in (".", "..") for part in unquote(destination).split("/")):
+                    raise ValueError("redirect path traversal not permitted")
                 url = validate(urljoin(url, destination), hosts)
                 continue
             if response.status != 200:

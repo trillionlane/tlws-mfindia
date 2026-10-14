@@ -161,7 +161,12 @@ Sitecore datasource/year query is allowed; general acquisition rejects queries.
 Original landing/API bytes are retained. No PDF or database import is automatic.
 On 2026-10-14 this adapter retained nine documents, January–September 2026.
 September is **latest listed**, not proof of current October or all-AMC coverage.
-A bounded September-PDF attempt timed out; no partial document was accepted.
+The initial bounded September-PDF attempt timed out; no partial document was
+accepted. Following the legacy adapter's documented Referer requirement, the
+new source-specific media adapter adds only that fixed public same-origin header
+and a bounded 30-second timeout. It then captured the exact 7,633,719-byte PDF
+(344 pages), without cookies, proxying, credentials or new host exceptions.
+All redirects still require approved hosts/media paths; dot-segment paths fail.
 
 `capture_official_sources.py --archive PRIVATE_DIR extract-pdf --document PDF
 --expected-sha SHA [--absl-period 'September 2026']` checks the original hash and
@@ -172,6 +177,14 @@ controls but no address-space cap. This is **not an OS security sandbox**.
 Encrypted, malformed and oversized documents fail closed; image-only pages
 retain empty text without OCR or inferred content. No scripts or external
 document retrieval are executed. The lock now includes pypdf 6.20.1.
+The optional `--page-start`/`--page-end` bounds permit resource-limited windows
+while retaining original page numbers, whole-document page count and an explicit
+partial-extraction flag. Candidate layout parsing also runs in a limited worker.
+Policy version 2 defines those page-window semantics; earlier extraction artifacts
+remain untouched. Fourteen ranges extracted all 344 ABSL pages, with source,
+policy/version/engine seals checked and every original page accounted for exactly
+once. They yielded 69 **unmapped** named candidates, not 69 accepted enriched
+funds. Page coverage is not official field, portfolio or AMC-universe completeness.
 
 The legacy ABSL pure parser emits **unmapped scheme candidates** only. Its
 float-based numeric fields and name matcher are not used for fact publication.
