@@ -316,6 +316,30 @@ mutation was performed by preflight. Narrow provisioning permissions and the
 consumer-owned execution arrangement still require actual effective-permission
 verification; project-level role inventory alone is not that proof.
 
+MF-E01 continuation: an existing signed-in human project operator has actual
+Insights-runtime `iam.serviceAccounts.actAs` and source-secret access permissions
+observed through read-only permission probes. An explicit operator-mediated
+executor is being implemented/reviewed; this avoids any new provider-deployer
+control of Insights. Permission probes are diagnostic, not rollout acceptance.
+No trust creation, backup, schema install or source operation is claimed yet.
+
+The read-only operational probe exposed v1 preservation transport's off-region
+`FETCH 1000` round-trip overhead. The task-owned probe was interrupted without
+source writes. A batched-catalog/read-only binary stream replacement retains the
+same v1 checksums and manifest; its full-manifest equivalence and preservation
+regressions passed against isolated PostgreSQL. This is part of MF-E01 readiness,
+not a reason to extend live source-lock bounds or claim rollout success.
+
+A fresh diagnostic backup completed in 148.16 seconds: 48,661,228 bytes, SHA-256
+`261a26f1c7a7b4320b78655b92f3c2a6086900d8142089a21aeebe34831968ff`,
+including all 4,235,842 NAV rows. A separate read-only capture took 80.85 seconds
+and matched every source preservation field from that backup. These local private
+artifacts are not yet the manifest-bound rollout/archive/restore certificate.
+The operator path therefore places the atomic installation beside Cloud SQL as
+the existing migration workload, retaining the 180-second bound rather than
+lengthening an off-region transaction. Private signing material is never mounted
+in that installation job, and new credential-reader grants are temporary.
+
 ### Operational / API closeout remains separate
 
 - Observe the restored normal refresh and full audit cycle; activation probes

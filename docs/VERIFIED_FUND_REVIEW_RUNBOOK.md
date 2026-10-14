@@ -275,6 +275,91 @@ optional credentials/identities/services require reconciliation before first ins
 
 ### Manifest and approval
 
+#### Existing-human-operator execution arrangement
+
+`scripts/operator_verified_review_dev.py` supports an explicitly approved
+existing project operator without expanding the provider deployer's access to
+Insights. This is a separate local executor, not an impersonation or WIF bypass:
+every cloud command pins `--account`, verifies that the exact human credential
+exists and has an existing unconditional project Owner binding, and makes no
+Owner/Editor/consumer-actAs grant. Google Cloud still authorizes each actual
+operation. The project-role check is not a consumer RBAC certificate.
+
+The operator approval JSON has exactly `format`, `project`, `account`, `git_sha`,
+`operation`, `binding_hash` and `database_execution`; its canonical SHA-256 must match the explicit
+approved operator hash. `format` is `mfdata-review-operator-approval-v1`, project
+is DEV only, `database_execution` is `private-cloud-run`, and operation is
+`bootstrap-consumer-trust` or `execute-rollout`.
+Bind bootstrap to the canonical hash of `trust_declaration()`; bind execution to
+the exact approved rollout manifest hash. Duplicate fields, service-account
+operators, wrong operations/pins and mismatched checkout are rejected before
+cloud calls. Execution requires a clean checkout at the exact **live merged main**
+SHA, not a locally edited branch or fabricated `origin/main` reference.
+
+Bootstrap creates a fresh consumer-owned Ed25519 signing secret and public trust
+secret, granting private-key reading only to the existing Insights runtime at
+the secret level. Public trust evidence is retained before creation; the private
+key is never written to local files, printed or fetched from Secret Manager by
+the provider runner. Existing credentials or partial prior bootstrap stop; no
+rotation or deletion is attempted. The key's issuer/audience/caller/scopes are
+fixed by the reviewed declaration. This establishes delegation infrastructure,
+not an implemented Insights actor login/admin-entitlement flow.
+
+Run only after operator approval, with private manifest/evidence files outside
+the checkout and a separately verified isolated PostgreSQL 18 clone server:
+
+```sh
+uv run python scripts/operator_verified_review_dev.py bootstrap-consumer-trust \
+  --operator-approval <approved-bootstrap-json> \
+  --approved-operator-hash <canonical-operator-approval-hash> \
+  --work-directory <new-absolute-private-receipt-directory>
+
+uv run python scripts/operator_verified_review_dev.py execute-rollout \
+  --operator-approval <approved-execution-json> \
+  --approved-operator-hash <canonical-operator-approval-hash> \
+  --manifest <approved-rollout-json> \
+  --approved-manifest-hash <canonical-manifest-hash> \
+  --work-directory <new-absolute-private-backup-and-evidence-directory>
+```
+
+Set `MFDATA_REVIEW_CLONE_ADMIN_DSN` through the established environment mechanism,
+never argv or output. The local executor retains backup bytes and all evidence on
+success/failure as well as the create-only GCS backup. It uses the same source
+locks, restricted principals, job checks, six-route certification and independent
+non-destructive recovery as the reviewed runner. Source and consumer runtime
+configuration remain unchanged; only the new feature's resources/privileges are
+provisioned. Do not overlap this local operation with a manual CI rollout or
+another DEV infrastructure deployment; reconcile their authoritative status
+before execution. Scheduled refresh/audit remains enabled and is guarded by the
+existing source-operation locks and input revalidation.
+
+For this local arrangement, the atomic DEV schema/principal installation runs
+in a private, zero-retry job beside Cloud SQL as the existing
+`tlws-mf-data-migrate-dev` workload. The source-admin credential version and all
+three newly created credential versions are immutable job pins. The job verifies
+the actual database identity, exact source/role DSN binding, migration hash and
+the same preservation/privilege checks before commit. Its 180-second transaction
+bound is unchanged; original source rows are preserved, with only the pinned
+optional migration receipt appended to the source ledger. The controller verifies
+actual execution completion/image/SHA/runtime/network/secret versions and retains
+the structured installation certificate before checking direct runtime logins.
+Temporary migration-workload read access is removed from the three NEW credential
+secrets on success or failure; all removals are attempted independently. Unconfirmed
+removal fails closeout. Source-admin-secret access already belongs to the existing
+migration workload and is not expanded. No private signing key is mounted there.
+
+The operational preservation capture uses read-only binary `COPY TO` for the
+ordered JSON-text column, decoded to the same UTF-8 length-prefixed row hash as
+v1's named cursor. Catalog reads are batched without changing per-object ordering
+or the manifest shape. A frozen v1 reference proves complete-manifest equality
+on isolated PostgreSQL, including Unicode/control text, duplicates, keyed and
+unkeyed tables, views, materialized views, ownership, sequences and ACLs.
+This removes thousands of off-region `FETCH 1000` round trips, not integrity
+checks. Source lock/statement/transaction bounds remain unchanged; measure actual
+DEV capture/rehearsal before installation and stop if they cannot meet the bounds.
+Source table/column privilege checks use one query over the identical complete
+relation population instead of one network round trip per relation.
+
 The JSON shape below is a template, not executable configuration. Replace every
 placeholder from reviewed image preparation, the supported policy command,
 SHA-256 of the checked-in contract/migration, immutable secret versions and the

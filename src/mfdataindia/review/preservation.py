@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-from uuid import uuid4
 
 from psycopg import sql
 
@@ -79,19 +78,46 @@ def capture_preservation(conn) -> dict:
     ).fetchall()
     if not relations or not {'funds', 'nav_history', 'schema_migrations'} <= {r['relname'] for r in relations}:
         raise ValueError('source relation inventory is incomplete')
+    # Batch metadata, retaining exactly the original per-relation ordering and
+    # manifest shape. Per-partition queries otherwise multiply network latency.
+    ids = [r['oid'] for r in relations]
+    def grouped(rows, key):
+        result = {}
+        for row in rows:
+            row = dict(row)
+            identity = row.pop(key)
+            result.setdefault(identity, []).append(row)
+        return result
+    all_columns = grouped(conn.execute(
+        "SELECT a.attrelid AS relation_oid,attname,format_type(atttypid,atttypmod) AS type,attnotnull,attgenerated,attidentity,"
+        "pg_get_expr(d.adbin,d.adrelid) AS default_expression FROM pg_attribute a "
+        "LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum "
+        "WHERE a.attrelid=ANY(%s::oid[]) AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attrelid,a.attnum",
+        (ids,)).fetchall(), 'relation_oid')
+    all_constraints = grouped(conn.execute(
+        "SELECT conrelid AS relation_oid,conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint "
+        "WHERE conrelid=ANY(%s::oid[]) ORDER BY conrelid,conname", (ids,)).fetchall(), 'relation_oid')
+    all_indexes = grouped(conn.execute(
+        "SELECT tablename AS relation_name,indexname,indexdef FROM pg_indexes WHERE schemaname='mf' "
+        "AND tablename=ANY(%s::text[]) ORDER BY tablename,indexname",
+        ([r['relname'] for r in relations],)).fetchall(), 'relation_name')
+    all_primary = grouped(conn.execute(
+        "SELECT i.indrelid AS relation_oid,a.attname,a.attcollation FROM pg_index i "
+        "CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY k(attnum,position) "
+        "JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum "
+        "WHERE i.indrelid=ANY(%s::oid[]) AND i.indisprimary ORDER BY i.indrelid,k.position",
+        (ids,)).fetchall(), 'relation_oid')
+    views = {r['relation_oid']: r['definition'] for r in conn.execute(
+        'SELECT oid AS relation_oid,pg_get_viewdef(oid,true) AS definition FROM pg_class WHERE oid=ANY(%s::oid[])',
+        ([r['oid'] for r in relations if r['relkind'] in ('v', 'm')],)).fetchall()}
     tables, structure, sequences = {}, {}, {}
     for relation in relations:
         name = relation['relname']
-        columns = conn.execute(
-            "SELECT attname,format_type(atttypid,atttypmod) AS type,attnotnull,attgenerated,attidentity,"
-            "pg_get_expr(d.adbin,d.adrelid) AS default_expression FROM pg_attribute a "
-            "LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum "
-            "WHERE a.attrelid=%s AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum", (relation['oid'],)
-        ).fetchall()
-        constraints = conn.execute("SELECT conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid=%s ORDER BY conname", (relation['oid'],)).fetchall()
+        columns = all_columns.get(relation['oid'], [])
+        constraints = all_constraints.get(relation['oid'], [])
         constraints = [{**c, 'definition': canonical_constraint(c['definition'])} for c in constraints]
-        indexes = conn.execute("SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='mf' AND tablename=%s ORDER BY indexname", (name,)).fetchall()
-        definition = conn.execute('SELECT pg_get_viewdef(%s::oid,true) AS definition', (relation['oid'],)).fetchone()['definition'] if relation['relkind'] in ('v', 'm') else None
+        indexes = all_indexes.get(name, [])
+        definition = views.get(relation['oid'])
         structure[name] = {'kind': relation['relkind'], 'partition': relation['relispartition'],
                            'columns': columns, 'constraints': constraints, 'indexes': indexes, 'view': definition}
         if relation['relkind'] == 'S':
@@ -100,24 +126,23 @@ def capture_preservation(conn) -> dict:
         # stored records; materialized views do and must not be silently omitted.
         if relation['relispartition'] or relation['relkind'] not in ('r', 'p', 'm'):
             continue
-        primary = conn.execute(
-            "SELECT a.attname,a.attcollation FROM pg_index i CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY k(attnum,position) "
-            "JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum "
-            "WHERE i.indrelid=%s AND i.indisprimary ORDER BY k.position", (relation['oid'],)
-        ).fetchall()
+        primary = all_primary.get(relation['oid'], [])
         ordering = sql.SQL(',').join(sql.SQL('{} COLLATE "C"').format(sql.Identifier(r['attname'])) if r['attcollation'] else sql.Identifier(r['attname'])
                                      for r in primary) if primary else sql.SQL('to_jsonb(t)::text COLLATE "C"')
         condition = sql.SQL(' WHERE migration_name <> {}').format(sql.Literal(MIGRATION)) if name == 'schema_migrations' else sql.SQL('')
         query = sql.SQL('SELECT to_jsonb(t)::text AS value FROM mf.{} t{} ORDER BY {}').format(sql.Identifier(name), condition, ordering)
         digest, count = hashlib.sha256(), 0
-        with conn.cursor(name='preservation_' + uuid4().hex) as cursor:
-            cursor.itersize = 1000
-            cursor.execute(query)
-            for row in cursor:
-                encoded = row['value'].encode('utf-8')
-                digest.update(len(encoded).to_bytes(8, 'big'))
-                digest.update(encoded)
-                count += 1
+        # COPY TO is read-only and streams without a FETCH round trip every
+        # 1,000 rows. Decode one TEXT column, NOT COPY wire bytes: the canonical
+        # UTF-8 length-prefix/hash remains byte-identical to the original query.
+        with conn.cursor() as cursor:
+            with cursor.copy(sql.SQL('COPY ({}) TO STDOUT (FORMAT BINARY)').format(query)) as copy:
+                copy.set_types(['text'])
+                for (value,) in copy.rows():
+                    encoded = value.encode('utf-8')
+                    digest.update(len(encoded).to_bytes(8, 'big'))
+                    digest.update(encoded)
+                    count += 1
         tables[name] = {'rows': count, 'sha256': digest.hexdigest()}
     functions = conn.execute(
         "SELECT p.oid::regprocedure::text AS name,pg_get_functiondef(p.oid) AS definition FROM pg_proc p "

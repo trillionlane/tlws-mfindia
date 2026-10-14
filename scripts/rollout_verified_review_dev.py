@@ -69,7 +69,7 @@ def recover(cloud, staged, promotion_attempted, manifest):
     return recovery
 
 
-def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str):
+def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str, *, database_installer=None):
     # All cloud resources are fixed or deterministically named in this module.
     # No cleanup state lives in a shell-local EXIT handler.
     source = proxy_dsn(cloud.secret('tlws-mf-data-admin-dsn-dev', manifest.source_secret_version))
@@ -130,7 +130,8 @@ def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str):
         passwords[role] = secrets.token_hex(32)
         dsn = make_conninfo(dbname='mfdataindia', user=role, password=passwords[role], host='/cloudsql/' + CONNECTION)
         versions[role] = cloud.write_secret(SECRETS[role], dsn, account)
-    preservation = install_and_reconcile(source, ROOT, manifest, passwords)
+    preservation = (database_installer(manifest, cloud, versions, directory) if database_installer
+                    else install_and_reconcile(source, ROOT, manifest, passwords))
     dsns = {role: make_conninfo(source, user=role, password=password) for role, password in passwords.items()}
     verify_logins(dsns)
     archive(directory, '03-database', manifest, 'database', {'preservation': preservation, 'credential_versions': versions,
