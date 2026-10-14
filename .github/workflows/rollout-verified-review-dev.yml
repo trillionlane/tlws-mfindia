@@ -82,6 +82,10 @@ jobs:
           docker build --build-arg VCS_REF="$GITHUB_SHA" --tag "$image" .
           docker push "$image"
           docker image inspect "$image" --format '{{index .RepoDigests 0}}' >> "$GITHUB_STEP_SUMMARY"
+          tools_image="asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools:review-$GITHUB_SHA"
+          docker build --build-arg VCS_REF="$GITHUB_SHA" --file Dockerfile.review-tools --tag "$tools_image" .
+          docker push "$tools_image"
+          docker image inspect "$tools_image" --format '{{index .RepoDigests 0}}' >> "$GITHUB_STEP_SUMMARY"
       - name: Start pinned Cloud SQL proxy for approved source only
         if: inputs.operation == 'execute'
         run: |

@@ -15,7 +15,7 @@ from mfdataindia.review.rollout_cloud import Cloud
 
 def approval(**changes):
     return OperatorApproval.model_validate({
-        'format': 'mfdata-review-operator-approval-v1', 'project': PROJECT,
+        'format': 'mfdata-review-operator-approval-v2', 'project': PROJECT, 'backup_image': None,
         'account': 'fixture-operator@example.test', 'git_sha': 'a' * 40,
         'database_execution': 'private-cloud-run',
         'operation': 'bootstrap-consumer-trust', 'binding_hash': fingerprint(trust_declaration()), **changes})

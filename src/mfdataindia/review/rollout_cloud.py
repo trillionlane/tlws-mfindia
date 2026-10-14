@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -146,10 +147,13 @@ class Cloud:
                 self.close_access()
             raise
 
-    def job(self, manifest, name, account, arguments, environment, secrets, directory):
+    def job(self, manifest, name, account, arguments, environment, secrets, directory, *, image=None):
+        if image is not None and not re.fullmatch(r'asia-south1-docker\.pkg\.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:[0-9a-f]{64}', image):
+            raise ValueError('unsupported immutable tooling image')
+        approved_image = image or manifest.image
         file = directory / (name + '-env.json')
         file.write_text(json.dumps(environment))
-        self.command('run', 'jobs', 'deploy', name, '--project=' + PROJECT, '--region=' + REGION, '--image=' + manifest.image,
+        self.command('run', 'jobs', 'deploy', name, '--project=' + PROJECT, '--region=' + REGION, '--image=' + approved_image,
                      '--service-account=' + account, '--command=python', '--args=' + ','.join(arguments),
                      '--set-cloudsql-instances=' + CONNECTION, '--network=tl-dev-vpc', '--subnet=tl-dev-mumbai', '--vpc-egress=all-traffic',
                      '--env-vars-file=' + str(file), '--set-secrets=' + ','.join(secrets),
@@ -168,7 +172,7 @@ class Cloud:
         containers = execution['spec']['template']['spec']['containers']
         task = execution['spec']['template']['spec']
         observed_env = {e['name']: e.get('value') for e in containers[0].get('env', [])}
-        if (len(containers) != 1 or containers[0]['image'] != manifest.image or task['serviceAccountName'] != account
+        if (len(containers) != 1 or containers[0]['image'] != approved_image or task['serviceAccountName'] != account
                 or any(observed_env.get(k) != v for k, v in environment.items())
                 or task.get('maxRetries') != 0 or str(task.get('timeoutSeconds', '600')) != '600'
                 or containers[0].get('command') != ['python'] or containers[0].get('args') != arguments):
