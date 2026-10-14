@@ -125,6 +125,23 @@ def test_metadata_sha_fixture_is_not_a_pdf_acceptance_certificate():
     assert hashlib.sha256(PDF).hexdigest() == request().intake.expected_sha256
 
 
+@pytest.mark.parametrize("fail_add", [False, True])
+def test_source_read_cleanup_is_armed_before_grant_and_runs_on_failures(fail_add):
+    calls = []
+    class Cloud:
+        def command(self, *args, **kwargs):
+            calls.append(args)
+            if args[2] == "add-iam-policy-binding" and fail_add:
+                raise RuntimeError("possibly applied grant failure")
+            return {"bindings": []}
+    manifest = SimpleNamespace(rollout_id="dev-test-0001", cohort=[1, 2])
+    with pytest.raises(RuntimeError):
+        with deployment.temporary_source_read(Cloud(), manifest, request()):
+            raise RuntimeError("import failed")
+    assert [c[2] for c in calls] == ["add-iam-policy-binding", "remove-iam-policy-binding", "get-iam-policy"]
+    assert "source.pdf" in " ".join(calls[0]) and "resource.name==" in " ".join(calls[0])
+
+
 @pytest.mark.postgres
 def test_real_restricted_reader_projects_retained_pdf_without_raw_access_or_fact_claim(verified_db):
     install(verified_db)

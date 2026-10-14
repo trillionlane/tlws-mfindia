@@ -4,6 +4,7 @@ import hashlib
 import time
 from pathlib import Path
 from urllib.parse import quote
+from contextlib import contextmanager
 
 import psycopg
 from psycopg.conninfo import conninfo_to_dict
@@ -12,10 +13,37 @@ from pydantic import Field, StrictInt, model_validator
 
 from mfdataindia.enrichment import evidence, operations, schemas, store
 from mfdataindia.review.policy import fingerprint
-from mfdataindia.review.rollout import CONNECTION, seal_evidence
+from mfdataindia.review.rollout import CONNECTION, GEN_SA, PROJECT, seal_evidence
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
 BUCKET = "tlws_mf_data_source"
+
+
+@contextmanager
+def temporary_source_read(cloud, manifest, source):
+    """Arm exact-object cleanup before possibly-applied IAM writes; never delete data."""
+    source.bind(manifest)
+    resource = "projects/_/buckets/" + BUCKET + "/objects/" + source.object_name
+    expression = "resource.name=='" + resource + "'"
+    condition = "expression=" + expression + ",title=mf-evidence-source-" + manifest.rollout_id
+    args = ("--project=" + PROJECT, "--member=serviceAccount:" + GEN_SA,
+            "--role=roles/storage.objectViewer", "--condition=" + condition, "--quiet")
+    try:
+        cloud.command("storage", "buckets", "add-iam-policy-binding", "gs://" + BUCKET, *args)
+        yield
+    finally:
+        cloud.command("storage", "buckets", "remove-iam-policy-binding", "gs://" + BUCKET, *args)
+        policy = cloud.command("storage", "buckets", "get-iam-policy", "gs://" + BUCKET,
+                               "--project=" + PROJECT, "--format=json", json_output=True)
+        if not isinstance(policy, dict) or not isinstance(policy.get("bindings", []), list):
+            raise ValueError("source-read access removal unconfirmed")
+        for binding in policy.get("bindings", []):
+            if not isinstance(binding, dict) or not isinstance(binding.get("members", []), list):
+                raise ValueError("source-read policy unavailable")
+            if (binding.get("role") == "roles/storage.objectViewer"
+                    and "serviceAccount:" + GEN_SA in binding.get("members", [])
+                    and binding.get("condition", {}).get("expression") == expression):
+                raise ValueError("temporary source-read access remains")
 
 
 class Source(schemas.Model):

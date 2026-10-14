@@ -65,7 +65,8 @@ def projections(conn, source, document_id):
 def check_http(session, origin, headers, cases, *, recovery=False):
     for route, expected in cases:
         denied = session.get(origin + route, headers={"X-Serverless-Authorization": headers["X-Serverless-Authorization"]}, timeout=30, allow_redirects=False)
-        if denied.status_code != (404 if recovery else 401):
+        if (denied.status_code != (404 if recovery else 401)
+                or denied.headers.get("Cache-Control") != "no-store"):
             raise ValueError("evidence assertion/profile denial differs")
         for _ in range(2):
             response = session.get(origin + route, headers=headers, timeout=30, allow_redirects=False)
