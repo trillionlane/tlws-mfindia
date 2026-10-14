@@ -1,0 +1,110 @@
+name: Roll out verified fund review DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [prepare-image, execute]
+        required: true
+        description: Prepare image only, or execute the approved bounded DEV rollout
+      manifest_json:
+        type: string
+        description: Exact rollout manifest JSON; required for execute
+      approved_manifest_hash:
+        type: string
+        description: Independently approved canonical manifest hash; required for execute
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-dev-mutations
+  cancel-in-progress: false
+
+jobs:
+  rollout:
+    if: github.ref == 'refs/heads/main' && github.repository == 'trillionlane/tlws-mfindia' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_DB: mfdata_review_clone_control
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: rollout-local-fixture-only
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install locked tooling and validate approval before cloud authentication
+        env:
+          OPERATION: ${{ inputs.operation }}
+          MANIFEST_JSON: ${{ inputs.manifest_json }}
+          APPROVED_HASH: ${{ inputs.approved_manifest_hash }}
+        run: |
+          set -euo pipefail
+          python -m pip install uv==0.11.3
+          uv sync --frozen --all-extras
+          case "$OPERATION" in
+            prepare-image) ;;
+            execute)
+              python -c 'import os,pathlib; pathlib.Path("rollout-manifest.json").write_text(os.environ["MANIFEST_JSON"])'
+              uv run python scripts/rollout_verified_review_dev.py validate --manifest rollout-manifest.json --approved-hash "$APPROVED_HASH" --git-sha "$GITHUB_SHA"
+              ;;
+            *) exit 1 ;;
+          esac
+      - uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: trillionlane-dev
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Require existing governed deployment identity
+        run: |
+          set -euo pipefail
+          test "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')" = 'tlws-mf-data-deploy-dev@trillionlane-dev.iam.gserviceaccount.com'
+      - name: Prepare provenance-labelled immutable image only
+        if: inputs.operation == 'prepare-image'
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+          image="asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia:review-$GITHUB_SHA"
+          docker build --build-arg VCS_REF="$GITHUB_SHA" --tag "$image" .
+          docker push "$image"
+          docker image inspect "$image" --format '{{index .RepoDigests 0}}' >> "$GITHUB_STEP_SUMMARY"
+      - name: Start pinned Cloud SQL proxy for approved source only
+        if: inputs.operation == 'execute'
+        run: |
+          set -euo pipefail
+          curl -fsSL https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.18.2/cloud-sql-proxy.linux.amd64 -o /tmp/mf-review-sql-proxy
+          echo '07d61ae3876cf51377317d87996927a97beee5d1210fd33ef6dbcd6a2d8b1185  /tmp/mf-review-sql-proxy' | sha256sum --check
+          chmod 700 /tmp/mf-review-sql-proxy
+          /tmp/mf-review-sql-proxy --address=127.0.0.1 --port=5434 --quiet trillionlane-dev:asia-south1:tlws-mf-data-dev &
+          echo "$!" > /tmp/mf-review-proxy.pid
+      - name: Execute bounded restored-clone, installation and certification stages
+        if: inputs.operation == 'execute'
+        env:
+          APPROVED_HASH: ${{ inputs.approved_manifest_hash }}
+          MFDATA_REVIEW_CLONE_ADMIN_DSN: postgresql://postgres:rollout-local-fixture-only@127.0.0.1:5432/mfdata_review_clone_control
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+          uv run python scripts/rollout_verified_review_dev.py execute --manifest rollout-manifest.json --approved-hash "$APPROVED_HASH" --git-sha "$GITHUB_SHA" --evidence-directory rollout-evidence
+      - name: Retain certificates, including failure evidence; never backup bytes or credentials
+        if: always() && inputs.operation == 'execute'
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-review-rollout-${{ github.run_id }}
+          path: rollout-evidence/*.json
+          if-no-files-found: warn
+          retention-days: 30

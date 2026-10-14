@@ -68,15 +68,24 @@ jobs:
         run: ./scripts/scan_tracked_secrets.sh
 
       - name: Build production image
-        run: docker build --tag tlws-mf-data:${{ github.sha }} .
+        run: docker build --build-arg VCS_REF=${{ github.sha }} --tag tlws-mf-data:${{ github.sha }} .
 
       - name: Verify production image contents and user
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
+          test "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; import mfdataindia; from mfdataindia.api.association_app import create_association_app; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert callable(create_association_app); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/scripts/smoke_private_api.py").is_file(); assert Path("/app/scripts/verify_optional_association_writer_dev.sh").is_file(); assert Path("/app/scripts/audit_nav_integrity.py").is_file(); assert Path("/app/scripts/reconcile_nav_audit_privileges.py").is_file(); assert Path("/app/scripts/verify_nav_audit_privileges.py").is_file(); assert Path("/app/sql/018_fund_family_association_tags.sql").is_file(); assert Path("/app/sql/019_reconcile_association_writer_privileges.sql").is_file(); assert Path("/app/sql/020_nav_quality_audit_privileges.sql").is_file()'
+
+      - name: Verify dormant preservation-first rollout tools in the image
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; import mfdataindia.review.rollout; import mfdataindia.review.rollout_database; import mfdataindia.review.certification; assert Path("/app/contracts/mfdataindia-verified-review-v1.json").is_file(); assert Path("/app/scripts/certify_verified_review_dev.py").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/rollout_verified_review_dev.py --help
 
       - name: Verify dormant DATA-02 operator tools in the image
         run: |

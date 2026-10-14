@@ -5,17 +5,27 @@ DO $$ DECLARE principal text; membership record; relation record; BEGIN
         IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname=principal) THEN
             RAISE EXCEPTION 'required optional principal % is absent',principal;
         END IF;
-        IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=principal AND rolsuper)
+        IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=principal AND (rolsuper OR rolreplication OR rolbypassrls))
            OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
                      WHERE n.nspname IN('mf','mf_review') AND pg_get_userbyid(c.relowner)=principal) THEN
-            RAISE EXCEPTION 'optional principal % must not own relations or be superuser',principal;
+            RAISE EXCEPTION 'optional principal % must not own relations or retain superuser/replication/bypass privileges',principal;
         END IF;
         FOR membership IN SELECT parent.rolname FROM pg_auth_members m
             JOIN pg_roles parent ON parent.oid=m.roleid JOIN pg_roles child ON child.oid=m.member
             WHERE child.rolname=principal LOOP
             EXECUTE format('REVOKE %I FROM %I',membership.rolname,principal);
         END LOOP;
-        EXECUTE format('ALTER ROLE %I NOINHERIT NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS',principal);
+        EXECUTE format('ALTER ROLE %I NOINHERIT',principal);
+        -- PostgreSQL requires privileged attributes even to set their negative
+        -- forms. Do not demand superuser merely to reiterate an already-safe
+        -- NOREPLICATION/NOBYPASSRLS; unsafe values fail above. De-elevate the
+        -- other attributes only when present, under an authorized administrator.
+        IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=principal AND rolcreatedb) THEN
+            EXECUTE format('ALTER ROLE %I NOCREATEDB',principal);
+        END IF;
+        IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=principal AND rolcreaterole) THEN
+            EXECUTE format('ALTER ROLE %I NOCREATEROLE',principal);
+        END IF;
         EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA mf,mf_review FROM %I',principal);
         -- Table-level REVOKE does not remove separately granted column ACLs.
         FOR relation IN SELECT n.nspname,c.relname,string_agg(quote_ident(a.attname),',' ORDER BY a.attnum) AS columns

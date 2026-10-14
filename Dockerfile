@@ -15,6 +15,9 @@ RUN uv sync --frozen --no-dev --no-editable --no-cache
 
 FROM python:3.12-slim-trixie AS runtime
 
+ARG VCS_REF
+LABEL org.opencontainers.image.revision=$VCS_REF
+
 ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -28,6 +31,7 @@ WORKDIR /app
 COPY --from=build --chown=mfdataindia:mfdataindia /app/.venv /app/.venv
 COPY --chown=mfdataindia:mfdataindia scripts ./scripts
 COPY --chown=mfdataindia:mfdataindia sql ./sql
+COPY --chown=mfdataindia:mfdataindia contracts ./contracts
 
 USER 10001:10001
 
