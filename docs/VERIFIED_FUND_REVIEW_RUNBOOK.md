@@ -994,3 +994,62 @@ regression cannot silently record a real review while testing read-scope rejecti
 The repaired source requires its own exact-head CI/review/merged image pins and
 fresh preservation gates before the DEV candidate is certified again. Previously
 installed immutable policy and all failed/recovery evidence remain retained.
+
+### MF-E13 — accepted provider DEV closeout, 2026-10-14
+
+Feature #48 merged at `c8d7eb5`; the actual restricted-reader evidence repair #49
+merged at `ae504dbd44a992b55dbeea37075608c82b9a70c2`. Forty focused checks and
+874 full isolated PostgreSQL tests passed; exact repair CI `38570290069` passed
+873 tests with one guard skip and all three image checks. Image-only preparation
+`38571170015` succeeded. Ordinary auto-deployment remained disabled/skipped.
+
+Rollout `dev-fwd-20261014b` has manifest hash
+`f76b667e72ea4853d6989ac13307e7413a2dc60951e3a87e1f39a6500ceb7207`.
+The immutable APP digest is
+`sha256:d6d019428ea9213f0f2d223195c6253f54b78c1e21d004450aed042fd3f655d4`;
+the PG18 tools digest is
+`sha256:847b5f095dbc23c75eb51d7b4c8756fe205452f1e2b65f8fd9eeee91cd1a2f3e`.
+Both source labels were verified without local layer downloads. The forward
+contract SHA256 is `0c46094d21e20583da2555e8a2b6e006d55da968394e9d876fa9f5eedcda9f78`;
+policy hash is `fe279c5ba10d15522826f25b51779a1beb95de87d15637010eb7113a1c0eb796`.
+
+Two fresh create-only regional backups and new isolated PG18 clones proved
+preservation before each attempt. The repaired candidate at zero traffic passed
+`mf-fwd-candidate-dev-fwd-20261014b-264ps`; fixed-origin certification passed
+`mf-fwd-final-dev-fwd-20261014b-szv7k`. Each used the actual authorized Insights
+workload and signed read assertion: eight nonpersonal cases, exact replay,
+invalid/PII/infeasible denial, 22 coherent read projections covering seven prior
+read paths, and rejection on both prior admin mutation paths. Prior stale or
+historical analytics states were preserved honestly, not recertified as current.
+
+Actual rollback to the previously accepted nine-route revision passed private
+`mf-fwd-recovery-dev-fwd-20261014b-hxflk`: calculator POST absent (404), all prior
+paths compatible, zero events. Restoration passed
+`mf-fwd-restored-dev-fwd-20261014b-zlwzg`; all eight result IDs matched candidate,
+promotion and restored certifications. Unauthenticated external review GET and
+calculator POST both returned 404. The sole explicit invoker remains the
+authorized Insights runtime; ingress and signed assertions remain private.
+
+The final regional MVCC archive was compared both with the repaired preflight
+and with the original pre-install backup across the failed attempt. All
+4,236,075 NAV rows, 14,390 funds, every original source row/owner/ACL/migration,
+every earlier review/calendar/rolling row and the review sequence were identical.
+Dataset v14 includes the ordinary 12:30 refresh; the earlier MF-E04 v13 count is
+not relabelled as this later snapshot. Overall additions were exactly one
+immutable policy, zero snapshots/results/events/certificates, and zero personal
+scenarios. No schema, database grants, original data or retained archives/clones
+were deleted or overwritten. Reader sequence privileges remain denied.
+
+The machine-readable index is `docs/evidence/mf-e13-dev-fwd-20261014b.json`, with
+13 stage seals, actual execution names, immutable backup generations/hashes,
+the failed execution seal and the original-to-final comparison. Full protected
+operator artifacts remain outside Git. Final ten-route revision
+`tlws-mf-review-dev-dev-fwd-20261014b-calculator` serves 100% untagged traffic at
+`https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app`.
+
+Authorized backend consumers can now use `POST /api/calculators/v1/projections`
+for five assumed planning engines; no browser-direct MFData access or UI changes
+are introduced. This acceptance covers provider DEV conformance and preservation,
+not investor execution/forecasting, human fund correctness, consumer application
+RBAC, whole-universe analytics, new licensed imports or production. MF-E14 is next
+under the execution refinement. MF-E05–12 and final MF-E15 remain required.
