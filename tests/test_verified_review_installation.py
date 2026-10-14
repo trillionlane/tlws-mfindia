@@ -19,6 +19,11 @@ class Installer:
             raise RuntimeError('possibly applied grant')
         if self.failure == 'remove' and args[:2] == ('secrets', 'remove-iam-policy-binding'):
             raise RuntimeError('unconfirmed revocation')
+        if args[:2] == ('secrets', 'get-iam-policy'):
+            if self.failure == 'stale_policy':
+                return {'bindings': [{'role': 'roles/secretmanager.secretAccessor',
+                                      'members': ['serviceAccount:' + MIGRATION_SA]}]}
+            return {'bindings': []}
         return ''
 
     def job(self, item, name, account, arguments, environment, secrets, directory):
@@ -51,7 +56,7 @@ def test_private_installation_uses_existing_migrator_exact_immutable_secrets_and
     assert all('--member=serviceAccount:' + MIGRATION_SA in a for a in cloud.calls)
 
 
-@pytest.mark.parametrize('failure,removed', [('grant', 1), ('job', 3), ('remove', 3)])
+@pytest.mark.parametrize('failure,removed', [('grant', 1), ('job', 3), ('remove', 3), ('stale_policy', 3)])
 def test_installation_cleanup_is_armed_before_grant_and_attempts_all_removals(tmp_path, failure, removed):
     cloud = Installer(failure=failure)
     with pytest.raises(RuntimeError):

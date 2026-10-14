@@ -75,6 +75,13 @@ def cloud_install(manifest, cloud, versions, directory):
                 cloud.command('secrets', 'remove-iam-policy-binding', name, '--project=' + PROJECT,
                               '--member=serviceAccount:' + MIGRATION_SA, '--role=roles/secretmanager.secretAccessor',
                               '--condition=None', '--quiet')
+                policy = cloud.command('secrets', 'get-iam-policy', name, '--project=' + PROJECT,
+                                       '--format=json', json_output=True)
+                if (not isinstance(policy, dict) or not isinstance(policy.get('bindings', []), list)
+                        or any(not isinstance(b, dict) or not isinstance(b.get('members', []), list)
+                               or 'serviceAccount:' + MIGRATION_SA in b.get('members', [])
+                               for b in policy.get('bindings', []))):
+                    raise ValueError('temporary secret-level reader binding remains or is unverified')
             except Exception:
                 failures.append(name)
         if failures:
