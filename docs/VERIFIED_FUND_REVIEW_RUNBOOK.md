@@ -87,8 +87,10 @@ It requires, but never creates, three optional database principals:
 - `mfdata_verified_admin`: those reads plus EXECUTE on the bounded event function,
   not direct INSERT/UPDATE/DELETE on the event ledger.
 
-Reconciliation removes inherited memberships, elevated attributes, table/column
-ACLs and CREATE privileges from these principals only. Actual runtime checks
+Reconciliation removes inherited memberships, CREATEDB/CREATEROLE when present,
+table/column ACLs and CREATE privileges from these principals only. Superuser,
+replication, bypass-RLS and relation ownership fail closed rather than demanding
+superuser just to reiterate an already-safe negative attribute. Actual runtime checks
 reject wrong/elevated identities, memberships, source table or column DML,
 privileged source functions and API direct artifact writes. A direct dedicated
 login is required; administrator credentials with SET ROLE are rejected.
@@ -212,3 +214,156 @@ ingress/IAM, then certify an explicit bounded cohort and the consumer delegation
 Rollback removes routing/access to the new feature and stops its generation;
 retain the added policies, snapshots, results and history. Do not drop the schema,
 delete old results or rewrite original data to roll back feature exposure.
+
+## Preservation-first DEV rollout
+
+`rollout-verified-review-dev.yml` is manual only, uses the existing `mf-data-dev`
+environment and shared DEV mutation concurrency group, and introduces no repository
+gate variables. `prepare-image` builds/publishes a provenance-labelled immutable
+image only. `execute` needs a separately approved exact manifest and canonical
+manifest hash; merge, CI success and image preparation do not approve execution.
+The current runner is a first-install rollout, not a credential-rotation or generic
+infrastructure reconciliation tool.
+
+### Before execution approval
+
+- Reconcile live resources and choose up to ten actual codes. At minimum include
+  eligible Growth and unsupported-option controls. Pin additional required coverage
+  for explicit `signals: null`, unavailable metrics and quality signals as applicable.
+  Missing required coverage fails before any live canary event; do not fix source
+  records to manufacture a passing cohort.
+- Choose a canary with no previous human decisions. Approve exactly one `in_review`
+  event and one proposal repeating its existing scheme name. Both are labelled DEV
+  certification, retained permanently, and never assert that a real fund is reviewed
+  or that an override should execute.
+- Insights owns an existing Ed25519 signing secret and the corresponding trust
+  document. The private signer is mounted only into a certification job running as
+  its approved Insights workload, never fetched by the runner or mounted into the
+  provider API. This certifies delegated provider behavior, not Insights login/RBAC.
+- Approve the new API/generator identities, their restricted secret access and the
+  three database principals. The governed execution account must already have the
+  required narrow provisioning, Cloud SQL connectivity, source-admin-secret access,
+  archive-write and Cloud Run job/deployment permissions. The runner never grants
+  itself Owner/Editor, changes WIF trust or fixes shared privilege exposure.
+  Running the certification job as the consumer workload also requires authorized
+  `actAs` access to that identity. The runner does not grant itself this access:
+  if absent, obtain a separately reviewed consumer-owned execution arrangement;
+  do not casually give the provider deployer control of the Insights runtime.
+- Confirm capacity and retention for the fresh private backup in
+  `gs://tlws_mf_data_source/verified-review-rollouts/<rollout_id>/snapshot.dump`.
+  No backup bytes are uploaded to GitHub. The unique object is create-only; existing
+  objects, principals or credential secrets require explicit operator reconciliation.
+
+### Manifest and approval
+
+The JSON shape below is a template, not executable configuration. Replace every
+placeholder from reviewed image preparation, the supported policy command,
+SHA-256 of the checked-in contract/migration, immutable secret versions and the
+actual selected cohort. Do not include DSNs, passwords, assertions or private keys.
+
+```json
+{
+  "format": "mfdata-review-dev-rollout-v1",
+  "rollout_id": "dev-review-20261014",
+  "project": "trillionlane-dev",
+  "region": "asia-south1",
+  "source_connection": "trillionlane-dev:asia-south1:tlws-mf-data-dev",
+  "database": "mfdataindia",
+  "git_sha": "<reviewed-40-character-SHA>",
+  "image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:<approved-digest>",
+  "policy_hash": "<supported-policy-hash>",
+  "contract_hash": "<contract-file-hash>",
+  "migration_hash": "<optional-migration-file-hash>",
+  "trust_secret": "tlws-mf-review-trust-dev",
+  "trust_version": 1,
+  "trust_hash": "<canonical-trust-document-hash>",
+  "signer_secret": "trillion-insights-mf-review-signer-dev",
+  "signer_version": 1,
+  "source_secret_version": 1,
+  "cohort": [100033, 100034],
+  "actor": "rollout-certification:dev-review-20261014",
+  "canary_code": 100033,
+  "allow_canary_events": true,
+  "required_coverage": ["growth_eligible", "unsupported_option", "explicit_null_signals", "unavailable_metric", "quality_signalled"]
+}
+```
+
+The example codes/secret versions are NOT an approved or validated cohort.
+`hash` and `validate` perform zero cloud/database calls:
+
+```sh
+uv run python scripts/rollout_verified_review_dev.py hash \
+  --manifest rollout-manifest.json --git-sha <reviewed-SHA>
+uv run python scripts/rollout_verified_review_dev.py validate \
+  --manifest rollout-manifest.json --git-sha <reviewed-SHA> \
+  --approved-hash <independently-approved-canonical-hash>
+```
+
+### Ordered execution and preservation gates
+
+1. Validate approval, checkout, policy, contract, migration, trust, target and image
+   provenance. Duplicate JSON members, unknown fields, unbounded cohorts, delimiter
+   injection and incorrect identities fail closed.
+2. Export a fresh PostgreSQL 18 custom dump using the same exported MVCC snapshot
+   as its streaming preservation baseline. Archive it privately with immutable GCS
+   generation and local SHA-256 evidence. Never use the historical pinned restore
+   command for this rollout.
+3. Restore into the runner's fresh PostgreSQL 18 server. The control database must
+   be `mfdata_review_clone_control`, with no unrelated databases or roles. Restore
+   owners/default ACLs; never overwrite an existing database. Compare original row
+   counts/content hashes, structures, functions, triggers, effective unrelated ACLs
+   and sequences. Sequence movement during backup also invalidates the rehearsal;
+   it must not be silently excused as a successful preservation proof.
+4. On the restored clone, install/reconcile, verify dedicated logins, publish/replay
+   the cohort and exercise all six actual API routes using an ephemeral clone-only
+   signer. Recheck preservation. This is `RESTORED_CLONE_HTTP`, not Cloud IAM proof.
+5. Create only approved feature identities/secrets. On DEV, acquire the NAV operation
+   lock and SHARE locks on existing source tables in a bounded transaction. Install
+   the one optional migration, create restricted principals, reconcile and inspect
+   effective permissions before commit. Revoke unfamiliar inherited default grants
+   on the NEW review objects only
+   and verifies the whole artifact ACL allowlist. Existing source grants and global
+   default privileges remain intact; subsequent unapproved artifact grants prevent
+   runtime startup rather than permitting direct ledger insertion.
+   Compare preservation before commit. Any failed preservation/privilege gate
+   rolls back roles, schema and migration receipt together. Lock acquisition is
+   bounded to 5 seconds and the transaction to 180 seconds. Full-table fingerprint
+   cost must be measured on the clone; do not extend these bounds silently.
+6. Verify direct Cloud SQL logins. Stage the separate private review service, pin
+   image/SHA/runtime/DSN/trust/network and verify the candidate's internal tag URL.
+   Existing read-v2, association services and schedules are not modified.
+   First deployment creates a private, trust-unconfigured dormant revision first
+   (503/no startup DB calls), then stages the configured candidate at zero traffic.
+   That dormant revision is the known first-rollout traffic recovery target.
+7. Execute a zero-retry generator job, then a zero-retry private certification job.
+   Require Cloud Run completion and one structured certificate bound to the actual
+   execution image, identity and environment. JSON structured logs are supported;
+   text JSON is a fallback. Missing/late evidence fails closed, never implies PASS.
+   Execution network annotations are read from its top-level immutable metadata,
+   not a fabricated TaskTemplate metadata field. See the official
+   [execution shape](https://docs.cloud.google.com/run/docs/reference/rest/v1/ExecutionSpec)
+   and [ObjectMeta annotations](https://docs.cloud.google.com/run/docs/reference/rest/v1/ObjectMeta).
+8. Recheck the candidate immediately before promotion. Certify the service URL
+   again after promotion, verify public denial and remove the candidate tag.
+
+Normal ingestion is not paused or rescheduled. Source locks are confined to the
+bounded installation transaction. Generation revalidates captured inputs before
+publication; certification must match the generation result IDs. Intervening input
+changes invalidate acceptance; old results/events remain available and are not
+rewritten. Do not blindly rerun a failed first-install workflow.
+
+### Failure recovery and closeout
+
+Traffic restoration, invoker-access revocation and candidate-tag removal are
+independent attempts. Candidate lookup or a failed traffic command must not bypass
+access revocation. Unknown cleanup success produces
+`RECOVERY_UNCONFIRMED_REQUIRES_OPERATOR`, not a rollback claim. Failed candidates,
+new secrets and added records are retained for investigation; no schema/database
+drop, data deletion, password rotation or backup restoration over DEV is performed.
+
+Keep the backup, restored-clone evidence, direct-login/installation receipt,
+generation execution, candidate certification and final certification together.
+GitHub stores certificates for 30 days; archive required retention separately before
+expiry. Closeout is `PROVIDER_DEV_CERTIFIED` only after the entire chain succeeds.
+It explicitly leaves Insights RBAC acceptance, admin UI, whole-DB generation,
+monthly/rolling methods and source correction activation unclaimed.
