@@ -168,6 +168,9 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_enrichment_app; import mfdataindia.enrichment.operations; import mfdataindia.enrichment.acquisition; assert len(create_enrichment_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 15; assert Path("/app/sql/optional/027_official_enrichment_evidence.sql").is_file(); assert Path("/app/contracts/mfdataindia-official-enrichment-v1.json").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/official_enrichment_evidence.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/capture_official_sources.py --help
+          docker run --rm --entrypoint python "$image" -c \
+            'import io; from pypdf import PdfWriter; from mfdataindia.enrichment.pdf_evidence import extract_pdf; writer = PdfWriter(); writer.add_blank_page(width=200, height=200); output = io.BytesIO(); writer.write(output); result = extract_pdf(output.getvalue()); assert result["state"] == "no_text"; assert result["facts_accepted"] is False'
 
       - name: Build and verify dormant PostgreSQL 18 review-backup tools
         run: |

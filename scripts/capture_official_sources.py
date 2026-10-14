@@ -7,7 +7,9 @@ import time
 from datetime import date
 from pathlib import Path
 
-from mfdataindia.enrichment.source_capture import capture_document, capture_history
+from mfdataindia.enrichment.source_capture import (
+    capture_document, capture_history, discover_absl, extract_document,
+)
 from mfdataindia.ingest.amfi_client import AmfiClient
 
 
@@ -29,6 +31,14 @@ if __name__ == "__main__":
         choices=["operator_reported_authorization", "published_permission"],
         default="operator_reported_authorization",
     )
+    discovery = operations.add_parser("discover-absl")
+    discovery.add_argument("--year", type=int, required=True)
+    extraction = operations.add_parser("extract-pdf")
+    extraction.add_argument("--document", type=Path, required=True)
+    extraction.add_argument("--expected-sha", required=True)
+    extraction.add_argument("--absl-period", default=None)
+    extraction.add_argument("--page-start", type=int, default=1)
+    extraction.add_argument("--page-end", type=int, default=None)
     args = parser.parse_args()
     if args.kind == "history":
         if (
@@ -64,6 +74,13 @@ if __name__ == "__main__":
             ),
             flush=True,
         )
+    elif args.kind == "discover-absl":
+        print(json.dumps(discover_absl(args.archive, args.year), sort_keys=True))
+    elif args.kind == "extract-pdf":
+        print(json.dumps(extract_document(
+            args.archive, args.document, args.expected_sha, absl_period=args.absl_period,
+            page_start=args.page_start, page_end=args.page_end,
+        ), sort_keys=True))
     else:
         print(
             json.dumps(

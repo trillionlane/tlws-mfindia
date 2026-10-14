@@ -171,7 +171,12 @@ def capture_document(
         raise ValueError(
             "AMFI document retention scope must be resolved separately from existing NAV acquisition"
         )
-    result = acquisition.fetch(url, hosts)
+    if urlsplit(url).hostname == "mutualfund.adityabirlacapital.com":
+        if "mutualfund.adityabirlacapital.com" not in hosts:
+            raise ValueError("explicit ABSL official host required")
+        result = acquisition.fetch_absl_document(url)
+    else:
+        result = acquisition.fetch(url, hosts)
     if urlsplit(result["final_url"]).hostname in amfi_hosts and use_basis != "published_permission":
         raise ValueError("AMFI document retention scope must be resolved separately")
     if result["media_type"] == "application/pdf" and not result["content"].startswith(b"%PDF-"):
@@ -194,3 +199,77 @@ def capture_document(
             "rights_independently_verified": False,
         },
     )
+
+
+def discover_absl(root: Path, year: int):
+    """Two bounded official requests, retained for replay; no automatic PDF intake."""
+    from datetime import datetime, timezone
+    from mfdataindia.ingest.amc_factsheets.download import (
+        BASE, _LANDING, monthly_documents, AbSLFactsheetClient,
+    )
+
+    # Validate coordinates before the first network request.
+    if type(year) is not int or not 1900 <= year <= 2100:
+        raise ValueError("bounded integer discovery year required")
+    hosts = ["mutualfund.adityabirlacapital.com"]
+    landing = acquisition.fetch(BASE + _LANDING, hosts)
+    api = acquisition.fetch_absl_monthly(landing["content"].decode("utf-8", "strict"), year)
+    documents = monthly_documents(json.loads(api["content"]), year)
+    observed = datetime.now(timezone.utc).isoformat()
+    receipts = [
+        archive(root, result["content"], {
+            "format": "official-absl-discovery-source-v1",
+            "url": result["final_url"],
+            "redirect_chain": result["redirect_chain"],
+            "media_type": result["media_type"],
+            "observed_at": observed,
+            "year": year,
+            "state": "discovery_only",
+            "coverage_complete": False,
+        }) for result in (landing, api)
+    ]
+    newest = max(documents, key=lambda d: AbSLFactsheetClient._period_key(d.period)) if documents else None
+    return {
+        "format": "official-absl-discovery-v1",
+        "observed_at": observed,
+        "year": year,
+        "source_receipts": [r["receipt_hash"] for r in receipts],
+        "documents": [{"title": d.title, "period": d.period, "url": d.url} for d in documents],
+        "latest_listed_period": newest.period if newest else None,
+        "state": "documents_listed_not_downloaded" if documents else "no_documents",
+        "coverage_complete": False,
+        "database_imported": False,
+        "source_rows_changed": 0,
+    }
+
+
+def extract_document(root: Path, document: Path, expected_sha: str, *, absl_period=None, page_start=1, page_end=None):
+    """Archive private extraction separately from original evidence; no SQL loader."""
+    from mfdataindia.enrichment.pdf_evidence import extract_pdf, absl_candidates
+    from mfdataindia.enrichment.evidence import MAX_BYTES
+
+    with document.open("rb") as source:
+        content = source.read(MAX_BYTES + 1)
+    if hashlib.sha256(content).hexdigest() != expected_sha:
+        raise ValueError("original PDF hash does not match request")
+    result = extract_pdf(content, page_start=page_start, page_end=page_end)
+    candidates = absl_candidates(result, absl_period) if absl_period else []
+    payload = json.dumps({"extraction": result, "candidates": candidates}, sort_keys=True).encode()
+    receipt = archive(root, payload, {
+        "format": "official-pdf-extraction-capture-v1",
+        "source_content_hash": expected_sha,
+        "extraction_result_hash": result["result_hash"],
+        "policy_hash": result["policy_hash"],
+        "extractor_version": result["extractor_version"],
+        "pages": len(result["pages"]),
+        "requested_page_range": result["requested_page_range"],
+        "document_pages": result["document_pages"],
+        "whole_document_text_extracted": result["whole_document_text_extracted"],
+        "text_pages": sum(bool(p["text"].strip()) for p in result["pages"]),
+        "unmapped_candidates": len(candidates),
+        "declared_absl_period": absl_period,
+        "state": result["state"],
+        "facts_accepted": False,
+        "coverage_complete": False,
+    })
+    return receipt
