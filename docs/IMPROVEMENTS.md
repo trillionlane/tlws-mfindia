@@ -302,8 +302,14 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 
 | Sprint | Current status | Implementation / evidence |
 | --- | --- | --- |
-| MF-E01 | In progress — rollout prerequisites unresolved | PR #34 tooling merged; [image preparation](https://github.com/trillionlane/tlws-mfindia/actions/runs/38492612673) dispatched; no live installation/generation/canary yet. |
+| MF-E01 | Complete — bounded provider DEV acceptance, 2026-10-14 | PRs #34–#37; fresh immutable backup, operational restored-clone preservation/replay, restricted direct logins, private deployment, four-fund generation, candidate/final six-route certification and live non-destructive recovery/recertification. [Closeout evidence index](evidence/mf-e01-dev-review-20261014d.json). Not whole-DB or Insights RBAC acceptance. |
 | MF-E02–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
+
+The notes below are historical execution records, not the current status. The
+successful `dev-review-20261014d` chain supersedes the stopped attempts without
+replacing their evidence, keys, backups or restored clones. The certified runtime
+is SHA `54383575ac75e31a5684843ca372f50dac46afe0`; a documentation-only closeout
+merge does not redeploy it or certify a different runtime SHA.
 
 Image preparation above completed successfully for PR #34's merged SHA; retained
 digest is `sha256:4b43c051aa75a0b6b913d0d27d188a0b487487ed446145e5eb76d617318990b7`.
@@ -350,6 +356,34 @@ planned. Regional backup/export is being added, not a relaxed timeout. The local
 authorized. OCI metadata-only provenance was verified against the actual prepared
 image without downloading layers. Operational clone data remains in the private
 host-backed directory. These attempts do not complete MF-E01.
+
+MF-E01 closeout: attempt `dev-review-20261014c` successfully exported/restored the
+source and certified the clone, then stopped before live installation because
+project IAM had not yet observed the newly created API identity. Cloud audit logs
+confirmed the account-propagation error. The dedicated API/generator identities
+were explicitly reconciled, with only `roles/cloudsql.client` at project level;
+the provider deployer received actAs only on these two provider-owned identities,
+not on Insights. Attempt `dev-review-20261014d` used a new backup and isolated
+clone and completed every live gate. Installation preserved 4,235,842 NAV rows,
+14,390 funds and the full pre-existing preservation inventory. Only the pinned
+optional migration receipt was appended to the existing source migration ledger.
+
+The private service is `tlws-mf-review-dev`, using its dedicated runtime identity
+and internal ingress, with Insights as its sole explicit invoker. The four-fund
+cohort is `[101762,101763,139889,154701]`; all five coverage controls were observed.
+IDCW remains withheld, duplicate-series eligibility remains false and unassessed
+quality retains explicit `signals: null`. Incomplete risk history returns declared
+unavailable reasons; no observations or distributions were invented. The two
+canary events are `in_review` plus a non-executable, no-op metadata proposal—not
+human fund-correctness approval. No source correction executor, new scheduler,
+old read-v2 service change or UI was activated.
+
+The live recovery drill confirmed the retained dormant revision at 100% traffic,
+revoked the sole invoker, verified external denial, then restored the exact
+certified revision and recertified all six routes with unchanged result IDs.
+No records, schemas, revisions, backups or local test/clone data were deleted.
+MF-E02 is next: explicit current-versus-last-certified publication context, with
+real refresh/audit observation and separate acceptance before MF-E03 begins.
 
 ### Operational / API closeout remains separate
 
