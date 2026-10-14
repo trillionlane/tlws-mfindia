@@ -18,6 +18,15 @@ def api_args(factory):
     return [factory, '--factory', '--host', '0.0.0.0', '--port', '8080', '--no-access-log']
 
 
+def revision_name(manifest, factory=REVIEW_FACTORY):
+    api_args(factory)
+    # One rollout can first establish a compatible six-route rollback target,
+    # then stage the seven-route profile without reusing an immutable name or
+    # manufacturing a different actor/canary solely for that second revision.
+    suffix = manifest.rollout_id + ('-research' if factory == RESEARCH_FACTORY else '')
+    return SERVICE+'-'+suffix
+
+
 class Cloud:
     def __init__(self, *, account=None):
         # Explicit local operator pin never changes shared gcloud configuration.
@@ -114,7 +123,7 @@ class Cloud:
                 raise ValueError('require one untagged prior traffic revision')
         env_file = directory / 'api-env.json'
         env_file.write_text(json.dumps({'DEPLOYMENT_GIT_SHA': manifest.git_sha, 'MFDATAINDIA_REVIEW_TRUST_FILE': '/trust/config.json'}))
-        candidate = SERVICE + '-' + manifest.rollout_id
+        candidate = revision_name(manifest, factory)
         # Arm deterministic cleanup BEFORE a possibly successful failed lookup.
         try:
             if previous is None:
@@ -133,7 +142,7 @@ class Cloud:
             self.command('run', 'deploy', SERVICE, '--project=' + PROJECT, '--region=' + REGION, '--image=' + manifest.image,
                          '--service-account=' + API_SA, '--ingress=internal', '--no-allow-unauthenticated', '--no-traffic',
                          '--tag=cert-' + manifest.rollout_id,
-                         '--revision-suffix=' + manifest.rollout_id, '--set-cloudsql-instances=' + CONNECTION,
+                         '--revision-suffix=' + candidate.removeprefix(SERVICE+'-'), '--set-cloudsql-instances=' + CONNECTION,
                          '--network=tl-dev-vpc', '--subnet=tl-dev-mumbai', '--vpc-egress=all-traffic',
                          '--command=uvicorn', '--args=' + arguments,
                          '--env-vars-file=' + str(env_file), '--set-secrets=MFDATAINDIA_DSN=tlws-mf-review-admin-dsn-dev:' + str(versions['mfdata_verified_admin'])

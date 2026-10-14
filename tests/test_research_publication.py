@@ -14,7 +14,12 @@ from mfdataindia.review.app import create_research_app, create_review_app
 from mfdataindia.review.policy import fingerprint, policy
 from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.review.rollout import seal_evidence
-from mfdataindia.review.rollout_cloud import RESEARCH_FACTORY, api_args, verify_revision
+from mfdataindia.review.rollout_cloud import (
+    RESEARCH_FACTORY,
+    api_args,
+    revision_name,
+    verify_revision,
+)
 from test_verified_review_api import runtime_dsn
 from test_verified_review_auth import assertion, trust
 from test_verified_review_rollout import manifest, revision
@@ -175,6 +180,8 @@ def test_profile_and_factory_are_explicit_without_contract_or_environment_drift(
     verify_revision(candidate, m, {ROLES[2]: 1}, factory=RESEARCH_FACTORY)
     with pytest.raises(ValueError):
         api_args("unreviewed.module:factory")
+    assert revision_name(m) != revision_name(m, RESEARCH_FACTORY)
+    assert revision_name(m, RESEARCH_FACTORY) == revision_name(m) + "-research"
 
 
 @pytest.mark.parametrize("fault", [None, "scope", "origin", "coverage", "cohort", "completion"])

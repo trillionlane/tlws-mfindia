@@ -585,6 +585,17 @@ still uses the frozen base contract. Choose an explicitly approved, unused
 certification-only canary for a new rollout; never overwrite the two existing
 MF-E01 canary events or any human review.
 
+**Required compatibility ordering:** the old MF-E01 image does not recognize
+SELECT grants on the new certification table in its startup privilege allowlist.
+After backup/rehearsal but BEFORE installing SQL 024, stage the new image with
+the unchanged six-route `REVIEW_FACTORY`, certify it and explicitly promote it.
+Capture this compatible revision as the rollback target. Only then install the
+extension and stage `RESEARCH_FACTORY`. Its deterministic revision suffix adds
+`-research`, so the same manifest/actor/idempotent canary can serve both stages
+without reusing an immutable revision name. Remove the first candidate tag before
+the second stage. Never restore the pre-extension MF-E01 image after new-table
+grants exist; recover to the certified compatible six-route revision instead.
+
 Completion additionally requires observing a real normal refresh/audit cycle in
 DEV and recertifying current-versus-historical behavior. No scheduler rescheduling,
 manual source rewrites, legacy recomputation or quality-signal clearing is part of
