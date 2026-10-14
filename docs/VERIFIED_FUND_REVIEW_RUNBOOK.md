@@ -937,6 +937,8 @@ integer corpus and discloses partial final withdrawals and first depletion month
 
 Inflated cost is rounded upward in paise. Reverse goals search for the smallest
 integer starting contribution that meets that target under the same engine;
+an exponential upper bracket avoids rejecting a feasible small contribution
+because a speculative full-budget projection overflows the balance limit;
 the immediately smaller contribution is checked too. Infeasible goals and
 derived-cashflow/balance budget breaches are explicit failures, never fabricated
 zero answers. Zero/negative rates, timing, integer rounding, annual boundaries,

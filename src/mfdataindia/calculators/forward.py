@@ -28,7 +28,7 @@ _POLICY = {
     "stepup": "annual boundary before months 13/25/etc; base*(1+g/100)^floor((month-1)/12) rounded HALF_EVEN or base+annual_fixed*year",
     "swp": "paid=min(requested,available integer corpus); partial final payment disclosed; zero corpus stays zero",
     "inflated_goal": "ceil(today_cost*(1+inflation_percent/100)^(months/12)) in paise",
-    "reverse_goal": "lowest nonnegative integer starting SIP meeting rounded-engine target, monotone integer binary search; infeasible returns explicit error",
+    "reverse_goal": "lowest nonnegative integer starting SIP meeting rounded-engine target; bounded exponential upper bracket then monotone integer binary search; no speculative full-budget projection; infeasible returns explicit error",
     "positive_and_negative_returns": "annual percent -99..100; no zero-rate division; no rate guarantees",
     "precision": 50,
     "rounding": "ROUND_HALF_EVEN",
@@ -168,9 +168,17 @@ def goal(plan, rate):
     def project(start):
         return simulate(plan.months, rate, base=start, step=plan.step, timing=plan.timing)
 
-    if project(maximum)[1]["closing_paise"] < target:
-        raise CalculationUnavailable("goal_infeasible_with_policy_bounds")
-    low, high = 0, maximum
+    # Trial at the full permitted input can exceed the balance budget even
+    # though a tiny feasible SIP meets this goal. Find a sufficient bracket
+    # before binary search rather than reject that valid low contribution.
+    low, high = 0, 0
+    if project(0)[1]["closing_paise"] < target:
+        high = min(1, maximum)
+        while project(high)[1]["closing_paise"] < target:
+            if high == maximum:
+                raise CalculationUnavailable("goal_infeasible_with_policy_bounds")
+            low = high + 1
+            high = min(maximum, high * 2)
     while low < high:
         middle = (low + high) // 2
         if project(middle)[1]["closing_paise"] >= target:

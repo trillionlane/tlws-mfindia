@@ -34,6 +34,22 @@ def fraction_round(value):
     return whole + int(twice > value.denominator or twice == value.denominator and whole % 2 == 1)
 
 
+def test_small_feasible_goal_is_not_rejected_by_speculative_maximum_balance_overflow():
+    result = run("goal", months=600, annual_return_pct="100", rate_mode="nominal_annual_monthly",
+                 cost_today_paise=1000, annual_inflation_pct="0", timing="end")
+    assert result["summary"]["required_starting_monthly_paise"] == 1
+    balance = 0
+    for row in result["schedule"]:
+        credit = fraction_round(Fraction(balance, 12))
+        balance += credit + 1
+        assert row["closing_paise"] == balance and row["interest_paise"] == credit
+    assert 1000 <= balance <= forward.MAX_BALANCE
+    assert all(row["contribution_paise"] == 1 for row in result["schedule"])
+    with pytest.raises(forward.CalculationUnavailable, match="balance_budget"):
+        run("sip", months=600, annual_return_pct="100", rate_mode="nominal_annual_monthly",
+            monthly_paise=100000000000000, timing="end")
+
+
 def test_lumpsum_nominal_rate_matches_independent_rational_monthly_schedule():
     result = run(
         "lumpsum", initial_paise=1234567, annual_return_pct="12", rate_mode="nominal_annual_monthly"
