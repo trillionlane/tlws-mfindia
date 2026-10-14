@@ -17,6 +17,7 @@ def approval(**changes):
     return OperatorApproval.model_validate({
         'format': 'mfdata-review-operator-approval-v1', 'project': PROJECT,
         'account': 'fixture-operator@example.test', 'git_sha': 'a' * 40,
+        'database_execution': 'private-cloud-run',
         'operation': 'bootstrap-consumer-trust', 'binding_hash': fingerprint(trust_declaration()), **changes})
 
 
@@ -71,6 +72,15 @@ def test_service_account_cannot_be_used_as_human_operator(tmp_path):
     path.write_text(item.model_dump_json())
     with pytest.raises(ValueError, match='identity'):
         load_operator_approval(path, approved_hash=item.seal, operation=item.operation, binding_hash=item.binding_hash)
+
+
+def test_database_locality_must_be_explicit_and_cannot_weaken_operator_approval():
+    document = approval().model_dump(mode='json')
+    document.pop('database_execution')
+    with pytest.raises(ValueError):
+        OperatorApproval.model_validate(document)
+    with pytest.raises(ValueError):
+        approval(database_execution='off-region-unbounded')
 
 
 @pytest.mark.parametrize('attribute,value', [('owner', False), ('auth', False), ('account', 'other@example.test')])

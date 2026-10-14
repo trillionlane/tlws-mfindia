@@ -330,6 +330,16 @@ same v1 checksums and manifest; its full-manifest equivalence and preservation
 regressions passed against isolated PostgreSQL. This is part of MF-E01 readiness,
 not a reason to extend live source-lock bounds or claim rollout success.
 
+A fresh diagnostic backup completed in 148.16 seconds: 48,661,228 bytes, SHA-256
+`261a26f1c7a7b4320b78655b92f3c2a6086900d8142089a21aeebe34831968ff`,
+including all 4,235,842 NAV rows. A separate read-only capture took 80.85 seconds
+and matched every source preservation field from that backup. These local private
+artifacts are not yet the manifest-bound rollout/archive/restore certificate.
+The operator path therefore places the atomic installation beside Cloud SQL as
+the existing migration workload, retaining the 180-second bound rather than
+lengthening an off-region transaction. Private signing material is never mounted
+in that installation job, and new credential-reader grants are temporary.
+
 ### Operational / API closeout remains separate
 
 - Observe the restored normal refresh and full audit cycle; activation probes

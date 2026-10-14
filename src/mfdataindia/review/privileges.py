@@ -53,13 +53,14 @@ def verify_principal(conn, purpose: str, principal: str) -> None:
         raise ValueError("unexpected or elevated verified-review runtime principal")
     if conn.execute("SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member WHERE r.rolname=%s", (principal,)).fetchone():
         raise ValueError("verified-review principal must not retain role memberships")
-    rows = conn.execute("SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
-                        "WHERE n.nspname='mf' AND c.relkind IN('r','p','v','m')").fetchall()
-    for row in rows:
-        if conn.execute("SELECT has_table_privilege(%s,%s::oid,'INSERT,UPDATE,DELETE,TRUNCATE') OR "
-                        "has_any_column_privilege(%s,%s::oid,'INSERT,UPDATE') AS source_write",
-                        (principal, row["oid"], principal, row["oid"])).fetchone()["source_write"]:
-            raise ValueError("verified-review principal retains effective source-write privileges")
+    # Inspect the identical relation/column privilege population in one query,
+    # including partitions and views. Avoid one network round trip per object.
+    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                    "WHERE n.nspname='mf' AND c.relkind IN('r','p','v','m') AND "
+                    "(has_table_privilege(%s,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE') OR "
+                    "has_any_column_privilege(%s,c.oid,'INSERT,UPDATE')) LIMIT 1",
+                    (principal, principal)).fetchone():
+        raise ValueError("verified-review principal retains effective source-write privileges")
     if conn.execute("SELECT has_schema_privilege(%s,'mf','CREATE') OR "
                     "has_schema_privilege(%s,'mf_review','CREATE') OR has_schema_privilege(%s,'public','CREATE') OR "
                     "has_database_privilege(%s,current_database(),'CREATE') AS ddl", (principal, principal, principal, principal)).fetchone()["ddl"]:

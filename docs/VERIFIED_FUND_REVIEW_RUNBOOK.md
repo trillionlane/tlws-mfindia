@@ -286,9 +286,10 @@ Owner/Editor/consumer-actAs grant. Google Cloud still authorizes each actual
 operation. The project-role check is not a consumer RBAC certificate.
 
 The operator approval JSON has exactly `format`, `project`, `account`, `git_sha`,
-`operation` and `binding_hash`; its canonical SHA-256 must match the explicit
+`operation`, `binding_hash` and `database_execution`; its canonical SHA-256 must match the explicit
 approved operator hash. `format` is `mfdata-review-operator-approval-v1`, project
-is DEV only and operation is `bootstrap-consumer-trust` or `execute-rollout`.
+is DEV only, `database_execution` is `private-cloud-run`, and operation is
+`bootstrap-consumer-trust` or `execute-rollout`.
 Bind bootstrap to the canonical hash of `trust_declaration()`; bind execution to
 the exact approved rollout manifest hash. Duplicate fields, service-account
 operators, wrong operations/pins and mismatched checkout are rejected before
@@ -332,6 +333,21 @@ another DEV infrastructure deployment; reconcile their authoritative status
 before execution. Scheduled refresh/audit remains enabled and is guarded by the
 existing source-operation locks and input revalidation.
 
+For this local arrangement, the atomic DEV schema/principal installation runs
+in a private, zero-retry job beside Cloud SQL as the existing
+`tlws-mf-data-migrate-dev` workload. The source-admin credential version and all
+three newly created credential versions are immutable job pins. The job verifies
+the actual database identity, exact source/role DSN binding, migration hash and
+the same preservation/privilege checks before commit. Its 180-second transaction
+bound is unchanged; original source rows are preserved, with only the pinned
+optional migration receipt appended to the source ledger. The controller verifies
+actual execution completion/image/SHA/runtime/network/secret versions and retains
+the structured installation certificate before checking direct runtime logins.
+Temporary migration-workload read access is removed from the three NEW credential
+secrets on success or failure; all removals are attempted independently. Unconfirmed
+removal fails closeout. Source-admin-secret access already belongs to the existing
+migration workload and is not expanded. No private signing key is mounted there.
+
 The operational preservation capture uses read-only binary `COPY TO` for the
 ordered JSON-text column, decoded to the same UTF-8 length-prefixed row hash as
 v1's named cursor. Catalog reads are batched without changing per-object ordering
@@ -341,6 +357,8 @@ unkeyed tables, views, materialized views, ownership, sequences and ACLs.
 This removes thousands of off-region `FETCH 1000` round trips, not integrity
 checks. Source lock/statement/transaction bounds remain unchanged; measure actual
 DEV capture/rehearsal before installation and stop if they cannot meet the bounds.
+Source table/column privilege checks use one query over the identical complete
+relation population instead of one network round trip per relation.
 
 The JSON shape below is a template, not executable configuration. Replace every
 placeholder from reviewed image preparation, the supported policy command,

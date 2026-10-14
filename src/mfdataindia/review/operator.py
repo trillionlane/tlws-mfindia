@@ -31,6 +31,7 @@ class OperatorApproval(BaseModel):
     git_sha: StrictStr = Field(pattern=r'^[0-9a-f]{40}$')
     operation: Literal['bootstrap-consumer-trust', 'execute-rollout']
     binding_hash: StrictStr = Field(pattern=r'^[0-9a-f]{64}$')
+    database_execution: Literal['private-cloud-run']
 
     @property
     def seal(self):
