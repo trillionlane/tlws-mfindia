@@ -178,6 +178,8 @@ class AmfiClient:
         """
         if tp not in SCHEME_TYPES:
             raise ValueError(f"tp must be one of {sorted(SCHEME_TYPES)}, got {tp}")
+        if from_date > to_date or (to_date - from_date).days >= 90:
+            raise ValueError("AMFI history requests require an ordered interval of at most 90 inclusive days")
         return self._get(
             "/DownloadNAVHistoryReport_Po.aspx",
             params={
@@ -223,8 +225,8 @@ class AmfiClient:
         fetching a completed chunk. ``iter_nav_history`` remains the convenient
         fetch-all interface for callers that do not use checkpoints.
         """
-        if chunk_days < 1:
-            raise ValueError("chunk_days must be at least 1")
+        if isinstance(chunk_days, bool) or not isinstance(chunk_days, int) or not 1 <= chunk_days <= 90:
+            raise ValueError("chunk_days must be an integer between 1 and 90")
         invalid_tps = [tp for tp in tps if tp not in SCHEME_TYPES]
         if invalid_tps:
             raise ValueError(f"tp must be one of {sorted(SCHEME_TYPES)}, got {invalid_tps[0]}")

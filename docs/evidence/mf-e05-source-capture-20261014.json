@@ -1,0 +1,19 @@
+{
+  "format": "mfdata-source-acquisition-checkpoint-v1",
+  "level": "LOCAL_OFFICIAL_SOURCE_CAPTURE_NOT_DEV_CERTIFICATION",
+  "archive": "/Users/deviojha/projects/codex/artifacts/mf-e05-sources-20261014-D3eopq",
+  "nav_rows_observed": 14412,
+  "source_bytes_retained": 8035960,
+  "database_imports": 0,
+  "source_rows_changed": 0,
+  "publication_eligible": false,
+  "coverage_complete": false,
+  "captures": [
+    {"source": "AMFI_HISTORY", "from_date": "2026-10-12", "to_date": "2026-10-12", "scheme_type": 1, "rows": 8520, "bytes": 1155001, "sha256": "3bc5391067691bed6dd3590f1ff20cbc5fff0753e9cb88c601d409101079ca4b", "receipt_hash": "3266d92a84e83338d10f427f3814357254211d3416dc5dee5e447575c75f0598", "state": "format_checked"},
+    {"source": "AMFI_HISTORY", "from_date": "2026-10-12", "to_date": "2026-10-12", "scheme_type": 2, "rows": 156, "bytes": 22834, "sha256": "9a8d7e6b246e4e04819dfea41f98c8f85d323ea26925dd53fa00d8f46407d8e2", "receipt_hash": "febdbc932ba0c1a15fba9fdcd1706d0e2d5e458445d32606f4b0c9a667f88d6f", "state": "format_checked"},
+    {"source": "AMFI_HISTORY", "from_date": "2026-10-12", "to_date": "2026-10-12", "scheme_type": 3, "rows": 4, "bytes": 765, "sha256": "c847c9e518fb7bbfcf3d1be45a5e830d54577124d68223ca254656f36615f62b", "receipt_hash": "2098ce7722372cb9ff8a0f3a02e4f3fc1cc6cf39b9fd2a00fe7713b1cd01773e", "state": "format_checked"},
+    {"source": "AMFI_HISTORY", "from_date": "2020-01-02", "to_date": "2020-01-02", "scheme_type": 1, "rows": 5732, "bytes": 777934, "sha256": "3d4a1fe5e251efb2c9d20e373b2dca92b64629b485e34b418a313c5d51076ac4", "receipt_hash": "f4e6b64efb2f3a49ae10e8d920e9a39a4592dfe098ab1f745d990e4ed5be9acd", "state": "format_checked", "other_scheme_types_not_requested": true},
+    {"source": "SBI_OFFICIAL_FACTSHEET", "url": "https://www.sbimf.com/docs/default-source/scheme-factsheets/sbi-mf-passives-%28index-etf-fof%29-factsheet-april-2026.pdf", "bytes": 6079426, "sha256": "7c229959507331127b2b33a9127b9990236ce44b6a29227d58e1c4f54885236d", "receipt_hash": "c085f9a28c15ff49c72ce7de42f2155d61dd453e7c84d3c848762db5b2781d40", "state": "raw_only_not_parsed", "document_as_of": null, "rights_independently_verified": false}
+  ],
+  "remaining": ["Refresh current AMFI factsheet directory; archived 2025 seed is not current coverage", "Repair legacy ABSL discovery: page-scoped datasource identifier was not found during the live probe", "Versioned bounded PDF extraction and exact fund mapping", "Original-versus-new NAV reconciliation; never run the legacy overwriting backfill", "Fresh backup/clone rehearsal and private DEV deployment/certification"]
+}
