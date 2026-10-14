@@ -801,7 +801,7 @@ the stored policy. MF-E04 rolling analytics is next; MF-E04–MF-E15 are not com
 by this record. No Insights/TDW application authorization, UI, licensed-source
 acquisition, whole-universe analytics coverage or production claim is made.
 
-### MF-E04 finite scope — implementation in progress, no DEV acceptance yet
+### MF-E04 finite scope — implementation and bounded DEV acceptance
 
 Add immutable anniversary rolling-return artifacts for 1-, 3- and 5-year terms.
 The schedule is completed Gregorian month ends, independent of chart settings;
@@ -838,5 +838,75 @@ DEV data supplies 48 one-year and 24 three-year covered windows for AMFI 101762,
 but no five-year completed-month window yet. Five-year arithmetic has independent
 fixtures; do not relabel a fixture as real DEV coverage or invent a longer history.
 No UI, source correction, source acquisition, whole-dataset or consumer RBAC claim
-is included. The live Sprint 3 service remains the accepted serving profile until
-these separate Sprint 4 gates pass.
+is included. The Sprint 3 profile was the serving and recovery target throughout
+staging; the separate Sprint 4 gates passed as recorded below.
+
+#### MF-E04 DEV closeout — 2026-10-14
+
+[PR #45](https://github.com/trillionlane/tlws-mfindia/pull/45) supplied the feature;
+[PR #46](https://github.com/trillionlane/tlws-mfindia/pull/46) fixed the rolling
+CLI's copied calendar operation/record keys and added seven actual-entrypoint
+regressions. Exact-head CI passed 833 tests, one documented skip and all image
+checks. [The evidence index](evidence/mf-e04-dev-roll-20261014b.json) reconciles 25
+retained sealed stage documents; it is not a newly minted certificate. Runtime
+SHA is `dad7191576776dc4d36291557bfc6e5da03ab753`, not this documentation merge.
+
+The initial installation execution failed with `KeyError` before database
+connection. A fresh read confirmed no rolling schema and unchanged Sprint 3
+traffic. Its archive, clone and failure proof remain retained. The corrected
+attempt `dev-roll-20261014b` used fresh immutable application/tooling digests and
+archive generation `1791975239462882`, SHA-256
+`88d8bc6536730098069f1f47f75357272eeb80d2bc7a546b262a7200ff215d45`.
+Clone B's restore was killed by the local 2 GiB VM's OOM killer; the failed clone
+was retained. Only positively identified idle task clones were stopped, never
+deleted. A new empty memory-bounded clone C passed operational restore, original
+source/prior-layer preservation, restricted direct logins, replay and private
+HTTP authorization. The user's existing database container was not modified.
+
+Actual migration execution `mf-roll-install-dev-roll-20261014b-bwb2l` installed
+only the optional rolling namespace and policy. Restricted generation appended
+four rolling results for `[101762,101763,139889,154701]`. Original core/calendar
+generation replayed existing rows without replacement. Source inputs, policy and
+code match the clone; runtime-specific result IDs legitimately differ because
+the clone records Python 3.12.13/Decimal 4.0.0 and deployed derivation records
+Python 3.12.15/Decimal 2.5.1. Final private conformance recomputes in the deployed
+runtime and verifies exact stored result IDs and values.
+
+Original six-route compatibility used the exact retained MF-E03 consumer image,
+manifest, canary body and idempotency keys against the new provider. It added no
+review/proposal event and did not pretend an old consumer SHA was the new provider
+SHA. Candidate and fixed-origin original-six, publication, calendar and rolling
+checks passed independently. Verified owner registration produced certificate
+`7414be4e2b41b6331e157c71aa1dc6a71c4f6351d8fa6dd6743968ddd5bbb10f`;
+post-registration ordinary reads were certified again, including complete bounded
+cursor traversal. Only AMFI 101762's one-/three-year requests are eligible.
+Five-year coverage remains null/reasoned and comparison-ineligible; IDCW,
+duplicate-signalled and unassessed controls expose no ordinary numeric windows.
+AMFI 154701 retains explicit `signals: null` and `not_assessed`.
+
+The nine-route revision `tlws-mf-review-dev-dev-roll-20261014b-rolling` serves
+100% untagged traffic, with internal ingress, the dedicated restricted review
+runtime and the existing sole explicit Insights invoker. Actual recovery promoted
+the retained eight-route calendar revision, ran its private calendar check,
+restored the exact nine-route revision and recertified rolling reads. No schema,
+record, credential or IAM deletion/rewriting was used; external review/rolling
+probes returned 404 after restoration.
+
+The final remote read-only COPY hit its unchanged statement timeout. That failure
+was retained. The same reviewed regional MVCC backup/helper then completed as
+`mf-review-backup-dev-roll-close-20261014-swxgb`, preserving a create-only post-rollout
+archive and full source/review/calendar/rolling manifests from one snapshot.
+Comparison proved all original values, objects, functions, triggers, sequences,
+owners and ACLs unchanged, including 4,236,069 NAV rows and 14,390 funds. Every
+prior review/calendar row and the review sequence remained identical. Additions
+were exactly one policy, four rolling results and one rolling certificate; no
+core snapshot/result, calendar artifact, review event or source migration receipt
+was added. Timeout limits were not relaxed and no mutating job was repeated to
+resolve this read-only verification failure.
+
+MF-E04 is accepted for this declared provider DEV cohort at dataset v13. No
+whole-dataset analytics, human fund correctness, consumer application RBAC, UI,
+licensed-source acquisition or production acceptance is claimed. MF-E05–MF-E15
+remain pending. MF-E05 must retain the source-access gate above: written reuse/
+retention permission or a permitted authoritative source is required before AMC
+enrichment imports; this closeout does not supply or waive that permission.
