@@ -24,7 +24,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -44,6 +44,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     verify_runtime(conn, "api")
                     if research:
                         publication.verify_installation(conn)
+                    if calendar:
+                        from mfdataindia.analytics.store import verify_acl
+                        verify_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -134,9 +137,24 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         def research_publication(code: Code, principal: Principal = Depends(identity)):
             return run(lambda conn: publication.get_publication(conn, code))
 
+    if calendar:
+        from mfdataindia.analytics import schemas as calendar_schemas, store as calendar_store
+
+        @app.get('/api/research/v1/funds/{code}/calendar-returns', response_model=calendar_schemas.Response | calendar_schemas.AuditResponse)
+        def calendar_returns(code: Code, principal: Principal = Depends(identity),
+                             result_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
+            if result_id and 'review:admin' not in principal.scopes:
+                raise HTTPException(403, 'admin assertion required for retained audit artifacts')
+            return run(lambda conn: calendar_store.get_calendar(conn,code,result_id))
+
     return app
 
 
 def create_research_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Explicit deployment profile; unchanged review-v1 factory keeps six routes."""
     return create_review_app(dsn, verifier=verifier, research=True)
+
+
+def create_calendar_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Additive eight-route profile; old factories/contracts stay unchanged."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True)

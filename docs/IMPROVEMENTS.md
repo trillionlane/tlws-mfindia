@@ -304,7 +304,8 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | --- | --- | --- |
 | MF-E01 | Complete — bounded provider DEV acceptance, 2026-10-14 | PRs #34–#37; fresh immutable backup, operational restored-clone preservation/replay, restricted direct logins, private deployment, four-fund generation, candidate/final six-route certification and live non-destructive recovery/recertification. [Closeout evidence index](evidence/mf-e01-dev-review-20261014d.json). Not whole-DB or Insights RBAC acceptance. |
 | MF-E02 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #39 plus candidate-audience fix #40, runtime checkpoint #41. Fresh archive/clone, compatible baseline, restricted additive installation, private candidate/final/recovery checks and the real 06:30/06:40 normal cycle passed. Old v12 artifacts remained dated/not current; new v13 artifacts were generated, certified and registered without replacing old rows. [Closeout evidence](evidence/mf-e02-dev-pub-cycle-20261014.json). |
-| MF-E03–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
+| MF-E03 | In progress — canonical calendar/YTD/monthly backend implementation | New immutable `mf_analytics` sidecars and opt-in eight-route profile; original six/seven/read-v2 contracts retained. Independent arithmetic and isolated PostgreSQL preservation/replay/authorization tests. No live installation/generation or acceptance claimed yet. |
+| MF-E04–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
 
 The notes below are historical execution records, not the current status. The
 successful `dev-review-20261014d` chain supersedes the stopped attempts without
