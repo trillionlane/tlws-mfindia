@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -58,6 +58,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if historical:
                         from mfdataindia.calculators.historical_store import installed_policy as installed_historical_policy
                         installed_historical_policy(conn)
+                    if enrichment:
+                        from mfdataindia.enrichment.store import verify_acl as verify_enrichment_acl
+                        verify_enrichment_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -199,6 +202,29 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                 return historical_engine.derive(request.model_dump(mode='json'), snapshot, document)
             return run(calculate)
 
+    if enrichment:
+        from mfdataindia.enrichment import evidence, schemas as enrichment_schemas, store as enrichment_store
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/enrichment/v1/policy', response_model=enrichment_schemas.PolicyResponse)
+        def enrichment_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(evidence.policy()), 'document': enrichment_store.installed_policy(conn)})
+
+        @app.get('/api/enrichment/v1/documents', response_model=enrichment_schemas.DocumentPage)
+        def enrichment_documents(principal: Principal = Depends(identity),
+                                 after: Annotated[str, Query(pattern=r'^(?:[0-9a-f]{64})?$')] = '',
+                                 limit: int = Query(50,ge=1,le=100)):
+            return run(lambda conn: enrichment_store.documents(conn,after=after,limit=limit))
+
+        @app.get('/api/enrichment/v1/documents/{document_id}', response_model=enrichment_schemas.Document)
+        def enrichment_document(document_id: Hash, principal: Principal = Depends(identity)):
+            return run(lambda conn: enrichment_store.get_document(conn,document_id))
+
+        @app.get('/api/enrichment/v1/funds/{code}/coverage', response_model=enrichment_schemas.Coverage)
+        def enrichment_coverage(code: Code, principal: Principal = Depends(identity),
+                                document_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
+            return run(lambda conn: enrichment_store.coverage(conn,code,document_id=document_id))
+
     return app
 
 
@@ -225,3 +251,8 @@ def create_calculator_app(dsn: str | None = None, *, verifier: AssertionVerifier
 def create_historical_calculator_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Eleven-route profile; earlier factories and contracts stay frozen."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True)
+
+
+def create_enrichment_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Fifteen-route opt-in profile; no public intake or original-document download."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True)

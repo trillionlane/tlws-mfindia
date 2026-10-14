@@ -292,7 +292,28 @@ Owner/Editor grants, provider control of Insights runtime, new per-gate variable
 or automatic deletion as cleanup.
 
 **Execution refinement — 2026-10-14:** MF-E01–04 are accepted. MF-E05–12's new
-official-source imports remain gated on documented reuse/retention authority.
+official-source imports require source-specific acquisition/use scope. The
+operator has now reported telephone confirmations from UTI, SBI and Kotak that
+their publicly available data may be downloaded and used for factual extraction
+to support mutual-fund distributors. Record this as operator-reported oral
+authorization, not an independently verified written licence. The operator has
+subsequently directed all-AMC coverage, using AMFI's official factsheet directory
+as the discovery route and official AMC sources where that directory points.
+UTI/SBI/Kotak are not the coverage limit; do not require a calling exercise for
+every AMC. Discover the current directory population instead of hardcoding 52
+or claiming every document is hosted by AMFI. Call dates, representatives and
+specific document coverage have not been supplied; do not invent those details
+or impose a universal paid-feed/permission-letter gate.
+The intended use remains factual extraction for distributor support. Retain
+attribution, source dates/hashes and private source evidence; do not sell or
+republish factsheets, copy narrative material or claim AMC authorship/endorsement.
+All-AMC product scope is not evidence of AMFI-wide or third-party benchmark/TRI
+permission. Record reported authorization separately from published source terms.
+Flag explicit source-specific conflicts for resolution, retaining other safe
+work rather than imposing a blanket stop. Use bounded acquisition batches,
+exact scheme/document mapping and explicit missing/unsupported/conflicting
+coverage before an import can be accepted. No bulk import is authorized by this
+scope note alone where the required use conflicts with the applicable terms.
 MF-E13's assumed forward calculators do not depend on those sources, and MF-E14
 uses already-held Growth NAV snapshots. Execute MF-E13, then MF-E14 as the next
 two independently reviewed/merged/certified finite releases; resume MF-E05–12
@@ -315,7 +336,9 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | MF-E02 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #39 plus candidate-audience fix #40, runtime checkpoint #41. Fresh archive/clone, compatible baseline, restricted additive installation, private candidate/final/recovery checks and the real 06:30/06:40 normal cycle passed. Old v12 artifacts remained dated/not current; new v13 artifacts were generated, certified and registered without replacing old rows. [Closeout evidence](evidence/mf-e02-dev-pub-cycle-20261014.json). |
 | MF-E03 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #43; fresh immutable archive and operational restored-clone rehearsal, restricted additive installation, four calendar artifacts, original/new candidate and final private HTTP checks, certificate registration, recovery/restoration and whole-source/prior-review preservation passed. [Closeout evidence](evidence/mf-e03-dev-cal-20261014a.json). Not whole-dataset analytics or consumer RBAC acceptance. |
 | MF-E04 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #45 plus dispatch fix #46; 833 CI tests passed with one documented skip. Fresh archive and operational clone, restricted installation/generation, original/new private checks, registration, recovery and regional whole-source/prior-layer preservation passed. [Closeout evidence](evidence/mf-e04-dev-roll-20261014b.json). AMFI 101762 has 48 one-year and 24 three-year windows; five-year real coverage remains unavailable. |
-| MF-E05–MF-E12 | Pending source-access authority — not started | No new AMC/distribution/TRI imports; all original acceptance gates retained. |
+| MF-E05 | Implementation in progress — live acceptance pending | Immutable evidence store, exact-variant candidate mapping, bounded acquisition/import and four additive private read routes. All-AMC discovery scope; synthetic tests do not establish real source coverage. Live AMFI directory retrieval timed out; no DEV imports/deployment yet. See `docs/runbooks/MF_E05_OFFICIAL_EVIDENCE_DEV.md`. |
+| MF-E06–MF-E08 | All-AMC scope requested — not implemented | AMFI official directory discovery, official AMC source resolution and bounded batches; operator-reported UTI/SBI/Kotak confirmations retained without extrapolating them into verified rights for every source. Exact document/variant coverage and explicit source conflicts to be verified. No new imports or API acceptance yet. |
+| MF-E09–MF-E12 | Separate evidence/source dependencies — not started | UTI/SBI/Kotak confirmation does not establish HDFC distribution-event coverage or third-party TRI rights. Preserve original bounded event/benchmark acceptance gates. |
 | MF-E13 | Complete — private deterministic forward calculators | #48/#49 deployed and certified at runtime `ae504db`, dataset v14. Eight real private scenarios, all nine prior paths, actual rollback/restoration, public denial and whole-source preservation passed. One immutable policy added; no source rows, schema/grants or personal scenarios changed. Evidence: `docs/evidence/mf-e13-dev-fwd-20261014b.json`. |
 | MF-E14 | Complete — private historical Growth SIP/lumpsum and XIRR | #51 deployed/certified at `957ba7d`, dataset v14. Real Growth one-purchase/12-instalment samples, withheld IDCW/quality/null controls, ten-route compatibility, actual recovery and whole-source preservation passed. Exactly one immutable policy added; no source/scenario writes or UI. Evidence: `docs/evidence/mf-e14-dev-hist-20261014a.json`. |
 | MF-E15 | Planned — not started | Final universe/API/operations handover cannot hide unresolved source-dependent deliverables. |
