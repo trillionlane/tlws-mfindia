@@ -492,3 +492,40 @@ GitHub stores certificates for 30 days; archive required retention separately be
 expiry. Closeout is `PROVIDER_DEV_CERTIFIED` only after the entire chain succeeds.
 It explicitly leaves Insights RBAC acceptance, admin UI, whole-DB generation,
 monthly/rolling methods and source correction activation unclaimed.
+
+### MF-E01 DEV acceptance — 2026-10-14
+
+The first bounded rollout and actual non-destructive recovery drill completed.
+The [evidence index](evidence/mf-e01-dev-review-20261014d.json) records the exact
+SHA, images, manifest/approval hashes, immutable backup generation, sealed-stage
+hashes and successful Cloud Run execution identities. It is an index of retained
+evidence, not a newly minted certificate or a whole-dataset assertion.
+
+The runtime SHA is `54383575ac75e31a5684843ca372f50dac46afe0`, serving on
+`tlws-mf-review-dev-dev-review-20261014d`. The separate service retains internal
+ingress, IAM enforcement and only the Insights runtime as explicit invoker.
+All three new database roles logged in directly and passed effective privilege
+checks; temporary backup-creator and migration-secret reader grants were removed
+and their removal verified. Original source fingerprints were unchanged, apart
+from the explicitly permitted append of migration 023's own receipt.
+
+The six-route certificate covers only `[101762,101763,139889,154701]`. Generation
+and candidate, service-origin and recovered-service certificates agreed on exact
+result IDs. It does not unlock IDCW, clear duplicate signals, manufacture missing
+history or implement Insights RBAC/UI. Source counts are preservation evidence,
+not analytics-coverage counts. Originals and historical derived outputs remain
+intact; the new results and two certification-only canary events are sidecars.
+
+Recovery was actually exercised: dormant prior traffic, zero explicit invokers,
+external HTTP 404, then exact-revision restoration and another successful private
+six-route certificate. No restore over DEV, credential rotation or data deletion
+was used. The original read-v2 API, association writer and ingestion/audit
+schedules were not changed. Later dataset/source/context changes can invalidate
+these current-input results; do not present this dated certificate as certification
+of those later inputs. MF-E02 supplies the explicit historical-publication boundary.
+
+The private backup and raw preservation certificates remain in retained operator
+storage and the named GCS generation; neither backup bytes, passwords nor signing
+material enter Git/GitHub artifacts. The record contains no private keys and
+does not grant the provider deployer control of Insights. Do not rerun the
+first-install command against the now-existing principals/secrets/schema.
