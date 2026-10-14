@@ -133,3 +133,42 @@ the exact prior eleven-route revision and restoration. No data/schema deletion
 as rollback. Verify final raw-document retention and whole-source preservation.
 MF-E05 is not complete until these actual operations and evidence are recorded;
 green unit/CI tests or an empty coverage response cannot satisfy that acceptance.
+
+## Reused legacy adapters and bounded source captures
+
+Existing source work was identified after #53: `research/amfi_amc_directory.json`
+is a 2025 archived AMFI seed; `ingest/amc_factsheets/download.py` discovers ABSL
+documents and `absl.py` parses extracted PDF text. Its legacy writer updates
+`mf.fund_facts` and provenance, and must **not** be run under preservation-first
+scope. The legacy CLI also requires `pypdf`, absent from the current lock/runtime.
+Reuse discovery/parsing with versioned sidecars rather than invoke that loader.
+The live ABSL discovery probe did not find the expected datasource identifier;
+the old parser's passing fixture tests do not prove the current downloader works.
+
+AMFI [NAV history](https://www.amfiindia.com/net-asset-value/nav-download) limits
+each request to 90 days, not history retention to the latest 90 days. The existing
+`AmfiClient`/history parser already support segmented older ranges. Direct history
+requests and generated ranges now enforce <=90 **inclusive** days before fetching.
+The legacy backfill's upsert can replace existing NAVs; do not invoke it, reset
+checkpoints or run `--force`. Reconcile retained values and preserve conflicts
+before a separately rehearsed missing-only addition is considered.
+
+`scripts/capture_official_sources.py` acquires bounded samples into an existing
+task-owned private directory. No database connection, identity mutation, source
+upsert, deletion or overwrite. It reuses the history client/parser with a bounded
+no-proxy/no-netrc/no-redirect session, retaining exact original bytes separately
+from decoded parser text. Files and receipts are content-addressed/exclusive-create;
+an existing checksum mismatch fails rather than replacing either object.
+Requests are capped at 12 per invocation and spaced; a capped partial run reports
+remaining coordinates explicitly. Bodies over 16 MiB fail; use shorter windows
+instead of assuming every 90-day whole-market response fits that bound.
+
+The first [acquisition checkpoint](../evidence/mf-e05-source-capture-20261014.json)
+retains 14,412 observed NAV rows across four files and one official SBI PDF, about
+8 MB of original source bytes. Current-date sample: 12 October 2026, all three
+scheme-type slices. Older-history sample: 2 January 2020, open-ended slice only.
+There were no quarantined parser lines or out-of-request dates in these samples.
+These are actual local acquisitions, **not new database rows or full coverage**.
+The SBI filename denotes April 2026, not a current-October factsheet; its content
+date remains unverified and it is retained raw, not published as fund facts.
+Original database data, serving profile and schedulers were untouched.
