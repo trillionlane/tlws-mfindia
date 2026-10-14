@@ -1,0 +1,253 @@
+{
+  "acceptance_scope": "Growth-only historical SIP/lumpsum, admitted-class ACT/365 XIRR and eleven-route private conformance; current trusted eligibility and observed coverage required",
+  "backups": {
+    "post_rollout": {
+      "generation": "1791989530040802",
+      "md5": "NAAlzW7hx9KxnBu9z7daGQ==",
+      "sha256": "d5c32665acd441ab346d809a88268eceeecf7d2ec8778caa95d38573085e9918",
+      "size": 48820560,
+      "uri": "gs://tlws_mf_data_source/verified-review-rollouts/dev-hist-close-20261014a/snapshot.dump"
+    },
+    "preflight": {
+      "generation": "1791988439448079",
+      "md5": "wHPpEs6ANqptO/MylB1mfA==",
+      "sha256": "a3db597062ebf8184e90f3f8cd005eb55cc880a347b68ebc7f7a528f9b475329",
+      "size": 48819521,
+      "uri": "gs://tlws_mf_data_source/verified-review-rollouts/dev-hist-20261014a/snapshot.dump"
+    }
+  },
+  "ci_tests_passed": 910,
+  "ci_tests_skipped": 1,
+  "cohort": [
+    101762,
+    101763,
+    139889,
+    154701
+  ],
+  "contract_sha256": "e40b1a3a3fb41e00c2c125e3c7b8cce62c82d6e079a2b87fb68344b069091818",
+  "data_deleted": 0,
+  "dataset_version": 14,
+  "endpoint": "POST /api/calculators/v1/backtests",
+  "exact_ci": 38579836471,
+  "excluded_acceptance": [
+    "retired-fund retrospective eligibility",
+    "IDCW investor simulations",
+    "consumer application RBAC",
+    "human fund correctness",
+    "UI",
+    "whole-dataset analytics",
+    "new licensed sources",
+    "production"
+  ],
+  "feature_pr": 51,
+  "format": "mfdata-historical-dev-closeout-v1",
+  "forward_cases_per_compatibility_certificate": 8,
+  "historical_cases": [
+    {
+      "available": true,
+      "code": 101762,
+      "dataset_version": 14,
+      "input_hash": "cc5935a0a49aac96d735c882032aab943eae4a4e72fab24a21a643aef19e97ae",
+      "kind": "lumpsum",
+      "purchases": 1,
+      "result_id": "74c6348ecf64f74fade257b294a7ad9258258c7ae32b5cddeaec76e2e1b031b0",
+      "unavailable_reason": null,
+      "xirr_pct": "-3.93190000"
+    },
+    {
+      "available": true,
+      "code": 101762,
+      "dataset_version": 14,
+      "input_hash": "cc5935a0a49aac96d735c882032aab943eae4a4e72fab24a21a643aef19e97ae",
+      "kind": "sip",
+      "purchases": 12,
+      "result_id": "23831b7240c0092da99589351c32ca00822fdecde40b4a6cd9f6f79c8357af2e",
+      "unavailable_reason": null,
+      "xirr_pct": "-4.90619893"
+    },
+    {
+      "available": false,
+      "code": 101763,
+      "dataset_version": 14,
+      "input_hash": "40b50fa137aecd01b78b0619ae57a91c57cc3aba4c0704eca35e0acabe65b7b1",
+      "kind": "lumpsum",
+      "purchases": 0,
+      "result_id": "c960cdb2461e5e986f006cb12430003a00b51c43a5fd3a74b1a935e99d947439",
+      "unavailable_reason": "unsupported_option",
+      "xirr_pct": null
+    },
+    {
+      "available": false,
+      "code": 101763,
+      "dataset_version": 14,
+      "input_hash": "40b50fa137aecd01b78b0619ae57a91c57cc3aba4c0704eca35e0acabe65b7b1",
+      "kind": "sip",
+      "purchases": 0,
+      "result_id": "58e85beb6b8a70c46d72ad20beda709201e8a8c084910cec9e73f2835d86acdf",
+      "unavailable_reason": "unsupported_option",
+      "xirr_pct": null
+    },
+    {
+      "available": false,
+      "code": 139889,
+      "dataset_version": 14,
+      "input_hash": "331719f72fb3748d865a93fde0c01ef74f1faf3bfe7aec9b9d658ad6ab664498",
+      "kind": "lumpsum",
+      "purchases": 0,
+      "result_id": "3bdef62fb080900d897e5cf5a774398e69bf1b99170d7829e15cb4888166d6f7",
+      "unavailable_reason": "quality_signalled",
+      "xirr_pct": null
+    },
+    {
+      "available": false,
+      "code": 139889,
+      "dataset_version": 14,
+      "input_hash": "331719f72fb3748d865a93fde0c01ef74f1faf3bfe7aec9b9d658ad6ab664498",
+      "kind": "sip",
+      "purchases": 0,
+      "result_id": "bab08839b99bda6d8285cc8b27c73c1ffb867e06116b008d2c7d064dbbe1301b",
+      "unavailable_reason": "quality_signalled",
+      "xirr_pct": null
+    },
+    {
+      "available": false,
+      "code": 154701,
+      "dataset_version": 14,
+      "input_hash": "6478fd459b0ac4b24fff001a24a89f1b765da7e746b8fbc29947051522432ceb",
+      "kind": "lumpsum",
+      "purchases": 0,
+      "result_id": "6a52d31682523ed10c888ce189d8931364a47be05e40127158bfe82b38c439e1",
+      "unavailable_reason": "quality_evidence_unavailable",
+      "xirr_pct": null
+    },
+    {
+      "available": false,
+      "code": 154701,
+      "dataset_version": 14,
+      "input_hash": "6478fd459b0ac4b24fff001a24a89f1b765da7e746b8fbc29947051522432ceb",
+      "kind": "sip",
+      "purchases": 0,
+      "result_id": "9fbcecb41c192ed43c25e1651c36326464bf6bf8ae4aa61874c5665f4e1410e8",
+      "unavailable_reason": "quality_evidence_unavailable",
+      "xirr_pct": null
+    }
+  ],
+  "historical_replay_equal_across_promotion_and_recovery": true,
+  "image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:6c4473f649ab456b3a514b1e0523d5bdc26422f853e84b1602bf33f28ff2ae68",
+  "local_tests_passed": 911,
+  "manifest_hash": "fc3576f892cf20c56ca6cabc7173b8077f1251d2f22a4e03659dac84eb68c80a",
+  "personal_scenarios_persisted": 0,
+  "policy_hash": "9e73a9cc0b436c19ba3babb2da36e840280b01140151b5a3de2f84df40cb5f90",
+  "prepare_run": 38580837811,
+  "previous_forward_result_ids_unchanged": true,
+  "previous_ten_routes_compatible": true,
+  "prior_read_projections_per_compatibility_certificate": 22,
+  "private_origin": "https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app",
+  "public_denial": {
+    "calculator": 404,
+    "review": 404
+  },
+  "recovery_revision": "tlws-mf-review-dev-dev-fwd-20261014b-calculator",
+  "remaining_sprints": {
+    "MF-E05-12": "source authority pending; not completed",
+    "MF-E15": "final universe/API/operations handover only after remaining deliverables"
+  },
+  "review_appended": {
+    "certifications": 0,
+    "events": 0,
+    "policies": 1,
+    "results": 0,
+    "snapshots": 0
+  },
+  "rollout_id": "dev-hist-20261014a",
+  "runtime_git_sha": "957ba7d8ba22e4a70d8bac66219123fcdd223b40",
+  "schema_changes": 0,
+  "serving_revision": "tlws-mf-review-dev-dev-hist-20261014a-historical",
+  "source_fund_rows": 14390,
+  "source_nav_rows": 4236075,
+  "source_rows_changed": 0,
+  "stages": {
+    "00-preflight.json": {
+      "execution": null,
+      "sha256": "97ea1ae447f590631e7f7e3ae6f5763b62fab42c28849d05e25fd08e9e8fcd53",
+      "stage": "historical-preflight"
+    },
+    "01-backup.json": {
+      "execution": null,
+      "sha256": "c66a887b0570b39d6d0b1889bfcd352c4ea25250de1caa9018b3d7d4d9557008",
+      "stage": "historical-backup"
+    },
+    "02-rehearsal.json": {
+      "execution": null,
+      "sha256": "e8063838f0c6a9589d36a41b5ec50ed64f7b38a59afdbbab20aa747098cd8c08",
+      "stage": "historical-rehearsal"
+    },
+    "03-installed.json": {
+      "execution": "mf-hist-install-dev-hist-20261014a-qtknm",
+      "sha256": "c659ec31b8f24c54483daba753b1e6628279e3178b0cb4828b1d0f880f44bc7a",
+      "stage": "historical-installation-execution"
+    },
+    "06-staged.json": {
+      "execution": null,
+      "sha256": "5d7a410246e363bb78a78536aa2cf49ab137449cab309e9d861aa67323821b5f",
+      "stage": "historical-staged"
+    },
+    "07-candidate.json": {
+      "execution": "mf-hist-candidate-dev-hist-20261014a-xkn8p",
+      "sha256": "be5d2faea739246465a590b4eb2486e1ec93295caadb74a4b7c158fa3a386693",
+      "stage": "historical-candidate-http"
+    },
+    "08-promoted.json": {
+      "execution": null,
+      "sha256": "054519aae1a4f022335fbd37d2db4d9a68348f2fa76c161ffe32440cd15022d2",
+      "stage": "historical-promoted"
+    },
+    "09-final.json": {
+      "execution": "mf-hist-final-dev-hist-20261014a-sx7qq",
+      "sha256": "fac209f8c23b23ea29cf4192a7a11950f4b465635577c43acf0ab81b6c926639",
+      "stage": "historical-final-http"
+    },
+    "12-recovery.json": {
+      "execution": "mf-hist-recovery-dev-hist-20261014a-q4lxc",
+      "sha256": "13f6a298b09af1c756b827193190b410d449745ebceeeae14915fa99b22e1ebc",
+      "stage": "historical-recovery"
+    },
+    "13-restored.json": {
+      "execution": "mf-hist-restored-dev-hist-20261014a-lrgqg",
+      "sha256": "59d3f5e7372b4aad339231d2c1f389592948fcf7951340ec42319da9b352d953",
+      "stage": "historical-restored"
+    },
+    "14-after-backup.json": {
+      "execution": null,
+      "sha256": "6913d01bf8ef8d1d01e44b0fe2ec8042e7da6e5b4098daf552967bb0c89bae67",
+      "stage": "historical-after-backup"
+    },
+    "14-preservation.json": {
+      "execution": null,
+      "sha256": "14744c80b2cf74d56db10e01b9283a8e9b2e4161eade3b14314d0a95e8bbe72d",
+      "stage": "historical-preservation-complete"
+    },
+    "compat-candidate-compat.json": {
+      "execution": "mf-hist-candidate-compat-dev-hist-20261014a-gr8h6",
+      "sha256": "f4871fba9e7e02c10faf3e5502236c91dc5633d469969f3679d876e9fe829113",
+      "stage": "historical-compatibility-candidate-compat"
+    },
+    "compat-final-compat.json": {
+      "execution": "mf-hist-final-compat-dev-hist-20261014a-x2gnb",
+      "sha256": "3286e4fedc8b594642fb3f68c6f6ecd667fb612419724a0b18b50072dd97e6db",
+      "stage": "historical-compatibility-final-compat"
+    },
+    "compat-recovery-compat.json": {
+      "execution": "mf-hist-recovery-compat-dev-hist-20261014a-jjk5g",
+      "sha256": "2551236140a48325e6b5440349481e52ec5b67728335880e1efecd20d30155af",
+      "stage": "historical-compatibility-recovery-compat"
+    },
+    "compat-restored-compat.json": {
+      "execution": "mf-hist-restored-compat-dev-hist-20261014a-6bs6d",
+      "sha256": "1b5bcc033b7c25adbc11b0075fd2ecd357fa48ef7390190a6fd792b481286605",
+      "stage": "historical-compatibility-restored-compat"
+    }
+  },
+  "status": "PROVIDER_DEV_ACCEPTED",
+  "tools_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:6522ef7afeec0465af742e2e09cb03c9c5f610048e0e50b67af7a2372489b1bf"
+}

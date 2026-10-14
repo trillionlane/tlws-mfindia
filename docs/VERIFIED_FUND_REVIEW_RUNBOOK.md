@@ -1116,3 +1116,72 @@ prior-layer/sequence preservation. No mock fixture or code-only check is DEV
 acceptance. Runtime-specific result identities must be recorded separately from
 clone identities. The finite provider feature is not whole-universe, investor
 execution, human correctness, consumer RBAC, licensed-source or production approval.
+
+### MF-E14 — accepted provider DEV closeout, 2026-10-14
+
+#51 merged at `957ba7d8ba22e4a70d8bac66219123fcdd223b40` after scoped self-review,
+37 focused tests and 911 full isolated PostgreSQL tests. Exact CI `38579836471`
+passed 910 tests with one guard skip, all eight contract checks, audit and all
+image/content checks. Image-only preparation `38580837811` succeeded; ordinary
+auto-deployment remained disabled/skipped.
+
+Rollout `dev-hist-20261014a` manifest hash is
+`fc3576f892cf20c56ca6cabc7173b8077f1251d2f22a4e03659dac84eb68c80a`.
+APP digest is `sha256:6c4473f649ab456b3a514b1e0523d5bdc26422f853e84b1602bf33f28ff2ae68`;
+PG18 tools digest is `sha256:6522ef7afeec0465af742e2e09cb03c9c5f610048e0e50b67af7a2372489b1bf`.
+Source labels were independently checked from immutable OCI metadata. The eleven-
+route contract SHA256 is `e40b1a3a3fb41e00c2c125e3c7b8cce62c82d6e079a2b87fb68344b069091818`;
+historical policy hash is `9e73a9cc0b436c19ba3babb2da36e840280b01140151b5a3de2f84df40cb5f90`.
+
+Fresh create-only regional backup and a new empty memory-bounded PG18 clone
+proved original source and prior review/calendar/rolling preservation, direct
+restricted logins, policy-only insertion and private historical simulations.
+The live migration-owner install appended only that immutable policy. No schemas,
+database permissions, original fields, NAVs, personal scenarios or results were
+rewritten, added to source tables or deleted.
+
+Zero-traffic historical execution `mf-hist-candidate-dev-hist-20261014a-xkn8p`
+and fixed-origin `mf-hist-final-dev-hist-20261014a-sx7qq` passed. Eight cases cover
+both types over four real schemes. Growth 101762 supplied a one-purchase lumpsum
+and 12-purchase SIP over the captured 2025-10-13..2026-10-13 interval; the actual
+held year has 247 observations with largest gap four days. ACT/365 money-weighted
+results were -3.93190000% and -4.90619893%, respectively, under the disclosed
+simulation/rounding policy—not an investor execution claim or forecast.
+IDCW 101763 returned `unsupported_option`; duplicate-signalled 139889 returned
+`quality_signalled`; unassessed 154701 returned `quality_evidence_unavailable`.
+Neither type supplied numbers for any control. Explicit null quality evidence
+was retained, not changed to an empty assessment.
+
+At candidate, fixed origin, recovery and restored origin, the separate forward
+certifier proved all prior ten paths, eight nonpersonal projection cases, 22
+coherent existing read projections and rejection of admin mutations under read
+scope. Its eight result IDs remained identical to MF-E13's accepted runtime;
+old mathematical policy/code behavior was not silently changed.
+
+Actual rollback to `tlws-mf-review-dev-dev-fwd-20261014b-calculator` passed private
+`mf-hist-recovery-dev-hist-20261014a-q4lxc`, with historical POST absent (404) and
+forward/prior paths working. Restoration passed
+`mf-hist-restored-dev-hist-20261014a-lrgqg`; all historical result IDs, source hashes,
+values and control reasons matched candidate and fixed-origin evidence.
+External unauthenticated review GET and historical POST both returned 404.
+The final internal/IAM/signed-assertion eleven-route revision
+`tlws-mf-review-dev-dev-hist-20261014a-historical` serves 100% untagged traffic at
+`https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app`.
+
+Final regional MVCC comparison confirmed all 4,236,075 source NAVs, 14,390 funds,
+all source rows/owners/ACLs/migration receipts and every prior review/calendar/
+rolling row and review sequence unchanged. Exactly one historical policy was
+appended; zero snapshots, results, events, certificates or personal scenarios.
+The machine-readable index `docs/evidence/mf-e14-dev-hist-20261014a.json` records
+16 verified stage seals, actual executions, replay/control observations and
+immutable backup generations/hashes. Protected full artifacts stay outside Git.
+
+Authorized backend consumers can use `POST /api/calculators/v1/backtests` alongside
+the unchanged forward endpoint and earlier routes. Provider DEV acceptance is
+limited to the declared Growth policy/covered pilot and unavailable controls.
+It does not certify retired-fund historical eligibility, IDCW investor returns,
+human fund correctness, application RBAC, whole-universe coverage, UI, new licensed
+sources or production. MF-E01–04 and MF-E13–14 are accepted; MF-E05–12 and MF-E15
+remain incomplete. Source access/retention permission remains mandatory before
+the official enrichment/distribution/TRI imports; the final handover cannot
+claim those unimplemented/source-gated features complete.
