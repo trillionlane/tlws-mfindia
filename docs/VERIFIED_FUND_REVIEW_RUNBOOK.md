@@ -952,6 +952,14 @@ certification recomputes eight nonpersonal cases, checks replay, invalid-input/P
 infeasible denials, private auth/no-store and an unchanged review ledger. The actual
 installer entrypoint is tested hermetically, not just its underlying store function.
 
+The calculator certifier additionally compares all seven existing read routes
+with exact coherent database projections for the declared cohort and requires
+read-scope rejection on both existing mutation routes (nine prior paths total).
+It does not recertify an older derived artifact as current, repeat a canary write,
+or force regeneration to hide a normal scheduled-refresh transition. Existing
+stale/historical/withheld states must survive the deployment honestly. HTTP replay
+must preserve status, no-store and exact result content, not just its JSON body.
+
 DEV acceptance remains separate: exact merged SHA/digests, fresh create-only
 archive, new empty memory-bounded restored clone, source and all retained-layer
 preservation, direct restricted logins, owner policy install, zero-traffic candidate,

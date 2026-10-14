@@ -12,6 +12,9 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
 from mfdataindia.calculators import forward, schemas, store
+from mfdataindia.analytics import schemas as calendar_schemas, store as calendar_store
+from mfdataindia.analytics import rolling_schemas, rolling_store
+from mfdataindia.review import schemas as review_schemas, store as review_store, publication
 from mfdataindia.review.auth import AssertionVerifier
 from mfdataindia.review.certification import metadata_identity
 from mfdataindia.review.policy import fingerprint
@@ -65,6 +68,39 @@ def scenarios():
     ]
 
 
+def compatibility_reads(conn, manifest):
+    """Exact read projections, not recertification of older derived artifacts.
+
+    A scheduled refresh can legitimately make retained artifacts stale. Never
+    mint another canary event, regenerate results, or relabel that state current
+    just to certify a source-independent calculator deployment.
+    """
+    def wire(model, value):
+        return model.model_validate(value).model_dump(mode="json")
+
+    row = conn.execute(
+        "SELECT policy_hash,policy_id,policy_version,document FROM mf_review.policies WHERE policy_hash=%s",
+        (manifest.policy_hash,),
+    ).fetchone()
+    cases = [
+        ("/api/review/v1/policies/" + manifest.policy_hash, wire(review_schemas.PolicyResponse, row)),
+        ("/api/review/v1/funds?limit=1", wire(review_schemas.QueueResponse,
+         review_store.queue(conn, after_code=0, limit=1, status=None, signal=None))),
+    ]
+    for code in manifest.cohort:
+        base = "/api/review/v1/funds/" + str(code)
+        cases.extend([
+            (base, wire(review_schemas.ReviewResponse, review_store.get_review(conn, code))),
+            (base + "/analytics", wire(review_schemas.ResultResponse, review_store.get_result(conn, code))),
+            (base + "/publication", wire(review_schemas.PublicationResponse, publication.get_publication(conn, code))),
+            ("/api/research/v1/funds/" + str(code) + "/calendar-returns",
+             wire(calendar_schemas.Response, calendar_store.get_calendar(conn, code))),
+            ("/api/research/v1/funds/" + str(code) + "/rolling-returns",
+             wire(rolling_schemas.PagedResponse, rolling_store.page(rolling_store.get_rolling(conn, code)))),
+        ])
+    return cases
+
+
 def certify(manifest, environment):
     parsed = conninfo_to_dict(environment["MFDATAINDIA_DSN"])
     if (
@@ -109,6 +145,9 @@ def certify(manifest, environment):
             return capture_review(conn)
 
     before = retained()
+    with psycopg.connect(environment["MFDATAINDIA_DSN"], row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        compatible = compatibility_reads(conn, manifest)
     result_ids = []
     with requests.Session() as session:
         session.trust_env = False
@@ -143,7 +182,9 @@ def certify(manifest, environment):
                 or response.json() != expected
             ):
                 raise ValueError("calculator private response differs from deterministic policy")
-            if post(body).json() != expected:
+            replay = post(body)
+            if (replay.status_code != 200 or replay.headers.get("Cache-Control") != "no-store"
+                    or replay.json() != expected):
                 raise ValueError("calculator replay differs")
             result_ids.append(expected["result_id"])
         for invalid in (
@@ -162,6 +203,28 @@ def certify(manifest, environment):
         ):
             if post(invalid).status_code != 422:
                 raise ValueError("calculator invalid/PII/infeasible denial not observed")
+        for route, expected in compatible:
+            response = session.get(origin + route, headers=headers, timeout=30, allow_redirects=False)
+            if (response.status_code != 200 or response.headers.get("Cache-Control") != "no-store"
+                    or response.json() != expected):
+                raise ValueError("prior private read projection changed during calculator rollout")
+        detail = compatible[2][1]
+        result = compatible[3][1]["result"]
+        denied_body = {
+            "expected_version": detail["version"], "expected_input_hash": result["input_hash"],
+            "result_id": result["result_id"], "reason": "read-scope denial; no event permitted",
+            "evidence": [], "status": "in_review", "disposition": "not_determined",
+        }
+        for suffix in ("reviews", "enrichment-proposals"):
+            body = denied_body if suffix == "reviews" else {
+                **{k: v for k, v in denied_body.items() if k not in ("status", "disposition")},
+                "fields": [{"field": "scheme_name", "proposed_value": detail["identity"]["scheme_name"]}],
+            }
+            response = session.post(origin + "/api/review/v1/funds/" + str(manifest.cohort[0]) + "/" + suffix,
+                json=body, headers={**headers, "Idempotency-Key": "forward-denial-" + suffix},
+                timeout=30, allow_redirects=False)
+            if response.status_code != 403 or response.headers.get("Cache-Control") != "no-store":
+                raise ValueError("calculator read assertion admitted an existing admin mutation")
     if retained() != before:
         raise ValueError("calculator requests persisted or changed review data")
     return seal_evidence(
@@ -179,6 +242,10 @@ def certify(manifest, environment):
             "records_appended": 0,
             "personal_scenarios_persisted": 0,
             "assumed_projection_not_forecast": True,
+            "prior_routes_compatible": 9,
+            "prior_read_projections_checked": len(compatible),
+            "prior_analytics_recertified_current": False,
+            "prior_canary_events_appended": 0,
             "consumer_application_rbac_certified": False,
         },
     )

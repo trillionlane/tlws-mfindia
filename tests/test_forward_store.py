@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import psycopg
 import pytest
@@ -83,9 +84,16 @@ def test_real_private_calculator_app_does_not_persist_scenarios(verified_db):
             {"policy_id": doc["id"], "policy_version": 1},
         )
     install(verified_db)
+    from test_verified_review_store import generate
+    from mfdataindia.calculators.certification import compatibility_reads
+    from mfdataindia.review.policy import policy
+
+    generate(verified_db, 1)
+    generate(verified_db, 2)
     with connection(verified_db, readonly=True) as conn:
         before = source_state(conn)
         prior = capture_review(conn)
+        compatible = compatibility_reads(conn, SimpleNamespace(cohort=[1, 2], policy_hash=fingerprint(policy())))
     key, verifier = trust()
     headers = {"Authorization": "Bearer " + assertion(key, scope=["review:read"])}
     request = {
@@ -106,5 +114,21 @@ def test_real_private_calculator_app_does_not_persist_scenarios(verified_db):
         assert actual.json() == forward.derive(request, forward.policy())
         assert actual.headers["Cache-Control"] == "no-store"
         assert actual.json() == client.post(path, json=request, headers=headers).json()
+        assert len(compatible) == 12
+        for route, expected in compatible:
+            response = client.get(route, headers=headers)
+            assert response.status_code == 200, response.text
+            assert response.json() == expected
+            assert response.headers["Cache-Control"] == "no-store"
+        for suffix, extra in (
+            ("reviews", {"status": "in_review", "disposition": "not_determined"}),
+            ("enrichment-proposals", {"fields": [{"field": "scheme_name", "proposed_value": "Fund 1"}]}),
+        ):
+            result = compatible[3][1]["result"]
+            body = {"expected_version": 0, "expected_input_hash": result["input_hash"],
+                    "result_id": result["result_id"], "reason": "denied read scope", "evidence": [], **extra}
+            response = client.post("/api/review/v1/funds/1/" + suffix, json=body,
+                headers={**headers, "Idempotency-Key": "forward-denial-" + suffix})
+            assert response.status_code == 403
     with connection(verified_db, readonly=True) as conn:
         assert before == source_state(conn) and prior == capture_review(conn)
