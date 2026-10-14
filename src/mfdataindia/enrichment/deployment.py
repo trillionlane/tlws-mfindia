@@ -13,6 +13,7 @@ from pydantic import Field, StrictInt, model_validator
 
 from mfdataindia.enrichment import evidence, operations, schemas, store
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.review.rollout import CONNECTION, GEN_SA, PROJECT, seal_evidence
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -134,6 +135,7 @@ def execute(manifest, environment, operation, session=None, *, root=Path("/app")
             conn.execute("SET LOCAL statement_timeout='120s'")
             conn.execute("SET LOCAL lock_timeout='5s'")
             acquire_nav_data_operation_lock(conn)
+            verify_runtime(conn, "generator")
             store.verify_acl(conn)
             for code in request.intake.codes:
                 if evidence.normalized(store.identity(conn, code)["amc"]) != evidence.normalized(request.intake.amc):

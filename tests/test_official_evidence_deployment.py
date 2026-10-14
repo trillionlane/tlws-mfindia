@@ -161,3 +161,19 @@ def test_real_restricted_reader_projects_retained_pdf_without_raw_access_or_fact
             conn.execute("SELECT content FROM mf_enrichment.blobs")
     with connection(verified_db, readonly=True) as conn:
         assert conn.execute("SELECT count(*) AS n FROM mf_enrichment.documents").fetchone()["n"] == 1
+
+
+@pytest.mark.postgres
+def test_import_rechecks_effective_original_source_privileges_before_append(verified_db, monkeypatch):
+    install(verified_db)
+    import psycopg
+    with psycopg.connect(verified_db) as conn:
+        conn.execute("ALTER ROLE mfdata_verified_generator CREATEDB")
+    monkeypatch.setattr(deployment, "pinned_dsn", lambda *args: runtime_dsn(verified_db, ROLES[0]))
+    manifest = SimpleNamespace(rollout_id="dev-test-0001", cohort=[1, 2])
+    source = request()
+    environment = {"ENRICHMENT_SOURCE": source.model_dump_json(), "ENRICHMENT_SOURCE_HASH": source.bind(manifest)}
+    with pytest.raises(ValueError, match="elevated"):
+        deployment.execute(manifest, environment, "import", Session(Response()))
+    with connection(verified_db, readonly=True) as conn:
+        assert conn.execute("SELECT count(*) AS n FROM mf_enrichment.documents").fetchone()["n"] == 0
