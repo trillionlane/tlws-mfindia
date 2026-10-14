@@ -683,3 +683,64 @@ MF-E02 is accepted for this bounded provider DEV scope. Runtime/source SHA remai
 source-v2 service, association writer and six-hour schedules are unchanged. This
 does not certify all funds, Insights/TDW application authorization, new UI or
 production. Start MF-E03 from the merged closeout; retain all prior artifacts.
+
+### MF-E03 canonical calendar returns — implementation, not DEV acceptance
+
+The opt-in `create_calendar_app` profile adds one route to the seven-route private
+profile: `GET /api/research/v1/funds/{code}/calendar-returns`. The existing review
+and publication factories/contracts and original read-v2 service remain unchanged.
+The shared policy registry stores `growth-calendar-nav-returns` v1. Calendar years,
+YTD and completed months use `(end NAV / start NAV - 1) * 100`, not annualized CAGR.
+Boundaries are Gregorian calendar ends; the price is the last actual observation
+on or before each target, with at most seven calendar days' disclosed lag. No
+look-ahead, invented NAV, source forward-fill or underlying source edits occur.
+Analysis date is the last captured fund NAV date, never the operator's wall clock.
+Unfinished months/years are omitted; absent/over-budget boundaries have null
+returns and reasons. Endpoint arithmetic does not certify daily continuity.
+
+Optional migration 025 creates only `mf_analytics.calendar_results` and
+`calendar_certifications`, their immutable/sealing triggers and restricted grants.
+It reuses exact retained NAV snapshots and the existing policy registry; core
+results and legacy monthly/yearly calculations are not repurposed or replaced.
+Generator can append results, but only the migration owner may register verified
+certificates. Default ingestion grants are revoked on the NEW objects only.
+Unknown sidecar relations, drifted ownership/ACLs or disabled sealing/immutability
+triggers fail closed. Backups include any existing calendar rows from the same
+exported MVCC snapshot, and new installation compares original source/review data.
+
+Normal reads select actual registered conformance evidence by immutable execution
+completion time. Uncertified artifacts never fall back to legacy calculations.
+Current eligibility is independent of certification: IDCW, quality-signalled,
+unassessed or no-covered-period cases remain withheld. Changed inputs never become
+current under an old certificate; supported unchanged historical windows may
+remain explicitly dated and never comparison eligible. An exact `result_id` query
+is a retained **audit-only** read and requires `review:admin`, not just read scope.
+It may expose an ineligible/staged artifact for conformance, not an eligibility
+override or a fund correctness decision. All responses are private/no-store.
+
+DEV rollout sequence under the standing fifteen-sprint approval:
+
+1. Freeze exact merged SHA, immutable application/PG18 tooling digests, policy,
+   original and additive contracts, trust/key/credential versions and <=10 funds.
+2. Take a fresh create-only private archive; restore onto a new empty task-owned
+   PostgreSQL 18 clone. Rehearse 025, effective restricted logins, immutable replay
+   and preservation of every original source/review/calendar record. Never restore
+   over DEV or delete old clones/backups.
+3. Use a migration-owner job to install the opt-in extension, then restricted
+   generator jobs to append a bounded cohort. No source migration receipt is
+   appended; no core/legacy result is overwritten.
+4. Stage the calendar factory at zero traffic. Verify immutable image/SHA/runtime
+   identity, network, numeric secret versions and private access. Run read-only
+   calendar conformance through the tag using the service's default IAM audience;
+   preserve/assert the original six and seventh routes as well.
+5. Promote the verified revision, remove tags, run a fresh service-origin calendar
+   certificate, then independently verify its immutable Cloud execution with
+   `analytics.operations.verified_record`. Register that exact record in an owner
+   job. Certify current private reads and original endpoint compatibility.
+6. Verify the exact serving configuration, public/assertion/audit-scope denial,
+   source/prior-row preservation and non-destructive recovery to the retained
+   seven-route profile. Record actual evidence before accepting MF-E03.
+
+No UI, source correction, public MFData API, consumer RBAC or whole-dataset
+analytics acceptance is included in this implementation. Source acquisition and
+IDCW adjustment remain later gated work; calculations use already-held NAV data.
