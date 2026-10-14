@@ -122,6 +122,48 @@ an ordered live inventory, not a stable historical snapshot during new appends.
 
 ## Remaining live acceptance before closing MF-E05
 
+### Approved next finite release: private DEV evidence rollout
+
+Deploy provenance/coverage, not accepted fund facts. Preserve the eleven existing
+routes, use `create_enrichment_app` for the fifteen-route candidate, retain one
+exact captured ABSL PDF and its declared two-fund Growth/IDCW cohort. Both PDF
+mappings remain explicitly `unmapped/pdf_parser_not_implemented` under policy v1;
+the newer local extraction artifacts are separate evidence, not secretly accepted
+by the old mapping policy. No whole-E05 or enriched-field completion claim.
+
+Execution sequence:
+
+1. Reconcile merged SHA, exact app/tool image digests, existing human operator,
+   private ingress/IAM, secret versions and the eleven-route recovery revision.
+2. Fresh regional immutable MVCC export; restore only into a new isolated clone.
+   Rehearse SQL 027, effective restricted roles, original-byte append/replay,
+   metadata reads and denial of raw blob access; compare original/prior layers.
+3. Execute the hash-pinned optional installation with the direct migration owner.
+   Existing source data/default privileges are not rewritten. Add one original
+   document through the dedicated generator, never the legacy facts loader.
+4. Source transfer is one private, create-only, exact-generation bucket object
+   inside this rollout prefix. Only temporary object-scoped generator read access
+   is permitted, with unconditional removal/verification after import, including
+   failed attempts. No grant to the consumer signer or local owner-DSN retrieval.
+5. Stage a private zero-traffic candidate. Run existing forward/historical checks
+   against the original four-fund control cohort, and new signed consumer-owned
+   HTTP checks for all four evidence route patterns, missing assertion, replay,
+   cache control, unsupported/partial coverage and absence of HTTP intake/raw reads.
+6. Promote only that exact candidate after all gates. Recheck the fixed URL,
+   restore the prior revision and verify evidence routes disappear, then restore
+   the candidate and recertify. Restore prior traffic before any candidate lookup
+   on failure; clear tags without deleting retained revisions or records.
+7. Take a second regional export. Prove every original source/prior-layer hash
+   unchanged; only the one declared policy/document/blob and two mappings may be
+   new. Keep backup generations, execution certificates and recovery proof.
+
+`deploy_official_evidence_dev.py install|import` and
+`certify_official_evidence_dev.py [--recovery]` are fixed DEV workers. They bind
+the exact source manifest/hash/generation and direct principals before connecting.
+HTTP certification states `accepted_facts_published:0`; this finite deployment
+does not certify source correctness, mapping acceptance, all-AMC coverage, field
+enrichment or Insights application RBAC. No additional GitHub gate variables.
+
 Obtain real permitted source bytes and exact bounded source/date/fund manifests;
 record failures/missing coverage rather than fabricate them. Fresh backup and
 operational restored-clone rehearsal must preserve all source and prior-sidecar
