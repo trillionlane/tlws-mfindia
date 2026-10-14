@@ -62,6 +62,23 @@ def test_runtime_cannot_execute_owner_installer_or_modify_registered_policy(veri
 
 
 @pytest.mark.postgres
+def test_direct_restricted_reader_captures_rows_without_new_sequence_privileges(verified_db):
+    install(verified_db)
+    reader = runtime_dsn(verified_db, ROLES[1])
+    with psycopg.connect(reader, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        assert conn.execute("SELECT has_sequence_privilege(current_user,'mf_review.events_event_id_seq','SELECT') AS allowed").fetchone()["allowed"] is False
+        retained = capture_review(conn, include_sequence=False)
+        assert "event_sequence" not in retained
+        assert set(retained) == {"policies", "snapshots", "results", "events"}
+        assert retained["policies"] and retained["events"] == {}
+    with psycopg.connect(reader, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="events_event_id_seq"):
+            capture_review(conn)
+
+
+@pytest.mark.postgres
 def test_real_private_calculator_app_does_not_persist_scenarios(verified_db):
     from mfdataindia.analytics.operations import install as calendar_install
     from mfdataindia.analytics.rolling_operations import install as rolling_install

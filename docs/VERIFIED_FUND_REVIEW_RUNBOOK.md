@@ -974,3 +974,23 @@ versions and actual coverage must be recorded before closeout. Runtime-specific
 result hashes remain distinguishable from clone hashes; both bind exact policy,
 normalized request and code/runtime identity. No consumer RBAC, UI, production or
 licensed-source/data-enrichment acceptance follows from this implementation.
+
+#### MF-E13 DEV evidence-reader repair (not acceptance)
+
+The first zero-traffic candidate certificate execution
+`mf-fwd-candidate-dev-fwd-20261014a-9xdrm` failed with
+`InsufficientPrivilege`. The restored clone reproduced the precise cause:
+the dedicated reader cannot SELECT `mf_review.events_event_id_seq`, intentionally.
+Traffic was restored to `tlws-mf-review-dev-dev-roll-20261014b-rolling` at 100%
+and all candidate tags were removed. No positive calculator certification or
+sprint acceptance is claimed from that failed execution.
+
+Consumer evidence now hashes all retained review rows without querying sequence
+state. Owner-operated backup/clone/final preservation keeps its original complete
+sequence checks. Reader privileges are not broadened; a direct restricted-login
+PostgreSQL regression proves this boundary. The existing admin-route denial probes
+also use deliberately non-applicable version/input dependencies, so an authorization
+regression cannot silently record a real review while testing read-scope rejection.
+The repaired source requires its own exact-head CI/review/merged image pins and
+fresh preservation gates before the DEV candidate is certified again. Previously
+installed immutable policy and all failed/recovery evidence remain retained.
