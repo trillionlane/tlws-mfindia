@@ -275,6 +275,63 @@ optional credentials/identities/services require reconciliation before first ins
 
 ### Manifest and approval
 
+#### Existing-human-operator execution arrangement
+
+`scripts/operator_verified_review_dev.py` supports an explicitly approved
+existing project operator without expanding the provider deployer's access to
+Insights. This is a separate local executor, not an impersonation or WIF bypass:
+every cloud command pins `--account`, verifies that the exact human credential
+exists and has an existing unconditional project Owner binding, and makes no
+Owner/Editor/consumer-actAs grant. Google Cloud still authorizes each actual
+operation. The project-role check is not a consumer RBAC certificate.
+
+The operator approval JSON has exactly `format`, `project`, `account`, `git_sha`,
+`operation` and `binding_hash`; its canonical SHA-256 must match the explicit
+approved operator hash. `format` is `mfdata-review-operator-approval-v1`, project
+is DEV only and operation is `bootstrap-consumer-trust` or `execute-rollout`.
+Bind bootstrap to the canonical hash of `trust_declaration()`; bind execution to
+the exact approved rollout manifest hash. Duplicate fields, service-account
+operators, wrong operations/pins and mismatched checkout are rejected before
+cloud calls. Execution requires a clean checkout at the exact **live merged main**
+SHA, not a locally edited branch or fabricated `origin/main` reference.
+
+Bootstrap creates a fresh consumer-owned Ed25519 signing secret and public trust
+secret, granting private-key reading only to the existing Insights runtime at
+the secret level. Public trust evidence is retained before creation; the private
+key is never written to local files, printed or fetched from Secret Manager by
+the provider runner. Existing credentials or partial prior bootstrap stop; no
+rotation or deletion is attempted. The key's issuer/audience/caller/scopes are
+fixed by the reviewed declaration. This establishes delegation infrastructure,
+not an implemented Insights actor login/admin-entitlement flow.
+
+Run only after operator approval, with private manifest/evidence files outside
+the checkout and a separately verified isolated PostgreSQL 18 clone server:
+
+```sh
+uv run python scripts/operator_verified_review_dev.py bootstrap-consumer-trust \
+  --operator-approval <approved-bootstrap-json> \
+  --approved-operator-hash <canonical-operator-approval-hash> \
+  --work-directory <new-absolute-private-receipt-directory>
+
+uv run python scripts/operator_verified_review_dev.py execute-rollout \
+  --operator-approval <approved-execution-json> \
+  --approved-operator-hash <canonical-operator-approval-hash> \
+  --manifest <approved-rollout-json> \
+  --approved-manifest-hash <canonical-manifest-hash> \
+  --work-directory <new-absolute-private-backup-and-evidence-directory>
+```
+
+Set `MFDATA_REVIEW_CLONE_ADMIN_DSN` through the established environment mechanism,
+never argv or output. The local executor retains backup bytes and all evidence on
+success/failure as well as the create-only GCS backup. It uses the same source
+locks, restricted principals, job checks, six-route certification and independent
+non-destructive recovery as the reviewed runner. Source and consumer runtime
+configuration remain unchanged; only the new feature's resources/privileges are
+provisioned. Do not overlap this local operation with a manual CI rollout or
+another DEV infrastructure deployment; reconcile their authoritative status
+before execution. Scheduled refresh/audit remains enabled and is guarded by the
+existing source-operation locks and input revalidation.
+
 The JSON shape below is a template, not executable configuration. Replace every
 placeholder from reviewed image preparation, the supported policy command,
 SHA-256 of the checked-in contract/migration, immutable secret versions and the

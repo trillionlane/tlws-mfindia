@@ -9,8 +9,13 @@ from mfdataindia.review.rollout import API_SA, CALLER_SA, CONNECTION, PROJECT, R
 
 
 class Cloud:
+    def __init__(self, *, account=None):
+        # Explicit local operator pin never changes shared gcloud configuration.
+        self.account = account
+
     def command(self, *args, input_text=None, json_output=False):
-        result = subprocess.run(['gcloud', *args], input=input_text, text=True, capture_output=True, timeout=1800)
+        argv = ['gcloud', *(['--account=' + self.account] if self.account else []), *args]
+        result = subprocess.run(argv, input=input_text, text=True, capture_output=True, timeout=1800)
         if result.returncode:
             # gcloud errors can include secret-bearing arguments/payloads.
             raise RuntimeError('cloud command failed: ' + args[0])

@@ -316,6 +316,13 @@ mutation was performed by preflight. Narrow provisioning permissions and the
 consumer-owned execution arrangement still require actual effective-permission
 verification; project-level role inventory alone is not that proof.
 
+MF-E01 continuation: an existing signed-in human project operator has actual
+Insights-runtime `iam.serviceAccounts.actAs` and source-secret access permissions
+observed through read-only permission probes. An explicit operator-mediated
+executor is being implemented/reviewed; this avoids any new provider-deployer
+control of Insights. Permission probes are diagnostic, not rollout acceptance.
+No trust creation, backup, schema install or source operation is claimed yet.
+
 ### Operational / API closeout remains separate
 
 - Observe the restored normal refresh and full audit cycle; activation probes
