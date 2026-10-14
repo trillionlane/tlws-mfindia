@@ -53,7 +53,9 @@ def test_private_installation_uses_existing_migrator_exact_immutable_secrets_and
         ROLE_ENV[r] + '=' + SECRETS[r] + ':' + str(versions[r]) for r in ROLES]
     assert (tmp_path / '03-install-execution.json').is_file()
     assert len([a for a in cloud.calls if a[:2] == ('secrets', 'remove-iam-policy-binding')]) == 3
-    assert all('--member=serviceAccount:' + MIGRATION_SA in a for a in cloud.calls)
+    assert all('--member=serviceAccount:' + MIGRATION_SA in a for a in cloud.calls
+               if a[1] in ('add-iam-policy-binding', 'remove-iam-policy-binding'))
+    assert len([a for a in cloud.calls if a[:2] == ('secrets', 'get-iam-policy')]) == 3
 
 
 @pytest.mark.parametrize('failure,removed', [('grant', 1), ('job', 3), ('remove', 3), ('stale_policy', 3)])

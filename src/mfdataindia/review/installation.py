@@ -79,6 +79,7 @@ def cloud_install(manifest, cloud, versions, directory):
                                        '--format=json', json_output=True)
                 if (not isinstance(policy, dict) or not isinstance(policy.get('bindings', []), list)
                         or any(not isinstance(b, dict) or not isinstance(b.get('members', []), list)
+                               or any(not isinstance(m, str) for m in b.get('members', []))
                                or 'serviceAccount:' + MIGRATION_SA in b.get('members', [])
                                for b in policy.get('bindings', []))):
                     raise ValueError('temporary secret-level reader binding remains or is unverified')
