@@ -101,7 +101,7 @@ def compatibility_reads(conn, manifest):
     return cases
 
 
-def certify(manifest, environment):
+def certify(manifest, environment, *, recovery=False):
     parsed = conninfo_to_dict(environment["MFDATAINDIA_DSN"])
     if (
         parsed.get("host") != "/cloudsql/" + CONNECTION
@@ -169,9 +169,11 @@ def certify(manifest, environment):
             timeout=30,
             allow_redirects=False,
         )
-        if denied.status_code != 401:
+        if denied.status_code != (404 if recovery else 401):
             raise ValueError("calculator assertion denial not observed")
-        for body in scenarios():
+        if recovery and post(first).status_code != 404:
+            raise ValueError("prior nine-route recovery still exposes calculators")
+        for body in ([] if recovery else scenarios()):
             expected = schemas.Response.model_validate(
                 forward.derive(body, forward.policy())
             ).model_dump(mode="json")
@@ -187,7 +189,7 @@ def certify(manifest, environment):
                     or replay.json() != expected):
                 raise ValueError("calculator replay differs")
             result_ids.append(expected["result_id"])
-        for invalid in (
+        invalid_cases = (
             {**first, "initial_paise": True},
             {**first, "annual_return_pct": "NaN"},
             {**first, "customer_name": "fixture-must-be-rejected"},
@@ -200,7 +202,8 @@ def certify(manifest, environment):
                 "annual_inflation_pct": "50",
                 "timing": "end",
             },
-        ):
+        )
+        for invalid in ([] if recovery else invalid_cases):
             if post(invalid).status_code != 422:
                 raise ValueError("calculator invalid/PII/infeasible denial not observed")
         for route, expected in compatible:
@@ -229,13 +232,14 @@ def certify(manifest, environment):
         raise ValueError("calculator requests persisted or changed review data")
     return seal_evidence(
         manifest,
-        "forward-http",
+        "forward-recovery-http" if recovery else "forward-http",
         {
             "level": "DEV_PRIVATE_HTTP",
             "origin": origin,
             "audience": audience,
             "policy_hash": fingerprint(forward.policy()),
             "endpoint": "POST /api/calculators/v1/projections",
+            "projection_available": not recovery,
             "scenarios": len(result_ids),
             "result_ids": result_ids,
             "source_writes": 0,

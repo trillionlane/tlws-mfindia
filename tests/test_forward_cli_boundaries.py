@@ -90,3 +90,9 @@ def test_certification_scenarios_are_nonpersonal_and_cover_all_declared_engines(
     values = scenarios()
     assert {v["kind"] for v in values} == {"lumpsum", "sip", "stepup_sip", "swp", "goal"}
     assert len(values) == 8 and all("customer_name" not in v for v in values)
+
+
+def test_fixed_recovery_entrypoint_does_not_introduce_environment_gate_modes():
+    text = (ROOT / "scripts/certify_forward_calculators_recovery_dev.py").read_text()
+    assert "certify(m, os.environ, recovery=True)" in text
+    assert "FORWARD_OPERATION" not in text and "CALCULATOR_OPERATION" not in text
