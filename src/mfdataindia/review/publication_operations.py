@@ -52,6 +52,46 @@ def verified_record(cloud, manifest, execution_name, origin, versions):
             'manifest':manifest.model_dump(mode='json'),'execution':execution,'certificate':certificate}
 
 
+def require_compatible_service(cloud, manifest, versions):
+    from mfdataindia.review.rollout_cloud import REVIEW_FACTORY, revision_name, verify_revision, verify_service
+    service = cloud.service()
+    verify_service(service)
+    expected = revision_name(manifest,REVIEW_FACTORY)
+    traffic = service['status'].get('traffic',[])
+    serving = [item for item in traffic if item.get('percent',0)>0]
+    if (any(item.get('tag') for item in traffic) or len(serving)!=1
+            or serving[0].get('revisionName')!=expected or serving[0].get('percent')!=100):
+        raise ValueError('certified compatible six-route revision must serve all untagged traffic before installation')
+    verify_revision(cloud.revision(expected),manifest,versions,factory=REVIEW_FACTORY)
+    cloud.iam(complete=True)
+    return expected
+
+
+def cloud_install(cloud, manifest, versions, directory):
+    """Normal operation refuses SQL activation beneath an incompatible old API."""
+    from mfdataindia.review.installation import MIGRATION_SA
+    prior = require_compatible_service(cloud,manifest,versions)
+    execution, certificate = cloud.job(manifest,'mf-pub-install-'+manifest.rollout_id,MIGRATION_SA,
+        ['scripts/operate_research_publication_dev.py'],
+        {'DEPLOYMENT_GIT_SHA':manifest.git_sha,'REVIEW_MANIFEST':manifest.model_dump_json(),'PUBLICATION_OPERATION':'install'},
+        ['MFDATAINDIA_DSN=tlws-mf-data-admin-dsn-dev:'+str(manifest.source_secret_version)],directory)
+    evidence = verify_evidence(manifest,'publication-install',certificate)
+    if (evidence.get('level')!='DEV_CLOUD_SQL_JOB' or evidence.get('status') not in ('INSTALLED','ALREADY_INSTALLED')
+            or evidence.get('original_source_rows_changed')!=0):
+        raise ValueError('publication installation not certified')
+    # Reconcile before feature staging; recover to this compatible image rather
+    # than the pre-extension image, which would reject the new SELECT grants.
+    try:
+        require_compatible_service(cloud,manifest,versions)
+    except BaseException:
+        try:
+            cloud.promote(prior)
+        finally:
+            cloud.close_access()
+        raise
+    return {'execution':execution,'certificate':certificate,'compatible_revision':prior}
+
+
 def capture_review(conn):
     """Hash whole prior rows, not just documents; retain dates, actors and grants."""
     if not conn.execute("SELECT to_regnamespace('mf_review') AS schema").fetchone()['schema']:

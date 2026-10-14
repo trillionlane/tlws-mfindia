@@ -184,6 +184,59 @@ def test_profile_and_factory_are_explicit_without_contract_or_environment_drift(
     assert revision_name(m, RESEARCH_FACTORY) == revision_name(m) + "-research"
 
 
+@pytest.mark.parametrize("drift", [None, "older_revision", "tag", "image", "split"])
+def test_installation_gate_requires_compatible_revision_before_any_database_job(tmp_path, drift):
+    m = manifest()
+    expected = revision_name(m)
+    traffic = [{"revisionName": expected, "percent": 100}]
+    if drift == "older_revision":
+        traffic[0]["revisionName"] = "older-incompatible-revision"
+    elif drift == "tag":
+        traffic.append({"revisionName": "older-incompatible-revision", "tag": "retained"})
+    elif drift == "split":
+        traffic[0]["percent"] = 90
+    candidate = revision(m)
+    if drift == "image":
+        candidate["spec"]["containers"][0]["image"] = "other-image"
+
+    class Boundary:
+        jobs = 0
+
+        def service(self):
+            return {
+                "metadata": {"annotations": {"run.googleapis.com/ingress": "internal"}},
+                "status": {"traffic": traffic},
+            }
+
+        def revision(self, name):
+            assert name == expected
+            return candidate
+
+        def iam(self, complete):
+            assert complete
+
+        def job(self, *args, **kwargs):
+            self.jobs += 1
+            return "actual-installation", seal_evidence(
+                m,
+                "publication-install",
+                {
+                    "level": "DEV_CLOUD_SQL_JOB",
+                    "status": "INSTALLED",
+                    "original_source_rows_changed": 0,
+                },
+            )
+
+    cloud = Boundary()
+    if drift:
+        with pytest.raises(ValueError):
+            publication_operations.cloud_install(cloud, m, {ROLES[2]: 1}, tmp_path)
+        assert cloud.jobs == 0
+    else:
+        receipt = publication_operations.cloud_install(cloud, m, {ROLES[2]: 1}, tmp_path)
+        assert cloud.jobs == 1 and receipt["compatible_revision"] == expected
+
+
 @pytest.mark.parametrize("fault", [None, "scope", "origin", "coverage", "cohort", "completion"])
 def test_record_collector_requires_actual_immutable_execution_and_complete_scope(
     monkeypatch, fault
