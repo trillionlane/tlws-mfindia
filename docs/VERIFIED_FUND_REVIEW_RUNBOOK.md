@@ -928,7 +928,9 @@ Requests select lumpsum, SIP, annual percent/fixed step-up SIP, SWP, or a curren
 inflation goal with regular/step-up reverse SIP. They explicitly state effective
 annual or nominal-annual/monthly-compounding rate and beginning/end cashflow timing.
 The stored `assumed-monthly-cashflow-planning` v1 policy fixes 50-digit Decimal
-arithmetic and monthly interest credit rounded HALF_EVEN to integer INR paise.
+arithmetic for effective-rate roots and monthly interest credit rounded HALF_EVEN
+to integer INR paise. Nominal annual rates use exact rational division by 1200
+before integer rounding so repeating decimals cannot bias a half-paise tie.
 This is deliberately a monthly rounded cashflow schedule, not an unrounded
 closed-form FV secretly presented as an account ledger. Each month reconciles
 opening + contribution + interest - payment = closing, and totals reconcile gain.

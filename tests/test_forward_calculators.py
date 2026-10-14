@@ -50,6 +50,16 @@ def test_small_feasible_goal_is_not_rejected_by_speculative_maximum_balance_over
             monthly_paise=100000000000000, timing="end")
 
 
+@pytest.mark.parametrize("rate,expected", [("0.1234", 926), ("-0.1234", -926)])
+def test_repeating_nominal_rate_cannot_bias_an_exact_half_paise_tie(rate, expected):
+    result = run("lumpsum", months=1, initial_paise=9000000, annual_return_pct=rate,
+                 rate_mode="nominal_annual_monthly")
+    exact = Fraction(Decimal(rate)) / 1200 * 9000000
+    assert abs(exact) == Fraction(1851, 2)
+    assert result["schedule"][0]["interest_paise"] == expected
+    assert result["summary"]["closing_paise"] == 9000000 + expected
+
+
 def test_lumpsum_nominal_rate_matches_independent_rational_monthly_schedule():
     result = run(
         "lumpsum", initial_paise=1234567, annual_return_pct="12", rate_mode="nominal_annual_monthly"

@@ -61,9 +61,9 @@ def scenarios():
         {"kind": "lumpsum", "initial_paise": 1000000, **{**common, "annual_return_pct": "-20"}},
         {
             "kind": "sip",
-            "monthly_paise": 100000,
+            "monthly_paise": 9000000,
             "timing": "end",
-            **{**common, "annual_return_pct": "12", "rate_mode": "nominal_annual_monthly"},
+            **{**common, "annual_return_pct": "0.1234", "rate_mode": "nominal_annual_monthly"},
         },
     ]
 

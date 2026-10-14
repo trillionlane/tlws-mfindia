@@ -4,6 +4,7 @@ from copy import deepcopy
 from decimal import Context, Decimal, ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_EVEN, localcontext
 from decimal import __libmpdec_version__
 import hashlib
+from fractions import Fraction
 import platform
 from pathlib import Path
 
@@ -21,7 +22,7 @@ _POLICY = {
     "money": "integer INR paise; no floats or personally identifiable fields",
     "months": "integer periods 1..600, not date/trading-day inference",
     "effective_rate": "monthly=(1+annual_percent/100)^(1/12)-1",
-    "nominal_rate": "monthly=annual_percent/1200; explicitly nominal with monthly compounding",
+    "nominal_rate": "monthly=annual_percent/1200 as an exact rational; explicitly nominal with monthly compounding; interest ties rounded from the exact ratio",
     "cashflow_timing": "caller chooses beginning or end; lumpsum exists before month one",
     "recurrence": "beginning cashflow -> interest credit -> end cashflow",
     "interest_rounding": "ROUND_HALF_EVEN to one paise EACH month before next month; not unrounded closed-form FV",
@@ -81,7 +82,7 @@ def engine_identity():
 def monthly_rate(rate, mode):
     value = Decimal(rate)
     if mode == "nominal_annual_monthly":
-        return value / 1200
+        return Fraction(value) / 1200
     if value == 0:
         return Decimal(0)
     return ((1 + value / 100).ln() / 12).exp() - 1
@@ -117,7 +118,14 @@ def simulate(months, rate, *, initial=0, base=0, step=None, withdrawal=0, timing
             balance -= paid
             if withdrawal and balance == 0 and depletion is None:
                 depletion = month
-        interest = int((Decimal(balance) * rate).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
+        if isinstance(rate, Fraction):
+            # A finite annual input divided by 1200 can repeat forever.
+            # Decimal approximation must not move an exact half-paise tie.
+            whole, remainder = divmod(balance * rate.numerator, rate.denominator)
+            interest = whole + int(2 * remainder > rate.denominator or
+                2 * remainder == rate.denominator and whole % 2 == 1)
+        else:
+            interest = int((Decimal(balance) * rate).quantize(Decimal(1), rounding=ROUND_HALF_EVEN))
         balance += interest
         if timing == "end":
             balance += deposit
