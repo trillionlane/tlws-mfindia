@@ -340,6 +340,17 @@ the existing migration workload, retaining the 180-second bound rather than
 lengthening an off-region transaction. Private signing material is never mounted
 in that installation job, and new credential-reader grants are temporary.
 
+MF-E01 live attempts `dev-review-20261014a/b` stopped before archive/install:
+the first had a sanitized pre-backup runtime failure; the second hit the unchanged
+120-second read-only statement limit. Reconciliation found no review schema,
+principals, credentials, service or archived rollout dump. Consumer trust/key
+versions 1 were successfully created and remain retained; no key rotation is
+planned. Regional backup/export is being added, not a relaxed timeout. The local
+10 GiB container VM is full; no image/volume pruning or database interruption is
+authorized. OCI metadata-only provenance was verified against the actual prepared
+image without downloading layers. Operational clone data remains in the private
+host-backed directory. These attempts do not complete MF-E01.
+
 ### Operational / API closeout remains separate
 
 - Observe the restored normal refresh and full audit cycle; activation probes

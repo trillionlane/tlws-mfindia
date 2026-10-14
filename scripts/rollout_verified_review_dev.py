@@ -6,7 +6,6 @@ import argparse
 import json
 import os
 import secrets
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -18,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 
 from mfdataindia.review.auth import AssertionVerifier  # noqa: E402
+from mfdataindia.review.image_provenance import verify_image  # noqa: E402
 from mfdataindia.review.policy import fingerprint  # noqa: E402
 from mfdataindia.review.rollout import (  # noqa: E402
     API_SA, CALLER_SA, CONNECTION, GEN_SA, PROJECT, ROLES, SECRETS,
@@ -69,7 +69,7 @@ def recover(cloud, staged, promotion_attempted, manifest):
     return recovery
 
 
-def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str, *, database_installer=None):
+def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str, *, database_installer=None, backup_creator=None):
     # All cloud resources are fixed or deterministically named in this module.
     # No cleanup state lives in a shell-local EXIT handler.
     source = proxy_dsn(cloud.secret('tlws-mf-data-admin-dsn-dev', manifest.source_secret_version))
@@ -85,13 +85,17 @@ def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str, *
         raise ValueError('cohort certification requires approved read/admin capabilities')
     # Verify prepared image provenance before DB/identity mutations.
     cloud_digest = manifest.image.split('@')[1]
-    pulled = subprocess.run(['docker', 'pull', manifest.image], capture_output=True, timeout=600)
-    if pulled.returncode:
-        raise RuntimeError('approved image unavailable')
-    inspected = subprocess.run(['docker', 'image', 'inspect', manifest.image], capture_output=True, text=True, check=True)
-    image = json.loads(inspected.stdout)[0]
-    if image['Config'].get('Labels', {}).get('org.opencontainers.image.revision') != manifest.git_sha:
-        raise ValueError('prepared image provenance differs from checkout')
+    verify_image(cloud, manifest.image, manifest.git_sha)
+    if backup_creator:
+        backup = backup_creator(manifest, cloud, directory)
+    else:
+        backup = local_backup(manifest, cloud, directory, source)
+    archive(directory, '01-backup', manifest, 'backup', {k: v for k, v in backup.items() if k != 'roles'})
+    return rollout_after_backup(manifest, cloud, directory, clone_dsn, source, backup, cloud_digest,
+                                database_installer=database_installer)
+
+
+def local_backup(manifest, cloud, directory, source):
     backup = fresh_backup(source, directory, PgTools())
     # Immutable create-only backup object. Never upload backups as GitHub artifacts.
     object_url = 'gs://tlws_mf_data_source/verified-review-rollouts/' + manifest.rollout_id + '/snapshot.dump'
@@ -105,7 +109,10 @@ def rollout(manifest: Manifest, cloud: Cloud, directory: Path, clone_dsn: str, *
         raise ValueError('archived backup bytes differ from the exported snapshot')
     confirmed.replace(directory / 'snapshot.dump')
     backup['object'] = {'uri': object_url, 'generation': str(backup_object['generation']), 'size': backup['backup_bytes']}
-    archive(directory, '01-backup', manifest, 'backup', {k: v for k, v in backup.items() if k != 'roles'})
+    return backup
+
+
+def rollout_after_backup(manifest, cloud, directory, clone_dsn, source, backup, cloud_digest, *, database_installer=None):
     rehearsal = rehearse(source, clone_dsn, backup, directory, manifest, ROOT, PgTools())
     archive(directory, '02-rehearsal', manifest, 'rehearsal', rehearsal)
 

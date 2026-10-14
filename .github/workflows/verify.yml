@@ -123,3 +123,10 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_review_app; from mfdataindia.review.policy import policy, validate_policy; assert len(create_review_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 6; validate_policy(policy()); assert Path("/app/sql/optional/023_verified_fund_review.sql").is_file(); assert Path("/app/scripts/sql/reconcile_verified_review_privileges.sql").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/verified_fund_review.py --help
+      - name: Build and verify dormant PostgreSQL 18 review-backup tools
+        run: |
+          set -euo pipefail
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          docker build --build-arg VCS_REF="${{ github.sha }}" --file Dockerfile.review-tools --tag "$tools_image" .
+          docker run --rm --entrypoint pg_dump "$tools_image" --version | grep -F 'PostgreSQL) 18.'
+          docker run --rm --entrypoint python "$tools_image" -c 'from mfdataindia.review.regional_backup import NativePg18; from pathlib import Path; assert Path("/app/scripts/backup_verified_review_dev.py").is_file()'

@@ -15,7 +15,7 @@ from typing import Literal
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, model_validator
 
 from mfdataindia.review.auth import AssertionVerifier
 from mfdataindia.review.policy import fingerprint
@@ -25,13 +25,20 @@ from mfdataindia.review.rollout import CALLER_SA, PROJECT
 
 class OperatorApproval(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
-    format: Literal['mfdata-review-operator-approval-v1']
+    format: Literal['mfdata-review-operator-approval-v2']
     project: Literal['trillionlane-dev']
     account: StrictStr = Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9._+-]*@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
     git_sha: StrictStr = Field(pattern=r'^[0-9a-f]{40}$')
     operation: Literal['bootstrap-consumer-trust', 'execute-rollout']
     binding_hash: StrictStr = Field(pattern=r'^[0-9a-f]{64}$')
     database_execution: Literal['private-cloud-run']
+    backup_image: StrictStr | None = Field(pattern=r'^asia-south1-docker\.pkg\.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:[0-9a-f]{64}$')
+
+    @model_validator(mode='after')
+    def backup_pin(self):
+        if self.operation == 'execute-rollout' and self.backup_image is None:
+            raise ValueError('operator execution requires immutable regional backup image')
+        return self
 
     @property
     def seal(self):

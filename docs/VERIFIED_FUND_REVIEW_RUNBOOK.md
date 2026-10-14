@@ -286,10 +286,31 @@ Owner/Editor/consumer-actAs grant. Google Cloud still authorizes each actual
 operation. The project-role check is not a consumer RBAC certificate.
 
 The operator approval JSON has exactly `format`, `project`, `account`, `git_sha`,
-`operation`, `binding_hash` and `database_execution`; its canonical SHA-256 must match the explicit
-approved operator hash. `format` is `mfdata-review-operator-approval-v1`, project
+`operation`, `binding_hash`, `database_execution` and `backup_image`; its canonical SHA-256 must match the explicit
+approved operator hash. `format` is `mfdata-review-operator-approval-v2`, project
 is DEV only, `database_execution` is `private-cloud-run`, and operation is
 `bootstrap-consumer-trust` or `execute-rollout`.
+`backup_image` is explicitly null for bootstrap and an immutable prepared
+`mfdataindia-review-tools@sha256:...` image for execution. Retained v1 approvals
+and bootstrap receipts are historical evidence, not fresh execution approvals.
+
+The regional backup worker runs as the existing restore workload beside Cloud
+SQL, with its existing source-admin-secret access and an exact-rollout-prefix
+temporary create-only archive grant. It exports a fresh PG18 dump under the same
+MVCC snapshot as the v1 preservation manifest, then archives the dump and baseline
+with generation-match-zero preconditions. It has no newly granted update/delete
+or general archive-read privilege. Original source data is read-only throughout.
+The controller requires actual execution completion, image/SHA/runtime/network/
+secret-version pins and one structured certificate, downloads immutable object
+generations and verifies size/SHA-256 before restored-clone rehearsal. The new
+create-only binding is removed and checked; existing historical snapshot read
+access remains untouched. No statement/lock/transaction limit is extended.
+
+Image provenance is verified via bounded, hash-checked OCI manifest/config reads
+from the exact Artifact Registry, including Linux amd64 selection and the source
+SHA label. Credentials never follow redirects, and no image layers are downloaded
+locally. This avoids consuming the shared container VM's remaining disk space;
+do not prune images/volumes or interrupt the existing database to make space.
 Bind bootstrap to the canonical hash of `trust_declaration()`; bind execution to
 the exact approved rollout manifest hash. Duplicate fields, service-account
 operators, wrong operations/pins and mismatched checkout are rejected before

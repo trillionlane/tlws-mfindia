@@ -17,6 +17,7 @@ from mfdataindia.review.operator import (  # noqa: E402
     verify_checkout, verify_operator,
 )
 from mfdataindia.review.installation import cloud_install  # noqa: E402
+from mfdataindia.review.regional_backup import cloud_backup  # noqa: E402
 from mfdataindia.review.policy import fingerprint  # noqa: E402
 from mfdataindia.review.rollout import load_manifest  # noqa: E402
 from mfdataindia.review.rollout_cloud import Cloud  # noqa: E402
@@ -69,7 +70,8 @@ def main(argv=None):
     module_spec.loader.exec_module(module)
     try:
         module.rollout(manifest, cloud, args.work_directory, os.environ['MFDATA_REVIEW_CLONE_ADMIN_DSN'],
-                       database_installer=cloud_install)
+                       database_installer=cloud_install,
+                       backup_creator=lambda item, adapter, folder: cloud_backup(item, adapter, folder, image=approval.backup_image))
     except BaseException:
         module.archive(args.work_directory, '07-failure', manifest, 'failed',
                        {'status': 'NOT_CERTIFIED', 'backup_and_artifacts_retained': True,
