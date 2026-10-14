@@ -317,7 +317,8 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | MF-E04 | Complete — bounded provider DEV acceptance, 2026-10-14 | PR #45 plus dispatch fix #46; 833 CI tests passed with one documented skip. Fresh archive and operational clone, restricted installation/generation, original/new private checks, registration, recovery and regional whole-source/prior-layer preservation passed. [Closeout evidence](evidence/mf-e04-dev-roll-20261014b.json). AMFI 101762 has 48 one-year and 24 three-year windows; five-year real coverage remains unavailable. |
 | MF-E05–MF-E12 | Pending source-access authority — not started | No new AMC/distribution/TRI imports; all original acceptance gates retained. |
 | MF-E13 | Complete — private deterministic forward calculators | #48/#49 deployed and certified at runtime `ae504db`, dataset v14. Eight real private scenarios, all nine prior paths, actual rollback/restoration, public denial and whole-source preservation passed. One immutable policy added; no source rows, schema/grants or personal scenarios changed. Evidence: `docs/evidence/mf-e13-dev-fwd-20261014b.json`. |
-| MF-E14–MF-E15 | Planned — not started | MF-E14 follows accepted MF-E13; final handover cannot hide unresolved source-dependent deliverables. |
+| MF-E14 | In progress — read-only historical Growth simulations | SIP/lumpsum and policy-bound XIRR over already-held snapshots; no source/scenario writes, new imports or UI. No DEV acceptance claimed yet. |
+| MF-E15 | Planned — not started | Final universe/API/operations handover cannot hide unresolved source-dependent deliverables. |
 
 The notes below are historical execution records, not the current status. The
 successful `dev-review-20261014d` chain supersedes the stopped attempts without

@@ -13,10 +13,11 @@ RESEARCH_FACTORY = 'mfdataindia.review.app:create_research_app'
 CALENDAR_FACTORY = 'mfdataindia.review.app:create_calendar_app'
 ROLLING_FACTORY = 'mfdataindia.review.app:create_rolling_app'
 CALCULATOR_FACTORY = 'mfdataindia.review.app:create_calculator_app'
+HISTORICAL_FACTORY = 'mfdataindia.review.app:create_historical_calculator_app'
 
 
 def api_args(factory):
-    if factory not in (REVIEW_FACTORY, RESEARCH_FACTORY, CALENDAR_FACTORY, ROLLING_FACTORY, CALCULATOR_FACTORY):
+    if factory not in (REVIEW_FACTORY, RESEARCH_FACTORY, CALENDAR_FACTORY, ROLLING_FACTORY, CALCULATOR_FACTORY, HISTORICAL_FACTORY):
         raise ValueError('unsupported private API deployment profile')
     return [factory, '--factory', '--host', '0.0.0.0', '--port', '8080', '--no-access-log']
 
@@ -26,7 +27,7 @@ def revision_name(manifest, factory=REVIEW_FACTORY):
     # One rollout can first establish a compatible six-route rollback target,
     # then stage the seven-route profile without reusing an immutable name or
     # manufacturing a different actor/canary solely for that second revision.
-    suffix = manifest.rollout_id + {REVIEW_FACTORY:'',RESEARCH_FACTORY:'-research',CALENDAR_FACTORY:'-calendar',ROLLING_FACTORY:'-rolling',CALCULATOR_FACTORY:'-calculator'}[factory]
+    suffix = manifest.rollout_id + {REVIEW_FACTORY:'',RESEARCH_FACTORY:'-research',CALENDAR_FACTORY:'-calendar',ROLLING_FACTORY:'-rolling',CALCULATOR_FACTORY:'-calculator',HISTORICAL_FACTORY:'-historical'}[factory]
     return SERVICE+'-'+suffix
 
 
