@@ -336,9 +336,11 @@ def page(payload, *, years=1, limit=100, cursor=None):
     identifier = artifact["result_id"] if artifact else None
     data = artifact["rolling"] if artifact else None
     rows = []
+    selected_summary_available = False
     if data:
         selected = next(t for t in data["terms"] if t["years"] == years)
         rows = selected["windows"]
+        selected_summary_available = selected["summary"]["unavailable_reason"] is None
     offset = 0
     if cursor is not None:
         try:
@@ -397,6 +399,8 @@ def page(payload, *, years=1, limit=100, cursor=None):
         data["terms"] = [{"years": t["years"], "summary": t["summary"]} for t in data["terms"]]
     return {
         **value,
+        "current_comparison_eligible": bool(value.get("current_comparison_eligible", False))
+        and selected_summary_available,
         "windows": selected_rows,
         "pagination": {
             "years": years,

@@ -827,6 +827,8 @@ evidence. Add a private opt-in read profile without changing existing frozen
 six/seven/eight-route or source-v2 contracts. Bounded paging must bind the retained
 result/term and reject inconsistent cursors; ordinary readers cannot bypass
 eligibility through retained audit access. No new per-gate environment flags.
+Normal response comparison eligibility applies to the requested term: another
+term's complete summary cannot make an unavailable five-year request eligible.
 
 Acceptance remains fresh archive/restored-clone preservation and replay, owner
 installation, bounded generation, original/additive private candidate/final

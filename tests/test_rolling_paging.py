@@ -96,3 +96,13 @@ def test_uncertified_or_ineligible_never_has_an_inferred_window_page():
     value = store.page({"code": 1, "artifact": None}, years=5)
     assert value["windows"] == [] and value["pagination"]["total_windows"] == 0
     assert value["pagination"]["next_cursor"] is None
+
+
+def test_requested_unavailable_term_never_inherits_another_terms_eligibility():
+    source = visible()
+    source["current_comparison_eligible"] = True
+    assert store.page(source, years=1)["current_comparison_eligible"]
+    assert not store.page(source, years=3)["current_comparison_eligible"]
+    assert not store.page(source, years=5)["current_comparison_eligible"]
+    source["current_comparison_eligible"] = False
+    assert not store.page(source, years=1)["current_comparison_eligible"]
