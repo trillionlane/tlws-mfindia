@@ -227,6 +227,25 @@ infrastructure reconciliation tool.
 
 ### Before execution approval
 
+Run the read-only metadata prerequisite inventory first. It never fetches secret
+payloads, connects to the database, provisions identities or grants IAM:
+
+```sh
+uv run python scripts/preflight_verified_review_dev.py \
+  --git-sha <reviewed-40-character-SHA> \
+  --source-version <numeric-version> --trust-version <numeric-version> \
+  --signer-version <numeric-version>
+```
+
+Exit 2 means unresolved metadata prerequisites; lookup failures remain unknown,
+not confirmed absence. Even exit 0 is `PREREQUISITES_OBSERVED_NOT_CERTIFIED`, not
+permission or certification: key correspondence, effective execution permissions,
+database principals and the entire backup/API acceptance chain remain unverified.
+The existing runner needs explicit consumer execution delegation. Do not add it
+automatically: prefer a separately reviewed consumer-owned execution arrangement
+over giving the provider deployer control of the Insights runtime. Existing
+optional credentials/identities/services require reconciliation before first install.
+
 - Reconcile live resources and choose up to ten actual codes. At minimum include
   eligible Growth and unsupported-option controls. Pin additional required coverage
   for explicit `signals: null`, unavailable metrics and quality signals as applicable.

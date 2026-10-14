@@ -106,6 +106,7 @@ New methods never silently relabel or replace earlier results.
 | P1 — UI-01 Insights admin grid | Existing Insights admin area: Excel-like list, search/filter, status column, field/source inspection, annotations, proposals and history. | Real admin-only backend integration; originals visible, no direct DB writes, no fake edit/save functionality. Separate consumer PR after DATA-05 contracts are agreed. |
 | P1 — ENR-01 Official AMC enrichment | Append dated complete portfolio disclosures and factsheet enrichment, starting with a bounded high-value AMC cohort; identifier mapping, provenance, coverage and parser validation. | Archived source bytes, exact scheme/plan matching, full-versus-partial coverage, cash/liability/derivative-aware checks and as-of dates. Existing holdings/facts remain intact. Depends on preservation contract; acquisition design can parallel ANA-01. |
 | P1 — ENR-02 Benchmark inputs | Acquire permitted authoritative TRI histories, map each fund to the appropriate dated benchmark and persist coverage/source evidence. | No fabricated TRI, guessed benchmark or undocumented price-index substitution. Assess access/licensing before acquisition. No calculated benchmark claims when required inputs are missing. |
+| P1 — IDCW-01/02/03 Distribution-adjusted research pilot | Authoritative distribution-event enrichment, deterministic total-return engine and certified private API publication for a bounded HDFC cohort, starting with AMFI 101763. | Three sequential sprints can form one finite provider PR; evidence coverage is the first go/no-go gate. Raw NAV and existing outputs remain unchanged; eligibility is per fund and historical window. See [IDCW delivery strategy](#idcw-distribution-adjusted-research-delivery-strategy). Insights UI is a separate consumer PR. |
 | P1 — ANA-02 Rich research analytics | Weighted security-level overlap alongside existing Jaccard; aligned benchmark comparisons, beta/alpha and suitable category-relative analytics. Publish policy-bound rolling analytics from the canonical engine. | Compatible holdings dates/fullness, identifier-based matching, aligned return windows and explicit limitations. Depends on ANA-01 and relevant ENR-01/02 coverage. Never call top-20 Jaccard full weighted overlap. |
 | P2 — CALC-01 Core projections | Shared deterministic SIP and lumpsum engine with explicit nominal/effective rates, contribution timing, rounding and assumptions; separate Insights controls/results. | Independently verified schedules, zero/negative-rate cases and meaningful validation. Illustrative projection, not forecast or actual execution. Engine follows ENH-01; can precede richer enrichment. |
 | P2 — CALC-02 Planning features | Step-up SIP, inflation-adjusted goal/reverse SIP and SWP with depletion timelines. | Reuse the same cash-flow/policy engine; test step boundaries, infeasible goals, partial final withdrawals and depleted corpus. Depends on CALC-01. |
@@ -136,6 +137,9 @@ deployed and accepted, with evidence for each claimed milestone.
 | UI-01 | Planned | — | — |
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
+| IDCW-01 | Planned — authoritative event evidence and coverage pilot | — | Source access, exact variant mapping and historical completeness not yet certified. |
+| IDCW-02 | Planned — policy-bound total-return engine | — | Depends on accepted IDCW-01 evidence and ENH-01/ANA-01 foundations; no adjustment engine implemented. |
+| IDCW-03 | Planned — certified-window private API publication | — | Depends on IDCW-02 verification and preservation proof; existing IDCW restrictions remain in force. |
 | ANA-02 | Planned | — | — |
 | CALC-01 | Planned | — | — |
 | CALC-02 | Planned | — | — |
@@ -176,6 +180,141 @@ automatic enrichment execution and live policy selection are not implemented.
 - Defer all-calculator historical modes, tax-complete transaction simulation and
   live rates until bounded product requirements justify them. Retired aggregator
   scraping and a new MFData UI are not enhancement dependencies.
+
+### IDCW distribution-adjusted research delivery strategy
+
+**Status:** planned enrichment/analytics feature, not an implemented capability
+or permission to acquire data, deploy, or activate IDCW comparison. Complete the
+current preservation-first DEV rollout before executing this track. Reuse the
+ENH-01 policy/lineage foundation and ANA-01 verified calculation conventions.
+Authoritative TRI is not a prerequisite for fund-only total returns; any later
+benchmark-relative claims still require ENR-02 inputs.
+
+Scope the first release to a finite HDFC cohort starting with **AMFI 101763
+(HDFC Flexi Cap Fund — Regular Plan — IDCW)**. Confirm exact identities and the
+historical window during source discovery; do not promise all-AMC or full-history
+coverage. The three sequential provider sprints may be delivered in one PR:
+
+1. **IDCW-01 — Event evidence and coverage.** Evaluate permitted acquisition
+   from [AMFI scheme distributions](https://www.amfiindia.com/otherdata/scheme-dividends)
+   and [HDFC NAV/IDCW disclosures](https://www.hdfcfund.com/nav-and-idcw), using
+   official notices/factsheets where needed. Append versioned event sidecars
+   with exact scheme/plan/option mapping, original source bytes/hash, retrieval
+   evidence, distribution amount and unit basis, record/ex-distribution/payment
+   dates where disclosed, applicable reinvestment NAV, documented unit events
+   and scheme-level levies. Do not assume record and payment dates are the
+   valuation date. Resolve historical percentage-versus-currency amounts only
+   using authoritative unit/face-value evidence. Retain conflicts and superseded
+   evidence. Prove completeness for each proposed window; absence of an event
+   record means unknown coverage unless authoritative evidence establishes no
+   payout. **Stop publication if access, identity or completeness cannot be
+   established; a reviewed source/coverage report is the discovery deliverable.**
+2. **IDCW-02 — Deterministic total-return engine.** Leave raw NAV, existing
+   calculations and source-quality evidence untouched. Generate a separate
+   reinvested wealth index and supported return/risk results under an immutable
+   policy version/hash. Specify event ordering, reinvestment timing/prices,
+   gross/net distribution and levy treatment, unit changes, missing observations,
+   numerical precision/rounding and complete NAV/event/code lineage. Investor
+   taxes and cash-payout investor simulations are separate features. Verify
+   independent fixtures for no distributions, distribution-only NAV drops,
+   repeated events, unit changes, gaps, conflicting evidence and undefined risk
+   ratios. Identical declared inputs/policy must replay identically; changed
+   events create new results rather than rewriting old ones. Never infer payouts
+   from drops, borrow Growth history or treat underlying-stock corporate actions
+   as fund-unit events.
+3. **IDCW-03 — Certified-window private API publication.** Publish additive
+   total-return fields/results separately from raw NAV changes, including
+   methodology, policy/input versions, coverage bounds and unavailable reasons.
+   Unlock only the verified fund/window/metric combinations; shorter certified
+   windows do not unlock longer ones. Retain lifecycle, freshness and quality
+   gates. Event-aware assessment must explain distribution effects without
+   deleting raw signals or blanket-clearing unrelated defects; human review
+   cannot bypass eligibility. Certify missing/partial/conflicting event cases,
+   source preservation, atomic result/eligibility publication and safe fallback
+   after input revisions. Preserve current contracts unless an explicit versioned
+   consumer migration is agreed. DEV rollout and acceptance remain separate
+   approval gates from code review/merge.
+
+**Finite outcome:** evidence-backed IDCW analytics for the certified pilot
+windows, with auditable unavailable reasons elsewhere. No source corrections,
+blanket IDCW activation, inferred distributions or silent replacement of old
+results. Subsequent Insights UI work presents raw NAV versus reinvested total
+return and reason-specific limitations in a separate consumer PR; it does not
+duplicate the provider calculation engine.
+
+### Approved 15-sprint backend/data delivery sequence
+
+User authorization on 2026-10-14 covers planning, implementation, push, review,
+merge and scoped DEV rollout/certification for this sequence. Each sprint must
+deliver its own finite accepted result before the next sprint begins. This is
+not authorization for data deletion, wholesale model replacement, UI work,
+production operations, unlicensed acquisition or weakened authentication.
+Existing records, identifiers, facts, NAVs and published results remain intact;
+all enhancements use additive versioned evidence/results and explicit APIs.
+Do not activate the dormant NAV correction executor. Necessary recovery removes
+feature exposure, not records, databases, schemas, retained revisions or backups.
+
+The sequence below refines the roadmap above, rather than creating duplicate
+enrichment/calculator projects. Scope each source-dependent release to a named
+cohort and demonstrably complete date window. A source-discovery report or mock
+fixture is useful progress but does not count as a consumed enriched dataset or
+completed source-dependent feature. Where permissions, consumer trust, licensing
+or evidence are unavailable, record the exact blocker and retain the gate; do not
+substitute inferred inputs or mark the sprint complete.
+
+| Sprint | Finite result and API/data boundary | Acceptance gate |
+| --- | --- | --- |
+| MF-E01 — Preservation-first DEV rollout | Execute PR #34's fresh snapshot/archive and operational restored-clone rehearsal; restricted principals/schema; separate private review service; bounded generation; six-route certification and non-destructive recovery verification. | Current merged SHA/image/policy/manifest pinned; fresh backup generation/hash and before/after preservation proof; effective runtime privileges, consumer-owned signer/trust and authorized execution arrangement; actual Cloud Run completion, private/public-denial checks and final provider certificate. No whole-DB or Insights RBAC claims. |
+| MF-E02 — Refresh/audit publication coherence | Add a versioned certified research snapshot/publication boundary so a source refresh cannot silently relabel stale analytics or unnecessarily blank otherwise verified historical windows. | Preserve live source reads and legacy v2 semantics; publish new current-versus-last-certified context explicitly. Interrupted refresh/audit/publication and concurrent reads tested; no claim that old assessment validates new inputs. Observe a real refresh/audit cycle in DEV. |
+| MF-E03 — Canonical calendar/monthly returns | Stored policy-bound completed-year, calendar YTD and month-end return artifacts with explicit boundary/date conventions and null reasons. | Independent arithmetic fixtures, leap-year/month-end/gap/short-history cases, deterministic replay and exact lineage; private additive read contract and real eligible Growth cohort certified. Existing monthly/yearly results retained. |
+| MF-E04 — Canonical rolling analytics | Anniversary-window rolling return series and summaries from the provider engine, independent of any UI chart selection. | Declared endpoint schedule and start-observation rule; no look-ahead, invented NAV or unsupported annualization; minimum observation/coverage gates and private reads tested on real covered windows. |
+| MF-E05 — Official enrichment evidence foundation | Append-only archived source manifest, exact variant/security mapping, parser policy and coverage ledger for a bounded official AMC cohort. | Access/retention permitted; source bytes/hash/as-of evidence; duplicate/revised/conflicting/partial documents retained and distinguished. No existing loaders redirected into source overwrites. Bounded import and private provenance/coverage reads certified. |
+| MF-E06 — Dated official fund facts | Publish versioned official factsheet enrichments for the selected cohort: disclosed AUM, expenses, manager, benchmark name and other explicitly supported fields. | Field-level provenance, units, dates, exact variant/fund-level scope and missing/conflicting reasons. Originals remain readable; no silently borrowed sibling values. Real source-to-API samples certified. |
+| MF-E07 — Complete official portfolios | Versioned full holdings snapshots with security identifiers, weights, cash/liability/derivative treatment and source date/fullness. | Named AMC/date cohort; parser reconciliation against complete disclosure totals and independent rows; no top-ten subset labelled full portfolio; inconsistent files retained as unaccepted evidence. Private snapshot/holdings/coverage reads certified. |
+| MF-E08 — Weighted overlap analytics | Deterministic security-level weighted overlap and concentration for pairs with compatible accepted portfolios. | Versioned security-identity/date/weight policy; independent pair references, disjoint/identical/cash/partial/gap cases; unavailable rather than fabricated full overlap. Existing Jaccard retained separately; real pair API certificate. |
+| MF-E09 — IDCW evidence pilot (IDCW-01) | Accepted distribution-event sidecars and coverage for HDFC AMFI 101763 and an explicitly bounded related cohort/window. | Exact plan/option mapping, amount/unit/date/reinvestment/levy evidence; historical percentage conversion only with authoritative basis; complete-event window proven. No event inference from NAV drops. Discovery-only is not completion. |
+| MF-E10 — IDCW total-return engine (IDCW-02) | Immutable-policy reinvested wealth index and supported return/risk artifacts for the verified event windows. | Independent reinvestment/event/unit-change fixtures; missing/conflicting evidence fails closed; gross/net/tax assumptions explicit; replay and preservation proof. No copying Growth returns or rewriting raw NAV. |
+| MF-E11 — Certified IDCW API publication (IDCW-03) | Additive private total-return reads with per-fund/window/metric eligibility, coverage and unavailable reasons. | Source revision changes invalidate current publication; lifecycle/freshness/event-aware quality gates retained; no blanket signal clearing or review override. Real pilot certification and no legacy contract drift. |
+| MF-E12 — Authoritative benchmark pilot | Versioned permitted TRI history, dated benchmark mapping and aligned benchmark-relative analytics for a finite mapped cohort. | License/access and exact TRI identity proven; no PRI substitution; aligned calendar/window/currency and versioned beta/alpha conventions independently tested. Missing history is unavailable. Real source and private API certificate required. |
+| MF-E13 — Deterministic forward calculators | Private calculation APIs for lumpsum, regular/step-up SIP, inflation-adjusted goal/reverse SIP and SWP/depletion, using one policy-bound cash-flow engine. | Explicit effective/nominal rate, deposit/withdrawal timing, precision and rounding; cash-flow schedules and infeasible/zero/negative-rate/partial-final-withdrawal cases independently verified. Assumed projections, not forecasts; no source writes or personal scenario persistence. |
+| MF-E14 — Historical Growth simulations | Bounded Growth-only historical SIP/lumpsum schedules and money-weighted return/XIRR with private reads/calculation contract. | Authoritative observations and explicit next-available-NAV/funds-availability policy; no look-ahead or source forward-fill. Short/gapped/ineligible histories, fees/tax exclusions, failed/multiple XIRR roots and exact cash flows tested. Real covered samples certified. IDCW investor simulation remains separate. |
+| MF-E15 — Dataset coverage and consumer handover | Controlled bounded batches across the declared eligible universe; preservation/coverage inventory, all new API contracts, performance/security/freshness/recovery certification and backend consumer handover. | Record population/counts, completed batches, excluded funds/windows and exact reasons; no unsupported whole-market claims. Real endpoint probes, pagination/replay/load bounds and private authorization tested. Retain all old/new results; publish current-versus-historical state. Final certificate cannot hide unresolved source-dependent gaps. |
+
+**Per-sprint loop:** start from reconciled merged main; freeze bounded acceptance
+criteria; implement and run focused plus proportionate full validation; push a
+dedicated PR; review the exact head in a separate adversarial pass (not a claim
+of independent human approval); fix findings and revalidate; merge only green,
+reviewed head; reconcile any automatic deployment; perform scoped DEV operations
+and actual data/API acceptance; commit/link evidence and close out. Stop on any
+unexpected source change, unconfirmed recovery, missing credential/permission,
+licensing constraint or unresolved P1/P2. No bypass of repository protections,
+Owner/Editor grants, provider control of Insights runtime, new per-gate variables
+or automatic deletion as cleanup.
+
+**Initial execution record:** PR #34 merged at
+`88eb8ad02cbddec09a25d7e1724cf1a91892fedb`; exact-merge verification passed and
+automatic DEV deployment was skipped. MF-E01 preflight on 2026-10-14 found no
+review trust/signer secrets or dedicated review identities. The Insights runtime's
+explicit service-account-user policy permits its own deployer, not the MFData
+deployer. Consumer-owned trust/signing bootstrap and a reviewed narrow execution
+arrangement are prerequisites; do not grant the provider deployer control of the
+Insights runtime to get around this. Image preparation is separate from rollout.
+
+| Sprint | Current status | Implementation / evidence |
+| --- | --- | --- |
+| MF-E01 | In progress — rollout prerequisites unresolved | PR #34 tooling merged; [image preparation](https://github.com/trillionlane/tlws-mfindia/actions/runs/38492612673) dispatched; no live installation/generation/canary yet. |
+| MF-E02–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
+
+Image preparation above completed successfully for PR #34's merged SHA; retained
+digest is `sha256:4b43c051aa75a0b6b913d0d27d188a0b487487ed446145e5eb76d617318990b7`.
+This is image provenance evidence only, not database or API certification. After
+any new merge, reconcile checkout/image pins again before execution.
+`scripts/preflight_verified_review_dev.py` confirmed the two missing secrets and
+unverified consumer execution arrangement through metadata-only live reads;
+28 hermetic cases passed locally. No source connection/payload access or rollout
+mutation was performed by preflight. Narrow provisioning permissions and the
+consumer-owned execution arrangement still require actual effective-permission
+verification; project-level role inventory alone is not that proof.
 
 ### Operational / API closeout remains separate
 
