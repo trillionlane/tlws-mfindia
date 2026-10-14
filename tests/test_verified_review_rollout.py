@@ -143,6 +143,18 @@ def test_cloud_lookup_failure_is_not_absence():
         Failing().service()
 
 
+def test_access_revocation_does_not_wait_for_service_lookup():
+    calls = []
+    class Boundary(Cloud):
+        def command(self, *args, **kwargs):
+            calls.append(args[2])
+            return {'bindings': []} if args[2] == 'get-iam-policy' else ''
+        def service(self):
+            pytest.fail('service describe must not govern access revocation')
+    Boundary().close_access()
+    assert calls == ['remove-iam-policy-binding', 'get-iam-policy']
+
+
 @pytest.mark.parametrize('mode', ['structured', 'text', 'wrong_image', 'wrong_sha', 'wrong_identity', 'wrong_secret', 'failed', 'duplicate'])
 def test_job_accepts_only_exact_completed_execution_and_its_certificate(tmp_path, mode):
     m = manifest()

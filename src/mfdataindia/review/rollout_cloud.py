@@ -75,15 +75,15 @@ class Cloud:
 
     def close_access(self):
         # No schema deletion, record deletion, or restoring over the database.
-        if self.service() is None:
-            return  # A successful exact-name list confirmed no service exists.
-        policy = self.command('run', 'services', 'get-iam-policy', SERVICE, '--project=' + PROJECT, '--region=' + REGION,
-                              '--format=json', json_output=True)
-        if not any(b['role'] == 'roles/run.invoker' and 'serviceAccount:' + CALLER_SA in b.get('members', []) for b in policy.get('bindings', [])):
-            self.iam(complete=False)  # Confirm empty known policy; don't guess.
-            return
-        self.command('run', 'services', 'remove-iam-policy-binding', SERVICE, '--project=' + PROJECT, '--region=' + REGION,
-                     '--member=serviceAccount:' + CALLER_SA, '--role=roles/run.invoker', '--condition=None', '--quiet')
+        # Attempt revocation before any lookup: describe/list outages must never
+        # prevent a safety write that could still succeed independently.
+        try:
+            self.command('run', 'services', 'remove-iam-policy-binding', SERVICE, '--project=' + PROJECT, '--region=' + REGION,
+                         '--member=serviceAccount:' + CALLER_SA, '--role=roles/run.invoker', '--condition=None', '--quiet')
+        except RuntimeError:
+            # Idempotent absence is only accepted after a successful exact list.
+            if self.service() is None:
+                return
         policy = self.iam(complete=False)
         if any(b['role'] == 'roles/run.invoker' and b.get('members') for b in policy.get('bindings', [])):
             raise ValueError('access revocation not confirmed')
