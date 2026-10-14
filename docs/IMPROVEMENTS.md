@@ -303,7 +303,7 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | Sprint | Current status | Implementation / evidence |
 | --- | --- | --- |
 | MF-E01 | Complete — bounded provider DEV acceptance, 2026-10-14 | PRs #34–#37; fresh immutable backup, operational restored-clone preservation/replay, restricted direct logins, private deployment, four-fund generation, candidate/final six-route certification and live non-destructive recovery/recertification. [Closeout evidence index](evidence/mf-e01-dev-review-20261014d.json). Not whole-DB or Insights RBAC acceptance. |
-| MF-E02 | In progress — implementation, not DEV accepted | Append-only dated certification ledger, separate seven-route private research profile, immutable publication policy, explicit current/historical/invalidated states and preservation-first extension operations. Acceptance below; no live MF-E02 migration or deployment yet. |
+| MF-E02 | In progress — private DEV profile/recovery certified; normal cycle pending | PR #39 plus candidate-audience fix #40 merged. Fresh archive/restored-clone preservation, compatible six-route baseline, restricted additive installation, actual certificate registration and candidate/final/recovered seven-route private checks passed. [Dated runtime evidence](evidence/mf-e02-dev-pub-20261014b-runtime.json). Normal refresh/audit observation at 06:30/06:40 UTC remains required; not sprint completion. |
 | MF-E03–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
 
 The notes below are historical execution records, not the current status. The
@@ -415,6 +415,37 @@ publication responses; retain changed/current-versus-historical evidence and
 refresh the bounded result/certification if necessary. Synthetic interleavings or
 CI cannot substitute for that operational observation. No source corrections,
 data deletion, scheduler changes or UI work are part of this sprint.
+
+**MF-E02 runtime checkpoint — 2026-10-14:** the seven-route profile is privately
+serving revision `tlws-mf-review-dev-dev-pub-20261014b-research`, pinned to source
+SHA `8bb1f680dae5605563e7a0cc2e97f3ef254b2007`. The compatible six-route revision
+of that same image is the retained recovery target. Original read-v2 service,
+association writer and normal schedules were not redeployed or modified.
+
+Fresh backup and operational restored-clone proof include all prior review rows
+and event-sequence state. Live installation preserved the source/prior-review
+fingerprints and appended only the new publication policy in its sidecar registry;
+the source migration ledger stayed unchanged. Three actual dated provider
+certificates were registered, selected by immutable completion time. The four-fund
+control cohort remains `[101762,101763,139889,154701]`. Growth is eligible when
+exact/current; IDCW, duplicate-signalled and unassessed controls remain ineligible.
+Unassessed quality retains explicit `signals: null`; no signal was cleared.
+
+Recovery actually restored the compatible revision and removed the sole invoker,
+then restored the feature revision. Immediate recertification initially failed
+with HTTP 403 / missing `run.routes.invoke` while the re-grant was propagating;
+that failure and closed-state evidence remain retained. After exact-binding
+reconciliation and propagation, a new read-only private execution passed with
+unchanged result IDs. No data/schema/revision/backup deletion or restore over DEV
+was used. A separate baseline evidence-observation failure was reconciled using
+the original immutable successful execution, not by rerunning its mutations.
+
+This checkpoint does not close MF-E02. The pre-cycle reference is dataset v12,
+NAV as of 2026-10-13; current and retained input hashes still agree. The next normal
+refresh/audit cycle must demonstrate live current-versus-historical behavior and
+fresh certification where required. No manual refresh, audit, recomputation or
+source correction is authorized merely to accelerate this observation. MF-E03
+implementation waits for the complete MF-E02 acceptance gate.
 
 ### Operational / API closeout remains separate
 

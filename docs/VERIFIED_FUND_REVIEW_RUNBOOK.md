@@ -608,3 +608,38 @@ DEV and recertifying current-versus-historical behavior. No scheduler rescheduli
 manual source rewrites, legacy recomputation or quality-signal clearing is part of
 that observation. Neither the implementation/tests nor a staged private revision
 are MF-E02 acceptance evidence until the complete live chain succeeds.
+
+### MF-E02 runtime checkpoint — normal cycle still pending
+
+The [dated runtime evidence index](evidence/mf-e02-dev-pub-20261014b-runtime.json)
+records actual backup, clone, installation, compatible baseline, private profile
+and recovery proof for SHA `8bb1f680dae5605563e7a0cc2e97f3ef254b2007`. It is not a
+new certificate and does not certify future dataset versions or whole-DB coverage.
+Both the base six routes and additive publication read passed on the zero-traffic
+candidate and service origin, and the recovered service passed the publication
+read after access propagated. Three dated certificates are stored; no original
+source/prior artifact was replaced and no source migration receipt was appended.
+
+Retain failures too: one completed baseline execution's evidence was unavailable
+to its immediate observation but subsequently passed exact immutable execution
+verification. Recovery restored prior traffic/closed access; reconciliation checked
+current input hashes before restoring the certified compatible revision, without
+reexecuting the original job. The recovery drill's first HTTP probe then received
+403 / `run.routes.invoke` following re-grant; after access reconciliation and
+propagation, the new read-only probe passed. IAM policy reads alone are not HTTP
+readiness, and a completed job alone is not a certificate. Do not hide either
+failure or relabel its outcome PASS.
+
+The normal scheduler remains `0 */6 * * *` for refresh and `10 */6 * * *` for audit,
+both `Asia/Kolkata`; the next observed UTC times are 06:30 and 06:40 on 2026-10-14.
+The retained pre-cycle reference is dataset v12 with NAV as of 2026-10-13. Record
+actual immutable refresh/audit executions, before/after publication responses and
+input/result/certificate references. Old v12 evidence must not bless v13 inputs;
+unchanged historical windows may remain explicitly dated/reusable, never current
+comparison eligible. Preserve signals/nulls and retain original result artifacts.
+Do not dispatch source writes or change schedules merely to speed up acceptance.
+
+Remaining gates are real normal-cycle observation and any resulting bounded
+generation/certification/registration needed to establish current publication.
+MF-E02 stays in progress until these pass; MF-E03–MF-E15 are not started. A
+documentation-only checkpoint merge does not redeploy or recertify a new SHA.
