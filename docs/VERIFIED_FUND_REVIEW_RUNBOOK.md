@@ -576,6 +576,13 @@ runs as the consumer with the existing reader/signer versions, verifies unauthen
 assertion denial, exact raw responses against coherent DB reads and no-store,
 and appends no events or source records.
 
+For both candidate and final publication probes, set `REVIEW_AUDIENCE` to the
+untagged service URL. `REVIEW_ORIGIN` is the tagged candidate URL before promotion
+and the service URL afterward. The certifier rejects a tagged/missing audience
+or a target belonging to another service, mints IAM tokens only for the default
+audience and records both values in its evidence. This follows the [Cloud Run
+service-to-service authentication contract](https://docs.cloud.google.com/run/docs/authenticating/service-to-service).
+
 Stage the seven-route profile using the fixed `RESEARCH_FACTORY`; revision checks
 also verify the actual uvicorn command/arguments. Require existing-reader policy
 readiness before promotion. Retain previous traffic and revoke new exposure on

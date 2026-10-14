@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -19,8 +20,21 @@ from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.review.rollout import seal_evidence, service_origin
 
 
+def request_origins(environment):
+    origin = service_origin(environment.get('REVIEW_ORIGIN',''))
+    audience = service_origin(environment.get('REVIEW_AUDIENCE',''))
+    # Cloud Run ID tokens always name the default service audience, including
+    # requests sent to a zero-traffic tag URL. Never accept another service or
+    # a tagged URL as the audience. No custom audiences are configured here.
+    host = audience.removeprefix('https://')
+    if '---' in host or (origin != audience and not re.fullmatch(
+            r'https://[a-z0-9](?:[a-z0-9-]*[a-z0-9])?---'+re.escape(host), origin)):
+        raise ValueError('publication target and default service audience differ')
+    return origin, audience
+
+
 def certify(manifest, environment):
-    origin = service_origin(environment['REVIEW_ORIGIN'])
+    origin, audience = request_origins(environment)
     trust = json.loads(Path('/trust/config.json').read_text())
     if environment['DEPLOYMENT_GIT_SHA'] != manifest.git_sha or fingerprint(trust) != manifest.trust_hash:
         raise ValueError('publication certifier source/trust differs')
@@ -31,7 +45,7 @@ def certify(manifest, environment):
         'sub':manifest.actor,'scope':['review:read'],'iat':now,'nbf':now,'exp':now+240,'jti':uuid4().hex},private,algorithm='EdDSA')
     with requests.Session() as session:
         session.trust_env = False
-        iam = metadata_identity(session,origin)
+        iam = metadata_identity(session,audience)
         headers = {'X-Serverless-Authorization':'Bearer '+iam,'Authorization':'Bearer '+assertion}
         results = []
         for code in manifest.cohort:
@@ -57,7 +71,7 @@ def certify(manifest, environment):
             results.append({'code':code,'state':raw['state'],'certificate_id':raw['last_certified']['certificate_id'],
                 'result_id':raw['last_certified']['result_id'],'current_input_hash':raw['current_input_hash'],
                 'current_comparison_eligible':raw['current_comparison_eligible']})
-    return seal_evidence(manifest,'publication-http',{'level':'DEV_PRIVATE_HTTP','origin':origin,
+    return seal_evidence(manifest,'publication-http',{'level':'DEV_PRIVATE_HTTP','origin':origin,'audience':audience,
                          'publication_policy_hash':fingerprint(publication.policy()),'cohort':results,
                          'endpoint':'GET /api/review/v1/funds/{code}/publication','source_writes':0,
                          'records_appended':0,'insights_rbac_certified':False})
