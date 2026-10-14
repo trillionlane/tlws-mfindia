@@ -34,6 +34,9 @@
     "bytes": 48661228,
     "sha256": "0d1d1c395f97cb9166dda982f44f33fa08bed16a072f3ff74800d5874c5d63d6",
     "baseline_uri": "gs://tlws_mf_data_source/verified-review-rollouts/dev-review-20261014d/backup-evidence.json",
+    "baseline_generation": "1791946271441334",
+    "baseline_sha256": "18611b4011a6ec4e1ccfeaf1a03e0c6b4c0aa9adfdf1f8336e11204e7d637a02",
+    "baseline_bytes": 5073,
     "execution": "mf-review-backup-dev-review-20261014d-49g7h",
     "certificate_sha256": "2834f96466673ed76d57a3eb9a4d7d7c3cb76680e7a929dc5194a1d78aec0c8c"
   },
