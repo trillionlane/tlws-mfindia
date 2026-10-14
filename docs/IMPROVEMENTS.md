@@ -303,7 +303,8 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | Sprint | Current status | Implementation / evidence |
 | --- | --- | --- |
 | MF-E01 | Complete — bounded provider DEV acceptance, 2026-10-14 | PRs #34–#37; fresh immutable backup, operational restored-clone preservation/replay, restricted direct logins, private deployment, four-fund generation, candidate/final six-route certification and live non-destructive recovery/recertification. [Closeout evidence index](evidence/mf-e01-dev-review-20261014d.json). Not whole-DB or Insights RBAC acceptance. |
-| MF-E02–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
+| MF-E02 | In progress — implementation, not DEV accepted | Append-only dated certification ledger, separate seven-route private research profile, immutable publication policy, explicit current/historical/invalidated states and preservation-first extension operations. Acceptance below; no live MF-E02 migration or deployment yet. |
+| MF-E03–MF-E15 | Planned — not started | Sequential acceptance required; no dataset enrichment or API readiness claimed. |
 
 The notes below are historical execution records, not the current status. The
 successful `dev-review-20261014d` chain supersedes the stopped attempts without
@@ -384,6 +385,36 @@ certified revision and recertified all six routes with unchanged result IDs.
 No records, schemas, revisions, backups or local test/clone data were deleted.
 MF-E02 is next: explicit current-versus-last-certified publication context, with
 real refresh/audit observation and separate acceptance before MF-E03 begins.
+
+**MF-E02 finite acceptance:** preserve the original nineteen-route read-v2 API and
+six-route review-v1 contract; deploy the explicitly selected seven-route research
+profile on the existing private review service, with no new gate flags. Add only
+`mf_review.certifications` and one immutable publication policy; originals,
+prior policies/results/review events and source migration receipts stay unchanged.
+Only the migration owner may register a certificate, after read-only verification
+of its actual immutable Cloud Run execution, source image, network, reader/signer
+versions, completed status and service-origin certificate. Imported older evidence
+is ordered by actual completion time, never import time. A green conformance
+certificate is not a fund-correctness decision and does not override eligibility.
+
+The publication read must never relabel an old input hash as current or allow
+historical results in current comparisons. Reuse is limited to the exact retained
+NAV window, stable identity (excluding refresh-only last-seen date), supported
+metric policy/engine and non-invalidating quality evidence. Corrected/inserted/
+removed historical points, identity changes, new signals, missing assessment or
+unsupported methodology withhold numeric metrics; original artifacts remain
+available for audit. No uncertified/legacy fallback or inferred NAV is allowed.
+
+Before live installation: fresh private backup including prior-review fingerprints,
+new isolated restored-clone rehearsal, bounded atomic source/prior-artifact
+preservation checks and effective runtime privileges. Then stage the pinned private
+profile at zero traffic; register actual dated evidence, certify the new read and
+unchanged base routes, promote with prior-traffic/access recovery protection and
+recertify. Observe the next normal DEV refresh/audit cycle through coherent live
+publication responses; retain changed/current-versus-historical evidence and
+refresh the bounded result/certification if necessary. Synthetic interleavings or
+CI cannot substitute for that operational observation. No source corrections,
+data deletion, scheduler changes or UI work are part of this sprint.
 
 ### Operational / API closeout remains separate
 

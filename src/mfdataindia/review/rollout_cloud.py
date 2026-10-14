@@ -8,6 +8,24 @@ from pathlib import Path
 
 from mfdataindia.review.rollout import API_SA, CALLER_SA, CONNECTION, PROJECT, REGION, SERVICE, Manifest, service_origin
 
+REVIEW_FACTORY = 'mfdataindia.review.app:create_review_app'
+RESEARCH_FACTORY = 'mfdataindia.review.app:create_research_app'
+
+
+def api_args(factory):
+    if factory not in (REVIEW_FACTORY, RESEARCH_FACTORY):
+        raise ValueError('unsupported private API deployment profile')
+    return [factory, '--factory', '--host', '0.0.0.0', '--port', '8080', '--no-access-log']
+
+
+def revision_name(manifest, factory=REVIEW_FACTORY):
+    api_args(factory)
+    # One rollout can first establish a compatible six-route rollback target,
+    # then stage the seven-route profile without reusing an immutable name or
+    # manufacturing a different actor/canary solely for that second revision.
+    suffix = manifest.rollout_id + ('-research' if factory == RESEARCH_FACTORY else '')
+    return SERVICE+'-'+suffix
+
 
 class Cloud:
     def __init__(self, *, account=None):
@@ -94,7 +112,8 @@ class Cloud:
         if any(b['role'] == 'roles/run.invoker' and b.get('members') for b in policy.get('bindings', [])):
             raise ValueError('access revocation not confirmed')
 
-    def stage(self, manifest: Manifest, versions: dict, directory: Path):
+    def stage(self, manifest: Manifest, versions: dict, directory: Path, *, factory=REVIEW_FACTORY):
+        arguments = ','.join(api_args(factory))
         previous = self.service()
         if previous:
             verify_service(previous)
@@ -104,7 +123,7 @@ class Cloud:
                 raise ValueError('require one untagged prior traffic revision')
         env_file = directory / 'api-env.json'
         env_file.write_text(json.dumps({'DEPLOYMENT_GIT_SHA': manifest.git_sha, 'MFDATAINDIA_REVIEW_TRUST_FILE': '/trust/config.json'}))
-        candidate = SERVICE + '-' + manifest.rollout_id
+        candidate = revision_name(manifest, factory)
         # Arm deterministic cleanup BEFORE a possibly successful failed lookup.
         try:
             if previous is None:
@@ -117,21 +136,21 @@ class Cloud:
                              '--service-account=' + API_SA, '--ingress=internal', '--no-allow-unauthenticated',
                              '--revision-suffix=dormant-' + manifest.rollout_id, '--set-cloudsql-instances=' + CONNECTION,
                              '--network=tl-dev-vpc', '--subnet=tl-dev-mumbai', '--vpc-egress=all-traffic',
-                             '--command=uvicorn', '--args=mfdataindia.review.app:create_review_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log',
+                             '--command=uvicorn', '--args=' + arguments,
                              '--env-vars-file=' + str(dormant_file), '--set-secrets=MFDATAINDIA_DSN=tlws-mf-review-admin-dsn-dev:' + str(versions['mfdata_verified_admin']),
                              '--cpu=1', '--memory=512Mi', '--max-instances=2', '--quiet')
             self.command('run', 'deploy', SERVICE, '--project=' + PROJECT, '--region=' + REGION, '--image=' + manifest.image,
                          '--service-account=' + API_SA, '--ingress=internal', '--no-allow-unauthenticated', '--no-traffic',
                          '--tag=cert-' + manifest.rollout_id,
-                         '--revision-suffix=' + manifest.rollout_id, '--set-cloudsql-instances=' + CONNECTION,
+                         '--revision-suffix=' + candidate.removeprefix(SERVICE+'-'), '--set-cloudsql-instances=' + CONNECTION,
                          '--network=tl-dev-vpc', '--subnet=tl-dev-mumbai', '--vpc-egress=all-traffic',
-                         '--command=uvicorn', '--args=mfdataindia.review.app:create_review_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log',
+                         '--command=uvicorn', '--args=' + arguments,
                          '--env-vars-file=' + str(env_file), '--set-secrets=MFDATAINDIA_DSN=tlws-mf-review-admin-dsn-dev:' + str(versions['mfdata_verified_admin'])
                          + ',/trust/config.json=' + manifest.trust_secret + ':' + str(manifest.trust_version),
                          '--cpu=1', '--memory=512Mi', '--max-instances=2', '--quiet')
             service = self.service()
             verify_service(service)
-            verify_revision(self.revision(candidate), manifest, versions)
+            verify_revision(self.revision(candidate), manifest, versions, factory=factory)
             self.command('run', 'services', 'add-iam-policy-binding', SERVICE, '--project=' + PROJECT, '--region=' + REGION,
                          '--member=serviceAccount:' + CALLER_SA, '--role=roles/run.invoker', '--condition=None', '--quiet')
             self.iam(complete=True)
@@ -161,8 +180,21 @@ class Cloud:
         # --wait failure, missing conditions or NonZeroExitCode are terminal.
         execution = self.command('run', 'jobs', 'execute', name, '--project=' + PROJECT, '--region=' + REGION,
                                  '--wait', '--format=json', '--quiet', json_output=True)
-        execution = self.command('run', 'jobs', 'executions', 'describe', execution['metadata']['name'],
+        observed, evidence = self.inspect_execution(manifest, execution['metadata']['name'], account, arguments,
+                                                    environment, secrets, image=approved_image)
+        return observed['metadata']['name'], evidence
+
+    def inspect_execution(self, manifest, name, account, arguments, environment, secrets, *, image=None):
+        """Read-only immutable execution verification; never runs/deploys a job."""
+        if not re.fullmatch('[a-z][a-z0-9-]{1,62}', name):
+            raise ValueError('require an exact immutable execution name')
+        approved_image = image or manifest.image
+        if approved_image != manifest.image and not re.fullmatch(r'asia-south1-docker\.pkg\.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:[0-9a-f]{64}', approved_image):
+            raise ValueError('unsupported immutable execution image')
+        execution = self.command('run', 'jobs', 'executions', 'describe', name,
                                  '--project=' + PROJECT, '--region=' + REGION, '--format=json', json_output=True)
+        if execution['metadata']['name'] != name:
+            raise ValueError('returned execution identity differs')
         conditions = execution['status'].get('conditions', [])
         if (not any(c['type'] == 'Completed' and c['status'] == 'True' for c in conditions)
                 or execution['status'].get('failedCount', 0) or execution['status'].get('cancelledCount', 0)
@@ -206,7 +238,7 @@ class Cloud:
                 evidence.append(value)
         if len(evidence) != 1:
             raise ValueError('require exactly one structured execution certificate')
-        return execution['metadata']['name'], evidence[0]
+        return execution, evidence[0]
 
 
 def verify_service(service):
@@ -216,12 +248,13 @@ def verify_service(service):
         raise ValueError('review ingress/IAM must remain private')
 
 
-def verify_revision(revision, manifest, versions):
+def verify_revision(revision, manifest, versions, *, factory=REVIEW_FACTORY):
     spec = revision['spec']
     container = spec['containers'][0]
     env = {e['name']: e for e in container.get('env', [])}
     annotations = revision['metadata'].get('annotations', {})
     if (spec['serviceAccountName'] != API_SA or container['image'] != manifest.image
+            or container.get('command') != ['uvicorn'] or container.get('args') != api_args(factory)
             or env.get('DEPLOYMENT_GIT_SHA', {}).get('value') != manifest.git_sha
             or env.get('MFDATAINDIA_REVIEW_TRUST_FILE', {}).get('value') != '/trust/config.json'
             or env.get('MFDATAINDIA_DSN', {}).get('valueFrom', {}).get('secretKeyRef') != {'name': 'tlws-mf-review-admin-dsn-dev', 'key': str(versions['mfdata_verified_admin'])}

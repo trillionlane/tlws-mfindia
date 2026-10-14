@@ -13,7 +13,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 from pydantic import ValidationError
 
-from mfdataindia.review import schemas, store
+from mfdataindia.review import publication, schemas, store
 from mfdataindia.review.auth import AssertionVerifier, Principal
 from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.store.dsn import resolve_dsn
@@ -24,7 +24,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -42,6 +42,8 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                 pool.wait(timeout=10)
                 with pool.connection() as conn:
                     verify_runtime(conn, "api")
+                    if research:
+                        publication.verify_installation(conn)
                 yield
             finally:
                 pool.close()
@@ -127,4 +129,14 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         return run(lambda conn: store.record_event(conn, code, request.model_dump(mode="json"), kind="proposal",
                    caller=principal.caller, actor=principal.actor, idempotency_key=idempotency_key), write=True)
 
+    if research:
+        @app.get('/api/review/v1/funds/{code}/publication', response_model=schemas.PublicationResponse)
+        def research_publication(code: Code, principal: Principal = Depends(identity)):
+            return run(lambda conn: publication.get_publication(conn, code))
+
     return app
+
+
+def create_research_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Explicit deployment profile; unchanged review-v1 factory keeps six routes."""
+    return create_review_app(dsn, verifier=verifier, research=True)

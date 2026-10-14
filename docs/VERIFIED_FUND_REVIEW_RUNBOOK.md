@@ -529,3 +529,75 @@ storage and the named GCS generation; neither backup bytes, passwords nor signin
 material enter Git/GitHub artifacts. The record contains no private keys and
 does not grant the provider deployer control of Insights. Do not rerun the
 first-install command against the now-existing principals/secrets/schema.
+
+### MF-E02 publication extension — implementation, not live acceptance
+
+`create_review_app` and its frozen six-route OpenAPI remain unchanged by default.
+The explicitly selected `create_research_app` profile adds
+`GET /api/review/v1/funds/{code}/publication`; its separate contract is
+`contracts/mfdataindia-research-publication-v1.json`. It uses the same internal
+ingress, dedicated runtime, signed backend assertions and no-store responses.
+No new environment feature flag or public service is introduced.
+
+The new response separately reports current context/input hash/dataset/source
+revisions, dated certificate/result references, original metric-policy hash and
+captured context. `current_artifact_certified` means API artifact conformance,
+not quality clearance: callers must inspect eligibility, nulls and reasons.
+Historical windows are never eligible for current comparisons. A later source
+correction, identity change, disclosed quality signal, missing assessment or
+unsupported calculation policy/engine prevents numeric reuse. Correct historical
+values remain dated; no newer endpoint is synthesized from older values.
+
+The opt-in SQL 024 creates one append-only certification table and a seal trigger.
+It revokes owner-default grants on the new objects, grants the three existing
+runtimes SELECT only, and changes no source/prior table or source migration ledger.
+The installation operation stores a fixed policy binding the schema SHA, supported
+metric policy/version/code hash, selection, dependencies and unavailability rules.
+Existing source and prior-review fingerprints must match within a 180-second,
+advisory-locked transaction. Unknown prior-review tables fail preservation closed.
+
+`publication_operations.verified_record` reads actual immutable execution metadata
+and structured logs; it does not run a job, fetch a private key or accept a locally
+constructed PASS as cloud evidence. The operator checks exact existing human
+authority and merged code before operations, prepares a fresh manifest and both
+images, and runs the reviewed backup/rehearsal helpers. Do not reuse MF-E01's old
+backup or first-install runner for this extension: the source now contains existing
+review artifacts/principals. The regional backup includes their retained-row and
+event-sequence fingerprints in the exported snapshot, and the fresh clone retains
+them before/after the extension.
+
+`scripts/operate_research_publication_dev.py` is a private migration-owner worker
+for `install` or `register`, using only the existing source-admin secret. Registration
+replays an immutable dated certificate and never updates a prior row; selection
+uses actual completion time, so importing an old certificate cannot demote newer
+evidence. The local operator retains source execution metadata and certificate
+binding before submitting the record. `scripts/certify_research_publication_dev.py`
+runs as the consumer with the existing reader/signer versions, verifies unauthenticated
+assertion denial, exact raw responses against coherent DB reads and no-store,
+and appends no events or source records.
+
+Stage the seven-route profile using the fixed `RESEARCH_FACTORY`; revision checks
+also verify the actual uvicorn command/arguments. Require existing-reader policy
+readiness before promotion. Retain previous traffic and revoke new exposure on
+unconfirmed acceptance. Reuse the independent recovery actions; do not drop
+schemas/artifacts/secrets or restore over DEV. Original six-route certification
+still uses the frozen base contract. Choose an explicitly approved, unused
+certification-only canary for a new rollout; never overwrite the two existing
+MF-E01 canary events or any human review.
+
+**Required compatibility ordering:** the old MF-E01 image does not recognize
+SELECT grants on the new certification table in its startup privilege allowlist.
+After backup/rehearsal but BEFORE installing SQL 024, stage the new image with
+the unchanged six-route `REVIEW_FACTORY`, certify it and explicitly promote it.
+Capture this compatible revision as the rollback target. Only then install the
+extension and stage `RESEARCH_FACTORY`. Its deterministic revision suffix adds
+`-research`, so the same manifest/actor/idempotent canary can serve both stages
+without reusing an immutable revision name. Remove the first candidate tag before
+the second stage. Never restore the pre-extension MF-E01 image after new-table
+grants exist; recover to the certified compatible six-route revision instead.
+
+Completion additionally requires observing a real normal refresh/audit cycle in
+DEV and recertifying current-versus-historical behavior. No scheduler rescheduling,
+manual source rewrites, legacy recomputation or quality-signal clearing is part of
+that observation. Neither the implementation/tests nor a staged private revision
+are MF-E02 acceptance evidence until the complete live chain succeeds.
