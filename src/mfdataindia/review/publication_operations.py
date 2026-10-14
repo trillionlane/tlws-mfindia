@@ -92,7 +92,7 @@ def cloud_install(cloud, manifest, versions, directory):
     return {'execution':execution,'certificate':certificate,'compatible_revision':prior}
 
 
-def capture_review(conn):
+def capture_review(conn, *, include_sequence=True):
     """Hash whole prior rows, not just documents; retain dates, actors and grants."""
     if not conn.execute("SELECT to_regnamespace('mf_review') AS schema").fetchone()['schema']:
         return None
@@ -116,8 +116,10 @@ def capture_review(conn):
             for identifier, value in copy.rows():
                 rows[identifier] = hashlib.sha256(value.encode()).hexdigest()
         result[table] = rows
-    sequence = conn.execute('SELECT last_value,is_called FROM mf_review.events_event_id_seq').fetchone()
-    result['event_sequence'] = sequence
+    if include_sequence:
+        # Trusted owner preservation includes sequence state. The restricted
+        # consumer reader intentionally has no sequence SELECT capability.
+        result['event_sequence'] = conn.execute('SELECT last_value,is_called FROM mf_review.events_event_id_seq').fetchone()
     return result
 
 

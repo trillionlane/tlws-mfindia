@@ -142,7 +142,7 @@ def certify(manifest, environment, *, recovery=False):
             conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
             verify_runtime(conn, "api")
             store.installed_policy(conn)
-            return capture_review(conn)
+            return capture_review(conn, include_sequence=False)
 
     before = retained()
     with psycopg.connect(environment["MFDATAINDIA_DSN"], row_factory=dict_row) as conn:
@@ -213,8 +213,10 @@ def certify(manifest, environment, *, recovery=False):
                 raise ValueError("prior private read projection changed during calculator rollout")
         detail = compatible[2][1]
         result = compatible[3][1]["result"]
+        if detail["version"] == 9223372036854775807 or detail["current_input_hash"] == "0" * 64:
+            raise ValueError("cannot construct a guaranteed non-applicable denial probe")
         denied_body = {
-            "expected_version": detail["version"], "expected_input_hash": result["input_hash"],
+            "expected_version": 9223372036854775807, "expected_input_hash": "0" * 64,
             "result_id": result["result_id"], "reason": "read-scope denial; no event permitted",
             "evidence": [], "status": "in_review", "disposition": "not_determined",
         }
