@@ -19,7 +19,7 @@ from mfdataindia.review.rollout import CONNECTION, Manifest, seal_evidence, veri
 def execute(manifest, environment, root):
     if environment["DEPLOYMENT_GIT_SHA"] != manifest.git_sha:
         raise ValueError("rolling job source differs")
-    operation = environment["CALENDAR_OPERATION"]
+    operation = environment["ROLLING_OPERATION"]
     parsed = conninfo_to_dict(environment["MFDATAINDIA_DSN"])
     expected_role = "mfdata_verified_generator" if operation == "generate" else "mfdata_admin"
     if (
@@ -55,7 +55,7 @@ def execute(manifest, environment, root):
             if operation == "install":
                 result = operations.install(conn, root)
             else:
-                record = json.loads(environment["CALENDAR_RECORD"])
+                record = json.loads(environment["ROLLING_RECORD"])
                 previous = Manifest.model_validate(record["manifest"])
                 evidence = verify_evidence(previous, "rolling-http", record["certificate"])
                 if (
