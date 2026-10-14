@@ -100,6 +100,16 @@ def test_append_and_last_seen_refresh_do_not_relabel_or_destroy_original_window(
     assert state["last_certified"]["metrics"]["cumulative_return_pct"] == "10.00000000"
 
 
+def test_earlier_history_outside_retained_window_is_not_silently_added_or_invalidating():
+    value, result, cert = sample()
+    live = deepcopy(value)
+    live["observations"].insert(0, {"date": "2023-12-29", "nav": "90"})
+    state = publication.present(live, value, result, cert)
+    assert state["state"] == "historical_certified" and not state["current_comparison_eligible"]
+    assert state["last_certified"]["first_date"] == "2024-01-01"
+    assert state["last_certified"]["metrics"]["cumulative_return_pct"] == "10.00000000"
+
+
 @pytest.mark.parametrize(
     "change,reason",
     [
@@ -114,6 +124,9 @@ def test_append_and_last_seen_refresh_do_not_relabel_or_destroy_original_window(
 )
 def test_invalidating_dependencies_withhold_metrics_but_preserve_artifact(change, reason):
     value, result, cert = sample()
+    if change == "inserted":
+        value["observations"][0]["date"] = "2023-12-29"
+        result = store.derive(value, policy())
     live = deepcopy(value)
     original = deepcopy(result)
     if change == "correction":
@@ -121,7 +134,7 @@ def test_invalidating_dependencies_withhold_metrics_but_preserve_artifact(change
     elif change == "removed":
         live["observations"].pop(0)
     elif change == "inserted":
-        live["observations"].insert(0, {"date": "2023-12-29", "nav": "90"})
+        live["observations"].insert(1, {"date": "2024-01-01", "nav": "90"})
     elif change == "identity":
         live["identity"]["option_type"] = "IDCW"
     elif change == "signal":

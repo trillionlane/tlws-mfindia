@@ -18,7 +18,7 @@ _POLICY = {
     "certificate_scope": "provider_contract_conformance_not_fund_correctness",
     "selection": "latest successful service-origin certificate completion; certificate hash breaks ties",
     "current": "exact retained input hash equals complete current capture hash",
-    "historical": "retained original window only; exact observations and identity except last_seen_in_source",
+    "historical": "inclusive retained first_date..as_of window only; exact observations and identity except last_seen_in_source",
     "historical_quality": "eligible at capture; no later disclosed quality signal; no inference from absent assessment",
     "current_comparison": "current exact inputs AND captured eligibility AND current methodology eligibility",
     "historical_comparison": "never eligible for current comparisons",
@@ -68,7 +68,8 @@ def present(snapshot, retained, result, certificate):
     live_identity = {k: v for k, v in snapshot['identity'].items() if k != 'last_seen_in_source'}
     if original_identity != live_identity:
         reasons.append('identity_changed')
-    historical_points = [p for p in snapshot['observations'] if as_of and p['date'] <= as_of]
+    first_date = result['first_date']
+    historical_points = [p for p in snapshot['observations'] if first_date and as_of and first_date <= p['date'] <= as_of]
     if historical_points != retained['observations']:
         reasons.append('historical_observations_changed')
     quality = snapshot['context']['nav_quality']
