@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -67,6 +67,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if portfolios:
                         from mfdataindia.enrichment.portfolio_store import verify_acl as verify_portfolio_acl
                         verify_portfolio_acl(conn)
+                    if overlap:
+                        from mfdataindia.analytics.overlap_store import verify_acl as verify_overlap_acl
+                        verify_overlap_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -275,6 +278,31 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                                limit: Annotated[int, Query(ge=1,le=100)] = 50):
             return run(lambda conn: portfolio_store.holdings(conn,code,snapshot_id,after=after_row,limit=limit))
 
+    if overlap:
+        from mfdataindia.analytics import overlap as overlap_engine, overlap_schemas, overlap_store
+        from mfdataindia.enrichment.portfolio_schemas import PolicyResponse
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/overlap/v1/policy', response_model=PolicyResponse)
+        def overlap_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(overlap_engine.policy()), 'document': overlap_store.installed_policy(conn)})
+
+        @app.get('/api/overlap/v1/pairs/{left_code}/{right_code}', response_model=overlap_schemas.Response)
+        def overlap_pair(left_code: Code, right_code: Code, principal: Principal = Depends(identity),
+                         left_snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None,
+                         right_snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
+            return run(lambda conn: overlap_store.get(conn,left_code,right_code,left_snapshot_id=left_snapshot_id,right_snapshot_id=right_snapshot_id)[0])
+
+        @app.get('/api/overlap/v1/results/{result_id}', response_model=overlap_schemas.Result)
+        def overlap_result(result_id: Hash, principal: Principal = Depends(identity)):
+            return run(lambda conn: {k:v for k,v in overlap_store.result(conn,result_id).items() if k!='shared_holdings'})
+
+        @app.get('/api/overlap/v1/results/{result_id}/shared-holdings', response_model=overlap_schemas.Page)
+        def overlap_shared(result_id: Hash, principal: Principal = Depends(identity),
+                           after_isin: Annotated[str, Query(pattern=r'^(?:[A-Z]{2}[A-Z0-9]{9}[0-9])?$')] = '',
+                           limit: Annotated[int, Query(ge=1,le=100)] = 50):
+            return run(lambda conn: overlap_store.shared(conn,result_id,after=after_isin,limit=limit))
+
     return app
 
 
@@ -316,3 +344,8 @@ def create_official_facts_app(dsn: str | None = None, *, verifier: AssertionVeri
 def create_portfolios_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Explicit additive 22-route profile; prior 18-route factory is frozen."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True)
+
+
+def create_overlap_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Explicit additive 26-route profile; prior 22-route factory stays frozen."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True)
