@@ -1,0 +1,167 @@
+{
+  "analytics_eligible": false,
+  "complete_event_window_proven": false,
+  "coverage_state": "unknown",
+  "database_imported": false,
+  "derived_returns_generated": false,
+  "differences": [],
+  "engine_code_hash": "a966b41224719d383dbdfd5708b5c44ce20327e245fce258381f5a0e24d2f049",
+  "extractor_version": "6.20.1",
+  "format": "idcw-window-readiness-report-v1",
+  "issuer_rule_observations": {
+    "effective_amendment_history_verified": false,
+    "event_reinvestment_date_verified": false,
+    "event_reinvestment_nav_verified": false,
+    "nav_adjustment_timing_wording": "record_date_close_of_business",
+    "reinvestment_stamp_duty_rate_percent_as_reported": "0.005",
+    "rule_application": "not_applied_to_investor_or_scheme_returns",
+    "sai_pages": [
+      1,
+      167
+    ],
+    "scheme_levy_quantified": false,
+    "sid_pages": [
+      2,
+      57
+    ]
+  },
+  "listing_reconciliation": "corroborated_not_complete",
+  "listing_row_count": 2,
+  "listing_rows": [
+    {
+      "date": "2026-03-05",
+      "individual_inr_per_unit": "7.0000",
+      "others_inr_per_unit": "7.0000",
+      "scheme": "HDFC Flexi Cap Fund - Direct Plan - IDCW Option"
+    },
+    {
+      "date": "2026-03-05",
+      "individual_inr_per_unit": "7.0000",
+      "others_inr_per_unit": "7.0000",
+      "scheme": "HDFC Flexi Cap Fund - Regular Plan - IDCW Option"
+    }
+  ],
+  "nav_source_url": "https://portal.amfiindia.com/DownloadNAVHistoryReport_Po.aspx?frmdt=05-Mar-2026&todt=06-Mar-2026&tp=1&mc=0",
+  "pdf_text_hashes": {
+    "sai": [
+      {
+        "page": 1,
+        "sha256": "a35531f52e40406e65bd6c3728c70e1fd78438812858bcdb7b67695b9ac4230d"
+      },
+      {
+        "page": 167,
+        "sha256": "efe8f9a3161706545ffadb7488e2619e7056b903d8feb166837f950373123ab9"
+      }
+    ],
+    "sid": [
+      {
+        "page": 2,
+        "sha256": "602140f4cb8901c25d1adbd33837f293c53355c336bbc2228d51f3d25bd5cf63"
+      },
+      {
+        "page": 57,
+        "sha256": "a4e9391351776fb36ed4ba4e38921188930504f966c33555a2a455c730ccff3a"
+      }
+    ]
+  },
+  "pilot_listing_event_count": 1,
+  "policy": {
+    "acceptance": "always blocked for adjusted analytics; no override or caller-supplied proof flags",
+    "bounds": {
+      "csv_rows": 40,
+      "nav_days": 7,
+      "pages_per_document": 2,
+      "sources": 6
+    },
+    "conflicts": "explicit discrepancies retain both values and block readiness; never latest-wins",
+    "coverage": "captured query is not proof of server pagination, truncation, revisions, no missing events or unit-event completeness",
+    "id": "hdfc-idcw-window-readiness",
+    "listing": "exact historical query and all exported/displayed rows; Direct rows retained but not pilot observations",
+    "nav": "exact dated reported NAV only; neither record-day nor next-day NAV is inferred to be a reinvestment price",
+    "numeric": "finite positive decimal text; precision 50 for equality only; no return calculation or rounding",
+    "preservation": "read-only original inputs, exclusive new report; no DB/network/API/eligibility writes",
+    "publication": "offline_diagnostic_not_coverage_certificate_or_total_returns",
+    "rules": "narrow dated issuer wording, not a verified amendment chain, event allotment price or quantified scheme levy",
+    "scope": "101763 Regular IDCW; FY2025-26 diagnostic only",
+    "stamp_duty": "reported percentage rule only; not applied, not a scheme levy, not personal tax or actual units received",
+    "version": 1
+  },
+  "policy_hash": "241a80db1df641e92791e36406b3055dc9884784454c1df0ba5714eeca33adc7",
+  "query_state": "captured_not_completeness_proof",
+  "readiness_certified": false,
+  "record_day_cum_nav_matches": [
+    "2026-03-05"
+  ],
+  "remaining_gaps": [
+    "record_day_reported_nav_matches_cum_nav_not_verified_reinvestment_price",
+    "provider_listing_completeness_and_revision_history_unverified",
+    "applicable_reinvestment_date_and_price_unverified",
+    "scheme_levy_basis_unverified",
+    "unit_event_window_unverified",
+    "issuer_rule_amendment_chain_unverified",
+    "current_live_identity_not_checked",
+    "total_return_engine_and_private_publication_not_implemented"
+  ],
+  "report_hash": "0cbf5f09b9b8d3899fe3b77268a30333493a73f85ebbd4e5d2d2f4baf5b276c7",
+  "reported_nav_observations": [
+    {
+      "date": "2026-03-05",
+      "meaning": "reported_nav_not_reinvestment_price",
+      "nav_inr": "79.808",
+      "source_line": 10364
+    },
+    {
+      "date": "2026-03-06",
+      "meaning": "reported_nav_not_reinvestment_price",
+      "nav_inr": "71.772",
+      "source_line": 10365
+    }
+  ],
+  "request": {
+    "code": 101763,
+    "end": "2026-03-31",
+    "expected_snapshot_id": "9dd0520525891277bda573f581861ccfbfe8e7574873a6467a321dce7ac43415",
+    "format": "idcw-window-readiness-request-v1",
+    "listing": {
+      "file": "issuer-history.csv",
+      "sha256": "4e41cc4051e38aa9748978dadd3642e0b91edb47ac72bbda13934ee43f8e9014"
+    },
+    "listing_url": "https://www.hdfcfund.com/nav-and-idcw",
+    "nav": {
+      "file": "5d456f5b3a1dff41c39a5c275c66fc7f2927b1660919d681a29f406047a6a02f.source",
+      "sha256": "5d456f5b3a1dff41c39a5c275c66fc7f2927b1660919d681a29f406047a6a02f"
+    },
+    "nav_end": "2026-03-06",
+    "nav_start": "2026-03-05",
+    "observation": {
+      "file": "retained-observation.json",
+      "sha256": "68943fe888e859dfa25979452e27ddf67ef793349e04d68a58b3e0acdf83210e"
+    },
+    "observed_at": "2026-10-15T22:45:10.449404Z",
+    "query": {
+      "file": "query-context.json",
+      "sha256": "77f1ef0704e498dfc67bae34a2d7be69fb9a254a841f04a91d5e8c802e0a259e"
+    },
+    "sai": {
+      "file": "1e66bf430d3d15cbf50f4c77cbf0adcd571f8df30679437b49f6b6b7ed5b7f40.source",
+      "sha256": "1e66bf430d3d15cbf50f4c77cbf0adcd571f8df30679437b49f6b6b7ed5b7f40"
+    },
+    "sai_url": "https://files.hdfcfund.com/s3fs-public/2025-09/SAI%20with%20updated%20Addendum%20dated%20August%2029%2C%202025.pdf",
+    "sid": {
+      "file": "issuer-sid.pdf",
+      "sha256": "9adc9195aa435c67819d4fec0179031f12ca5c3c59ed14bf3701acd3df586eec"
+    },
+    "sid_url": "https://files.hdfcfund.com/s3fs-public/SID/2025-11/SID%20-%20HDFC%20Flexi%20Cap%20Fund%20dated%20November%2021%2C%202025_0.pdf?VersionId=8eR7i2.EGl_5.cJAlLh6vNEfqjEE0vb2",
+    "start": "2025-04-01"
+  },
+  "scope": {
+    "code": 101763,
+    "end": "2026-03-31",
+    "option": "IDCW",
+    "plan": "REGULAR",
+    "start": "2025-04-01"
+  },
+  "snapshot_id": "9dd0520525891277bda573f581861ccfbfe8e7574873a6467a321dce7ac43415",
+  "source_rows_changed": 0,
+  "state": "blocked"
+}
