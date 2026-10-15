@@ -15,7 +15,10 @@ Final source comparison preserved **14,391 funds and 4,240,198 NAV rows**, all
 prior review/calendar/rolling artifacts and every pre-existing evidence row.
 Only one policy, one identity blob/document, two mappings and two disclosure
 snapshots were appended. Clone/live snapshot IDs were byte-identical. The new
-18-route private profile serves 100% untagged traffic; public denial is 404.
+18-route private profile served 100% untagged traffic at this checkpoint; public
+denial was 404. [MF-E07](MF_E07_COMPLETE_PORTFOLIOS_DEV.md) subsequently added
+four private portfolio patterns and certified the 22-pattern profile; the
+original E06 facts, snapshots and contract remain unchanged.
 NAV/audit six-hour schedules remain unchanged. Original fields were not replaced.
 The documentation-only closeout can be newer than runtime; do not redeploy
 identical code just to match that documentation SHA.
