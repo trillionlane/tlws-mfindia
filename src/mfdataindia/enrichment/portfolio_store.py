@@ -273,7 +273,7 @@ def get(conn, code, *, snapshot_id=None):
         **base,
         "state": "available",
         "reason": None,
-        "portfolio": {k: v for k, v in document.items() if k != "holdings"},
+        "portfolio": {k: v for k, v in document.items() if k not in ("holdings", "notes")},
     }, document
 
 

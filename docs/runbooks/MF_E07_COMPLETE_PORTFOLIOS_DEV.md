@@ -54,6 +54,8 @@ rounding allowance, not a blanket 95–105% tolerance or rescaling to 100%.
 Underlying XLS numeric tokens are retained as shortest-roundtrip strings; all
 subsequent arithmetic is Decimal with immutable precision/rounding policy.
 Publisher-cached values are read, never recalculated or macros executed.
+Raw note text is retained privately in the immutable snapshot for audit, not
+returned in API metadata. APIs expose only the supported typed factual fields.
 
 `$0.00%` means less than 0.01%, not zero. Non-ISIN issuer-local identifiers
 remain explicit, including zero-valued unlisted legacy positions. Signed net

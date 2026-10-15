@@ -1664,14 +1664,6 @@
             "title": "Member Name",
             "type": "string"
           },
-          "notes": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Notes",
-            "type": "array"
-          },
           "overlap_eligible": {
             "title": "Overlap Eligible",
             "type": "boolean"
@@ -1742,7 +1734,6 @@
           "grand_total_inr_lakh",
           "grand_total_row",
           "derivative_positions",
-          "notes",
           "statement_complete",
           "overlap_eligible",
           "overlap_limitation",

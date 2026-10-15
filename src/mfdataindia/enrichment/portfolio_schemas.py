@@ -132,7 +132,6 @@ class Metadata(Model):
     grand_total_inr_lakh: str
     grand_total_row: int
     derivative_positions: list[Derivative]
-    notes: list[dict]
     statement_complete: Literal[True]
     overlap_eligible: bool
     overlap_limitation: str | None
@@ -148,6 +147,7 @@ class Metadata(Model):
 
 
 class Snapshot(Metadata):
+    notes: list[dict]
     holdings: list[Holding] = Field(min_length=1, max_length=1000)
 
 

@@ -362,6 +362,7 @@ def test_real_private_profile_auth_and_no_http_intake(verified_db, monkeypatch):
         assert result.status_code == 200 and result.headers["Cache-Control"] == "no-store"
         assert result.json()["portfolio"]["holdings_count"] == 5
         assert "holdings" not in result.json()["portfolio"]
+        assert "notes" not in result.json()["portfolio"]
         assert client.get(
             "/api/portfolios/v1/funds/1/snapshots/" + snapshot["snapshot_id"] + "/holdings?limit=2",
             headers=headers,
