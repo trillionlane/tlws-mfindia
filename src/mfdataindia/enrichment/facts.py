@@ -76,8 +76,8 @@ def parse(identity, detail, registry, *, as_of, detail_lineage, identity_lineage
     code_section = one(r"(?s)\nAMFI Codes \(To be phased out\)\s*\n(.*?)\n30 SEBI Codes", registry)
     isin_rows = re.findall(r"(?m)^(.+?) ([A-Z0-9]{12})\s*$", isin_section)
     code_rows = re.findall(r"(?m)^(.+?) ([1-9][0-9]*)\s*$", code_section)
-    for rows in (isin_rows, code_rows):
-        if not rows or len({normalized(k) for k, _ in rows}) != len(rows) or len({v for _, v in rows}) != len(rows):
+    for rows, section in ((isin_rows, isin_section), (code_rows, code_section)):
+        if not rows or len(rows) != len([line for line in section.splitlines() if line.strip()]) or len({normalized(k) for k, _ in rows}) != len(rows) or len({v for _, v in rows}) != len(rows):
             raise ValueError("ambiguous issuer identifier rows")
     if {normalized(k) for k, _ in isin_rows} != {normalized(k) for k, _ in code_rows}:
         raise ValueError("issuer identifier sections disagree")

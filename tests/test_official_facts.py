@@ -109,6 +109,11 @@ def test_duplicate_code_under_other_label_is_ambiguous():
         parsed(registry=registry)
 
 
+def test_unparsed_identifier_row_cannot_hide_ambiguity():
+    with pytest.raises(ValueError, match="ambiguous"):
+        parsed(registry=SUMMARY.replace("AMFI Codes", "unrecognized mapping row\nAMFI Codes"))
+
+
 def test_contract_is_separate_additive_and_dormant():
     dsn = "postgresql://fixture:fixture@127.0.0.1:1/fixture"
     old = create_enrichment_app(dsn).openapi()
@@ -155,6 +160,10 @@ def test_database_install_replay_immutable_publication_and_source_preservation(v
     selection = prepare(verified_db, monkeypatch)
     with connection(verified_db, readonly=True) as conn:
         before = source_state(conn)
+        from mfdataindia.enrichment.operations import capture_enrichment
+        retained = capture_enrichment(conn, include_rows=True)
+        assert all(len(v["row_hashes"]) == v["rows"] for v in retained.values())
+        assert {k:{name:value for name,value in v.items() if name != "row_hashes"} for k,v in retained.items()} == capture_enrichment(conn)
     first = publish(verified_db, selection)
     assert publish(verified_db, selection) == first
     assert len(first) == 2

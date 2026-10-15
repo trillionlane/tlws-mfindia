@@ -19,7 +19,7 @@ MIGRATION = "027_official_enrichment_evidence.sql"
 SCHEMA_SHA256 = "52ef41fef91e43c4cc87a98a165f22c96120ad189feaccd7b3d0e551ab15aca8"
 
 
-def capture_enrichment(conn):
+def capture_enrichment(conn, *, include_rows=False):
     """Recognize only the exact modelled namespace; stream hashes, never source bytes."""
     if not conn.execute("SELECT to_regnamespace('mf_enrichment') AS namespace").fetchone()[
         "namespace"
@@ -41,7 +41,7 @@ def capture_enrichment(conn):
         query = sql.SQL(
             "SELECT {}::text,encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') FROM mf_enrichment.{} t ORDER BY {}"
         ).format(sql.Identifier(key), sql.Identifier(table), sql.Identifier(key))
-        digest, count = hashlib.sha256(), 0
+        digest, count, row_hashes = hashlib.sha256(), 0, {}
         with (
             conn.cursor() as cursor,
             cursor.copy(sql.SQL("COPY ({}) TO STDOUT (FORMAT BINARY)").format(query)) as copy,
@@ -50,7 +50,11 @@ def capture_enrichment(conn):
             for identifier, sealed in copy.rows():
                 digest.update((identifier + ":" + sealed + "\n").encode())
                 count += 1
+                if include_rows:
+                    row_hashes[identifier] = sealed
         tables[table] = {"rows": count, "sha256": digest.hexdigest()}
+        if include_rows:
+            tables[table]["row_hashes"] = row_hashes
     return tables
 
 

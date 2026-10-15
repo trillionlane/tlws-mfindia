@@ -78,7 +78,12 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         from mfdataindia.analytics.rolling_operations import capture_rolling
         rolling_baseline = capture_rolling(conn)
         from mfdataindia.enrichment.operations import capture_enrichment
-        enrichment_baseline = capture_enrichment(conn)
+        enrichment_inventory = capture_enrichment(conn, include_rows=True)
+        enrichment_baseline = None if enrichment_inventory is None else {
+            table: {key: value for key, value in record.items() if key != 'row_hashes'}
+            for table, record in enrichment_inventory.items()}
+        enrichment_row_baseline = None if enrichment_inventory is None else {
+            table: record['row_hashes'] for table, record in enrichment_inventory.items()}
         from mfdataindia.enrichment.facts_store import capture as capture_official_facts
         official_facts_baseline = capture_official_facts(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
@@ -99,6 +104,7 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         evidence['rolling_baseline'] = rolling_baseline
     if enrichment_baseline is not None:
         evidence['enrichment_baseline'] = enrichment_baseline
+        evidence['enrichment_row_baseline'] = enrichment_row_baseline
     if official_facts_baseline is not None:
         evidence['official_facts_baseline'] = official_facts_baseline
     return evidence
