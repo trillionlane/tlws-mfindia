@@ -1,0 +1,129 @@
+{
+  "accepted_fields": [
+    "benchmark_name",
+    "fund_managers",
+    "base_expense_ratio"
+  ],
+  "app_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:a5bfb7b0680c2554ac4386499d5b7816d43b8ecb16619d3886f0aa2831a3beaf",
+  "ci_run": 38727076066,
+  "ci_tests": {
+    "passed": 1094,
+    "skipped": 1
+  },
+  "clone_and_live_snapshot_ids_identical": true,
+  "code_pr": 58,
+  "cohort": [
+    103174,
+    103173
+  ],
+  "contract_sha256": "e58a06753ad9a7563447451bc0076ac7fa80876547b533b47e4b4d713b4b7613",
+  "date_basis": "document_context_not_field_effective_date",
+  "deployed_git_sha": "074b126ba6574a2188cb6ca738dccece0bb45e41",
+  "disclosure_as_of": "2026-08-31",
+  "execution_seals": {
+    "00-preflight.json": "0cf875436fd47b9a946aac0cad2902b605aaeb1784c21636c23c54458e2b776a",
+    "01-backup.json": "1de8694271a6bbd1a284d31a5fa540381befd395216fc5d80eccf2c76d261f94",
+    "02-rehearsal.json": "e839d7625ddfba54fc29ea3b047511a20a3c8edf2a3199d17455dfc95021eb01",
+    "03-install.json": "c61317d2cd73e0b6683847ffa5f55c37810399d28e43a2b9911426ede30ca34e",
+    "04-import.json": "b430cdb19bf91a58ed2a0e550bce6c4aed609473a36fdc4f9a7f09be91fbf6c2",
+    "05-publish.json": "84d67475b343ee798a5dfbca670c5fd996f5a9dd4e80c0f844c1aa7742e9af88",
+    "05-replay.json": "b413503c39cfaef28659ce1917e99bb4748d08d955d99183beb7ecbd6f2447d5",
+    "06-stage.json": "a64cfb01a6346dc5e8de359a56945d7f933c59c6c3f191fbeffe3d734d44e4f9",
+    "07-candidate.json": "da22a1dffe9377347594751689fe88d3d7907d16662fd340b4fed6917394265f",
+    "08-final.json": "02555c7a16504475470246ea8c30d7569098f229361175cde86682e22425d276",
+    "09-recovery.json": "860caabe82a55ae72f38eddf73861d24b3e8f6c6f131a6a16f5db1d11c31deb7",
+    "10-restored.json": "2806a9c1954b62ae30e7b866cb0c12e2b642068b82fed4e0e308ebf36b8b3e28",
+    "11-after-backup.json": "fa5fed4c9e51f1af90a7988b2eccc0b38f04a4e6dfd9844cc2c2a21c0b084026",
+    "12-preservation.json": "25f3933b1da33e5706796b6f4c2b329c9aef9b685656bac2e4a2f3dc4d26ac88",
+    "compat-candidate-evi.json": "4bdeb24a9d8b95f6dd37994f91f4b5bdd1ce5806ccbd8c6b5f747f70298bddd0",
+    "compat-candidate-fwd.json": "2c8168668f770ecf5fce5bb17e40ff44763970d94be7b489b7201c5ce6c050e5",
+    "compat-candidate-hist.json": "fe6b707b8ddf4e4a8336f7cb922ca69061cacffd54f2e5a5737b55a4ca592a21",
+    "compat-final-evi.json": "253b1e34298a51c7dead79e32681c3e1148ceee1122124c4e4f8bc814fbd8e14",
+    "compat-final-fwd.json": "7ea865a39f8bfd31a783fa16ddb08ff2ba49af07ae03324c9eb236c6151dc660",
+    "compat-final-hist.json": "feb2f1f565fb44dfaa585e917677803ed77f3d605ae5f41b1eabb7cdfd526e2c",
+    "compat-recovery-evi.json": "8de937dff725cb638c9aa2cc7171a074ef989135eb2d97ba43d36c92701b2b18",
+    "compat-recovery-fwd.json": "de402e0b82bc753896d75de85ac6eb501488d32e4d655bf8784065679f15906b",
+    "compat-recovery-hist.json": "9ca54409c47b4f3254aaffb6d365257a9f677c3f26c50699fe0c1bd68a89afa0",
+    "compat-restored-evi.json": "d9bcf9a09f217f10cf51fa866132fcf7d175f8d3cee017970e39966dc813d74e",
+    "compat-restored-fwd.json": "35ae144c05d8a5327754c6f913b313ef803577cee95ceb16650df474c2a98745",
+    "compat-restored-hist.json": "8278dfe20ebcc2d04fee1977c5199f3a4ed67a4818748f5d4562461ad3509002"
+  },
+  "factory": "mfdataindia.review.app:create_official_facts_app",
+  "facts_document_id": "5edaf88f3eec50cb78b5777c3ee1cbdac74bda8538a65aa690996e1f337c1744",
+  "focused_tests_passed": 23,
+  "format": "mf-e06-official-facts-dev-release-v1",
+  "identity_content_sha256": "f7be45a4810528c384eddbbd3538c1e78839bcbd32e5c9b97c587da00015d26f",
+  "identity_document_id": "76888d30ebbb0c10f3d39d27d3e9734d2d9db17fd2642fd8b388102f53b7be50",
+  "identity_object_generation": "1792063897732746",
+  "image_preparation_run": 38727916359,
+  "ingress": "internal",
+  "local_tests_passed": 1095,
+  "manifest_hash": "fa3238fa332fe8b05ba5635e00cb3d18bebc75861b5892e9b91afd9110f0e864",
+  "new_get_patterns": 3,
+  "not_certified": [
+    "All-AMC discovery/completeness",
+    "Every factsheet field",
+    "Current-month freshness",
+    "IDCW-adjusted analytics",
+    "Reinvestment ISIN",
+    "Insights application wiring/end-user RBAC",
+    "Independent legal/source-correctness certification"
+  ],
+  "origin": "https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app",
+  "original_facts_content_sha256": "fbc493eb04101b12eedd48a3493701eb7a90868b6696055724bfaf4fbefd75d9",
+  "policy_hash": "05ab0962bfa22af8c3387757f9d406f0cf105aa6571c638dec0cba9fdc0f751b",
+  "preservation": {
+    "data_deleted": 0,
+    "official_fact_snapshots": 2,
+    "original_fields_replaced": 0,
+    "preexisting_evidence_row_hashes_preserved": true,
+    "prior_review_calendar_rolling_preserved": true,
+    "review_policy_rows_added": 1,
+    "source_correction_writer_activated": false,
+    "source_fund_rows": 14391,
+    "source_nav_rows": 4240198,
+    "source_rows_changed": 0,
+    "total_evidence_rows": {
+      "blobs": 2,
+      "documents": 2,
+      "mappings": 4
+    }
+  },
+  "provider_pilot_accepted": true,
+  "prior_compatibility_scope": "Read projections, forward/historical calculators, evidence metadata and read-scope admin denials; no new positive review/tag/admin mutations",
+  "recovery": {
+    "actual_automatic_rollback_verified": true,
+    "logging_wait": "Local operator bounded read-only reconciliation; duplicate certificates still fail closed",
+    "new_paths_404_on_recovery": true,
+    "prior_fifteen_patterns_verified": true,
+    "prior_revision": "tlws-mf-review-dev-dev-evi-261014a-enrichment",
+    "reconciled_execution": "mf-fact-evi-final-dev-fact-261015a-t4r2n",
+    "reconciliation": "Exact execution/config/image/completion and single certificate re-read successfully; no write job rerun or evidence gate bypass",
+    "restored_eighteen_patterns_verified": true,
+    "restored_public_status": 404,
+    "trigger": "Initial fixed-origin evidence job completed but its structured certificate was not yet visible to the first log lookup"
+  },
+  "release_scope": "Bounded ABSL official-disclosure pilot; not all-AMC or complete fifteen-sprint delivery",
+  "reviewed_head": "c50de939a5ec19eaa6e410dde5160c6de2f7cede",
+  "revision": "tlws-mf-review-dev-dev-fact-261015a-facts",
+  "route_patterns": 18,
+  "schedulers": {
+    "audit": "10 */6 * * * Asia/Kolkata ENABLED",
+    "changed": false,
+    "nav": "0 */6 * * * Asia/Kolkata ENABLED"
+  },
+  "service": "tlws-mf-review-dev",
+  "snapshot_ids_by_code": {
+    "103173": "b2ce4566d9f26cfbabf1ef8153486e85b02d259d95021f903e2d680e29a8528a",
+    "103174": "075217ee64260d0fafb4c74b794f789bcf8f988afdb79f04899953d693b09d2f"
+  },
+  "sole_service_invoker": "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com",
+  "source_use_basis": "Operator-reported official AMC factual-extraction scope; private original retention, not factsheet redistribution",
+  "tools_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:3d99c3afed3725280fc83c1a2f842c0bd454018fb9a2e2a1ec57e375e67bad9c",
+  "traffic_percent": 100,
+  "traffic_tags": [],
+  "unavailable_fields": {
+    "aum": "units_not_explicit_on_detail_page",
+    "total_expense_ratio": "BER_is_not_TER"
+  }
+}

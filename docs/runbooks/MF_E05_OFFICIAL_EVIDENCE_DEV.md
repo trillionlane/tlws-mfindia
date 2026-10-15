@@ -2,12 +2,22 @@
 
 ## Scope and current evidence level
 
+**Subsequent bounded bridge:** MF-E06/PR #58 is deployed and certified at
+`074b126ba6574a2188cb6ca738dccece0bb45e41`, with an eighteen-route private profile.
+ABSL 103174/103173 now have separately verified v2 benchmark/manager/BER
+disclosures through an issuer code/ISIN identity bridge. The older v1 PDF
+mappings below remain explicitly unsupported under their original policy;
+no historical evidence was rewritten. [E06 evidence](../evidence/mf-e06-dev-fact-261015a.json)
+and [consumer handover](MF_E06_OFFICIAL_FACTS_DEV.md#backend-consumer-handover).
+Current all-AMC discovery/broader coverage remains open. The paragraphs below
+describe the earlier metadata-only checkpoint, not the current service profile.
+
 **DEV checkpoint:** PR #56's private provenance/coverage release is deployed at
 `3e589fb529b59a61d7360dd7180d904b143d4ffd`. Fresh backup, operational restored
 clone, restricted installation, document append/replay, candidate/fixed/restored
 private HTTP, real traffic recovery and final whole-source/prior-layer comparison
 passed. [Release evidence](../evidence/mf-e05-dev-evi-261014a.json). The service
-currently runs `create_enrichment_app` with fifteen route patterns, 100% untagged
+at that checkpoint ran `create_enrichment_app` with fifteen route patterns, 100% untagged
 traffic and the existing private IAM/ingress/assertion controls. The new four
 patterns are `/api/enrichment/v1/policy`, `/documents`, `/documents/{document_id}`
 and `/funds/{code}/coverage` under that prefix. Original-document bytes are not

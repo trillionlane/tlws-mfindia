@@ -2,9 +2,34 @@
 
 ## Finite release and boundaries
 
-Status: implementation, not yet merged or deployed. This release completes a
+Status: **bounded provider DEV pilot accepted, 2026-10-15**, PR #58, runtime
+`074b126ba6574a2188cb6ca738dccece0bb45e41`. [Release evidence](../evidence/mf-e06-dev-fact-261015a.json).
+Fresh backup and actual restored-clone rehearsal, restricted installation,
+two-source publication/replay, private candidate/fixed-origin certification,
+actual automatic rollback/recovery/restoration and final preservation passed.
+This release completes a
 bounded PDF identity/field bridge after the accepted MF-E05 metadata release.
 It is not completion of all-AMC discovery or the whole fifteen-sprint goal.
+
+Final source comparison preserved **14,391 funds and 4,240,198 NAV rows**, all
+prior review/calendar/rolling artifacts and every pre-existing evidence row.
+Only one policy, one identity blob/document, two mappings and two disclosure
+snapshots were appended. Clone/live snapshot IDs were byte-identical. The new
+18-route private profile serves 100% untagged traffic; public denial is 404.
+NAV/audit six-hour schedules remain unchanged. Original fields were not replaced.
+The documentation-only closeout can be newer than runtime; do not redeploy
+identical code just to match that documentation SHA.
+
+One real recovery event occurred: an initial fixed-origin evidence job completed
+successfully, but its structured certificate was not visible at the first log
+lookup. The gate failed closed and the handler restored the known prior revision
+before any candidate lookup. Read-only reconciliation later verified the exact
+completed execution and single certificate. The prior fifteen patterns/new-path
+404s were then certified, followed by restoration and eighteen-pattern private
+recertification. No write job was rerun or evidence gate bypassed. The local
+operator used bounded read-only log reconciliation; duplicates still fail closed.
+Prior compatibility covers read projections, calculators, evidence metadata and
+read-scope admin denials, not new positive review/tag/admin mutation acceptance.
 
 Pilot: ABSL Large Cap Regular Growth 103174 and Regular IDCW 103173. Source
 factsheet is September 2026 Empower, disclosure context August 31, 2026,
@@ -98,3 +123,26 @@ and consumer signing keys stay in existing GCP secret mounts, never on the lapto
 Acceptance needs two real variant snapshots, three supported fields per snapshot,
 explicit AUM/TER unavailability, successful private checks and preservation/recovery
 proof. An empty response, local fixture or green CI alone cannot close this sprint.
+
+## Backend consumer handover
+
+Use the existing private review service origin
+`https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app`. Cloud Run identity-token
+audience is that default origin, including when calling a revision tag. The
+authorized invoker remains `trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com`.
+The existing signed backend assertion has issuer/caller `trillion-insights`,
+audience `mfdata-verified-review-dev` and `review:read` scope. Signing material
+remains consumer-owned; do not put keys/tokens in a browser or client bundle.
+
+Contract: `contracts/mfdataindia-official-facts-v1.json`. Read each fund's facts
+and snapshot IDs through its own route, rather than inferring code/ID pairing
+from independent batch CLI lists. Codes 103174/103173 have three accepted fields
+each, dated August 31, 2026. AUM/TER are explicitly unavailable. Check response
+state and each field's status, unit, scope, date basis and source lineage; missing
+is not zero, BER is not TER, and latest retained is not certified current-month
+freshness. No automatic merge into original provider fields. The v1 evidence
+contract remains evidence-only and can still report an unsupported PDF mapping
+under its older policy, while v2 facts expose the separately verified bridge.
+
+This is a consumable provider backend contract, not deployed Insights client
+wiring, end-user RBAC, UI work, all-AMC completeness or IDCW-adjusted analytics.
