@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -73,6 +73,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if distributions:
                         from mfdataindia.enrichment.distribution_store import verify_acl as verify_distribution_acl
                         verify_distribution_acl(conn)
+                    if idcw_catalog:
+                        from mfdataindia.enrichment.idcw_store import verify_acl as verify_idcw_acl
+                        verify_idcw_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -323,6 +326,27 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         def distribution_observations(code: Code, snapshot_id: Annotated[str, Query(pattern=r'^[0-9a-f]{64}$')], principal: Principal = Depends(identity)):
             return run(lambda conn: distribution_store.get(conn, code, snapshot_id))
 
+    if idcw_catalog:
+        from mfdataindia.enrichment import idcw_catalog as catalog, idcw_store
+        from mfdataindia.enrichment.portfolio_schemas import PolicyResponse
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/distributions/v2/policy', response_model=PolicyResponse)
+        def idcw_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(catalog.policy()), 'document': idcw_store.installed_policy(conn)})
+
+        @app.get('/api/distributions/v2/inventory', response_model=catalog.IdcwInventory)
+        def idcw_inventory(principal: Principal = Depends(identity), after_code: int = Query(0, ge=0, le=2147483647), limit: int = Query(50, ge=1, le=100)):
+            return run(lambda conn: idcw_store.inventory(conn, after=after_code, limit=limit))
+
+        @app.get('/api/distributions/v2/funds/{code}/coverage', response_model=catalog.IdcwCoverage)
+        def idcw_coverage(code: Code, principal: Principal = Depends(identity)):
+            return run(lambda conn: idcw_store.coverage(conn, code))
+
+        @app.get('/api/distributions/v2/funds/{code}/observations', response_model=catalog.IdcwResponse)
+        def idcw_observations(code: Code, snapshot_id: Annotated[str, Query(pattern=r'^[0-9a-f]{64}$')], principal: Principal = Depends(identity)):
+            return run(lambda conn: idcw_store.get(conn, code, snapshot_id))
+
     return app
 
 
@@ -374,3 +398,8 @@ def create_overlap_app(dsn: str | None = None, *, verifier: AssertionVerifier | 
 def create_distribution_observations_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """29-route private profile; reported evidence only, all prior contracts frozen."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True)
+
+
+def create_idcw_catalog_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """33-route profile; v1 evidence and all prior contracts remain frozen."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True)
