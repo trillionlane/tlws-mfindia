@@ -1,0 +1,478 @@
+{
+  "actual_prior_traffic_recovery_and_restoration_verified": true,
+  "adjusted_analytics_available": false,
+  "all_amc_complete": false,
+  "app_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:487bceb90cea4bea171e2721bb01d55cccee7c5e59fe503312677a19e7a7b6d6",
+  "bounded_provider_pilot_accepted": true,
+  "code_pr": 67,
+  "cohort": [
+    101763,
+    102001,
+    118954,
+    119017
+  ],
+  "complete_event_history_certified": false,
+  "consumer_ui_or_end_user_rbac_certified": false,
+  "contract_sha256": "0e570606a8edcaaeadb8f1307b71023fb76152087ccf6627626e8c4c420c7e9f",
+  "coverage_state": "unknown",
+  "deployed_git_sha": "532b125bcb3efc4388155a95cd26e4587109be93",
+  "engine_code_hash": "3760d0b05089d1a1711f52cee023152fba1dfd84cb09bc7e43a7d9f013faa423",
+  "factory": "mfdataindia.review.app:create_idcw_catalog_app",
+  "format": "mf-e09b-idcw-catalog-dev-closeout-v1",
+  "freshness_certified": false,
+  "independent_original_pdf_reference_hash": "0b778c0921ca1abb51ca6395d92cbce8c63623a873f6eec9aeaba4eca5a7cdcc",
+  "live_effective_capabilities": {
+    "mfdata_ingest": {
+      "raw": false,
+      "snapshots": {
+        "append": false,
+        "rewrite": false
+      },
+      "sources": {
+        "append": false,
+        "rewrite": false
+      }
+    },
+    "mfdata_verified_admin": {
+      "raw": false,
+      "snapshots": {
+        "append": false,
+        "rewrite": false
+      },
+      "sources": {
+        "append": false,
+        "rewrite": false
+      }
+    },
+    "mfdata_verified_generator": {
+      "raw": true,
+      "snapshots": {
+        "append": true,
+        "rewrite": false
+      },
+      "sources": {
+        "append": true,
+        "rewrite": false
+      }
+    },
+    "mfdata_verified_reader": {
+      "raw": false,
+      "snapshots": {
+        "append": false,
+        "rewrite": false
+      },
+      "sources": {
+        "append": false,
+        "rewrite": false
+      }
+    }
+  },
+  "manifest_hash": "58adf633bb9a01490c5fc2e51de6b6ffb9b82d24d12d06ab8e7097fe5460910b",
+  "merged_main_ci": {
+    "conclusion": "success",
+    "headSha": "532b125bcb3efc4388155a95cd26e4587109be93",
+    "status": "completed",
+    "url": "https://github.com/trillionlane/tlws-mfindia/actions/runs/38796708719"
+  },
+  "new_get_patterns": 4,
+  "policy_hash": "aadacdd45f0ca5822cc558dcd1e85e21864fd2040d8657e9524f719ac7f82326",
+  "preservation": {
+    "after_backup_sha256": "1f9dc48d7144c3ecd19cd6061ffbc444569ac5194d8ce4b64caf279f14bde10b",
+    "before_backup_sha256": "663f876e1239659b4a858dfed904bf468ffbd56db4582c61130a5b4e95665e09",
+    "funds": 14392,
+    "legacy_v1_preserved": true,
+    "nav_rows": 4244085,
+    "new_observation_snapshots": 4,
+    "new_policies": 1,
+    "new_review_events": 0,
+    "new_sources": 3,
+    "prior_layers_preserved": true,
+    "source_rows_changed": 0
+  },
+  "production_certified": false,
+  "receipt_count": 42,
+  "receipt_seals": {
+    "00-preflight.json": "854e23f6dee4d814644377a293a3f2daa1e2fa265613865526f5d4fa39a627b3",
+    "01-backup.json": "671d0f9f9ae252d3afd8b577169084ff79ed79accf0ce82b81e478207d6e6e12",
+    "02-rehearsal.json": "a2ebb6b99fb266a63fa8ee0d86d378be19f392b56582d6f7826bd58f88bfc54f",
+    "03-install.json": "0e31b03190ef9c9f28eda0263cf2aeb2497c20ad7a119ffbb0531187490a5c86",
+    "04-append.json": "f56f9c0be65a5535249041df1c8031e3fae742cebb6d72bf5204f010c97f0395",
+    "04-replay.json": "c5bcfa1cfd9f282e7f8ccd58ef7feb4fd8ef4bf80ea02470252951aacfb26248",
+    "05-stage.json": "70963812c987f86ec6891afcafd531b71845fa506cf53a0dfc0e5f8fbbf1a1f1",
+    "06-candidate.json": "82084add6e5f841b187a8e0c7e971795468bf4bfdee90fa3677bcfa09cda68be",
+    "07-final.json": "549aa2a28ff5f5464a817e7c2b61f2bcd83731a25cbd29f44cfa69f2ee558b5b",
+    "08-recovery.json": "dd6143127bb2fb4f735fe5a749467b3c2cef5b33fd647f0731c9f5a6656225fe",
+    "09-restored.json": "b303e059b4f4c1e8f61797563e3577d0481f0b5ef107741aee44c2d4839fe270",
+    "10-after-backup.json": "a7329ebee22e5392b14985c8ccab45e7afe1d56d34238cc513ec6bfc517d4f39",
+    "11-preservation.json": "ae515c95a237c8b382f772564200df09678b777e6f86d4b4cc1dbe9a5359095d",
+    "12-effective-capabilities.json": "d84d033ffdf3a8260152361779ca4480e4f29bac7a05ceaf3e89a60b3a89e45a",
+    "compat-candidate-distributions.json": "9c93d374d71e191d080419fd33926de25cae6abad928e53523525373aad4ad76",
+    "compat-candidate-evi.json": "151b8196b187b4bcfc40197522e4d2bd475af39e639b1128ae47160fedacaafb",
+    "compat-candidate-facts.json": "9806cd9f817feb5ff920768c144e8a063fac25c02c26eed78231254f8a19e2f6",
+    "compat-candidate-fwd.json": "095239620a2333ba5ebd3ed2ef5579ab057e0373a72c96a2d04a9ad86dd66da6",
+    "compat-candidate-hist.json": "c5a8d12de84086a0366f0a54932b0b600b2cfb1ab17ba6c59c8b0eaf998cde13",
+    "compat-candidate-overlap.json": "24f186472231c1e3d6ef551709b419a4822499db437c9da27eadb7473b14658b",
+    "compat-candidate-portfolios.json": "dd74d5a60f4a67c849964cda44ec14469f8dac1fb88c9c99a02ff397e2987c2e",
+    "compat-final-distributions.json": "84efc5abca64d8e89a8e864549f580fe513e795665f269d511970aacbee4500a",
+    "compat-final-evi.json": "5c086908392597b190b2fb9b99a713f5ceed86b0cb28032ac0d6d0ca36d08de3",
+    "compat-final-facts.json": "4e21189d1d29fdb4ec14732fef11d1bc428c0b55aa37c6c2001f151e3bb97a66",
+    "compat-final-fwd.json": "f1cd37c7469f5da9c18ad9c6768932d1bd9b1c709b19aeaf7fc54983ab256b03",
+    "compat-final-hist.json": "700ffc8b5dab19ffc1d83e5e50bd34269047f7a61adf4beeea6992291415b54b",
+    "compat-final-overlap.json": "1324f592b7852d63cf80d82e9d633e981f03d31d7a4d320a43e505ae64d33503",
+    "compat-final-portfolios.json": "3877814d44ccb77a2decd2f52d3865b5f2635d407e620a8da72e6aef5262d1da",
+    "compat-recovery-distributions.json": "3b82117e5852adfa9b71b2e74877ef87aae0f3c4f72fe4754971232561179e68",
+    "compat-recovery-evi.json": "a741bd3e5ccb5b6fb821e0c236646cfe9f31d168ba1520760b9a09a33d8de0e5",
+    "compat-recovery-facts.json": "fa0aa329667d7ca9dd7dc9d6890e806a957da66db7969e7a54108a6462a1b85a",
+    "compat-recovery-fwd.json": "dbdc007b203472aa03f61123ce2192cadcb08c98f665bea9803b6537b6f31409",
+    "compat-recovery-hist.json": "72532ac5bb9ee68e98c25dcf551ed578425f3c92904a6e39ce04f193061b47d2",
+    "compat-recovery-overlap.json": "6a30d931bcbdb8c1fda8f979584ca5976172e0b4ae5ec98e56b74361ca050c78",
+    "compat-recovery-portfolios.json": "a71b0af3cbe66250c13ecc3e61a43f37c753ffb8e030e573671c5544eab6f72a",
+    "compat-restored-distributions.json": "685f2dcf76fe79941e8e9f22c314fe8367c74bca280b09f998885e5548406fc0",
+    "compat-restored-evi.json": "2a90a76fe46bab91ac4e4a9c791bc80207dd927917b0770013472e68bcce77e1",
+    "compat-restored-facts.json": "ecd450e8ac4f524dd32c97dfdca988a6e8536ea87f1e17b862d5f89ded568948",
+    "compat-restored-fwd.json": "54509109955b2d02303ce7b9fb84a5333804fdbc202a747be1710825c88f602f",
+    "compat-restored-hist.json": "67cfc4f54120cdc04c53eec7e291a1e3e3aa42d2b94db5bd5935b9657b7dacaf",
+    "compat-restored-overlap.json": "12e8da32fb9b46a2841f864ec8aad100ffbdfbb1aec79ca6e33166823e51604d",
+    "compat-restored-portfolios.json": "2285cf761440361ca1317b8d9414160b0e1fcff27cc712fd45aca5ccd806c7ff"
+  },
+  "release": {
+    "ci_conclusion": "success",
+    "ci_run": 38795144038,
+    "ci_tests": {
+      "passed": 1244,
+      "skipped": 1
+    },
+    "code_pr": 67,
+    "exact_head_gate_comment": "https://github.com/trillionlane/tlws-mfindia/pull/67#issuecomment-6200868708",
+    "existing_source_databases_modified_by_tests": false,
+    "final_focused_suites": {
+      "new_catalog_cases": 34,
+      "passed": 98
+    },
+    "final_local_repeat": {
+      "passed": 1225,
+      "reason": "existing wipe-protection guard refused to erase 20 retained synthetic funds in reused isolated control DB; no wipe override enabled",
+      "skipped": 20
+    },
+    "image_conclusion": "success",
+    "image_operation": "prepare-image",
+    "image_run": 38796746751,
+    "independent_reviewer_approval_claimed": false,
+    "local_full_before_final_inventory_fix": {
+      "passed": 1239,
+      "skipped": 1
+    },
+    "main_ci_run": 38796708719,
+    "merged_sha": "532b125bcb3efc4388155a95cd26e4587109be93",
+    "reviewed_head": "dabad4f9cc2204eb00385a28f3fe9904386da959",
+    "self_review_comment": "https://github.com/trillionlane/tlws-mfindia/pull/67#issuecomment-6200663580"
+  },
+  "reported_events": {
+    "101763": [
+      {
+        "amount_basis": "reported_history_not_net_investor_receipt",
+        "amount_inr_per_unit": "7.0000",
+        "amount_others_inr_per_unit": "7.0000",
+        "cum_idcw_nav_inr": "79.8080",
+        "ex_date": null,
+        "payment_date": null,
+        "record_date": "2026-03-05",
+        "reinvestment_date": null,
+        "reinvestment_nav_inr": null,
+        "scheme_levy_inr_per_unit": null,
+        "source_page": 121,
+        "source_role": "history",
+        "unit_event_coverage": "unknown"
+      }
+    ],
+    "102001": [
+      {
+        "amount_basis": "reported_history_not_net_investor_receipt",
+        "amount_inr_per_unit": "5.5000",
+        "amount_others_inr_per_unit": "5.5000",
+        "cum_idcw_nav_inr": "59.6610",
+        "ex_date": null,
+        "payment_date": null,
+        "record_date": "2026-02-12",
+        "reinvestment_date": null,
+        "reinvestment_nav_inr": null,
+        "scheme_levy_inr_per_unit": null,
+        "source_page": 121,
+        "source_role": "history",
+        "unit_event_coverage": "unknown"
+      }
+    ],
+    "118954": [
+      {
+        "amount_basis": "reported_history_not_net_investor_receipt",
+        "amount_inr_per_unit": "7.0000",
+        "amount_others_inr_per_unit": "7.0000",
+        "cum_idcw_nav_inr": "96.4400",
+        "ex_date": null,
+        "payment_date": null,
+        "record_date": "2026-03-05",
+        "reinvestment_date": null,
+        "reinvestment_nav_inr": null,
+        "scheme_levy_inr_per_unit": null,
+        "source_page": 121,
+        "source_role": "history",
+        "unit_event_coverage": "unknown"
+      }
+    ],
+    "119017": [
+      {
+        "amount_basis": "reported_history_not_net_investor_receipt",
+        "amount_inr_per_unit": "5.5000",
+        "amount_others_inr_per_unit": "5.5000",
+        "cum_idcw_nav_inr": "70.5040",
+        "ex_date": null,
+        "payment_date": null,
+        "record_date": "2026-02-12",
+        "reinvestment_date": null,
+        "reinvestment_nav_inr": null,
+        "scheme_levy_inr_per_unit": null,
+        "source_page": 121,
+        "source_role": "history",
+        "unit_event_coverage": "unknown"
+      }
+    ]
+  },
+  "route_patterns": 33,
+  "runtime": {
+    "origin": "https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app",
+    "project_roles": {
+      "tlws-mf-review-api-dev@trillionlane-dev.iam.gserviceaccount.com": [
+        "roles/cloudsql.client"
+      ],
+      "tlws-mf-review-gen-dev@trillionlane-dev.iam.gserviceaccount.com": [
+        "roles/cloudsql.client"
+      ]
+    },
+    "revision": "tlws-mf-review-dev-dev-idcw-261015b-idcw",
+    "schedules": [
+      {
+        "name": "projects/trillionlane-dev/locations/asia-south1/jobs/tlws-mf-data-nav-audit-dev",
+        "schedule": "10 */6 * * *",
+        "state": "ENABLED",
+        "timeZone": "Asia/Kolkata"
+      },
+      {
+        "name": "projects/trillionlane-dev/locations/asia-south1/jobs/tlws-mf-data-nav-refresh-dev",
+        "schedule": "0 */6 * * *",
+        "state": "ENABLED",
+        "timeZone": "Asia/Kolkata"
+      }
+    ],
+    "tags": [],
+    "temporary_source_viewer_grants": 0,
+    "traffic_percent": 100
+  },
+  "selection_window": {
+    "end": "2026-03-31",
+    "start": "2025-04-01"
+  },
+  "snapshot_ids": {
+    "101763": "9dd0520525891277bda573f581861ccfbfe8e7574873a6467a321dce7ac43415",
+    "102001": "d4b3fa7740abe68c29cbf50552656bda8249590d7d016ea3bb622770eb517193",
+    "118954": "d832e2766b4a045de5212256762c00a69eb2feaa513172fa9054ca0493f95276",
+    "119017": "a3cc8d95525c244ec5214b017b08d3b1e2f0e0377d18f0d4d27c61c3a7944411"
+  },
+  "sole_service_invoker": "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com",
+  "source_lineage": {
+    "101763": {
+      "history": {
+        "byte_length": 9133440,
+        "content_hash": "98fb01d8c76481e205958440d265ae924454d01f2042b1050d624303efa76bcd",
+        "file": "april-2026.pdf",
+        "observed_at": "2026-10-15T16:27:57.932610Z",
+        "pages": [
+          1,
+          121
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/2026-05/HDFC%20MF%20Factsheet%20-%20April%202026.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "863db1a1c4390e67f6ae67b8f255b6236c104a663fdd6177878aee4619f16a94"
+          },
+          {
+            "page": 121,
+            "sha256": "58218f798b48a06bbb75e49658bb11c6c1dba0eed2ef30cde6b44598ebd9a16f"
+          }
+        ]
+      },
+      "registry": {
+        "byte_length": 121485,
+        "content_hash": "884ef54c8e0ffb4097652cccbbf72f863e8f45ee319064cf85e9b0d41d1eb3e3",
+        "file": "identity-september-2026.pdf",
+        "observed_at": "2026-10-15T16:26:39.194484Z",
+        "pages": [
+          1
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/scheme_summary/2026-09/HDFCEQ_1789454586.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "3bb6ca5d5e29772099be8b68d4090ae21fb2806cfe92764dd4fbad400c65c824"
+          }
+        ]
+      }
+    },
+    "102001": {
+      "history": {
+        "byte_length": 9133440,
+        "content_hash": "98fb01d8c76481e205958440d265ae924454d01f2042b1050d624303efa76bcd",
+        "file": "april-2026.pdf",
+        "observed_at": "2026-10-15T16:27:57.932610Z",
+        "pages": [
+          1,
+          121
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/2026-05/HDFC%20MF%20Factsheet%20-%20April%202026.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "863db1a1c4390e67f6ae67b8f255b6236c104a663fdd6177878aee4619f16a94"
+          },
+          {
+            "page": 121,
+            "sha256": "58218f798b48a06bbb75e49658bb11c6c1dba0eed2ef30cde6b44598ebd9a16f"
+          }
+        ]
+      },
+      "registry": {
+        "byte_length": 72851,
+        "content_hash": "413cfc3b23b66bd6839d95d73665ede01265259456d0e4ee53dc946cc3653427",
+        "file": "large-cap-registry.pdf",
+        "observed_at": "2026-10-15T19:09:43.115320Z",
+        "pages": [
+          1
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/2026-01/HDFCT2.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "f9192551b8c9fc48ac9a75ed86069347416294022195e8d7adf976a639328e1f"
+          }
+        ]
+      }
+    },
+    "118954": {
+      "history": {
+        "byte_length": 9133440,
+        "content_hash": "98fb01d8c76481e205958440d265ae924454d01f2042b1050d624303efa76bcd",
+        "file": "april-2026.pdf",
+        "observed_at": "2026-10-15T16:27:57.932610Z",
+        "pages": [
+          1,
+          121
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/2026-05/HDFC%20MF%20Factsheet%20-%20April%202026.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "863db1a1c4390e67f6ae67b8f255b6236c104a663fdd6177878aee4619f16a94"
+          },
+          {
+            "page": 121,
+            "sha256": "58218f798b48a06bbb75e49658bb11c6c1dba0eed2ef30cde6b44598ebd9a16f"
+          }
+        ]
+      },
+      "registry": {
+        "byte_length": 121485,
+        "content_hash": "884ef54c8e0ffb4097652cccbbf72f863e8f45ee319064cf85e9b0d41d1eb3e3",
+        "file": "identity-september-2026.pdf",
+        "observed_at": "2026-10-15T16:26:39.194484Z",
+        "pages": [
+          1
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/scheme_summary/2026-09/HDFCEQ_1789454586.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "3bb6ca5d5e29772099be8b68d4090ae21fb2806cfe92764dd4fbad400c65c824"
+          }
+        ]
+      }
+    },
+    "119017": {
+      "history": {
+        "byte_length": 9133440,
+        "content_hash": "98fb01d8c76481e205958440d265ae924454d01f2042b1050d624303efa76bcd",
+        "file": "april-2026.pdf",
+        "observed_at": "2026-10-15T16:27:57.932610Z",
+        "pages": [
+          1,
+          121
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/2026-05/HDFC%20MF%20Factsheet%20-%20April%202026.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "863db1a1c4390e67f6ae67b8f255b6236c104a663fdd6177878aee4619f16a94"
+          },
+          {
+            "page": 121,
+            "sha256": "58218f798b48a06bbb75e49658bb11c6c1dba0eed2ef30cde6b44598ebd9a16f"
+          }
+        ]
+      },
+      "registry": {
+        "byte_length": 72851,
+        "content_hash": "413cfc3b23b66bd6839d95d73665ede01265259456d0e4ee53dc946cc3653427",
+        "file": "large-cap-registry.pdf",
+        "observed_at": "2026-10-15T19:09:43.115320Z",
+        "pages": [
+          1
+        ],
+        "source_url": "https://files.hdfcfund.com/s3fs-public/2026-01/HDFCT2.pdf",
+        "text_hashes": [
+          {
+            "page": 1,
+            "sha256": "f9192551b8c9fc48ac9a75ed86069347416294022195e8d7adf976a639328e1f"
+          }
+        ]
+      }
+    }
+  },
+  "successful_executions": {
+    "03-install.json": "mf-idcw-install-dev-idcw-261015b-8cx4b",
+    "04-append.json": "mf-idcw-append-dev-idcw-261015b-g6qxb",
+    "04-replay.json": "mf-idcw-replay-dev-idcw-261015b-g46hp",
+    "06-candidate.json": "mf-idcw-http-candidate-dev-idcw-261015b-x6qs8",
+    "07-final.json": "mf-idcw-http-final-dev-idcw-261015b-grwvp",
+    "08-recovery.json": "mf-idcw-http-recovery-dev-idcw-261015b-7kwvf",
+    "09-restored.json": "mf-idcw-http-restored-dev-idcw-261015b-9rlvv",
+    "12-effective-capabilities.json": "mf-idcw-caps-dev-idcw-261015b-lrwbv",
+    "compat-candidate-distributions.json": "mf-idcw-v1-candidate-dev-idcw-261015b-vpcgz",
+    "compat-candidate-evi.json": "mf-port-evi-candidate-dev-idcw-261015b-phmvq",
+    "compat-candidate-facts.json": "mf-port-facts-candidate-dev-idcw-261015b-dm6sk",
+    "compat-candidate-fwd.json": "mf-port-fwd-candidate-dev-idcw-261015b-w26sh",
+    "compat-candidate-hist.json": "mf-port-hist-candidate-dev-idcw-261015b-95psx",
+    "compat-candidate-overlap.json": "mf-ovlp-http-compat-candidate-dev-idcw-261015b-57wqt",
+    "compat-candidate-portfolios.json": "mf-ovlp-port-candidate-dev-idcw-261015b-jgktb",
+    "compat-final-distributions.json": "mf-idcw-v1-final-dev-idcw-261015b-nz4vr",
+    "compat-final-evi.json": "mf-port-evi-final-dev-idcw-261015b-vrjsv",
+    "compat-final-facts.json": "mf-port-facts-final-dev-idcw-261015b-qclzv",
+    "compat-final-fwd.json": "mf-port-fwd-final-dev-idcw-261015b-ttcfq",
+    "compat-final-hist.json": "mf-port-hist-final-dev-idcw-261015b-rgzpp",
+    "compat-final-overlap.json": "mf-ovlp-http-compat-final-dev-idcw-261015b-k6jjr",
+    "compat-final-portfolios.json": "mf-ovlp-port-final-dev-idcw-261015b-jpp8m",
+    "compat-recovery-distributions.json": "mf-idcw-v1-recovery-dev-idcw-261015b-jbnv6",
+    "compat-recovery-evi.json": "mf-port-evi-recovery-dev-idcw-261015b-54682",
+    "compat-recovery-facts.json": "mf-port-facts-recovery-dev-idcw-261015b-mpmd4",
+    "compat-recovery-fwd.json": "mf-port-fwd-recovery-dev-idcw-261015b-p472b",
+    "compat-recovery-hist.json": "mf-port-hist-recovery-dev-idcw-261015b-swgtw",
+    "compat-recovery-overlap.json": "mf-ovlp-http-compat-recovery-dev-idcw-261015b-4b7vz",
+    "compat-recovery-portfolios.json": "mf-ovlp-port-recovery-dev-idcw-261015b-42v4v",
+    "compat-restored-distributions.json": "mf-idcw-v1-restored-dev-idcw-261015b-cc2dc",
+    "compat-restored-evi.json": "mf-port-evi-restored-dev-idcw-261015b-ntvsx",
+    "compat-restored-facts.json": "mf-port-facts-restored-dev-idcw-261015b-fsrnf",
+    "compat-restored-fwd.json": "mf-port-fwd-restored-dev-idcw-261015b-5rkq8",
+    "compat-restored-hist.json": "mf-port-hist-restored-dev-idcw-261015b-4qq8r",
+    "compat-restored-overlap.json": "mf-ovlp-http-compat-restored-dev-idcw-261015b-mlrd4",
+    "compat-restored-portfolios.json": "mf-ovlp-port-restored-dev-idcw-261015b-4dvjp"
+  },
+  "tools_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:1b505faa40fb89507091fc1509f9480f7bb61895fe5b75dbcea36d8dcef3db9e"
+}
