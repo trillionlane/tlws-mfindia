@@ -11,7 +11,13 @@ analytics stay **ineligible**. The original source-discovery policy/reports rema
 unchanged. This explicitly revises the earlier E09 publication gate, not the
 E10/E11 calculation or eligibility standards.
 
-**Status: implementation and synthetic tests; not yet merged/deployed/certified.**
+**Status: complete for the bounded reported-observation provider DEV pilot,
+2026-10-15.** [Implementation PR #65](https://github.com/trillionlane/tlws-mfindia/pull/65)
+is merged; runtime `a8f60f805dd1118fe666f9e6a47e37830ee709c3` is deployed and
+certified privately. [Verified closeout index](../evidence/mf-e09-dev-dist-261015a.json)
+records 38 sealed gate/compatibility receipts. This accepts reported observations,
+not complete distribution history or adjusted analytics. A later documentation-only
+merge does not redeploy or certify a different runtime SHA.
 No UI, source correction/deletion, identity rewrite, Growth-return substitution,
 whole-universe claim, or production operation is included.
 
@@ -116,6 +122,59 @@ IDs, backup/rehearsal evidence, actual permissions, private/public denial,
 preservation and recovery certificates. Until those are verified the roadmap
 must continue to say DEV acceptance pending. Do not call fixtures or a successful
 job the deployed feature.
+
+## Accepted DEV rollout and backend handover
+
+- Fresh regional MVCC backup and a new fully restored PG18 operational clone
+  passed source/prior-layer preservation, actual restricted-role behavior,
+  original-source append/replay and private HTTP checks before live writes.
+- Installation, append/replay, zero-traffic candidate, promoted, prior-revision
+  recovery and restored private HTTP certificates passed. Each traffic stage
+  rechecked the prior enhancement APIs; no test-only mutation/scenario records
+  were added to satisfy compatibility. All three new routes, unsigned assertions,
+  explicit snapshot pins, rejected writer requests and public denial were checked.
+- Final export preserved all **14,391 source funds and 4,240,204 NAV rows**, including
+  existing analytics, review, evidence, facts, portfolios and overlap. Additions:
+  one immutable policy, three original PDFs and one observation snapshot. Live
+  effective capabilities passed; temporary source-reader grants were removed.
+  NAV/audit schedules remain unchanged.
+- Actual traffic recovery to `tlws-mf-review-dev-dev-ovlp-261015a-overlap` and
+  restoration to `tlws-mf-review-dev-dev-dist-261015a-distributions` passed. Final
+  traffic is 100% on the latter, with no tags, internal ingress and only the
+  intended Insights backend invoker. Neither recovery nor closeout deleted data.
+
+Backend origin: `https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app`. Use the
+existing internal networking, Google IAM and signed backend assertion with
+`review:read`. This is provider readiness for the authorised backend, not consumer
+UI/end-user RBAC acceptance. The separate core v2 service was not redeployed or
+recertified by this release.
+
+1. Read `/api/distributions/v1/policy`.
+2. Read `/api/distributions/v1/funds/101763/coverage` to enumerate retained snapshots.
+3. Read `/api/distributions/v1/funds/101763/observations` with the explicit
+   `snapshot_id` query parameter below. Do not select an implicit latest result.
+
+Accepted snapshot:
+`36fe90cea4bb5bc622184c1f2003ef221458dc624a89233f70563e1ee066eceb`.
+Stored policy:
+`9f56fce56365f7b014fdf7f4e718896b50b7545fe235eabaf0384624bc97581d`.
+The frozen consumer contract is
+`contracts/mfdataindia-distribution-observations-v1.json` (29 patterns, three new
+GET patterns; old 26-pattern enhancement profile unchanged).
+
+The retained window has one reported history observation: **record date
+2026-03-05, INR 7.0000 per unit**, from page 121 of the April 2026 HDFC factsheet.
+The conditional March notice is stored separately; neither its ceiling nor the
+history amount is an actual net investor receipt. Coverage stays unknown,
+freshness unverified, completeness unproven and analytics ineligible. Keep these
+flags unchanged; do not infer zero payouts outside the reported dates or use
+cum-IDCW/reference NAV as a reinvestment price.
+
+The original blocked discovery report is unchanged. Original PDFs, both regional
+backups, execution receipts and the restored clone are retained in the operator
+ledger. Initial Docker-volume initialization ran out of container-disk space;
+no data was pruned. A new host-backed clone completed the full rehearsal; both
+attempts remain retained. No public/browser, UI, all-AMC or production acceptance.
 
 ## Still pending separately
 
