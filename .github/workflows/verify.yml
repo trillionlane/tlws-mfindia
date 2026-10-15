@@ -65,6 +65,7 @@ jobs:
           uv run python scripts/export_enrichment_openapi.py --check
           uv run python scripts/export_official_facts_openapi.py --check
           uv run python scripts/export_portfolio_openapi.py --check
+          uv run python scripts/export_overlap_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -111,6 +112,15 @@ jobs:
             'from pathlib import Path; import xlrd; from mfdataindia.review.app import create_portfolios_app; assert len(create_portfolios_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 22; assert Path("/app/sql/optional/029_official_complete_portfolios.sql").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/deploy_complete_portfolios_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/certify_complete_portfolios_dev.py --help
+
+      - name: Verify dormant weighted overlap profile and workers
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_overlap_app; assert len(create_overlap_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 26; assert Path("/app/sql/optional/030_reported_weighted_overlap.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/deploy_weighted_overlap_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_weighted_overlap_dev.py --help
 
       - name: Verify private read access guard in the image
         run: |

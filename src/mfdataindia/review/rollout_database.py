@@ -88,6 +88,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         official_facts_baseline = capture_official_facts(conn)
         from mfdataindia.enrichment.portfolio_store import capture as capture_portfolios
         portfolio_baseline = capture_portfolios(conn)
+        from mfdataindia.analytics.overlap_store import capture as capture_overlap
+        overlap_baseline = capture_overlap(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
             raise ValueError('operational backup must contain actual fund/NAV records')
         # Role names only. Password hashes and global role attributes are never
@@ -111,6 +113,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         evidence['official_facts_baseline'] = official_facts_baseline
     if portfolio_baseline is not None:
         evidence['portfolio_baseline'] = portfolio_baseline
+    if overlap_baseline is not None:
+        evidence['overlap_baseline'] = overlap_baseline
     return evidence
 
 
