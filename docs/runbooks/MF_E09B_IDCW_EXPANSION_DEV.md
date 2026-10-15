@@ -3,7 +3,10 @@
 ## Approved result and current gate
 
 User approved planning, implementation, review and DEV deployment on 2026-10-15.
-Status: implementation and validation; **not yet merged or accepted in DEV**.
+Status: **bounded provider DEV rollout accepted, 2026-10-15**. Code [PR #67](https://github.com/trillionlane/tlws-mfindia/pull/67)
+merged at `532b125bcb3efc4388155a95cd26e4587109be93`; that exact SHA is deployed.
+See [accepted rollout and handover](#accepted-dev-rollout-and-backend-handover)
+and the [verified evidence index](../evidence/mf-e09b-dev-idcw-261015b.json).
 No UI, production, source correction/deletion, identity rewrite, blanket IDCW
 analytics unlock, or whole-AMC/universe claim is included.
 
@@ -109,3 +112,89 @@ record-date listing remain unproven. Additional evidence for the original pilot
 is a distinct dependency before E10/E11; do not manufacture an adjusted series
 to make this expansion pass. Next issuer batches (UTI/SBI/Kotak) follow usable
 official evidence and reviewed adapters, not an all-AMC promise. No UI changes.
+
+## Accepted DEV rollout and backend handover
+
+All operational gates above passed. The credential-free [42-receipt index](../evidence/mf-e09b-dev-idcw-261015b.json)
+has canonical hash `f0568602ea5f39aea13a8c653c41dcae25cf5a811c855da071d214683f7cf258`.
+The [PR closeout](https://github.com/trillionlane/tlws-mfindia/pull/67#issuecomment-6201687955)
+records the exercised gates and limitations. This documentation-only closeout
+does not deploy another SHA or imply independent reviewer approval.
+
+### Release and verification
+
+- Exact-head [CI 38795144038](https://github.com/trillionlane/tlws-mfindia/actions/runs/38795144038):
+  **1,244 passed, one controlled skip**; contracts, audit, credential scan and
+  application/restore/review-tools images passed. Merged-main CI 38796708719
+  and immutable image preparation 38796746751 also passed.
+- Self-review found and fixed a misleading zero inventory count for withheld
+  evidence. Final affected local suites: **98 passed** (34 new catalog cases).
+  A full local run before that final adjustment passed 1,239 with one skip.
+  The final native repeat passed 1,225 with 20 safety skips: the existing guard
+  refused to erase retained synthetic funds in the reused isolated test DB.
+  No wipe override was used; fresh CI exercised those cases. These are not
+  independently reviewed results or claims that skipped tests executed.
+- App image: `asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:487bceb90cea4bea171e2721bb01d55cccee7c5e59fe503312677a19e7a7b6d6`.
+- PG18 tooling: `asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:1b505faa40fb89507091fc1509f9480f7bb61895fe5b75dbcea36d8dcef3db9e`.
+
+### Exercised operational gates
+
+Fresh regional backup and a **new**, fully restored isolated PG18 clone proved
+source/prior-layer/v1 preservation, real restricted-role behavior and original-PDF
+append/replay against an independently transcribed per-plan reference. Fifteen
+actual in-process private clone responses were checked before live writes.
+
+Owner-only optional installation and restricted-generator live append/replay
+produced the same four snapshot IDs as the clone. Three original PDFs were
+retained. Candidate, promoted, previous-revision recovery and restored private
+HTTP certificates passed for the new routes and prior API compatibility.
+Compatibility used explicitly bound read-only legacy/ABSL cohorts; writer
+authority remained exactly the four-HDFC batch. No synthetic source record,
+test-only result or personal calculator scenario was inserted into DEV to pass.
+
+Actual recovery restored traffic to
+`tlws-mf-review-dev-dev-dist-261015a-distributions`, verified prior APIs and
+new-route absence, then restored and recertified
+`tlws-mf-review-dev-dev-idcw-261015b-idcw`. Final traffic is **100%** on that
+33-pattern revision, with no tags, internal ingress and only the intended
+`trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com` invoker.
+Unsigned assertions, missing/cross-fund snapshot pins, oversized inventory and
+HTTP writers were rejected; public access was denied.
+
+Live effective privileges confirmed only the generator can append. Ingestion,
+reader and admin cannot append or rewrite observations or read original PDF
+bytes. Temporary source-reader grants were removed. Runtime project roles and
+the six-hour NAV/audit schedules were unchanged. The final regional export
+preserved **14,392 source funds, 4,244,085 NAV rows**, all prior layers and all v1
+sources/snapshots. Only **one policy, three sources and four v2 snapshots** were
+added, with zero source-row changes and zero review events. Original PDFs, both
+backups, the restored clone and immutable receipts remain retained.
+
+### Backend consumption and exact pins
+
+Private service: `https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app`.
+Use existing internal networking, Google IAM and signed backend assertions with
+scope `review:read`. No public/browser calls. The four GET patterns documented
+above are live; consume the frozen 33-pattern contract
+`contracts/mfdataindia-idcw-catalog-v2.json`. The old 29-pattern contract and v1
+parser/policy/schema/snapshot remain frozen. The separate core v2 service was
+not redeployed or recertified in this sprint; this is not a consumer UI rollout
+or a v1 fallback.
+
+| AMFI code | Variant | Explicit v2 snapshot ID |
+| --- | --- | --- |
+| 101763 | HDFC Flexi Cap Regular IDCW | `9dd0520525891277bda573f581861ccfbfe8e7574873a6467a321dce7ac43415` |
+| 118954 | HDFC Flexi Cap Direct IDCW | `d832e2766b4a045de5212256762c00a69eb2feaa513172fa9054ca0493f95276` |
+| 102001 | HDFC Large Cap Regular IDCW | `d4b3fa7740abe68c29cbf50552656bda8249590d7d016ea3bb622770eb517193` |
+| 119017 | HDFC Large Cap Direct IDCW | `a3cc8d95525c244ec5214b017b08d3b1e2f0e0377d18f0d4d27c61c3a7944411` |
+
+Stored policy: `aadacdd45f0ca5822cc558dcd1e85e21864fd2040d8657e9524f719ac7f82326`.
+Engine: `3760d0b05089d1a1711f52cee023152fba1dfd84cb09bc7e43a7d9f013faa423`.
+Manifest: `58adf633bb9a01490c5fc2e51de6b6ffb9b82d24d12d06ab8e7097fe5460910b`.
+
+The selection remains FY2025–26, with one reported row per variant, **not**
+proven complete event history. Coverage stays **unknown**, freshness is not
+certified and adjusted analytics remain **ineligible**. No all-AMC/current-month,
+consumer UI/end-user RBAC or production acceptance. E10/E11 remain dependent on
+complete event, reinvestment and levy/unit-event evidence. Original blocked
+discovery evidence and old results remain unchanged.
