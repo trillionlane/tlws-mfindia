@@ -1,12 +1,30 @@
 # MF-E07 — Complete official portfolio pilot
 
-## Finite result and plan
+## Finite result and acceptance
 
-Implementation in progress. This document is not a DEV acceptance certificate.
+Status: **bounded provider DEV pilot accepted, 2026-10-15**. Feature PR #60
+and operational repair #61; certified runtime
+`9e4d410c9da0c21902422c1a2302bd7d2291ab59`.
+[Acceptance evidence](../evidence/mf-e07-dev-port-261015b.json) verifies 32
+outer receipt seals and their nested producer certificates. Fresh regional
+backup, actual restored-clone rehearsal, restricted installation, original
+source imports, deterministic publication/replay, private candidate/fixed-origin
+checks, actual old-revision recovery/new-revision restoration and final regional
+preservation passed. The full 22-pattern profile serves 100% untagged traffic.
+
+All **14,391 original funds and 4,240,204 NAV rows**, original structures and
+sequences, prior review/calendar/rolling results, official evidence rows and
+dated facts were preserved. Exactly one immutable policy, two source records
+and two portfolio snapshots were added. No review events, original field
+replacements, NAV corrections, UI or production changes. The six-hour NAV and
+audit schedules remain enabled and unchanged. Live effective-privilege checks
+also verified that ingestion cannot append to these tables, API roles cannot
+read original bytes, and runtime roles cannot rewrite retained portfolios.
+
 The first DEV installation at runtime build `b489d08` hit its 180-second
 transaction deadline before acceptance. No import, publication or traffic change
-followed. Read-only rollback reconciliation and workload timing are required
-before a new installation attempt. The installation-specific transaction budget
+followed. Read-only reconciliation verified rollback before a new attempt.
+The installation-specific transaction budget
 is 420 seconds, below the existing 600-second job deadline; each statement remains
 bounded to 120 seconds and lock acquisition to five seconds. Source append and
 publication keep their original 180-second transaction bound. No preservation,
@@ -16,10 +34,26 @@ original source/prior-layer hashes still equal the fresh backup. Two complete
 source captures plus existing capability checks took 164.7 seconds before the
 new schema installation/verification overhead, explaining the insufficient
 180-second installation budget. This measurement did not append any records.
-Deliver two distinct ABSL fund-level portfolios for August 31, 2026, linked
+The repaired live installation completed in about 188 seconds. The new attempt
+used renewed SHA-bound images, a fresh backup and a different restored clone;
+the failed attempt and first clone remain retained.
+
+One initial candidate read-only compatibility probe included the new ABSL
+portfolio codes in the legacy analytics cohort. Those funds have no previously
+published legacy analytics result, so it correctly failed `NotFound`. The gate
+restored the known prior traffic and cleared the candidate tag. A read-only
+clone probe reproduced the cause; the original four-fund legacy certification
+cohort was restored, while the two-fund full-row portfolio oracle stayed
+unchanged. No analytics were generated to satisfy this probe. All subsequent
+candidate/fixed/recovery/restored gates passed. This was an operator input
+repair, not another runtime or source-data change.
+
+Delivered: two distinct ABSL fund-level portfolios for August 31, 2026, linked
 to existing Regular Growth identifiers: Large Cap 103174 / INF209K01BR9
 and Flexi Cap 103166 / INF209K01AJ8. Not all-AMC coverage, current-month
 freshness, overlap analytics, adjusted IDCW analytics or consumer UI wiring.
+
+## Accepted release drill
 
 1. Acquire the issuer's full monthly disclosure archive, preserve original
    bytes and listing URL, and verify exact issuer code/ISIN identities.
@@ -113,3 +147,53 @@ must reproduce the entire accepted list without loss/duplication. Empty
 responses, fixture success or green CI cannot close the sprint. Verify all
 prior private read/calculator patterns as well; no new positive admin/tag-write
 or consumer end-user RBAC certification is implied.
+
+## Backend consumer handover
+
+Use the existing private origin
+`https://tlws-mf-review-dev-kazxufb4wa-el.a.run.app` from the authorized
+`trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com` workload.
+Cloud Run ID-token audience is that default origin. The separate signed backend
+assertion keeps issuer/caller `trillion-insights`, audience
+`mfdata-verified-review-dev` and `review:read` scope. Existing consumer signing
+material stays in its secret store, never in a browser, source repository or
+client bundle. Internal ingress and invoker IAM remain required.
+
+Contract: `contracts/mfdataindia-complete-portfolios-v1.json`. This new namespace
+is independent of MFData's existing strict v2 read contract; it does not restore
+temporary v1 fallback or change the original nineteen-read service.
+
+1. Read `/api/portfolios/v1/policy` and the selected fund's `/portfolio` metadata.
+   Require `state: available`, inspect as-of date, scope, policy, source hashes,
+   `statement_complete`, `overlap_eligible` and limitation fields. Missing is not
+   an empty/zero portfolio. Latest retained does not certify current-month freshness.
+2. Pin that exact snapshot ID and follow `/snapshots/{snapshot_id}/holdings`
+   using `limit` (1–100) and returned `next_after_row` as `after_row`. Stop only
+   when the next cursor is null. A pinned immutable snapshot prevents mixed-month
+   pages; changed current identity rejects pagination until revalidation.
+3. Use `/snapshots` for bounded retained history. It is a live keyset inventory,
+   not a frozen enumeration. Cross-fund snapshot IDs are 404.
+
+Accepted per-fund IDs (explicit code pairing, not positional batch-list inference):
+
+| Code | Fund | Holdings | Snapshot ID |
+| --- | --- | --- | --- |
+| 103166 | ABSL Flexi Cap Regular Growth | 89 | `4b6c34fd39ad239c963a40b5ba400e869b2dd017744075b1d221f5e49355964b` |
+| 103174 | ABSL Large Cap Regular Growth | 77 | `596bccb5d82e6f91630d01e57a8dad26c54d9a52fb0873cbe5a32ba86624ede4` |
+
+Both disclose August 31, 2026 fund-shared portfolios; no automatic sibling or
+direct-plan identity fallback. Market values and grand totals explicitly use
+INR lakh decimal strings. Published percentage fractions are converted under the
+stored policy, not rescaled to 100. Censored weights have null values and an
+exclusive upper bound, not zero. Keep signed payables and zero-valued holdings.
+Issuer-local identifiers are not certified ISINs. Derivative collateral is not
+notional exposure; separate positions with missing contract identity/quantity
+retain explicit nulls. Neither real pilot is automatically eligible for
+unrestricted full-security overlap. MF-E08 must define that separate policy.
+
+This handover certifies provider backend availability/source fidelity and
+preservation, not deployed Insights client wiring, end-user RBAC, all-AMC
+coverage, UI, adjusted IDCW metrics, or production. Original facts/holdings/NAVs
+are not automatically replaced with these sidecars. A later documentation-only
+merge may be newer than runtime; do not redeploy identical runtime merely to
+match that documentation SHA.
