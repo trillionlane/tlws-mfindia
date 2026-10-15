@@ -256,7 +256,9 @@ def prepare(dsn, monkeypatch):
             "extractor_version": "synthetic",
         },
     )
-    monkeypatch.setattr(engine, "decode", lambda *args: (SUMMARY, LINEAGE))
+    monkeypatch.setattr(
+        engine, "decode", lambda content, page: (SUMMARY, {**LINEAGE, "page": page})
+    )
     source = import_source(dsn, b"PK\x03\x04fixture")
     summary = import_source(dsn, b"%PDF-fixture", pdf=True)
     return schemas.Selection(
