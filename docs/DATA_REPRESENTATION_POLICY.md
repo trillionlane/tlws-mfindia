@@ -45,6 +45,16 @@ Do not convert cum-IDCW/pre-notice NAV into reinvestment NAV or generic levy
 wording into a zero charge. A summary history does not automatically prove a
 complete calendar window. An empty selection remains unknown, not no payout.
 
+**Approved scope revision, 2026-10-15:** source-backed reported observations may
+be stored append-only and exposed through authenticated backend-only private
+reads before complete-window evidence exists. This is a useful data capability,
+not accepted complete event history. The observation API must explicitly report
+coverage unknown and analytics ineligible, retain conflicts and source lineage,
+and distinguish not captured from an empty filtered observation selection.
+No public/browser-facing provider API or UI work is included. Persistent storage
+does not depend on a user's login session. See the
+[observation implementation and DEV gates](runbooks/MF_E09_REPORTED_OBSERVATIONS_DEV.md).
+
 Only complete, identity-bound accepted evidence may support a later versioned
 total-return policy and certified fund/window/metric combination. Raw NAV and old
 results remain intact. E09 discovery cannot enable E10 calculations or E11 API

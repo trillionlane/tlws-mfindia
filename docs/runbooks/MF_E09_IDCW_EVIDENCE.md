@@ -2,7 +2,15 @@
 
 ## Status and finite result
 
-**In progress, source gate blocked. This is not completed E09, accepted event
+**Scope revision approved by the user, 2026-10-15:** proceed with Option 1,
+private reported-distribution observations, while coverage remains unknown and
+adjusted analytics stay disabled. The [new observation runbook](MF_E09_REPORTED_OBSERVATIONS_DEV.md)
+governs that separately useful feature. The original complete-history acceptance
+gate below is retained for later E10/E11 work; it no longer blocks storing and
+reading explicitly incomplete reported observations. Do not relabel the original
+sealed discovery report as accepted evidence or a complete-history certificate.
+
+**Original complete-history source gate remains blocked. This is not completed E09, accepted event
 publication, a new API or a DEV deployment.** The offline verifier now produces a
 deterministic, source-bound discovery report. That is useful implementation
 progress, not the sprint acceptance result.
@@ -78,8 +86,13 @@ The summary's "Past 3 years" heading does not establish an exact start/end or a
 non-truncated listing. The same page's Value Fund block includes a 2022 event;
 do not turn the heading into a machine-certified calendar interval. The site
 points to its record-date listing. That listing has not been captured/proven:
-the bounded automated HTML request failed and the browser did not yield a usable
-history table. [AMFI's scheme-distribution selector](https://www.amfiindia.com/otherdata/scheme-dividends)
+the bounded automated HTML request failed. A subsequent normal browser query
+selected IDCW, Equity, HDFC Flexi Cap, 2025-04-01 through 2026-03-31 and yielded
+one Regular and one separate Direct row dated March 5, 2026 at INR 7.0000 per
+unit in both investor columns. The Excel export was not retained. This
+corroborates the factsheet, not complete-history or reinvestment evidence; the
+new publication adapter uses the retained original PDFs, not that browser
+observation as original source bytes. [AMFI's scheme-distribution selector](https://www.amfiindia.com/otherdata/scheme-dividends)
 is another official discovery route, not retained accepted evidence here.
 
 **Remaining blockers:** complete event listing/window, applicable reinvestment
