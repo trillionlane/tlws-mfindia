@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -61,6 +61,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if enrichment:
                         from mfdataindia.enrichment.store import verify_acl as verify_enrichment_acl
                         verify_enrichment_acl(conn)
+                    if official_facts:
+                        from mfdataindia.enrichment.facts_store import verify_acl as verify_facts_acl
+                        verify_facts_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -225,6 +228,25 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                                 document_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
             return run(lambda conn: enrichment_store.coverage(conn,code,document_id=document_id))
 
+    if official_facts:
+        from mfdataindia.enrichment import facts, facts_schemas, facts_store
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/enrichment/v2/policy', response_model=facts_schemas.PolicyResponse)
+        def official_facts_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(facts.policy()), 'document': facts_store.installed_policy(conn)})
+
+        @app.get('/api/enrichment/v2/funds/{code}/facts', response_model=facts_schemas.Response)
+        def official_facts_read(code: Code, principal: Principal = Depends(identity),
+                                snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
+            return run(lambda conn: facts_store.get(conn,code,snapshot_id=snapshot_id))
+
+        @app.get('/api/enrichment/v2/funds/{code}/snapshots', response_model=facts_schemas.Page)
+        def official_facts_snapshots(code: Code, principal: Principal = Depends(identity),
+                                     after: Annotated[str, Query(pattern=r'^(?:[0-9a-f]{64})?$')] = '',
+                                     limit: int = Query(50,ge=1,le=100)):
+            return run(lambda conn: facts_store.snapshots(conn,code,after=after,limit=limit))
+
     return app
 
 
@@ -256,3 +278,8 @@ def create_historical_calculator_app(dsn: str | None = None, *, verifier: Assert
 def create_enrichment_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Fifteen-route opt-in profile; no public intake or original-document download."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True)
+
+
+def create_official_facts_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Eighteen-route private disclosure profile; every earlier profile is frozen."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True)

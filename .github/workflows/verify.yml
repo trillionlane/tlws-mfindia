@@ -63,6 +63,7 @@ jobs:
           uv run python scripts/export_forward_calculator_openapi.py --check
           uv run python scripts/export_historical_calculator_openapi.py --check
           uv run python scripts/export_enrichment_openapi.py --check
+          uv run python scripts/export_official_facts_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -173,6 +174,15 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_official_evidence_dev.py --help
           docker run --rm --entrypoint python "$image" -c \
             'import io; from pypdf import PdfWriter; from mfdataindia.enrichment.pdf_evidence import extract_pdf; writer = PdfWriter(); writer.add_blank_page(width=200, height=200); output = io.BytesIO(); writer.write(output); result = extract_pdf(output.getvalue()); assert result["state"] == "no_text"; assert result["facts_accepted"] is False'
+
+      - name: Verify dormant official-fund-facts profile
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_official_facts_app; import mfdataindia.enrichment.facts_operations; import mfdataindia.enrichment.facts_certification; assert len(create_official_facts_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 18; assert Path("/app/sql/optional/028_official_fund_facts.sql").is_file(); assert Path("/app/contracts/mfdataindia-official-facts-v1.json").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/deploy_official_facts_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_official_facts_dev.py --help
 
       - name: Build and verify dormant PostgreSQL 18 review-backup tools
         run: |
