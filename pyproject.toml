@@ -22,6 +22,7 @@ dependencies = [
     "uvicorn[standard]>=0.29",
     "PyJWT[crypto]>=2.10.1",
     "pypdf>=6.20.1,<7",
+    "xlrd==2.0.2",
 ]
 
 [project.optional-dependencies]

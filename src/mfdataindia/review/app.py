@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -64,6 +64,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if official_facts:
                         from mfdataindia.enrichment.facts_store import verify_acl as verify_facts_acl
                         verify_facts_acl(conn)
+                    if portfolios:
+                        from mfdataindia.enrichment.portfolio_store import verify_acl as verify_portfolio_acl
+                        verify_portfolio_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -247,6 +250,31 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                                      limit: int = Query(50,ge=1,le=100)):
             return run(lambda conn: facts_store.snapshots(conn,code,after=after,limit=limit))
 
+    if portfolios:
+        from mfdataindia.enrichment import portfolio_schemas, portfolio_store, portfolios as portfolio_engine
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/portfolios/v1/policy', response_model=portfolio_schemas.PolicyResponse)
+        def portfolio_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(portfolio_engine.policy()), 'document': portfolio_store.installed_policy(conn)})
+
+        @app.get('/api/portfolios/v1/funds/{code}/portfolio', response_model=portfolio_schemas.Response)
+        def portfolio_read(code: Code, principal: Principal = Depends(identity),
+                           snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
+            return run(lambda conn: portfolio_store.get(conn,code,snapshot_id=snapshot_id)[0])
+
+        @app.get('/api/portfolios/v1/funds/{code}/snapshots', response_model=portfolio_schemas.SnapshotPage)
+        def portfolio_snapshots(code: Code, principal: Principal = Depends(identity),
+                                after: Annotated[str, Query(pattern=r'^(?:[0-9a-f]{64})?$')] = '',
+                                limit: Annotated[int, Query(ge=1,le=100)] = 50):
+            return run(lambda conn: portfolio_store.snapshots(conn,code,after=after,limit=limit))
+
+        @app.get('/api/portfolios/v1/funds/{code}/snapshots/{snapshot_id}/holdings', response_model=portfolio_schemas.HoldingsPage)
+        def portfolio_holdings(code: Code, snapshot_id: Hash, principal: Principal = Depends(identity),
+                               after_row: Annotated[int, Query(ge=0,le=1000)] = 0,
+                               limit: Annotated[int, Query(ge=1,le=100)] = 50):
+            return run(lambda conn: portfolio_store.holdings(conn,code,snapshot_id,after=after_row,limit=limit))
+
     return app
 
 
@@ -283,3 +311,8 @@ def create_enrichment_app(dsn: str | None = None, *, verifier: AssertionVerifier
 def create_official_facts_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Eighteen-route private disclosure profile; every earlier profile is frozen."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True)
+
+
+def create_portfolios_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """Explicit additive 22-route profile; prior 18-route factory is frozen."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True)
