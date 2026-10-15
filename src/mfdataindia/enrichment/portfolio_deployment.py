@@ -16,6 +16,9 @@ from mfdataindia.enrichment.deployment import BUCKET, pinned_dsn
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.rollout import seal_evidence
 
+INSTALL_TRANSACTION_SECONDS = 420
+APPEND_TRANSACTION_SECONDS = 180
+
 
 class Source(schemas.Model):
     intake: schemas.Intake
@@ -108,7 +111,14 @@ def execute(manifest, environment, operation, session=None, *, root=Path("/app")
         )
         conn.execute("SET LOCAL statement_timeout='120s'")
         conn.execute("SET LOCAL lock_timeout='5s'")
-        conn.execute("SET LOCAL transaction_timeout='180s'")
+        # Installation hashes the entire original dataset twice while holding
+        # its source locks. Keep both preservation comparisons and a bounded
+        # transaction budget below the existing 600-second Cloud Run deadline.
+        # Ordinary source append/publication retains its narrower budget.
+        seconds = (
+            INSTALL_TRANSACTION_SECONDS if operation == "install" else APPEND_TRANSACTION_SECONDS
+        )
+        conn.execute(f"SET LOCAL transaction_timeout='{seconds}s'")
         if operation == "install":
             result = portfolio_operations.install(conn, root)
         elif operation == "import":
