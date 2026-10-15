@@ -66,6 +66,7 @@ jobs:
           uv run python scripts/export_official_facts_openapi.py --check
           uv run python scripts/export_portfolio_openapi.py --check
           uv run python scripts/export_overlap_openapi.py --check
+          uv run python scripts/export_distribution_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -134,6 +135,15 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'from mfdataindia.enrichment.idcw_discovery import policy; import mfdataindia.enrichment._idcw_discovery_worker; assert policy()["publication"] == "discovery_only_not_accepted_events"'
           docker run --rm --entrypoint python "$image" /app/scripts/discover_idcw_evidence.py --help
+
+      - name: Verify dormant private reported-observation profile
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_distribution_observations_app; assert len(create_distribution_observations_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 29; assert Path("/app/sql/optional/031_reported_distribution_observations.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/deploy_distribution_observations_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_distribution_observations_dev.py --help
 
       - name: Build and verify PostgreSQL 18 restore image
         run: |

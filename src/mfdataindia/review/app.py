@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -70,6 +70,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if overlap:
                         from mfdataindia.analytics.overlap_store import verify_acl as verify_overlap_acl
                         verify_overlap_acl(conn)
+                    if distributions:
+                        from mfdataindia.enrichment.distribution_store import verify_acl as verify_distribution_acl
+                        verify_distribution_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -303,6 +306,23 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                            limit: Annotated[int, Query(ge=1,le=100)] = 50):
             return run(lambda conn: overlap_store.shared(conn,result_id,after=after_isin,limit=limit))
 
+    if distributions:
+        from mfdataindia.enrichment import distributions as distribution_engine, distribution_schemas, distribution_store
+        from mfdataindia.enrichment.portfolio_schemas import PolicyResponse
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/distributions/v1/policy', response_model=PolicyResponse)
+        def distribution_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(distribution_engine.policy()), 'document': distribution_store.installed_policy(conn)})
+
+        @app.get('/api/distributions/v1/funds/{code}/coverage', response_model=distribution_schemas.DistributionCoverage)
+        def distribution_coverage(code: Code, principal: Principal = Depends(identity)):
+            return run(lambda conn: distribution_store.coverage(conn, code))
+
+        @app.get('/api/distributions/v1/funds/{code}/observations', response_model=distribution_schemas.DistributionResponse)
+        def distribution_observations(code: Code, snapshot_id: Annotated[str, Query(pattern=r'^[0-9a-f]{64}$')], principal: Principal = Depends(identity)):
+            return run(lambda conn: distribution_store.get(conn, code, snapshot_id))
+
     return app
 
 
@@ -349,3 +369,8 @@ def create_portfolios_app(dsn: str | None = None, *, verifier: AssertionVerifier
 def create_overlap_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """Explicit additive 26-route profile; prior 22-route factory stays frozen."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True)
+
+
+def create_distribution_observations_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """29-route private profile; reported evidence only, all prior contracts frozen."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True)
