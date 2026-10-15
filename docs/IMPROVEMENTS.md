@@ -140,7 +140,8 @@ scaffolding and certified samples must not become unsupported product claims.
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
 | IDCW-01 | Bounded reported-observation DEV pilot accepted; full event coverage remains open | [PR #65](https://github.com/trillionlane/tlws-mfindia/pull/65), [handover](runbooks/MF_E09_REPORTED_OBSERVATIONS_DEV.md#accepted-dev-rollout-and-backend-handover) | HDFC 101763: three original PDFs, one reported observation and three private reads. Fresh backup/clone, replay, candidate/final/recovery/restored certification, live capabilities and preservation passed. Coverage remains unknown; complete-history and adjusted-analytics gates remain separate. |
-| IDCW-02 | Planned — policy-bound total-return engine | — | Depends on accepted IDCW-01 evidence and ENH-01/ANA-01 foundations; no adjustment engine implemented. |
+| MF-E09B | In implementation — bounded HDFC observation expansion | [Sprint plan](runbooks/MF_E09B_IDCW_EXPANSION_DEV.md) | Four explicit Flexi Cap/Large Cap Regular/Direct identities; additive v2 policy/private inventory and reads, frozen v1, atomic append/replay. Fresh backup/clone, independent per-plan source reference, private certification/recovery and preservation required before DEV acceptance. Coverage stays unknown; no analytics unlock. |
+| IDCW-02 | Planned — policy-bound total-return engine | — | Depends on accepted complete-event/reinvestment/levy evidence, not merely IDCW-01 observation publication, and ENH-01/ANA-01 foundations; no adjustment engine implemented. |
 | IDCW-03 | Planned — certified-window private API publication | — | Depends on IDCW-02 verification and preservation proof; existing IDCW restrictions remain in force. |
 | ANA-02 | Planned | — | — |
 | CALC-01 | Planned | — | — |
@@ -210,8 +211,11 @@ coverage. The three sequential provider sprints may be delivered in one PR:
    using authoritative unit/face-value evidence. Retain conflicts and superseded
    evidence. Prove completeness for each proposed window; absence of an event
    record means unknown coverage unless authoritative evidence establishes no
-   payout. **Stop publication if access, identity or completeness cannot be
-   established; a reviewed source/coverage report is the discovery deliverable.**
+   payout. **Accepted scope revision:** reported observations may be published
+   privately with unknown completeness under MF-E09/MF-E09B. Stop adjusted-event
+   acceptance and analytics publication when completeness or required adjustment
+   evidence is unproven; access and exact identity remain mandatory for every
+   observation append. Preserve the original blocked discovery report.
 2. **IDCW-02 — Deterministic total-return engine.** Leave raw NAV, existing
    calculations and source-quality evidence untouched. Generate a separate
    reinvested wealth index and supported return/risk results under an immutable
