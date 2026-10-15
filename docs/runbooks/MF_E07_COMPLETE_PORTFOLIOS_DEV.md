@@ -3,6 +3,14 @@
 ## Finite result and plan
 
 Implementation in progress. This document is not a DEV acceptance certificate.
+The first DEV installation at runtime build `b489d08` hit its 180-second
+transaction deadline before acceptance. No import, publication or traffic change
+followed. Read-only rollback reconciliation and workload timing are required
+before a new installation attempt. The installation-specific transaction budget
+is 420 seconds, below the existing 600-second job deadline; each statement remains
+bounded to 120 seconds and lock acquisition to five seconds. Source append and
+publication keep their original 180-second transaction bound. No preservation,
+privilege, source binding, atomicity or recovery gate is removed.
 Deliver two distinct ABSL fund-level portfolios for August 31, 2026, linked
 to existing Regular Growth identifiers: Large Cap 103174 / INF209K01BR9
 and Flexi Cap 103166 / INF209K01AJ8. Not all-AMC coverage, current-month
