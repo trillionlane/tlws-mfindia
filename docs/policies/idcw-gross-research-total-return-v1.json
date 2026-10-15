@@ -1,0 +1,47 @@
+{
+  "basis": "gross fund research, not investor execution or net cash-flow return",
+  "cagr": "(q[end]*NAV[end]/NAV[0])^(365.25/elapsed_calendar_days)-1, in percent; at least 365 days",
+  "coverage": "not certified by this engine; a short NAV gap or an empty event set does not establish completeness",
+  "cumulative_return": "(q[end]*NAV[end]/NAV[0]-1)*100",
+  "decimal_exponent_limits": [
+    -999999,
+    999999
+  ],
+  "decimal_traps": [
+    "InvalidOperation",
+    "DivisionByZero",
+    "Overflow"
+  ],
+  "distribution": "issuer-confirmed INR per pre-event unit, before personal tax; NAV already reflects scheme costs; never infer or add back a levy",
+  "eligibility": "always false here; trusted per-fund/window admission, current quality/lifecycle and atomic publication required separately",
+  "engine_version": "idcw-gross-research-total-return-1",
+  "event_date": "explicit ex-distribution valuation date; never select record/payment/next date by inference",
+  "events_in_window": "start exclusive, end inclusive; first NAV is post any start-date distribution; input must omit start/outside events",
+  "exclusions": [
+    "personal tax/TDS, investor stamp duty, loads, order cutoffs and actual units allotted",
+    "delayed reinvestment or unreinvested cash ledger",
+    "unit-event adjustment",
+    "Sharpe, Sortino, alpha, beta, benchmark and rolling metrics",
+    "coverage certification, current eligibility, API/UI activation and investment advice"
+  ],
+  "id": "idcw-gross-research-total-return",
+  "lineage": "complete normalized declared input + immutable policy hash + engine code and dependency hashes + runtime; no wall clock",
+  "max_drawdown": "min(wealth[t]/running_max(wealth)-1)*100 over supplied observations; includes initial zero drawdown",
+  "maximum_events": 600,
+  "maximum_observations": 30000,
+  "maximum_observed_gap_calendar_days": 7,
+  "maximum_window_calendar_days": 36600,
+  "missing_or_conflicting": "no numeric output for explicit conflicts, unsupported unit events, event/NAV mismatch, missing event-date NAV or observed gap >7 days",
+  "option": "IDCW",
+  "ordering": "one consolidated issuer event per date; all same-day distribution reinvested after ex-distribution valuation",
+  "output_decimal_places": 8,
+  "period_return": "((NAV[t]+D[t])/NAV[t-1]-1)*100; D=0 only within the DECLARED input event set, not proof of no payout",
+  "persistence": "immutable policy in git; pure arithmetic only, no source/result/database writes or publication",
+  "precision": 50,
+  "reinvestment": "hypothetical frictionless reinvestment at explicitly mapped same-day ex-distribution NAV; no actual allotment assumption",
+  "rounding": "ROUND_HALF_EVEN",
+  "unit_events": "unsupported; never silently adjust a split, merger, bonus, face-value or unit-basis change",
+  "units": "q[0]=1; q[t]=q[t-1]*(1+D[t]/NAV[t]) on event dates, otherwise unchanged",
+  "version": 1,
+  "wealth_index": "100*q[t]*NAV[t]/NAV[0]; no raw NAV rewrite or stored imputation"
+}

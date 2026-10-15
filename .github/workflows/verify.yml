@@ -137,6 +137,13 @@ jobs:
             'from mfdataindia.enrichment.idcw_discovery import policy; import mfdataindia.enrichment._idcw_discovery_worker; assert policy()["publication"] == "discovery_only_not_accepted_events"'
           docker run --rm --entrypoint python "$image" /app/scripts/discover_idcw_evidence.py --help
 
+      - name: Verify internal IDCW research engine, not publication
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from mfdataindia.analytics.idcw_research import policy, validate_policy, engine_identity, ResearchInput; p = policy(); assert validate_policy(p); assert p["id"] == "idcw-gross-research-total-return"; assert p["version"] == 1; assert engine_identity()["code_hash"]; assert "coverage_complete" not in ResearchInput.model_fields'
+
       - name: Verify dormant private reported-observation profile
         run: |
           set -euo pipefail

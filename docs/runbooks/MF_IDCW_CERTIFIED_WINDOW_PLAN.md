@@ -30,6 +30,14 @@ No UI, production, raw-data correction, inferred payout or blanket unlock.
 
 ## Current implementation boundary
 
+**2026-10-16 refinement:** the [gross research engine](MF_IDCW_GROSS_RESEARCH_ENGINE.md)
+is now implemented independently of source qualification. Personal tax, actual
+allotment records and a bespoke issuer reply are not prerequisites for that
+research method. The original diagnostic/report below is retained unchanged;
+it is not being re-labelled accepted. Essential event coverage and explicit
+ex-NAV mapping still gate real-window publication. The older sequencing below
+records the initial source-checkpoint plan, not a prohibition on arithmetic work.
+
 The first implementation is an **offline source-bound readiness verifier**, not
 a total-return engine, database migration, new API or deployment. It reconciles
 the actual historical CSV/query capture, the immutable v2 observation and AMFI
@@ -115,8 +123,10 @@ acceptance.
    levy; gross research policy and actual investor simulation remain distinct.
 4. Recheck live identity during any eventual admission; the offline snapshot
    comparison is not current database certification.
-5. Only then implement/certify the deterministic total-return engine and private
-   publication with fresh preservation-first operational gates.
+5. The gross research engine is implemented separately as of 2026-10-16. Only
+   publish/certify real-window results after essential evidence admission and
+   fresh preservation-first operational gates; actual investor simulation stays
+   separate. See the refinement above for the narrowed evidence requirements.
 
 No migration, IAM, scheduler, ingestion, runtime or source data changes are part
 of this checkpoint. No deployment or IDCW unlock is claimed. MF-E09B continues
