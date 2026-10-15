@@ -127,6 +127,14 @@ jobs:
           docker run --rm --entrypoint python "tlws-mf-data:${{ github.sha }}" -c \
             'from pathlib import Path; assert Path("/app/scripts/private_read_invokers_dev.sh").is_file()'
 
+      - name: Verify offline IDCW discovery tools, not a publication profile
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from mfdataindia.enrichment.idcw_discovery import policy; import mfdataindia.enrichment._idcw_discovery_worker; assert policy()["publication"] == "discovery_only_not_accepted_events"'
+          docker run --rm --entrypoint python "$image" /app/scripts/discover_idcw_evidence.py --help
+
       - name: Build and verify PostgreSQL 18 restore image
         run: |
           set -euo pipefail

@@ -127,6 +127,8 @@ PRs separately where applicable. Track code, merge, deployment and acceptance
 as separate milestones; merging this roadmap does not complete any sprint.
 Use explicit statuses such as planned, in progress, implemented, merged,
 deployed and accepted, with evidence for each claimed milestone.
+Apply the [representation boundary](DATA_REPRESENTATION_POLICY.md): validation
+scaffolding and certified samples must not become unsupported product claims.
 
 | Sprint | Status | Implementation PRs | Release / acceptance evidence |
 | --- | --- | --- | --- |
@@ -137,7 +139,7 @@ deployed and accepted, with evidence for each claimed milestone.
 | UI-01 | Planned | — | — |
 | ENR-01 | Planned | — | — |
 | ENR-02 | Planned | — | — |
-| IDCW-01 | Planned — authoritative event evidence and coverage pilot | — | Source access, exact variant mapping and historical completeness not yet certified. |
+| IDCW-01 | In progress — offline source gate only; publication blocked | [MF-E09 plan and evidence](runbooks/MF_E09_IDCW_EVIDENCE.md) | Real issuer identity, history and notice discovered; no accepted events, proven complete window or adjusted-analytics unlock. |
 | IDCW-02 | Planned — policy-bound total-return engine | — | Depends on accepted IDCW-01 evidence and ENH-01/ANA-01 foundations; no adjustment engine implemented. |
 | IDCW-03 | Planned — certified-window private API publication | — | Depends on IDCW-02 verification and preservation proof; existing IDCW restrictions remain in force. |
 | ANA-02 | Planned | — | — |
@@ -183,9 +185,9 @@ automatic enrichment execution and live policy selection are not implemented.
 
 ### IDCW distribution-adjusted research delivery strategy
 
-**Status:** planned enrichment/analytics feature, not an implemented capability
-or permission to acquire data, deploy, or activate IDCW comparison. Complete the
-current preservation-first DEV rollout before executing this track. Reuse the
+**Status:** MF-E09 source gate in progress; accepted event publication and IDCW
+analytics remain unavailable. The prior preservation-first DEV rollout is complete
+for its bounded provider cohort; that does not satisfy IDCW source coverage. Reuse the
 ENH-01 policy/lineage foundation and ANA-01 verified calculation conventions.
 Authoritative TRI is not a prerequisite for fund-only total returns; any later
 benchmark-relative claims still require ENR-02 inputs.
@@ -339,8 +341,9 @@ Insights runtime to get around this. Image preparation is separate from rollout.
 | MF-E05 | Private evidence API deployed/certified in DEV (#56); full enrichment acceptance still open | Fresh backup and operational clone, restricted SQL 027 installation, original ABSL PDF append/replay, private fifteen-route candidate/fixed/restored checks and real traffic recovery passed. Final export preserved all 14,391 source funds, 4,239,958 NAV rows and prior layers; only one policy/blob/document and two mappings added. Four new metadata route patterns are consumable privately. Stored v1 PDF mappings remain explicitly unsupported/unmapped: no accepted fields, whole-AMC or Insights end-user RBAC claim. Exact source identity/field acceptance and current all-AMC discovery remain next; do not repeat the completed metadata rollout. [DEV evidence index](evidence/mf-e05-dev-evi-261014a.json). |
 | MF-E06 | Complete — bounded ABSL provider DEV pilot, 2026-10-15 | PR #58 runtime `074b126`; exact issuer AMFI/ISIN bridge for 103174/103173, three dated benchmark/manager/BER fields per variant, explicit AUM/TER unavailability and three private read patterns (18 total). Fresh archive/clone, exact replay/clone-live IDs, private candidate/fixed/restored checks and actual automatic recovery passed. Final export preserved 14,391 source funds, 4,240,198 NAV rows, prior analytics/review and every old evidence row. [Acceptance evidence](evidence/mf-e06-dev-fact-261015a.json), [backend handover](runbooks/MF_E06_OFFICIAL_FACTS_DEV.md#backend-consumer-handover). No all-AMC, current-month freshness, UI or IDCW-adjusted analytics claim. |
 | MF-E07 | Complete — bounded provider DEV portfolio pilot, 2026-10-15 | #60 plus measured installation-budget repair #61; runtime `9e4d410`. Large Cap 103174 (77 holdings) and Flexi Cap 103166 (89), August 31 2026. Four new private patterns in a certified 22-pattern profile; old 18 contracts unchanged. Fresh backup/new operational clone, exact clone/live/replay IDs, independent full-row source oracle, private candidate/fixed/restored checks, actual recovery and live effective-role checks passed. All 14,391 source funds, 4,240,204 NAV rows and prior layers preserved; one policy/two sources/two snapshots appended. [Evidence](evidence/mf-e07-dev-port-261015b.json), [handover](runbooks/MF_E07_COMPLETE_PORTFOLIOS_DEV.md#backend-consumer-handover). Initial failed installation and read-only cohort-probe repair are documented. Not all-AMC/current-month, unrestricted overlap, IDCW, consumer UI/RBAC or production acceptance. |
-| MF-E08 | Implemented — bounded observed-ISIN weighted overlap; live acceptance tracked separately | [Policy, private 26-route contract and preservation-first rollout](runbooks/MF_E08_WEIGHTED_OVERLAP_DEV.md). One same-date E07 pair, observed shared-security weights and concentration, immutable results/coverage; full economic overlap stays unavailable. Independent original-XLS reference is 43 shared securities and 58.79870728 percentage points. CI/merge/image preparation are not DEV acceptance; exact runtime and certificate evidence belong to the sprint PR closeout. No existing Jaccard/source or UI changes. |
-| MF-E09–MF-E12 | Separate evidence/source dependencies — not started | UTI/SBI/Kotak confirmation does not establish HDFC distribution-event coverage or third-party TRI rights. Preserve original bounded event/benchmark acceptance gates. |
+| MF-E08 | Complete — bounded provider DEV overlap pilot, 2026-10-15 | #63 runtime `8d3773e`; [26-route policy/runbook](runbooks/MF_E08_WEIGHTED_OVERLAP_DEV.md), [DEV closeout and backend handover](https://github.com/trillionlane/tlws-mfindia/pull/63#issuecomment-6196783642). One same-date E07 pair; independent original-XLS reference is 43 shared securities and 58.79870728 percentage points. Fresh backup/clone, append/replay, candidate/fixed/restored certification, actual recovery, role checks and source/prior-layer preservation passed. Full economic overlap remains unavailable by policy; no all-AMC/current-month, consumer UI/business or production claim. |
+| MF-E09 | In progress — source-verification checkpoint; acceptance blocked | [Plan, offline verifier and real-source findings](runbooks/MF_E09_IDCW_EVIDENCE.md). Exact HDFC 101763 identity and three reported payouts; complete event window, applicable reinvestment and levy/unit-event evidence remain unproven. Discovery is not accepted event/API publication or sprint completion. |
+| MF-E10–MF-E12 | Separate evidence/source dependencies — not started | HDFC discovery does not establish complete distribution-event coverage or third-party TRI rights. Preserve original event/benchmark acceptance gates. |
 | MF-E13 | Complete — private deterministic forward calculators | #48/#49 deployed and certified at runtime `ae504db`, dataset v14. Eight real private scenarios, all nine prior paths, actual rollback/restoration, public denial and whole-source preservation passed. One immutable policy added; no source rows, schema/grants or personal scenarios changed. Evidence: `docs/evidence/mf-e13-dev-fwd-20261014b.json`. |
 | MF-E14 | Complete — private historical Growth SIP/lumpsum and XIRR | #51 deployed/certified at `957ba7d`, dataset v14. Real Growth one-purchase/12-instalment samples, withheld IDCW/quality/null controls, ten-route compatibility, actual recovery and whole-source preservation passed. Exactly one immutable policy added; no source/scenario writes or UI. Evidence: `docs/evidence/mf-e14-dev-hist-20261014a.json`. |
 | MF-E15 | Planned — not started | Final universe/API/operations handover cannot hide unresolved source-dependent deliverables. |

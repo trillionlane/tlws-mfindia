@@ -1,0 +1,237 @@
+{
+  "accepted_event_count": 0,
+  "analytics_eligible": false,
+  "announcement_consistent_with_history": true,
+  "blocking_reasons": [
+    "complete_record_date_listing_not_verified",
+    "applicable_reinvestment_date_and_nav_not_disclosed",
+    "scheme_levy_and_unit_event_coverage_not_verified",
+    "current_database_identity_not_certified"
+  ],
+  "complete_event_window_proven": false,
+  "conditional_announcement": {
+    "amount_is_conditional": true,
+    "announced_maximum_inr_per_unit": "7.00",
+    "announced_record_date": "2026-03-05",
+    "face_value_inr_per_unit": "10.00",
+    "notice_date": "2026-03-01",
+    "pre_notice_nav_date": "2026-02-27",
+    "pre_notice_nav_inr": "81.663",
+    "record_date_business_day_condition": true,
+    "reinvestment_date": null,
+    "reinvestment_nav_inr": null,
+    "stamp_duty_quantified": false,
+    "statutory_levy_quantified": false,
+    "tds_applicable_rate": null
+  },
+  "coverage_state": "unknown",
+  "engine_code_hash": "a3a9901170482bbaecc62038ca75ad710cbf1ee3133771db2703e7a4a18d5c6b",
+  "extractor_version": "6.20.1",
+  "format": "idcw-source-discovery-report-v1",
+  "freshness_certified": false,
+  "history_reporting_month": "2026-04",
+  "identity": {
+    "amc": "HDFC Mutual Fund",
+    "code": 101763,
+    "isins": [
+      "INF179K01582",
+      "INF179K01590"
+    ],
+    "option": "IDCW",
+    "plan": "REGULAR",
+    "scheme_name": "HDFC Flexi Cap Fund"
+  },
+  "identity_evidence": {
+    "amfi_code": 101763,
+    "current_database_identity_verified": false,
+    "option": "IDCW",
+    "payout_isin": "INF179K01582",
+    "plan": "REGULAR",
+    "reinvestment_isin": "INF179K01590",
+    "scheme": "HDFC Flexi Cap Fund"
+  },
+  "identity_hash": "c3e798811fc0c33dab7925519b6ee17fd510cea0d68b46e0c4c9bdbc45f5e2c2",
+  "issuer_history_scope_label": "Past 3 years",
+  "mf_e09_complete": false,
+  "policy": {
+    "acceptance": "source discovery cannot produce a certificate, unlock analytics or complete MF-E09",
+    "amount": "INR per unit, original decimal tokens; history separate from conditional announcement; no percentage conversion",
+    "conflicts": "retain all source assertions; amount conflict blocks reconciliation, no latest-source-wins",
+    "coverage": "past-three-years summary does not establish complete calendar coverage; absence is unknown, never no payout",
+    "dates": "record date only when reported; never infer ex, payment, reinvestment or applicable valuation date",
+    "id": "hdfc-idcw-source-discovery",
+    "identity": "issuer fund, exact regular AMFI label and checksum-valid payout/reinvestment ISINs; supplied DB identity is compared but live identity is not certified",
+    "levies": "generic if-any levy, TDS and stamp-duty wording is not a quantified zero or investor tax policy",
+    "linux_worker_address_space_bytes": 536870912,
+    "maximum_page_characters": 200000,
+    "maximum_page_stream_bytes": 10000000,
+    "maximum_pages": 400,
+    "maximum_selected_pages": 2,
+    "maximum_source_bytes": 16777216,
+    "prices": "cum-IDCW NAV and pre-notice NAV are not reinvestment prices",
+    "publication": "discovery_only_not_accepted_events",
+    "rounding": "none; finite source decimal text; precision 50 for comparisons",
+    "scope": "AMFI 101763, Regular IDCW; explicit original PDF pages only",
+    "source_writes": "none; source and old policy/results remain unchanged",
+    "supported_notice": "March 1 2026 announcement for conditional March 5 2026 record date only; other notice layouts/dates fail closed",
+    "version": 1,
+    "worker_cpu_seconds": 20,
+    "worker_wall_seconds": 30
+  },
+  "policy_hash": "8be8f444590a0f5766b2d483726731800ca117094cad49c67de9d4e99903304a",
+  "proposed_window": {
+    "end": "2026-03-31",
+    "start": "2025-04-01"
+  },
+  "proposed_window_reported_event_count": 1,
+  "publication": "discovery_only_not_accepted_events",
+  "report_hash": "325ca49615d98b6c02720f63295db23e14a24815b9fbe8b2327e507d91996ee9",
+  "reported_history": [
+    {
+      "amount_basis": "reported_history_not_net_investor_receipt",
+      "amount_inr_per_unit": "7.000",
+      "amount_others_inr_per_unit": "7.000",
+      "cum_idcw_nav_inr": "76.341",
+      "ex_date": null,
+      "payment_date": null,
+      "record_date": "2024-03-14",
+      "reinvestment_date": null,
+      "reinvestment_nav_inr": null,
+      "scheme_levy_inr_per_unit": null,
+      "unit_event_coverage": "unknown"
+    },
+    {
+      "amount_basis": "reported_history_not_net_investor_receipt",
+      "amount_inr_per_unit": "7.0000",
+      "amount_others_inr_per_unit": "7.0000",
+      "cum_idcw_nav_inr": "76.3730",
+      "ex_date": null,
+      "payment_date": null,
+      "record_date": "2025-03-13",
+      "reinvestment_date": null,
+      "reinvestment_nav_inr": null,
+      "scheme_levy_inr_per_unit": null,
+      "unit_event_coverage": "unknown"
+    },
+    {
+      "amount_basis": "reported_history_not_net_investor_receipt",
+      "amount_inr_per_unit": "7.0000",
+      "amount_others_inr_per_unit": "7.0000",
+      "cum_idcw_nav_inr": "79.8080",
+      "ex_date": null,
+      "payment_date": null,
+      "record_date": "2026-03-05",
+      "reinvestment_date": null,
+      "reinvestment_nav_inr": null,
+      "scheme_levy_inr_per_unit": null,
+      "unit_event_coverage": "unknown"
+    }
+  ],
+  "representation": "source-discovery observations only; not a complete event ledger or product readiness certificate",
+  "request": {
+    "authority_reference": "User approval for factual extraction from public AMC disclosures, 2026-10-14; source-specific evidence retained privately",
+    "format": "idcw-source-discovery-request-v1",
+    "history": {
+      "content_hash": "98fb01d8c76481e205958440d265ae924454d01f2042b1050d624303efa76bcd",
+      "file": "april-2026.pdf",
+      "observed_at": "2026-10-15T16:27:57.932610Z",
+      "pages": [
+        1,
+        121
+      ],
+      "source_url": "https://files.hdfcfund.com/s3fs-public/2026-05/HDFC%20MF%20Factsheet%20-%20April%202026.pdf"
+    },
+    "history_period": "2026-04",
+    "identity": {
+      "amc": "HDFC Mutual Fund",
+      "code": 101763,
+      "isins": [
+        "INF179K01582",
+        "INF179K01590"
+      ],
+      "option": "IDCW",
+      "plan": "REGULAR",
+      "scheme_name": "HDFC Flexi Cap Fund"
+    },
+    "notice": {
+      "content_hash": "5ef0eb7cb0de622cd39679e32c8f7c3da16581f40bb24e6da7a63608ec18634f",
+      "file": "march-2026-notice.pdf",
+      "observed_at": "2026-10-15T16:27:58.954652Z",
+      "pages": [
+        1
+      ],
+      "source_url": "https://files.hdfcfund.com/s3fs-public/2026-03/2058%20-%20Notice%20-%20IDCW%20Record%20Date%20-%20HDFC%20Flexi%20Cap%20Fund,%20HDFC%20Multi%20Cap%20Fund,%20HDFC%20Small%20Cap%20Fund%20-RD%20March%2005,%202026.pdf"
+    },
+    "proposed_end": "2026-03-31",
+    "proposed_start": "2025-04-01",
+    "registry": {
+      "content_hash": "884ef54c8e0ffb4097652cccbbf72f863e8f45ee319064cf85e9b0d41d1eb3e3",
+      "file": "identity-september-2026.pdf",
+      "observed_at": "2026-10-15T16:26:39.194484Z",
+      "pages": [
+        1
+      ],
+      "source_url": "https://files.hdfcfund.com/s3fs-public/scheme_summary/2026-09/HDFCEQ_1789454586.pdf"
+    },
+    "use_basis": "operator_reported_authorization"
+  },
+  "source_data_replaced": false,
+  "source_lineage": {
+    "history": {
+      "byte_length": 9133440,
+      "content_hash": "98fb01d8c76481e205958440d265ae924454d01f2042b1050d624303efa76bcd",
+      "file": "april-2026.pdf",
+      "observed_at": "2026-10-15T16:27:57.932610Z",
+      "pages": [
+        1,
+        121
+      ],
+      "source_url": "https://files.hdfcfund.com/s3fs-public/2026-05/HDFC%20MF%20Factsheet%20-%20April%202026.pdf",
+      "text_hashes": [
+        {
+          "page": 1,
+          "sha256": "863db1a1c4390e67f6ae67b8f255b6236c104a663fdd6177878aee4619f16a94"
+        },
+        {
+          "page": 121,
+          "sha256": "58218f798b48a06bbb75e49658bb11c6c1dba0eed2ef30cde6b44598ebd9a16f"
+        }
+      ]
+    },
+    "notice": {
+      "byte_length": 639133,
+      "content_hash": "5ef0eb7cb0de622cd39679e32c8f7c3da16581f40bb24e6da7a63608ec18634f",
+      "file": "march-2026-notice.pdf",
+      "observed_at": "2026-10-15T16:27:58.954652Z",
+      "pages": [
+        1
+      ],
+      "source_url": "https://files.hdfcfund.com/s3fs-public/2026-03/2058%20-%20Notice%20-%20IDCW%20Record%20Date%20-%20HDFC%20Flexi%20Cap%20Fund,%20HDFC%20Multi%20Cap%20Fund,%20HDFC%20Small%20Cap%20Fund%20-RD%20March%2005,%202026.pdf",
+      "text_hashes": [
+        {
+          "page": 1,
+          "sha256": "89ffd5641531ccab895e6dbc78118af247d0555cf91e77b5a5bbe39eb734a4be"
+        }
+      ]
+    },
+    "registry": {
+      "byte_length": 121485,
+      "content_hash": "884ef54c8e0ffb4097652cccbbf72f863e8f45ee319064cf85e9b0d41d1eb3e3",
+      "file": "identity-september-2026.pdf",
+      "observed_at": "2026-10-15T16:26:39.194484Z",
+      "pages": [
+        1
+      ],
+      "source_url": "https://files.hdfcfund.com/s3fs-public/scheme_summary/2026-09/HDFCEQ_1789454586.pdf",
+      "text_hashes": [
+        {
+          "page": 1,
+          "sha256": "3bb6ca5d5e29772099be8b68d4090ae21fb2806cfe92764dd4fbad400c65c824"
+        }
+      ]
+    }
+  },
+  "source_rows_changed": 0,
+  "state": "blocked",
+  "universe_complete": false
+}
