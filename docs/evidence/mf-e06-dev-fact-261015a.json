@@ -90,6 +90,7 @@
     }
   },
   "provider_pilot_accepted": true,
+  "prior_compatibility_scope": "Read projections, forward/historical calculators, evidence metadata and read-scope admin denials; no new positive review/tag/admin mutations",
   "recovery": {
     "actual_automatic_rollback_verified": true,
     "logging_wait": "Local operator bounded read-only reconciliation; duplicate certificates still fail closed",

@@ -28,6 +28,8 @@ completed execution and single certificate. The prior fifteen patterns/new-path
 404s were then certified, followed by restoration and eighteen-pattern private
 recertification. No write job was rerun or evidence gate bypassed. The local
 operator used bounded read-only log reconciliation; duplicates still fail closed.
+Prior compatibility covers read projections, calculators, evidence metadata and
+read-scope admin denials, not new positive review/tag/admin mutation acceptance.
 
 Pilot: ABSL Large Cap Regular Growth 103174 and Regular IDCW 103173. Source
 factsheet is September 2026 Empower, disclosure context August 31, 2026,
