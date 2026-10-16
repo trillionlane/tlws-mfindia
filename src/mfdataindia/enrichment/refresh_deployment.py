@@ -52,7 +52,7 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
         elif operation == "recover":
             if set(body) != {"activation_id"}:
                 raise ValueError("exact recovery transition required")
-            result = monthly_projection.recover(conn, body["activation_id"])
+            result = monthly_projection.recover(conn, body["activation_id"], root=root)
         else:
             conn.execute("SET LOCAL statement_timeout='15s'")
             if (
