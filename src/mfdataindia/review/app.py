@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -76,6 +76,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if idcw_catalog:
                         from mfdataindia.enrichment.idcw_store import verify_acl as verify_idcw_acl
                         verify_idcw_acl(conn)
+                    if current_facts:
+                        from mfdataindia.enrichment.current_facts_store import verify_acl as verify_current_facts_acl
+                        verify_current_facts_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -347,6 +350,18 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         def idcw_observations(code: Code, snapshot_id: Annotated[str, Query(pattern=r'^[0-9a-f]{64}$')], principal: Principal = Depends(identity)):
             return run(lambda conn: idcw_store.get(conn, code, snapshot_id))
 
+    if current_facts:
+        from mfdataindia.enrichment import current_facts as current, current_facts_store
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/enrichment/v3/policy', response_model=current.CurrentPolicyResponse)
+        def current_facts_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash': fingerprint(current.policy()), 'document': current.policy()})
+
+        @app.get('/api/enrichment/v3/funds/{code}/facts', response_model=current.CurrentFactsResponse)
+        def current_official_facts(code: Code, principal: Principal = Depends(identity)):
+            return run(lambda conn: current_facts_store.get(conn, code))
+
     return app
 
 
@@ -403,3 +418,8 @@ def create_distribution_observations_app(dsn: str | None = None, *, verifier: As
 def create_idcw_catalog_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """33-route profile; v1 evidence and all prior contracts remain frozen."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True)
+
+
+def create_current_facts_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """35-route profile; all 33 prior route/component contracts stay unchanged."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True)

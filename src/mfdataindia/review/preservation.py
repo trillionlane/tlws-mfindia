@@ -62,14 +62,14 @@ def canonical_constraint(definition):
     return normalize(stack[0])
 
 
-def capture_preservation(conn) -> dict:
+def capture_preservation(conn, *, current_facts_baseline: bool = False) -> dict:
     if conn.execute('SHOW transaction_isolation').fetchone()['transaction_isolation'] != 'repeatable read':
         raise ValueError('preservation capture requires a consistent repeatable-read snapshot')
     conn.execute("SET LOCAL TimeZone='UTC'")
     conn.execute("SET LOCAL DateStyle='ISO, YMD'")
     conn.execute("SET LOCAL IntervalStyle='postgres'")
     conn.execute('SET LOCAL search_path=pg_catalog')
-    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','mf_official_facts','mf_portfolios','mf_overlap','mf_distributions','mf_idcw','pg_catalog','information_schema') "
+    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','mf_official_facts','mf_portfolios','mf_overlap','mf_distributions','mf_idcw','mf_live_facts','pg_catalog','information_schema') "
                     "AND n.nspname NOT LIKE 'pg_%' AND c.relkind IN('r','p','m') AND c.relowner=(SELECT oid FROM pg_roles WHERE rolname=session_user) LIMIT 1").fetchone():
         raise ValueError('unmodelled administrator-owned source relation outside mf; expand preservation inventory first')
     # This explicitly recognized append-only layer is captured independently,
@@ -98,6 +98,15 @@ def capture_preservation(conn) -> dict:
     if conn.execute("SELECT to_regnamespace('mf_idcw') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.idcw_store import capture as capture_idcw
         capture_idcw(conn)
+    official_baseline = None
+    if conn.execute("SELECT to_regnamespace('mf_live_facts') AS namespace").fetchone()['namespace']:
+        from mfdataindia.enrichment import current_facts_store
+        current_facts_store.capture(conn)
+        if current_facts_baseline:
+            # This explicit FS-01 switch/recovery mode normalizes ONE verified
+            # view to its sealed original. Every other structure stays exact;
+            # callers must separately report the actual projection definition.
+            official_baseline = current_facts_store.configuration(conn)['baseline_definition']
     relations = conn.execute(
         "SELECT c.oid,c.relname,c.relkind,c.relispartition FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
         "WHERE n.nspname='mf' AND c.relkind IN('r','p','v','m','S') ORDER BY c.relname COLLATE \"C\""
@@ -144,6 +153,8 @@ def capture_preservation(conn) -> dict:
         constraints = [{**c, 'definition': canonical_constraint(c['definition'])} for c in constraints]
         indexes = all_indexes.get(name, [])
         definition = views.get(relation['oid'])
+        if name == 'current_fund_facts' and official_baseline is not None:
+            definition = official_baseline
         structure[name] = {'kind': relation['relkind'], 'partition': relation['relispartition'],
                            'columns': columns, 'constraints': constraints, 'indexes': indexes, 'view': definition}
         if relation['relkind'] == 'S':

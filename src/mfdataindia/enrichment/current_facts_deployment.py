@@ -1,0 +1,109 @@
+"""Pinned DEV current-facts operations and independent-reference projections."""
+
+import json
+from pathlib import Path
+
+import psycopg
+from psycopg.rows import dict_row
+
+from mfdataindia.api import queries
+from mfdataindia.enrichment import current_facts as engine, current_facts_store as store
+from mfdataindia.enrichment.deployment import pinned_dsn
+from mfdataindia.review.policy import fingerprint
+from mfdataindia.review.rollout import seal_evidence
+
+
+def reference(manifest, environment):
+    document = json.loads(environment["CURRENT_FACTS_REFERENCE"])
+    if (
+        fingerprint({"manifest": manifest.seal, "reference": document})
+        != environment["CURRENT_FACTS_REFERENCE_HASH"]
+    ):
+        raise ValueError("current-facts independent reference binding differs")
+    if set(document) != {str(c) for c in manifest.cohort}:
+        raise ValueError("exact current-facts reference cohort required")
+    for row in document.values():
+        if set(row) != {"snapshot_id", "as_of", "values"} or set(row["values"]) != set(
+            engine.FIELDS
+        ):
+            raise ValueError("exact source snapshot/date/field reference required")
+    return document
+
+
+def projections(conn, reviewed, *, active):
+    if store.projection_state(conn) != active:
+        raise ValueError("current-facts activation state differs")
+    cases = [
+        (
+            "/api/enrichment/v3/policy",
+            {"policy_hash": fingerprint(engine.policy()), "document": engine.policy()},
+        )
+    ]
+    core = {}
+    for key, expected in reviewed.items():
+        code = int(key)
+        document = store.get(conn, code)
+        for field, value in expected["values"].items():
+            actual = document["fields"][field]
+            if (
+                actual["state"] != "available"
+                or actual["value"] != value
+                or actual["disclosure_as_of"] != expected["as_of"]
+                or expected["snapshot_id"] not in {s["snapshot_id"] for s in actual["sources"]}
+            ):
+                raise ValueError("current-facts independent original-source reference differs")
+        detail = queries.fund_detail(conn, code)
+        batch = queries.funds_batch(conn, [str(code)])
+        if not detail or batch["found"] != 1:
+            raise ValueError("current-facts core code lookup unavailable")
+        values = {
+            alias: detail["facts"][alias] for aliases in engine.FIELDS.values() for alias in aliases
+        }
+        if active:
+            for field, aliases in engine.FIELDS.items():
+                expected_value = expected["values"][field]
+                if field == "fund_managers":
+                    expected_value = "; ".join(expected_value)
+                if field == "base_expense_ratio":
+                    expected_value = float(expected_value)
+                if any(values[a] != expected_value for a in aliases):
+                    raise ValueError("existing core detail still serves a stale official fact")
+                for alias in aliases:
+                    if alias != "benchmark" and batch["funds"][0].get(alias) != expected_value:
+                        raise ValueError("existing core batch disagrees with official fact")
+        core[key] = values
+        cases.append((f"/api/enrichment/v3/funds/{code}/facts", document))
+    return cases, core
+
+
+def execute(manifest, environment, operation, *, root=Path("/app")):
+    if operation not in ("install", "activate", "recover"):
+        raise ValueError("unsupported current-facts operation")
+    reviewed = reference(manifest, environment) if operation != "recover" else None
+    dsn = pinned_dsn(manifest, environment, "mfdata_admin")
+    with psycopg.connect(dsn, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        conn.execute("SET LOCAL statement_timeout='120s'")
+        conn.execute("SET LOCAL lock_timeout='5s'")
+        conn.execute("SET LOCAL transaction_timeout='420s'")
+        result = (
+            store.install(conn, root)
+            if operation == "install"
+            else store.switch(conn, activate=operation == "activate")
+        )
+        # Include post-switch source-to-existing-API proof in the same transaction;
+        # any discrepancy rolls back the view switch rather than reporting PASS.
+        if operation != "recover":
+            cases, values = projections(
+                conn,
+                reviewed,
+                active=operation == "activate"
+                if operation != "install"
+                else store.projection_state(conn),
+            )
+            result.update(
+                core_values=values, source_reference_checked=True, private_metadata_cases=len(cases)
+            )
+    return seal_evidence(
+        manifest, "current-facts-" + operation, {"level": "DEV_DATABASE", **result}
+    )

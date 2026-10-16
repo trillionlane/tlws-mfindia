@@ -137,7 +137,7 @@ scaffolding and certified samples must not become unsupported product claims.
 | DATA-05 | Initial review/proposal backend accepted for bounded private DEV scope | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33), rollout PRs #34–#37 | Actual six-route checks, diagnostic-only canary history, replay/concurrency and persistent source-bound records. No UI, human fund correctness approval, Insights RBAC acceptance or executable overrides. |
 | DEV review rollout | Complete — private provider DEV acceptance | [Provider PR #34](https://github.com/trillionlane/tlws-mfindia/pull/34), rollout fixes #35–#37, [runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md#preservation-first-dev-rollout) | Fresh archive/restored clone, restricted identities/schema, finite generation, six-route certification and live non-destructive recovery passed in MF-E01. |
 | UI-01 | Planned | — | — |
-| ENR-01 | Planned | — | — |
+| ENR-01 | In progress — bounded source pilots accepted; recurring current-facts refresh pending | Provider PRs #56, #58, #60; FS-01–FS-05 below | Existing factsheet/portfolio cohorts are not all-AMC or whole-field coverage. The approved next five sprints establish official monthly updates in the current API while preserving originals. |
 | ENR-02 | Planned | — | — |
 | IDCW-01 | Bounded reported-observation DEV pilot accepted; full event coverage remains open | [PR #65](https://github.com/trillionlane/tlws-mfindia/pull/65), [handover](runbooks/MF_E09_REPORTED_OBSERVATIONS_DEV.md#accepted-dev-rollout-and-backend-handover) | HDFC 101763: three original PDFs, one reported observation and three private reads. Fresh backup/clone, replay, candidate/final/recovery/restored certification, live capabilities and preservation passed. Coverage remains unknown; complete-history and adjusted-analytics gates remain separate. |
 | MF-E09B | Complete — bounded four-variant HDFC provider DEV pilot, 2026-10-15 | [PR #67](https://github.com/trillionlane/tlws-mfindia/pull/67), [backend handover](runbooks/MF_E09B_IDCW_EXPANSION_DEV.md#accepted-dev-rollout-and-backend-handover) | Runtime `532b125`; four private GET patterns (33 enhancement patterns total), four immutable snapshots and three retained originals. Fresh backup/new restored clone, independent per-plan reference, append/replay, candidate/final/recovery/restored HTTP, live privileges and final preservation passed. All 14,392 funds, 4,244,085 NAV rows and prior layers/v1 preserved. [42-receipt evidence](evidence/mf-e09b-dev-idcw-261015b.json). Coverage stays unknown; no adjusted analytics, UI, production or all-AMC claim. |
@@ -551,6 +551,51 @@ This does not prevent policy-bound calculations from already-held NAV data.
   TDW runtime-identity checks do not substitute for consumer application testing.
 
 ## Source-of-record strategy (decision, 2026-10-08)
+
+### FS-01–FS-05: official monthly facts refresh (approved 2026-10-16)
+
+The user approved implementation, self-review, merge and controlled DEV
+deployment of five finite sprints. Establish the complete process on ABSL
+before extending it to other AMCs. Preserve all original rows/documents and
+history; **advance the existing API's current facts**, not just a parallel API.
+No UI, production, raw NAV correction, aggregator reactivation or new per-gate
+GitHub variables. An official update is not restricted to filling NULLs.
+
+| Sprint | Finite result | Acceptance / sequence |
+| --- | --- | --- |
+| FS-01 — Current official facts | Field-level latest-official resolution over retained accepted disclosures; existing detail/batch/search/comparison projection sees supported newer facts, with private source/status reads. | Start with existing ABSL benchmark/managers/BER evidence. Preserve original tables and legacy calculated-metric guards. Same-date conflicts, missing fields, identity drift, out-of-order months, replay and rollback tested. Baseline source values remain recoverable. |
+| FS-02 — Rich monthly extraction | Versioned ABSL adapter and original-source snapshots for a declared two-variant Large Cap cohort, including independently identifiable risk level and other disclosed fund/plan facts. | Inspect originals visually; do not mistake a riskometer legend/benchmark risk for fund risk, BER for TER, or implicit units for INR crore. Prove at least two actual reporting periods; explicitly inventory unsupported/not-disclosed fields. Never fabricate a real risk change. |
+| FS-03 — Recurring refresh | Bounded official discovery, capture, per-field diff and atomic current publication for that declared cohort, with replay/catch-up and recorded run outcomes. | Current/newer reporting dates advance; older acquisitions never roll back heads. Retain previous values for omitted fields with their actual old dates. Actual DEV scheduled execution plus replay, not just a deployed scheduler. No all-AMC claim. |
+| FS-04 — Verification/history | Private current/history/changes and evidence-bound human-verification backend; future admin UI can review exact versions. | Signed admin scope, optimistic versions, durable actor/evidence/reason and replay safety. New inputs require revalidation; review does not rewrite source facts. Distinguish provisional/verified, conflicts, stale and not-disclosed states. No admin UI or blanket analytics eligibility. |
+| FS-05 — Process certification | Whole-process DEV acceptance and backend handover, ready for later AMC adapters. | Fresh backup/restored clone, independent source-to-API references, existing core/extension routes, actual traffic/projection recovery and restoration, effective privileges, preservation, coverage/freshness/run inventory. State real month/fund/field coverage and all remaining gaps. |
+
+Each sprint is pushed, self-reviewed (not presented as independent review),
+tested and merged separately. Deploy only useful integrated functionality, not
+a validation-only service. Record merge, deployment and real certification
+separately. For FS-01 the source tables remain immutable while the reversible
+current projection changes; a narrowly pinned projection change is explicitly
+allowed, not an exemption for source-data mutation. Existing NAV-derived
+calculation/revision guards must remain byte-equivalent in its baseline.
+
+The earlier IDCW provisional-publication refinement remains on the roadmap;
+these five sprints establish the official **fund-facts** process first. They do
+not pretend unknown distribution price/date inputs are verified, nor silently
+convert a research estimate into actual IDCW performance.
+
+**FS-01 implementation checkpoint:** code adds an opt-in, reversible projection
+over the retained E06 disclosures and two private provenance reads. Existing
+nineteen-route API schemas and all thirty-three extension route/component
+contracts stay unchanged. Per-field dated consensus, original numeric tokens,
+last usable official values on newer conflicts/unusable assertions, exact
+identity matching, source immutability and metadata fact revisions are tested.
+The same running core HTTP application observes the next reporting month's
+value without restarting. New metadata is initially `needs_verification`, not
+hidden pending human review. Installation, activation, real core/private HTTP,
+actual recovery and post-export preservation remain separate DEV gates; this
+checkpoint is not deployment acceptance. The original source/raw-payload
+columns describe the retained baseline; use per-field metadata for the
+composite current values' official provenance. API responses remain no-store;
+consumer caches must not treat the NAV dataset version as a facts revision.
 
 Historical strategy below. For future enhancements, the 2026-10-13 additive
 roadmap above governs: no aggregator reactivation or mutation of retained source
