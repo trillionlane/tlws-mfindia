@@ -98,6 +98,10 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         idcw_baseline = capture_idcw(conn)
         from mfdataindia.enrichment.monthly_store import capture as capture_monthly
         monthly_baseline = capture_monthly(conn)
+        from mfdataindia.enrichment.current_facts_store import capture as capture_current
+        current_facts_baseline = capture_current(conn)
+        from mfdataindia.enrichment.refresh_store import capture as capture_refresh
+        fact_refresh_baseline = capture_refresh(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
             raise ValueError('operational backup must contain actual fund/NAV records')
         # Role names only. Password hashes and global role attributes are never
@@ -129,6 +133,10 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         evidence['idcw_baseline'] = idcw_baseline
     if monthly_baseline is not None:
         evidence['monthly_baseline'] = monthly_baseline
+    if current_facts_baseline is not None:
+        evidence['current_facts_baseline'] = current_facts_baseline
+    if fact_refresh_baseline is not None:
+        evidence['fact_refresh_baseline'] = fact_refresh_baseline
     return evidence
 
 

@@ -32,6 +32,7 @@ COPY --from=build --chown=mfdataindia:mfdataindia /app/.venv /app/.venv
 COPY --chown=mfdataindia:mfdataindia scripts ./scripts
 COPY --chown=mfdataindia:mfdataindia sql ./sql
 COPY --chown=mfdataindia:mfdataindia contracts ./contracts
+COPY --chown=mfdataindia:mfdataindia config ./config
 
 USER 10001:10001
 
