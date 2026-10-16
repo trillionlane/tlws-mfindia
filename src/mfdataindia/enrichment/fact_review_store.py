@@ -164,7 +164,10 @@ def dependencies(conn, code):
 
 
 def state(conn, code, *, after_version=0, limit=50):
-    verify_acl(conn)
+    # Validate the restricted reader boundary, including during owner-side
+    # projection/recovery checks. SQL still enforces the caller's own grants;
+    # this does not grant the generator access to human review evidence.
+    verify_acl(conn, principal=evidence.ROLES[1])
     doc, checksum = dependencies(conn, code)
     head = (
         conn.execute(

@@ -57,6 +57,23 @@ def test_verification_contract_is_additive_and_requires_explicit_human_attestati
 
 
 @pytest.mark.postgres
+def test_owner_current_projection_checks_survive_verification_installation(
+    verified_db, monkeypatch
+):
+    _, snapshots, _ = prepared(verified_db, monkeypatch)
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        assert (
+            current.get(conn, 103174)["fields"]["risk_level"]["verification_status"]
+            == "needs_verification"
+        )
+        result = monthly_projection.activate(
+            conn, ROOT, legacy_snapshot_ids=[], reviewed=references(snapshots)
+        )
+        assert result["status"] == "ALREADY_ACTIVE"
+        assert reviews.capture(conn)["events"]["rows"] == 0
+
+
+@pytest.mark.postgres
 def test_signed_private_admin_http_and_read_scope_cannot_verify(verified_db, monkeypatch):
     from fastapi.testclient import TestClient
     from test_verified_review_auth import trust, assertion
