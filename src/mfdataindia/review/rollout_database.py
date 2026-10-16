@@ -21,10 +21,12 @@ from mfdataindia.review.rollout import CONNECTION, ROLES, Manifest
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
 
-def readonly(dsn):
+def readonly(dsn, *, statement_seconds=120):
+    if type(statement_seconds) is not int or statement_seconds not in (120, 300):
+        raise ValueError('bounded read-only statement budget required')
     conn = psycopg.connect(dsn, row_factory=dict_row)
     conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-    conn.execute("SET LOCAL statement_timeout='120s'")
+    conn.execute("SET LOCAL statement_timeout='300s'" if statement_seconds == 300 else "SET LOCAL statement_timeout='120s'")
     return conn
 
 
@@ -65,7 +67,7 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
     dump = directory / 'snapshot.dump'
     if dump.exists():
         raise ValueError('backup output already exists; refusing replacement')
-    with readonly(source_dsn) as conn:
+    with readonly(source_dsn, statement_seconds=300) as conn:
         identity = conn.execute('SELECT current_database() AS database,current_user AS principal,current_setting(\'server_version_num\')::int AS version').fetchone()
         if identity['database'] != 'mfdataindia' or identity['principal'] != 'mfdata_admin' or identity['version'] // 10000 != 18:
             raise ValueError('source database identity/version mismatch')
@@ -94,6 +96,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         distribution_baseline = capture_distributions(conn)
         from mfdataindia.enrichment.idcw_store import capture as capture_idcw
         idcw_baseline = capture_idcw(conn)
+        from mfdataindia.enrichment.monthly_store import capture as capture_monthly
+        monthly_baseline = capture_monthly(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
             raise ValueError('operational backup must contain actual fund/NAV records')
         # Role names only. Password hashes and global role attributes are never
@@ -123,6 +127,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         evidence['distribution_baseline'] = distribution_baseline
     if idcw_baseline is not None:
         evidence['idcw_baseline'] = idcw_baseline
+    if monthly_baseline is not None:
+        evidence['monthly_baseline'] = monthly_baseline
     return evidence
 
 

@@ -26,7 +26,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -79,6 +79,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if current_facts:
                         from mfdataindia.enrichment.current_facts_store import verify_acl as verify_current_facts_acl
                         verify_current_facts_acl(conn)
+                    if monthly_facts:
+                        from mfdataindia.enrichment.monthly_store import verify_acl as verify_monthly_acl
+                        verify_monthly_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -362,6 +365,18 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         def current_official_facts(code: Code, principal: Principal = Depends(identity)):
             return run(lambda conn: current_facts_store.get(conn, code))
 
+    if monthly_facts:
+        from mfdataindia.enrichment import monthly_facts as monthly, monthly_schemas, monthly_store
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/enrichment/v4/policy', response_model=monthly_schemas.MonthlyPolicyResponse)
+        def monthly_reporting_policy(principal: Principal = Depends(identity)):
+            return run(lambda conn: {'policy_hash':fingerprint(monthly.policy()),'document':monthly.policy()})
+
+        @app.get('/api/enrichment/v4/funds/{code}/facts', response_model=monthly_schemas.MonthlyResponse)
+        def monthly_reported_facts(code: Code, snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None, principal: Principal = Depends(identity)):
+            return run(lambda conn: monthly_store.get(conn,code,snapshot_id=snapshot_id))
+
     return app
 
 
@@ -423,3 +438,8 @@ def create_idcw_catalog_app(dsn: str | None = None, *, verifier: AssertionVerifi
 def create_current_facts_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """35-route profile; all 33 prior route/component contracts stay unchanged."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True)
+
+
+def create_monthly_facts_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """37-route private profile; official reported facts are not canonical analytics."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True,monthly_facts=True)

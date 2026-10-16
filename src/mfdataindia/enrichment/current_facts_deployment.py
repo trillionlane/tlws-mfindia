@@ -92,7 +92,11 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
             conn.execute("SET LOCAL statement_timeout='5s'")
             conn.execute("SET LOCAL transaction_timeout='15s'")
         else:
-            conn.execute("SET LOCAL statement_timeout='120s'")
+            conn.execute(
+                "SET LOCAL statement_timeout='300s'"
+                if operation == "inspect"
+                else "SET LOCAL statement_timeout='120s'"
+            )
             conn.execute("SET LOCAL transaction_timeout='420s'")
         conn.execute("SET LOCAL lock_timeout='5s'")
         if operation == "inspect":

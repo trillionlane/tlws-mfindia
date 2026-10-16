@@ -3,13 +3,12 @@
 import hashlib
 from pathlib import Path
 
-from psycopg import sql
 from psycopg.types.json import Jsonb
 
 from mfdataindia.enrichment import current_facts as engine, store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
-from mfdataindia.review.preservation import capture_preservation, compare_preservation
+from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
 from mfdataindia.review.publication_operations import capture_review, compare_review
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -150,13 +149,10 @@ def install(conn, root: Path):
         ]:
             verify_acl(conn)
             return {"status": "ALREADY_INSTALLED", "projection_active": projection_state(conn)}
-        for row in conn.execute(
-            "SELECT tablename FROM pg_tables WHERE schemaname='mf' ORDER BY tablename"
-        ).fetchall():
-            conn.execute(
-                sql.SQL("LOCK TABLE mf.{} IN SHARE MODE").format(sql.Identifier(row["tablename"]))
-            )
-        before, prior = capture_preservation(conn), capture_review(conn)
+        # This pinned migration only appends a policy and creates a new schema.
+        # Avoid locking/scanning every source table inside its write transaction.
+        # Full row preservation is a required separate read-only rollout gate.
+        before, prior = capture_preservation(conn, structure_only=True), capture_review(conn)
         baseline = view_definition(conn, "mf.current_fund_facts")
         document = engine.policy()
         ph = fingerprint(document)
@@ -191,13 +187,15 @@ def install(conn, root: Path):
             ),
         )
         verify_acl(conn)
-        compare_preservation(before, capture_preservation(conn), "")
+        compare_preservation_structure(before, capture_preservation(conn, structure_only=True))
         compare_review(prior, capture_review(conn), added_policy=ph)
         return {
             "status": "INSTALLED",
             "projection_active": False,
             "source_rows_changed": 0,
             "policy_hash": ph,
+            "source_structure_preserved": True,
+            "whole_source_preservation_requires_post_installation_certification": True,
         }
 
 
