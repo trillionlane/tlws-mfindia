@@ -50,15 +50,17 @@ def fields(detail, continuation, as_of):
     )
     result = {}
 
-    def accepted(name, value, unit, scope, raw, anchor):
+    def accepted(name, value, unit, scope, raw, anchor, *, explicit_date=False):
         result[name] = MonthlyFact(
             status="accepted",
             value=value,
             unit=unit,
             scope=scope,
             disclosure_as_of=as_of,
-            date_basis="document_context_not_field_effective_date",
-            field_effective_date=None,
+            date_basis="explicit_field_date"
+            if explicit_date
+            else "document_context_not_field_effective_date",
+            field_effective_date=as_of if explicit_date else None,
             raw_value=raw,
             source_anchor=anchor,
             reason=None,
@@ -79,6 +81,7 @@ def fields(detail, continuation, as_of):
         "regular_plan",
         expense,
         "physical page 7: EXPENSE RATIO Regular, explicit BER label",
+        explicit_date=True,
     )
     accepted(
         "aum",
@@ -87,6 +90,7 @@ def fields(detail, continuation, as_of):
         "fund",
         "₹" + aum + "Cr.",
         "physical page 7: As on September 30, 2026, not monthly average",
+        explicit_date=True,
     )
     accepted(
         "fund_managers",

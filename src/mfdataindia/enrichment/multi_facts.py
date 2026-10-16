@@ -63,6 +63,7 @@ def policy():
         "hdfc_discovery": "reviewed September 2026 edition only; new edition or layout requires reviewed registry update; not latest/current-month certification",
         "pdf_policy_hash": fingerprint(monthly_pdf.policy()),
         "hdfc_scope": "exact registered Regular IDCW identity; fund benchmark/AUM/managers and Regular BER; manager footnote retained; risk unavailable, no riskometer inference",
+        "hdfc_dates": "BER and AUM retain their explicit as-on dates; benchmark and managers retain document-context disclosure dates, not inferred field-effective dates",
         "publication": "immutable originals and complete registered cohort plus database-sealed successful run receipt; direct snapshots do not publish",
         "failures": "two fixed Cloud Run tasks, one registered adapter per index, parallelism two and zero retries; independent task timeout, transactions and receipts; one failure cannot roll back another source or erase last usable values; job is unsuccessful on any task failure",
         "replay": "execution and source key identify a receipt; originals/snapshots are content-addressed; uncertain commit reconciled, never blindly retried",

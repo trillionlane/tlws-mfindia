@@ -144,6 +144,10 @@ def test_hdfc_layout_includes_footnote_and_does_not_swap_average_or_direct():
     ]
     assert fields["base_expense_ratio"]["value"] == "1.27"
     assert fields["aum"]["value"] == "108546.98"
+    for name in ("aum", "base_expense_ratio"):
+        assert fields[name]["date_basis"] == "explicit_field_date"
+        assert fields[name]["field_effective_date"] == "2026-09-30"
+    assert fields["fund_managers"]["field_effective_date"] is None
     assert fields["risk_level"]["status"] == "unavailable" and fields["risk_level"]["value"] is None
     assert context["monthly_average_aum_not_selected"] == "111,285.67"
     assert context["fund_managers"][-1]["role"] == "dedicated_overseas_investments"
