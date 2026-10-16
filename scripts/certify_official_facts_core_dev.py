@@ -51,6 +51,8 @@ if __name__ == "__main__":
         with requests.Session() as session:
             session.trust_env = False
             result = certify(session, unassessed_code=unassessed, option_lookup=options)
+        if result["provider_dataset_version"] != dataset:
+            raise ValueError("actual provider HTTP dataset differs from the bound reader database")
         with database() as conn:
             if (
                 conn.execute(

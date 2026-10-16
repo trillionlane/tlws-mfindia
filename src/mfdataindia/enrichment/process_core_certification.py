@@ -73,6 +73,15 @@ def signals(document):
     return count, nulls
 
 
+def primary_identity(documents):
+    growth = documents["/api/funds/{code}"]
+    if growth.get("amfi_scheme_code") != 103174 or growth.get("option_type") != "GROWTH":
+        raise ValueError("primary detail/returns/analytics sample must be Growth")
+    for suffix in ("returns", "analytics", "peers", "risk-reward"):
+        if documents["/api/funds/{code}/" + suffix].get("code") != 103174:
+            raise ValueError("primary derived response identity differs from requested Growth fund")
+
+
 def certify(session, *, unassessed_code, option_lookup):
     if type(unassessed_code) is not int or not 0 < unassessed_code <= 2147483647:
         raise ValueError("actual unassessed database sample required; never fabricate one")
@@ -128,13 +137,12 @@ def certify(session, *, unassessed_code, option_lookup):
     overlap = documents["/api/holdings-overlap"]
     if overlap.get("codes") != [103174, 103173] or not isinstance(overlap.get("pairs"), list):
         raise ValueError("legacy top-holdings overlap shape differs")
-    growth = documents["/api/funds/{code}"]
-    if growth.get("amfi_scheme_code") != 103174 or growth.get("option_type") != "GROWTH":
-        raise ValueError("primary detail/returns/analytics sample must be Growth")
+    primary_identity(documents)
     idcw = read("/api/funds/{code}", "/api/funds/103173")
     idcw_returns = read("/api/funds/{code}/returns", "/api/funds/103173/returns")
     if (
         idcw.get("option_type") != "IDCW"
+        or idcw.get("amfi_scheme_code") != 103173
         or idcw_returns["code"] != 103173
         or idcw_returns["methodology"]["comparison_eligible"]
     ):
@@ -143,7 +151,8 @@ def certify(session, *, unassessed_code, option_lookup):
         raise ValueError("unadjusted IDCW distribution evidence cannot be overclaimed")
     unassessed = read("/api/funds/{code}", f"/api/funds/{unassessed_code}")
     if (
-        unassessed["nav_quality"].get("assessment_status") != "not_assessed"
+        unassessed.get("amfi_scheme_code") != unassessed_code
+        or unassessed["nav_quality"].get("assessment_status") != "not_assessed"
         or "signals" not in unassessed["nav_quality"]
         or unassessed["nav_quality"]["signals"] is not None
     ):
@@ -173,6 +182,7 @@ def certify(session, *, unassessed_code, option_lookup):
         "read_route_templates_checked": sorted(documents),
         "routes_checked": len(documents),
         "responses_checked": len(cases()) + 3,
+        "provider_dataset_version": stats["dataset_version"],
         "explicit_v2_signal_objects_checked": quality_objects,
         "explicit_null_observations": null_observations,
         "actual_unassessed_code": unassessed_code,

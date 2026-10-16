@@ -22,6 +22,21 @@ def test_all_nineteen_real_core_read_templates_are_enumerated():
     assert len(paths) == len(certification.cases()) == 19
 
 
+@pytest.mark.parametrize("suffix", ["returns", "analytics", "peers", "risk-reward"])
+def test_valid_shape_from_another_fund_cannot_certify_primary_growth_identity(suffix):
+    documents = {"/api/funds/{code}": {"amfi_scheme_code": 103174, "option_type": "GROWTH"}}
+    documents.update(
+        {
+            "/api/funds/{code}/" + part: {"code": 103174}
+            for part in ("returns", "analytics", "peers", "risk-reward")
+        }
+    )
+    certification.primary_identity(documents)
+    documents["/api/funds/{code}/" + suffix]["code"] = 103173
+    with pytest.raises(ValueError, match="identity differs"):
+        certification.primary_identity(documents)
+
+
 @pytest.mark.parametrize(
     "change", ["none", "omitted", "empty_unknown", "current_null", "missing_lifecycle"]
 )
