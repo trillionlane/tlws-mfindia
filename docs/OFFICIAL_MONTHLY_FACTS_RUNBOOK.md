@@ -208,6 +208,11 @@ aliases and otherwise invalidate the immutable view seal. Every restored view
 must match the original seal, and effective ACL verification runs before commit,
 including the already-recovered retry path. Missing original SQL or any mismatch
 rolls back all partial view replacements; it must not append a recovery receipt.
+The HTTP certificate checks the captured prior policy, all six view hashes and
+the prior core-projection state as well as its actual core values. Matching
+numbers alone cannot prove recovery. It reports observed core and monthly-v2
+activation separately; recovery to the earlier active v1 overlay is not an
+inactive core view.
 Traffic restoration must run independently of lookup, verification or database-recovery
 failure. Reapply the approved graph and recertify after recovery. Keep existing
 NAV schedules unchanged. A new facts scheduler is accepted only after a real

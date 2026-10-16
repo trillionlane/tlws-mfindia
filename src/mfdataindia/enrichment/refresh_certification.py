@@ -9,7 +9,7 @@ import psycopg
 import requests
 from psycopg.rows import dict_row
 from mfdataindia.enrichment import current_facts_store as current, monthly_projection
-from mfdataindia.enrichment import refresh_policy, refresh_store
+from mfdataindia.enrichment import refresh_policy, refresh_store, monthly_current
 from mfdataindia.enrichment.certification import check_http
 from mfdataindia.enrichment.current_facts_certification import core_http, REVIEW_ORIGIN
 from mfdataindia.enrichment.deployment import pinned_dsn
@@ -20,12 +20,28 @@ from mfdataindia.review.publication_certification import request_origins
 from mfdataindia.review.rollout import seal_evidence
 
 
+def check_prior_state(conn, expected):
+    if not isinstance(expected, dict) or set(expected) != {
+        "policy_hash",
+        "projection_active",
+        "view_hashes",
+    }:
+        raise ValueError("captured prior policy/projection/graph required")
+    actual = {
+        "policy_hash": current.configuration(conn)["policy_hash"],
+        "projection_active": current.projection_state(conn),
+        "view_hashes": current.capture(conn)["view_hashes"],
+    }
+    if actual != expected:
+        raise ValueError("prior current-facts policy/projection/graph not restored")
+
+
 def certify(manifest, environment, *, active=False, recovery=False):
     if active and recovery:
         raise ValueError("recovery cannot claim active monthly projection")
     document = json.loads(environment["FACT_REFRESH_CERTIFICATION"])
     if (
-        set(document) != {"reviewed", "prior_core_values", "execution_id"}
+        set(document) != {"reviewed", "prior_core_values", "prior_current_state", "execution_id"}
         or fingerprint({"manifest": manifest.seal, "expectation": document})
         != environment["FACT_REFRESH_CERTIFICATION_HASH"]
     ):
@@ -71,6 +87,10 @@ def certify(manifest, environment, *, active=False, recovery=False):
             ("/api/enrichment/v5/status", status),
         ]
         policy = current.policy_document(conn)
+        if not active:
+            check_prior_state(conn, document["prior_current_state"])
+        core_projection_active = current.projection_state(conn)
+        monthly_projection_active = policy == monthly_current.policy() and core_projection_active
         previous_cases = [
             ("/api/enrichment/v3/policy", {"policy_hash": fingerprint(policy), "document": policy})
         ]
@@ -124,7 +144,10 @@ def certify(manifest, environment, *, active=False, recovery=False):
         {
             "level": "DEV_PRIVATE_HTTP",
             "origin": origin,
-            "projection_active": active,
+            "monthly_projection_active": monthly_projection_active,
+            "core_projection_active": core_projection_active,
+            "current_policy_hash": fingerprint(policy),
+            "captured_prior_state_checked": not active,
             "new_profile_available": not recovery,
             "metadata_responses_checked": len(new_cases) + len(previous_cases),
             "existing_core_responses_checked": checked,
