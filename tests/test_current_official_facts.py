@@ -116,6 +116,44 @@ def test_policy_copy_and_contract_compatibility():
 
 
 @pytest.mark.postgres
+def test_http_certification_uses_restricted_reader_not_core_database_queries(
+    verified_db, monkeypatch
+):
+    prepared(verified_db, monkeypatch)
+    with connection(verified_db, readonly=True) as conn:
+        source = store.get(conn, 1)["fields"]
+        reviewed = {"1": {
+            "snapshot_id": source["benchmark_name"]["sources"][0]["snapshot_id"],
+            "as_of": source["benchmark_name"]["disclosure_as_of"],
+            "values": {field: source[field]["value"] for field in engine.FIELDS},
+        }}
+    reader = runtime_dsn(verified_db, ROLES[1])
+    with psycopg.connect(reader, row_factory=dict_row) as conn:
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute("SELECT * FROM mf.current_fund_facts LIMIT 1")
+        conn.rollback()
+        assert conn.execute("SELECT 1 FROM mf_live_facts.baseline LIMIT 1").fetchone()
+    def forbidden(*args, **kwargs):
+        raise AssertionError("certification must use private core HTTP, not owner core SQL")
+    monkeypatch.setattr(queries, "fund_detail", forbidden)
+    monkeypatch.setattr(queries, "funds_batch", forbidden)
+    for active in (False, True, False):
+        switch(verified_db, active)
+        with psycopg.connect(reader, row_factory=dict_row) as conn:
+            conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+            cases, core = deployment.projections(
+                conn, reviewed, active=active, core_queries=False
+            )
+            assert len(cases) == 2
+            assert core["1"] == {
+                "benchmark_name": "Nifty 100 TRI" if active else "Legacy benchmark",
+                "benchmark": "Nifty 100 TRI" if active else "Legacy benchmark",
+                "fund_manager_name": "Mr. Harish Krishnan" if active else "Legacy Manager",
+                "base_expense_ratio": 1.35 if active else 2.22,
+            }
+
+
+@pytest.mark.postgres
 def test_actual_core_queries_advance_and_recover_without_source_rewrites(verified_db, monkeypatch):
     _, original = prepared(verified_db, monkeypatch)
     with connection(verified_db, readonly=True) as conn:
