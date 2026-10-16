@@ -62,7 +62,8 @@ def canonical_constraint(definition):
     return normalize(stack[0])
 
 
-def capture_preservation(conn, *, current_facts_baseline: bool = False) -> dict:
+def capture_preservation(conn, *, current_facts_baseline: bool = False, structure_only: bool = False) -> dict:
+    """Full by default; an explicitly different format cannot certify row data."""
     if conn.execute('SHOW transaction_isolation').fetchone()['transaction_isolation'] != 'repeatable read':
         raise ValueError('preservation capture requires a consistent repeatable-read snapshot')
     conn.execute("SET LOCAL TimeZone='UTC'")
@@ -164,7 +165,7 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False) -> dict:
             sequences[name] = conn.execute(sql.SQL('SELECT last_value,is_called FROM mf.{}').format(sql.Identifier(name))).fetchone()
         # Parent tables cover their partitions once. Views contain no independent
         # stored records; materialized views do and must not be silently omitted.
-        if relation['relispartition'] or relation['relkind'] not in ('r', 'p', 'm'):
+        if structure_only or relation['relispartition'] or relation['relkind'] not in ('r', 'p', 'm'):
             continue
         primary = all_primary.get(relation['oid'], [])
         ordering = sql.SQL(',').join(sql.SQL('{} COLLATE "C"').format(sql.Identifier(r['attname'])) if r['attcollation'] else sql.Identifier(r['attname'])
@@ -220,12 +221,25 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False) -> dict:
         UNION ALL SELECT 'schema:'||nspname,pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname IN('mf','public')
         ORDER BY object
     """).fetchall()
-    return {'format': 'mfdata-preservation-v1', 'tables': tables, 'structure_hash': fingerprint(structure),
+    return {'format': 'mfdata-preservation-structure-v1' if structure_only else 'mfdata-preservation-v1', 'tables': tables, 'structure_hash': fingerprint(structure),
             'functions_hash': fingerprint(functions), 'triggers_hash': fingerprint(triggers),
             'sequences_hash': fingerprint(sequences),
             'ownership_hash': fingerprint(ownership),
             'privileges_hash': fingerprint(privileges),
             'optional_migration': migration['value'] if migration else None}
+
+
+def compare_preservation_structure(before: dict, after: dict) -> None:
+    """DDL/grant guard only, never a substitute for full pre/post row evidence."""
+    if (before.get('format') != 'mfdata-preservation-structure-v1'
+            or after.get('format') != before['format']
+            or before.get('tables') != {} or after.get('tables') != {}):
+        raise ValueError('explicit structure-only evidence required')
+    for key in ('structure_hash', 'functions_hash', 'triggers_hash', 'privileges_hash', 'sequences_hash', 'ownership_hash'):
+        if not before.get(key) or before[key] != after.get(key):
+            raise ValueError('pre-existing source structure changed: ' + key)
+    if before.get('optional_migration') != after.get('optional_migration'):
+        raise ValueError('existing optional migration entry changed')
 
 
 def compare_preservation(before: dict, after: dict, migration_checksum: str) -> None:

@@ -114,6 +114,17 @@ the hot view's exclusive lock. Whole-source inspection is a separate
 read-only repeatable-read operation. Restore known prior traffic and the
 captured view independently of candidate lookup/cleanup on failure.
 
+The first live FS-01 installation attempt hit its 120-second statement limit
+while copying `nav_history` for inline preservation. Read-only reconciliation
+confirmed transaction rollback, absent new schema and the original view hash.
+The repaired namespace installers therefore retain inline **structure-only**
+DDL/grant/owner/sequence checks, using a distinct evidence format which the
+full row-preservation verifier rejects. They do not hold bulk source SHARE
+locks. Full row hashing remains mandatory in separate read-only inspection
+and backup gates; those scans have a bounded 300-second statement budget.
+Activation/recovery still have the short 5-second statement/15-second total
+budget. Structure-only success is never full data-preservation acceptance.
+
 Monthly certification requires **four** independent references: both variants
 at both real reporting dates. Each required field reference binds value,
 explicit unit and availability status. HTTP/identity denials, replay,

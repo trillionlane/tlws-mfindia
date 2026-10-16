@@ -146,7 +146,7 @@ def capture(conn):
 
 
 def install(conn, root: Path):
-    from mfdataindia.review.preservation import capture_preservation, compare_preservation
+    from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
     from mfdataindia.review.publication_operations import capture_review, compare_review
 
     with conn.transaction():
@@ -164,7 +164,7 @@ def install(conn, root: Path):
         if capture(conn) is not None:
             return {"status": "ALREADY_INSTALLED", "source_rows_changed": 0}
         before, prior = (
-            capture_preservation(conn, current_facts_baseline=True),
+            capture_preservation(conn, current_facts_baseline=True, structure_only=True),
             capture_review(conn),
         )
         policy = engine.policy()
@@ -186,9 +186,17 @@ def install(conn, root: Path):
         conn.execute(ddl.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
         for role in evidence.ROLES:
             verify_acl(conn, principal=role)
-        compare_preservation(before, capture_preservation(conn, current_facts_baseline=True), "")
+        compare_preservation_structure(
+            before, capture_preservation(conn, current_facts_baseline=True, structure_only=True)
+        )
         compare_review(prior, capture_review(conn), added_policy=fingerprint(policy))
-        return {"status": "INSTALLED", "source_rows_changed": 0, "policy_hash": fingerprint(policy)}
+        return {
+            "status": "INSTALLED",
+            "source_rows_changed": 0,
+            "policy_hash": fingerprint(policy),
+            "source_structure_preserved": True,
+            "whole_source_preservation_requires_post_installation_certification": True,
+        }
 
 
 def publish(conn, selection: schemas.Selection, content: bytes):

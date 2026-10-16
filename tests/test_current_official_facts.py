@@ -166,6 +166,7 @@ def test_preservation_inspection_is_separate_read_only_and_requires_no_source_re
         assert (
             conn.execute("SHOW transaction_read_only").fetchone()["transaction_read_only"] == "on"
         )
+        assert conn.execute("SHOW statement_timeout").fetchone()["statement_timeout"] == "5min"
         return real_capture(conn, **kwargs)
 
     monkeypatch.setattr(deployment, "capture_preservation", checked_capture)
@@ -562,3 +563,37 @@ def test_hot_view_switch_never_performs_a_bulk_preservation_copy(verified_db, mo
     monkeypatch.setattr(store, "capture_preservation", forbidden)
     assert switch(verified_db, True)["projection_active"]
     assert not switch(verified_db, False)["projection_active"]
+
+
+@pytest.mark.postgres
+def test_installation_checks_structure_without_bulk_data_locks_or_false_row_certificate(
+    verified_db, monkeypatch
+):
+    from mfdataindia.review.preservation import compare_preservation_structure
+
+    actual = store.capture_preservation
+    seen = []
+
+    def structure_only(conn, **kwargs):
+        assert kwargs.get("structure_only") is True
+        assert not conn.execute(
+            "SELECT 1 FROM pg_locks l JOIN pg_class c ON c.oid=l.relation JOIN pg_namespace n ON n.oid=c.relnamespace WHERE l.pid=pg_backend_pid() AND n.nspname='mf' AND l.mode='ShareLock' LIMIT 1"
+        ).fetchone()
+        result = actual(conn, **kwargs)
+        seen.append(result)
+        return result
+
+    monkeypatch.setattr(store, "capture_preservation", structure_only)
+    prepared(verified_db, monkeypatch)
+    assert len(seen) == 2 and all(s["tables"] == {} for s in seen)
+    compare_preservation_structure(*seen)
+    with pytest.raises(ValueError, match="invalid preservation evidence"):
+        compare_preservation(*seen, "")
+    with connection(verified_db, readonly=True) as conn:
+        full = capture_preservation(conn)
+        assert (
+            full["format"] == "mfdata-preservation-v1" and full["tables"]["nav_history"]["rows"] > 0
+        )
+        assert full["structure_hash"] == seen[-1]["structure_hash"]
+    with pytest.raises(ValueError, match="structure-only"):
+        compare_preservation_structure(full, full)
