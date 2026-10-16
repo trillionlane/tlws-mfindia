@@ -1,0 +1,575 @@
+{
+  "format": "official-amc-source-register-v1",
+  "version": 1,
+  "directory_url": "https://www.amfiindia.com/online-center/download-factsheets",
+  "directory_sha256": "83515327db20693cc23aaf730f7fe7a510d65257652b50e07ab5a7d401531ec2",
+  "observed_at": "2026-10-16T19:51:43.601125Z",
+  "capture_execution": "mf-fs06-directory-capture-261016a-mqd45",
+  "population_basis": "official_directory_entries_not_all_registered_or_active_AMCs",
+  "members": [
+    {
+      "member_id": "62",
+      "name": "360 ONE Mutual Fund",
+      "listed_factsheet_url": "https://www.360.one/asset/mutual-funds/downloads/",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-01",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "85",
+      "name": "Abakkus Mutual Fund",
+      "listed_factsheet_url": "https://www.abakkusmf.com/factsheet.html#",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-01",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "3",
+      "name": "Aditya Birla Sun Life Mutual Fund",
+      "listed_factsheet_url": "https://mutualfund.adityabirlacapital.com/forms-and-downloads/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "FS-08",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "86",
+      "name": "AlphaGrep Mutual Fund",
+      "listed_factsheet_url": null,
+      "source_state": "missing",
+      "url_review_reasons": [
+        "no_factsheet_link_listed"
+      ],
+      "planned_wave": "EXP-01",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "80",
+      "name": "Angel One Mutual Fund",
+      "listed_factsheet_url": "https://www.angelonemf.com/downloads",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-01",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "87",
+      "name": "ASK MUTUAL FUND",
+      "listed_factsheet_url": "https://www.askmutualfund.com/#/downloads",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "fragment_requires_source_adapter",
+        "not_approved_transport_url"
+      ],
+      "planned_wave": "EXP-02",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "53",
+      "name": "Axis Mutual Fund",
+      "listed_factsheet_url": "https://www.axismf.com/downloads",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-02",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "75",
+      "name": "Bajaj Finserv Mutual Fund",
+      "listed_factsheet_url": "https://www.bajajamc.com/downloads?statutory-disclosures=",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-02",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "48",
+      "name": "Bandhan Mutual Fund",
+      "listed_factsheet_url": "https://bandhanmutual.com/downloads/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-02",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "46",
+      "name": "Bank of India Mutual Fund",
+      "listed_factsheet_url": "https://www.boimf.in/docs/default-source/investorcorner/factsheets/factsheet-may-2022.pdf?sfvrsn=3f2c8194_4",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-03",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "4",
+      "name": "Baroda BNP Paribas Mutual Fund",
+      "listed_factsheet_url": "https://www.barodabnpparibasmf.in/downloads/monthly-factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-03",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "32",
+      "name": "Canara Robeco Mutual Fund",
+      "listed_factsheet_url": "https://www.canararobeco.com/documents/forms-downloads/forms-information-documents/information-documents/factsheets/",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-03",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "81",
+      "name": "Capitalmind Mutual Fund",
+      "listed_factsheet_url": "https://capitalmindmf.com/factsheet.html#",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-03",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "91",
+      "name": "Carnelian Mutual Fund",
+      "listed_factsheet_url": null,
+      "source_state": "missing",
+      "url_review_reasons": [
+        "no_factsheet_link_listed"
+      ],
+      "planned_wave": "EXP-04",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "84",
+      "name": "Choice Mutual Fund",
+      "listed_factsheet_url": "https://choicemf.com/disclosures/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-04",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "6",
+      "name": "DSP Mutual Fund",
+      "listed_factsheet_url": "https://www.dspim.com/downloads?category=Information%20Documents&sub_category=Factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-04",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "47",
+      "name": "Edelweiss Mutual Fund",
+      "listed_factsheet_url": "https://www.edelweissmf.com/downloads/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-04",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "27",
+      "name": "Franklin Templeton Mutual Fund",
+      "listed_factsheet_url": "https://www.franklintempletonindia.com/downloads/fund-literature",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-05",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "63",
+      "name": "Groww Mutual Fund",
+      "listed_factsheet_url": "https://www.growwmf.in/downloads/fact-sheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-05",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "9",
+      "name": "HDFC Mutual Fund",
+      "listed_factsheet_url": "http://hdfcfund.com/downloads/monthly-fact-sheet",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "non_https_listing",
+        "not_approved_transport_url"
+      ],
+      "planned_wave": "EXP-05",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "76",
+      "name": "Helios Mutual Fund",
+      "listed_factsheet_url": "https://www.heliosmf.in/downloads/",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-05",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "37",
+      "name": "HSBC Mutual Fund",
+      "listed_factsheet_url": "https://www.assetmanagement.hsbc.co.in/en/mutual-funds/investor-resources?Date=&Cap=&Doc=fund-factsheets#&module-17=1",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "fragment_requires_source_adapter",
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-06",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "20",
+      "name": "ICICI Prudential Mutual Fund",
+      "listed_factsheet_url": "https://www.icicipruamc.com/news-and-media/downloads?currentTabFilter=Historical Factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "noncanonical_url_characters",
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-06",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "65",
+      "name": "IL&FS Mutual Fund (IDF)",
+      "listed_factsheet_url": null,
+      "source_state": "missing",
+      "url_review_reasons": [
+        "no_factsheet_link_listed"
+      ],
+      "planned_wave": "EXP-06",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "42",
+      "name": "Invesco Mutual Fund",
+      "listed_factsheet_url": "https://invescomutualfund.com/literature-and-form?tab=Factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-06",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "70",
+      "name": "ITI Mutual Fund",
+      "listed_factsheet_url": "https://www.itiamc.com/downloads",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-07",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "82",
+      "name": "Jio BlackRock Mutual Fund",
+      "listed_factsheet_url": "https://www.jioblackrockamc.com/statutory-disclosure/fund-documents/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-07",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "16",
+      "name": "JM Financial Mutual Fund",
+      "listed_factsheet_url": "https://www.jmfinancialmf.com/downloads/Factsheet/Factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-07",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "17",
+      "name": "Kotak Mahindra Mutual Fund",
+      "listed_factsheet_url": "https://www.kotakmf.com/Information/forms-and-downloads/Information",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "FS-10",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "88",
+      "name": "Lakshya Mutual Fund",
+      "listed_factsheet_url": null,
+      "source_state": "missing",
+      "url_review_reasons": [
+        "no_factsheet_link_listed"
+      ],
+      "planned_wave": "EXP-07",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "18",
+      "name": "LIC Mutual Fund",
+      "listed_factsheet_url": "https://www.licmf.com/downloads/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-08",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "69",
+      "name": "Mahindra Manulife Mutual Fund",
+      "listed_factsheet_url": "https://www.mahindramanulife.com/downloads#investor",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "fragment_requires_source_adapter",
+        "not_approved_transport_url"
+      ],
+      "planned_wave": "EXP-08",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "45",
+      "name": "Mirae Asset Mutual Fund",
+      "listed_factsheet_url": "https://www.miraeassetmf.co.in/downloads/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-08",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "89",
+      "name": "Monarch Mutual Fund",
+      "listed_factsheet_url": null,
+      "source_state": "missing",
+      "url_review_reasons": [
+        "no_factsheet_link_listed"
+      ],
+      "planned_wave": "EXP-08",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "55",
+      "name": "Motilal Oswal Mutual Fund",
+      "listed_factsheet_url": "https://www.motilaloswalmf.com/downloads/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-09",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "54",
+      "name": "Navi Mutual Fund",
+      "listed_factsheet_url": "https://navi.com/mutual-fund/downloads/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-09",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "21",
+      "name": "Nippon India Mutual Fund",
+      "listed_factsheet_url": "https://mf.nipponindiaim.com/investor-service/downloads/factsheet-portfolio-and-other-disclosures",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-09",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "73",
+      "name": "NJ Mutual Fund",
+      "listed_factsheet_url": "https://downloads.njmutualfund.com/downloads.php",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-09",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "90",
+      "name": "Nuvama Mutual Fund",
+      "listed_factsheet_url": null,
+      "source_state": "missing",
+      "url_review_reasons": [
+        "no_factsheet_link_listed"
+      ],
+      "planned_wave": "EXP-10",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "78",
+      "name": "Old Bridge Mutual Fund",
+      "listed_factsheet_url": "https://www.oldbridgemf.com/uploads/Old_Bridge_MF_Sept_26_Factsheet_a930721e44.pdf",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-10",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "58",
+      "name": "PGIM India Mutual Fund",
+      "listed_factsheet_url": "https://www.pgimindia.com/mutual-funds/forms-and-updates/Fund-Factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-10",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "64",
+      "name": "PPFAS Mutual Fund",
+      "listed_factsheet_url": "http://amc.ppfas.com/schemes/factsheet/index.php#axzz4I2KR6um7",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "fragment_requires_source_adapter",
+        "non_https_listing",
+        "not_approved_transport_url"
+      ],
+      "planned_wave": "EXP-10",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "13",
+      "name": "quant Mutual Fund",
+      "listed_factsheet_url": "https://quantmutual.com/downloads/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-11",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "41",
+      "name": "Quantum Mutual Fund",
+      "listed_factsheet_url": "https://www.quantumamc.com/factsheets/combined/-1/0/0",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-11",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "74",
+      "name": "Samco Mutual Fund",
+      "listed_factsheet_url": "https://www.samcomf.com/downloads",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-11",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "22",
+      "name": "SBI Mutual Fund",
+      "listed_factsheet_url": "https://www.sbimf.com/en-us/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "FS-09",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "67",
+      "name": "Shriram Mutual Fund",
+      "listed_factsheet_url": "https://www.shriramamc.in/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-11",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "33",
+      "name": "Sundaram Mutual Fund",
+      "listed_factsheet_url": "https://www.sundarammutual.com/Fundwise-Factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-12",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "25",
+      "name": "Tata Mutual Fund",
+      "listed_factsheet_url": "https://www.tatamutualfund.com/information-documents",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-12",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "26",
+      "name": "Taurus Mutual Fund",
+      "listed_factsheet_url": "https://www.taurusmutualfund.com/factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-12",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "83",
+      "name": "The Wealth Company Mutual Fund",
+      "listed_factsheet_url": "https://www.wealthcompanyamc.in/literature-forms/scheme-documents/factsheets/",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-12",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "72",
+      "name": "Trust Mutual Fund",
+      "listed_factsheet_url": "https://www.trustmf.com/downloads?activeTab=factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "not_approved_transport_url",
+        "query_requires_source_adapter"
+      ],
+      "planned_wave": "EXP-13",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "79",
+      "name": "Unifi Mutual Fund",
+      "listed_factsheet_url": "https://unifimf.com/factsheet/",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-13",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "61",
+      "name": "Union Mutual Fund",
+      "listed_factsheet_url": "https://www.unionmf.com/about-us/downloads/factsheets",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-13",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "28",
+      "name": "UTI Mutual Fund",
+      "listed_factsheet_url": "https://www.utimf.com/downloads/fact-sheet",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "FS-11",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "71",
+      "name": "WhiteOak Capital Mutual Fund",
+      "listed_factsheet_url": "https://mf.whiteoakamc.com/download#Factsheet",
+      "source_state": "listed",
+      "url_review_reasons": [
+        "fragment_requires_source_adapter",
+        "not_approved_transport_url"
+      ],
+      "planned_wave": "EXP-13",
+      "acquisition_enabled": false
+    },
+    {
+      "member_id": "77",
+      "name": "Zerodha Mutual Fund",
+      "listed_factsheet_url": "https://www.zerodhafundhouse.com/resources/fund-documents",
+      "source_state": "listed",
+      "url_review_reasons": [],
+      "planned_wave": "EXP-14",
+      "acquisition_enabled": false
+    }
+  ]
+}

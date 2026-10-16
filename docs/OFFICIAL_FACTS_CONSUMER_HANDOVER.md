@@ -93,6 +93,12 @@ receipts, backups and clones. Never restore over the live source database.
 
 ## Broader rollout prerequisites
 
+The approved next stage is documented in
+[the all-AMC expansion plan](ALL_AMC_FACTS_EXPANSION.md). FS-06's additive v7
+coverage/profile reports the dated directory/database union without enabling
+new acquisition or changing current facts. Read its exact-merge release
+acceptance separately before assuming that profile is deployed.
+
 Reuse this process, not an unbounded generic scraper. For each additional AMC/
 layout/cohort register official discovery hosts and paths, exact issuer-to-AMFI
 identity evidence, bounded decoder/parser policy, two original-period reference

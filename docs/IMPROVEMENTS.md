@@ -552,6 +552,18 @@ This does not prevent policy-bound calculations from already-held NAV data.
 
 ## Source-of-record strategy (decision, 2026-10-08)
 
+### All-AMC facts expansion (approved 2026-10-16)
+
+Continue the accepted FS-01–FS-05 process through FS-06 coverage census,
+FS-07 bounded multi-AMC runtime, FS-08 ABSL expansion, FS-09 SBI, FS-10 Kotak,
+FS-11 UTI, explicitly named remaining-AMC waves, field-depth work and final
+whole-universe certification. [Plan, evidence and acceptance gates](ALL_AMC_FACTS_EXPANSION.md).
+The checked-in discovery register has 57 dated official directory entries
+(51 links), not a claim of 57 active/registered or fully enriched AMCs. Retained
+database-only and unmatched schemes stay accounted for. FS-06 adds private
+read-only reporting only; no source acquisition, source-row edits, UI, production,
+legacy fill-if-missing loader use or broader publication authority.
+
 ### FS-01–FS-05: official monthly facts refresh (approved 2026-10-16)
 
 Runtime acceptance is separate from the implementation checkpoints below.
