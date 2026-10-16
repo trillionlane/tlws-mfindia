@@ -329,7 +329,7 @@ def test_monthly_current_retains_missing_fields_old_dates_and_conflict_previous_
 
 @pytest.mark.postgres
 def test_complete_publication_required_for_core_and_recovery_restores_previous_graph(
-    verified_db, monkeypatch
+    verified_db, monkeypatch, tmp_path
 ):
     selected, _, before = setup(verified_db, monkeypatch)
     snapshots = append_period(verified_db, monkeypatch, selected)
@@ -356,6 +356,14 @@ def test_complete_publication_required_for_core_and_recovery_restores_previous_g
         )
     with connection(verified_db, readonly=True) as conn:
         assert queries.fund_detail(conn, 103174)["facts"]["base_expense_ratio"] == 1.36
+    # A missing original SQL pin rolls back ALL partial view replacements, not
+    # just the configuration row; the active graph remains fully readable.
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        with pytest.raises(FileNotFoundError):
+            projection.recover(conn, activated["transition_id"], root=tmp_path)
+    with connection(verified_db, readonly=True) as conn:
+        current.verify_acl(conn)
+        assert current.configuration(conn)["generation"] == 2
         assert queries.fund_detail(conn, 103174)["facts"]["risk_level"] == "Very High"
         assert current.get(conn, 103174)["fields"]["aum"]["value"] == "29710.82"
         assert source_state(conn) == before
@@ -372,13 +380,27 @@ def test_complete_publication_required_for_core_and_recovery_restores_previous_g
             "CREATE OR REPLACE VIEW mf_live_facts.current_values AS SELECT amfi_scheme_code AS code,'{}'::jsonb AS values FROM mf.fund_facts WHERE false"
         )
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
-        assert projection.recover(conn, activated["transition_id"])["status"] == "RECOVERED"
+        assert (
+            projection.recover(conn, activated["transition_id"], root=ROOT)["status"] == "RECOVERED"
+        )
     with connection(verified_db, readonly=True) as conn:
         assert queries.fund_detail(conn, 103174)["facts"]["base_expense_ratio"] == 2.22
         assert current.configuration(conn)["generation"] == 3
+        current.verify_acl(conn)
+        assert (
+            current.get(conn, 103174)["policy_hash"] == current.configuration(conn)["policy_hash"]
+        )
         assert source_state(conn) == before
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
-        assert projection.recover(conn, activated["transition_id"])["status"] == "ALREADY_RECOVERED"
+        conn.execute(
+            "CREATE OR REPLACE VIEW mf_live_facts.current_values AS SELECT amfi_scheme_code AS code,'{}'::jsonb AS values FROM mf.fund_facts WHERE false"
+        )
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        assert (
+            projection.recover(conn, activated["transition_id"], root=ROOT)["status"]
+            == "ALREADY_RECOVERED"
+        )
+        current.verify_acl(conn)
 
 
 @pytest.mark.postgres

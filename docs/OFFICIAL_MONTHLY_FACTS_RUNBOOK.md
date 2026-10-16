@@ -200,8 +200,15 @@ Activation has a 5-second statement/15-second transaction budget and checks
 actual core SQL inside the owner transaction. The restricted HTTP certifier
 uses independent source expectations, never owner-only core queries. Recovery
 restores all six captured views and the exact prior core view, not merely the
-two gates or an assumed raw baseline; append-only history is retained. Traffic
-restoration must run independently of lookup, verification or database-recovery
+two gates or an assumed raw baseline; append-only history is retained.
+
+Recovery replays the current-values view from its pinned original migration,
+not its saved deparsed SQL: PostgreSQL's UNION-literal roundtrip can add internal
+aliases and otherwise invalidate the immutable view seal. Every restored view
+must match the original seal, and effective ACL verification runs before commit,
+including the already-recovered retry path. Missing original SQL or any mismatch
+rolls back all partial view replacements; it must not append a recovery receipt.
+Traffic restoration must run independently of lookup, verification or database-recovery
 failure. Reapply the approved graph and recertify after recovery. Keep existing
 NAV schedules unchanged. A new facts scheduler is accepted only after a real
 timed execution is reconciled to its job SHA/image, archived source, receipt

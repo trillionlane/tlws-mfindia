@@ -1,6 +1,7 @@
 """Short reversible owner transitions; no source rows or old configurations rewritten."""
 
 import hashlib
+from pathlib import Path
 
 from psycopg import sql
 from psycopg.types.json import Jsonb
@@ -191,7 +192,7 @@ def activate(conn, root, *, legacy_snapshot_ids, reviewed):
         }
 
 
-def recover(conn, activation_id):
+def recover(conn, activation_id, *, root=Path("/app")):
     with conn.transaction():
         owner(conn)
         # Do not inspect the failed candidate views or source references first.
@@ -227,14 +228,32 @@ def recover(conn, activation_id):
         if not already and latest["generation"] != doc["to_generation"]:
             raise ValueError("stale recovery intent cannot replace a later approved transition")
         for name in ORDER:
-            conn.execute(
-                sql.SQL("CREATE OR REPLACE VIEW mf_live_facts.{} AS ").format(sql.Identifier(name))
-                + sql.SQL(prior["view_definitions"][name])
-            )
+            if name == "current_values":
+                from mfdataindia.enrichment.current_view_ddl import replay_current_values
+
+                replay_current_values(
+                    conn,
+                    root,
+                    policy_hash=prior["policy_hash"],
+                    expected_definition=prior["view_definitions"][name],
+                )
+            else:
+                conn.execute(
+                    sql.SQL("CREATE OR REPLACE VIEW mf_live_facts.{} AS ").format(
+                        sql.Identifier(name)
+                    )
+                    + sql.SQL(prior["view_definitions"][name])
+                )
+        if any(
+            current.view_definition(conn, "mf_live_facts." + name) != definition
+            for name, definition in prior["view_definitions"].items()
+        ):
+            raise ValueError("recovered graph differs from the original captured seals")
         if already:
             conn.execute(
                 "CREATE OR REPLACE VIEW mf.current_fund_facts AS " + doc["prior_core_definition"]
             )
+            current.verify_acl(conn)
             return {
                 "status": "ALREADY_RECOVERED",
                 "source_rows_changed": 0,
@@ -265,6 +284,7 @@ def recover(conn, activation_id):
         )
         if current.view_definition(conn, "mf.current_fund_facts") != doc["prior_core_definition"]:
             raise ValueError("prior current projection recovery unconfirmed")
+        current.verify_acl(conn)
         return {
             "status": "RECOVERED",
             "generation": generation,
