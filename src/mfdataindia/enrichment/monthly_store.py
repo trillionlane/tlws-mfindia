@@ -38,6 +38,18 @@ def verify_acl(conn, *, principal=None):
         r["relkind"] != "r" or r["relowner"] != row["nspowner"] for r in objects
     ):
         raise ValueError("monthly relation inventory differs")
+    functions = conn.execute(
+        "SELECT proname,prosecdef,proowner,proconfig FROM pg_proc WHERE pronamespace='mf_monthly_facts'::regnamespace"
+    ).fetchall()
+    if functions != [
+        {
+            "proname": "seal_snapshot",
+            "prosecdef": True,
+            "proowner": row["nspowner"],
+            "proconfig": ["search_path=pg_catalog"],
+        }
+    ]:
+        raise ValueError("monthly function inventory or owner boundary differs")
     for table, triggers in (
         ("sources", {"monthly_source_immutable"}),
         ("snapshots", {"monthly_snapshot_sealed", "monthly_snapshot_immutable"}),
@@ -93,13 +105,24 @@ def capture(conn):
     if not conn.execute("SELECT to_regnamespace('mf_monthly_facts') AS name").fetchone()["name"]:
         return None
     verify_acl(conn, principal=evidence.ROLES[1])
-    result = {}
+    result = {
+        "function_hash": fingerprint(
+            conn.execute(
+                "SELECT pg_get_functiondef(p.oid) AS definition FROM pg_proc p WHERE pronamespace='mf_monthly_facts'::regnamespace ORDER BY proname"
+            ).fetchall()
+        )
+    }
     for table, key in (("sources", "content_hash"), ("snapshots", "snapshot_id")):
+        relation = (
+            "(SELECT content_hash,byte_length,intake FROM mf_monthly_facts.sources)"
+            if table == "sources"
+            else "mf_monthly_facts.snapshots"
+        )
         rows = conn.execute(
             "SELECT "
             + key
-            + ",encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS sha256 FROM mf_monthly_facts."
-            + table
+            + ",encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS sha256 FROM "
+            + relation
             + " t ORDER BY "
             + key
         ).fetchall()
@@ -108,6 +131,17 @@ def capture(conn):
             "sha256": fingerprint(rows),
             "row_hashes": {r[key]: r["sha256"] for r in rows},
         }
+    raw_allowed = conn.execute(
+        "SELECT has_column_privilege(current_user,'mf_monthly_facts.sources','content','SELECT') AS allowed"
+    ).fetchone()["allowed"]
+    if (
+        raw_allowed
+        and conn.execute(
+            "SELECT 1 FROM mf_monthly_facts.sources WHERE encode(sha256(content),'hex')<>content_hash OR octet_length(content)<>byte_length LIMIT 1"
+        ).fetchone()
+    ):
+        raise ValueError("retained monthly original integrity differs")
+    result["original_byte_integrity_checked"] = raw_allowed
     return result
 
 
@@ -248,7 +282,7 @@ def publish(conn, selection: schemas.Selection, content: bytes):
                 "disclosure_as_of": selection.intake.document_as_of.isoformat(),
                 **derived,
             }
-            snapshot = schemas.Snapshot.model_validate(
+            snapshot = schemas.MonthlySnapshot.model_validate(
                 {**body, "snapshot_id": fingerprint(body)}
             ).model_dump(mode="json")
             conn.execute(
@@ -311,7 +345,7 @@ def get(conn, code, *, snapshot_id=None):
             "state": "conflicting",
             "conflicting_snapshot_ids": [r["document"]["snapshot_id"] for r in rows[:100]],
         }
-    doc = schemas.Snapshot.model_validate(rows[0]["document"]).model_dump(mode="json")
+    doc = schemas.MonthlySnapshot.model_validate(rows[0]["document"]).model_dump(mode="json")
     if doc["identity_hash"] != fingerprint(identity):
         return {**base, "state": "identity_changed"}
     return {**base, "state": "available", "snapshot": doc}

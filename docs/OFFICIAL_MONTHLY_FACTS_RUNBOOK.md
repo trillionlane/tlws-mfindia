@@ -1,0 +1,126 @@
+# Official monthly fund facts: preservation-first process
+
+## Release boundary
+
+The approved FS-01–FS-05 programme is backend/data only. Establish the
+process with Aditya Birla Sun Life Large Cap Fund, Regular Growth (103174)
+and Regular Annual IDCW (103173), then expand through separately tested
+AMC/layout adapters. Two variants do not establish all-AMC coverage.
+
+Existing source records, NAV history, source identities, facts, analytics,
+policies and review history must not be overwritten or deleted. Fresh backups
+and new restored clones are retained. Source preservation is not a reason to
+freeze stale values in the current API: later usable official disclosures
+advance a reversible, per-field current projection.
+
+## Five finite deliveries
+
+| Sprint | Finite result | Acceptance boundary |
+| --- | --- | --- |
+| FS-01 | Current official benchmark, managers and BER over retained E06 disclosures; two private provenance reads | Exact-merge images, fresh regional backup, restored-clone switch/recovery, real private/core HTTP, actual live recovery and post-export preservation |
+| FS-02 | Larger bounded book decoder, immutable monthly originals/snapshots and two private reporting reads | Two original reporting periods and both exact variants; independent values, units and availability references; immutable/replay/atomic-failure and effective-permission tests |
+| FS-03 | Recurring capture/diff/publication into the existing current API | Bounded official discovery, exact originals, no late-month rollback, field-level missing/conflict handling, actual scheduled DEV execution, freshness and run outcomes |
+| FS-04 | Backend change/history and evidence-bound human verification | Signed administrator, reason/evidence, exact source/dependency version, idempotency and optimistic concurrency; new evidence invalidates old verification; no UI or source-record edits |
+| FS-05 | Certified process and consumer handover | Fresh restored clone, source-to-API oracle, prior/new contracts, effective roles, actual recovery/restoration, preserved source/layer inventory and explicit coverage/gaps |
+
+Each release is pushed, self-reviewed, CI-checked and merged before its
+controlled DEV rollout. Self-review is identified as such. Image preparation,
+merge, schema installation, traffic promotion, activation and certification
+are different evidence states, never interchangeable success claims.
+
+## Original evidence and exact identity
+
+The September publication contains August 31 reporting data; the October
+publication contains September 30 reporting data. Publication month is not
+silently substituted for a fund's as-on date. Retain the original PDF, URL,
+observation time, SHA-256, page selection, extractor version/code/policy hashes
+and exact text hashes. Retain the issuer summary used to bridge each AMFI code
+and payout ISIN to the current AMC/name/plan/option/ISIN identity. No fuzzy or
+name-only match and no Direct-plan borrowing are permitted.
+
+The frozen older PDF policy stays at 8 MiB. The additive monthly-book policy
+accepts at most 16 MiB, 400 total pages and 24 explicitly selected pages in a
+resource-limited subprocess. It does not execute PDF scripts, OCR a gauge,
+decode a riskometer pointer, or claim whole-book extraction coverage.
+
+Official pilot sources:
+
+- [September ABSL book](https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/factsheets/2026/empower-factsheet---september-2026.pdf)
+- [October ABSL book](https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/factsheets/2026/empower-for-the-month-of-october-2026.pdf)
+- [Issuer scheme-summary identity source](https://nsearchives.nseindia.com/trading_security/mf/pdf/Aditya_06042026165307_SchemeSummaryDocument.pdf)
+
+The intake retains the user's reported authorization/use basis; this runbook
+does not manufacture written permission or make a new legal determination.
+
+## Field interpretation
+
+- Risk: use the explicit **Scheme Riskometer / Current Month** text row on
+  the same fund's change page. Never use Previous Month, a benchmark risk
+  gauge, or the printed list of all possible risk labels.
+- BER remains BER, not TER. The change table's current Regular value must
+  corroborate the detail-page Regular BER. Preserve the original decimal token.
+- AUM/AAUM become INR-crore values only when the source explicitly prints Cr.
+  An unlabelled number is retained as raw reported evidence with unknown units,
+  not silently normalized or used to replace an existing current number.
+- A reported fund inception is not automatically a plan/variant inception.
+  Reported month-end NAV is not an ingestion repair or a replacement NAV point.
+- Minimum **additional** investment and exit-load terms retain their scope;
+  do not relabel them as an initial minimum or a transaction-availability flag.
+- AMC-reported ratios and Regular/Direct/benchmark performance remain
+  publisher-reported information. Unresolved option basis is explicit. These
+  are not distribution-adjusted IDCW returns or our canonical calculations.
+- Top ten means top ten, not full holdings or full economic exposure. Use the
+  separate monthly portfolio source for full reported holdings.
+- Printed NA is not zero. Unsupported sections remain explicitly inventoried
+  as retained-but-not-yet-parsed; the original document is not discarded.
+
+Reported numbers use deterministic decimal strings. Any later mathematical
+engine must use its own immutable policy/version/hash and results layer.
+Extracted facts must not silently replace published calculated analytics.
+
+## Storage and private reads
+
+`mf_monthly_facts.sources` retains original books; `snapshots` retains sealed
+exact-identity reporting results. Only the dedicated generator can append.
+Runtime principals cannot update/delete/truncate these tables; ingestion's
+production-style broad defaults are explicitly revoked. Readers cannot select
+original PDF bytes. The owner installation is opt-in, not a default migration.
+
+The 37-route profile preserves all previous 35 paths/components and adds:
+
+- `GET /api/enrichment/v4/policy`
+- `GET /api/enrichment/v4/funds/{code}/facts`, optionally pinned by `snapshot_id`
+
+The new profile is private Cloud Run plus the existing signed backend
+assertion. There is no browser/public source writer or raw PDF endpoint.
+Responses are no-store. The snapshot's original `needs_verification` status
+is not human verification and is never rewritten in place.
+
+FS-02 reports whether its monthly snapshot is included in the current core
+projection; that is false until FS-03 integrates the richer source selection.
+Do not mistake sidecar availability for current-core activation or freshness.
+The existing v1/v2/v3 contracts are not reinterpreted as a new monthly format.
+
+## Safety and certification
+
+Use the exact merged SHA and immutable images. Run the existing regional
+MVCC backup/export and restore into a new isolated PostgreSQL server, never
+the retained local production database or an existing rehearsal database.
+Record before/after source and enhancement-layer inventories. Never replace
+an artifact or rerun an ambiguous write just to obtain a PASS certificate.
+
+Current projection DDL must be short: no whole-source hashing while holding
+the hot view's exclusive lock. Whole-source inspection is a separate
+read-only repeatable-read operation. Restore known prior traffic and the
+captured view independently of candidate lookup/cleanup on failure.
+
+Monthly certification requires **four** independent references: both variants
+at both real reporting dates. Each required field reference binds value,
+explicit unit and availability status. HTTP/identity denials, replay,
+no-store, raw-byte restrictions and absence of user writes are checked.
+Cloud execution success and the exact bound certificate are both required.
+
+Human verification remains a separate later action. Do not create a fake
+human verification in DEV merely to make a certificate green. Positive
+human-review mechanics can be tested on the restored/synthetic clone; live
+reported fields remain honestly `needs_verification` until actually reviewed.

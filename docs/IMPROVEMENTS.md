@@ -611,6 +611,22 @@ Historical strategy below. For future enhancements, the 2026-10-13 additive
 roadmap above governs: no aggregator reactivation or mutation of retained source
 records is authorized by these older proposals.
 
+**FS-02 implementation checkpoint:** the separate monthly-book adapter retains
+16 MiB originals without widening the frozen 8 MiB evidence policy. It adds
+an opt-in immutable source/snapshot namespace and a 37-route private profile
+with two v4 reporting reads; all 35 previous paths/components stay unchanged.
+The declared 32-field/section inventory distinguishes usable reported facts,
+missing units, not-applicable/unavailable values and retained-but-unparsed
+sections. Original-source QA covers both Regular variants in the August 31
+and September 30 reports: respectively 20 and 23 usable fields per variant,
+not whole-factsheet/all-AMC coverage. The explicit scheme-risk Current Month
+row is used; no gauge/benchmark inference. Reported performance/ratios/top-ten
+holdings remain distinct from canonical analytics and full economic exposure.
+This checkpoint is code/source QA, not a claim that monthly current-core
+publication, the recurring refresh or human verification is activated.
+See [the process runbook](OFFICIAL_MONTHLY_FACTS_RUNBOOK.md) for all five
+finite deliveries, evidence boundaries and consumer representation rules.
+
 **Official sources only in prod:** AMFI (NAV + identity) and each AMC's own
 disclosures (factsheet + monthly portfolio). Aggregators (**Scripbox /
 Groww**) are **dev-only tools** — never scheduled or auto-triggered in prod.

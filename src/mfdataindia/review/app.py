@@ -369,11 +369,11 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         from mfdataindia.enrichment import monthly_facts as monthly, monthly_schemas, monthly_store
         from mfdataindia.review.policy import fingerprint
 
-        @app.get('/api/enrichment/v4/policy', response_model=monthly_schemas.PolicyResponse)
+        @app.get('/api/enrichment/v4/policy', response_model=monthly_schemas.MonthlyPolicyResponse)
         def monthly_reporting_policy(principal: Principal = Depends(identity)):
             return run(lambda conn: {'policy_hash':fingerprint(monthly.policy()),'document':monthly.policy()})
 
-        @app.get('/api/enrichment/v4/funds/{code}/facts', response_model=monthly_schemas.Response)
+        @app.get('/api/enrichment/v4/funds/{code}/facts', response_model=monthly_schemas.MonthlyResponse)
         def monthly_reported_facts(code: Code, snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None, principal: Principal = Depends(identity)):
             return run(lambda conn: monthly_store.get(conn,code,snapshot_id=snapshot_id))
 

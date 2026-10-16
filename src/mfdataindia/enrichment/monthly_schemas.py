@@ -92,7 +92,7 @@ class MonthlyFact(Model):
         return self
 
 
-class Snapshot(Model):
+class MonthlySnapshot(Model):
     format: Literal["official-monthly-fund-facts-v1"]
     snapshot_id: str = Field(pattern=r"^[0-9a-f]{64}$")
     code: StrictInt
@@ -115,11 +115,11 @@ class Snapshot(Model):
     engine_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
-class Response(Model):
+class MonthlyResponse(Model):
     format: Literal["official-monthly-fund-facts-response-v1"]
     code: int
     state: Literal["available", "not_captured", "identity_changed", "conflicting"]
-    snapshot: Snapshot | None
+    snapshot: MonthlySnapshot | None
     conflicting_snapshot_ids: list[str] = Field(max_length=100)
     original_records_replaced: Literal[False]
     canonical_analytics_replaced: Literal[False]
@@ -128,6 +128,6 @@ class Response(Model):
     universe_complete: Literal[False]
 
 
-class PolicyResponse(Model):
+class MonthlyPolicyResponse(Model):
     policy_hash: str
     document: dict
