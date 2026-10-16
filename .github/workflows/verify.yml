@@ -68,6 +68,7 @@ jobs:
           uv run python scripts/export_overlap_openapi.py --check
           uv run python scripts/export_distribution_openapi.py --check
           uv run python scripts/export_idcw_catalog_openapi.py --check
+          uv run python scripts/export_current_facts_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -160,6 +161,15 @@ jobs:
             'from pathlib import Path; from mfdataindia.review.app import create_idcw_catalog_app; assert len(create_idcw_catalog_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 33; assert Path("/app/sql/optional/032_multi_fund_idcw_observations.sql").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/deploy_idcw_catalog_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/certify_idcw_catalog_dev.py --help
+
+      - name: Verify current official facts profile and workers
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_current_facts_app; import mfdataindia.enrichment.current_facts_store; assert len(create_current_facts_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 35; assert Path("/app/sql/optional/033_current_official_facts.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/operate_current_facts_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_current_facts_dev.py --help
 
       - name: Build and verify PostgreSQL 18 restore image
         run: |
