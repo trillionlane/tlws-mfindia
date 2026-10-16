@@ -211,6 +211,15 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/operate_fact_verification_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/certify_fact_verification_dev.py --help
 
+      - name: Verify dormant all-AMC coverage profile and source register
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from mfdataindia.review.app import create_amc_coverage_app; from mfdataindia.enrichment.amc_register import load_register; assert len(create_amc_coverage_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 46; register = load_register(); assert len(register.members) == 57; assert all(not member.acquisition_enabled for member in register.members)'
+          docker run --rm --entrypoint python "$image" /app/scripts/inventory_amc_coverage_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_coverage_dev.py --help
+
       - name: Build and verify PostgreSQL 18 restore image
         run: |
           set -euo pipefail
