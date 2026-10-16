@@ -63,9 +63,14 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
                     for alias in aliases
                 }
         elif operation == "activate":
-            if set(body) != {"reviewed"}:
+            if set(body) != {"reviewed", "expected_configuration_hash"}:
                 raise ValueError("exact independent source reference required")
-            result = multi_projection.activate(conn, root, body["reviewed"])
+            result = multi_projection.activate(
+                conn,
+                root,
+                body["reviewed"],
+                expected_configuration_hash=body["expected_configuration_hash"],
+            )
         else:
             if set(body) != {"activation_id"}:
                 raise ValueError("exact prior transition required")

@@ -188,6 +188,10 @@ def test_atomic_publication_replay_recovery_and_source_preservation(verified_db,
     )
     assert all("text" not in page for page in snapshot["extraction"]["pages"])
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        with pytest.raises(ValueError, match="configuration changed"):
+            multi_projection.activate(
+                conn, ROOT, reference(snapshot), expected_configuration_hash="0" * 64
+            )
         activation = multi_projection.activate(conn, ROOT, reference(snapshot))
         assert (
             current.get(conn, 101763)["fields"]["fund_managers"]["value"]

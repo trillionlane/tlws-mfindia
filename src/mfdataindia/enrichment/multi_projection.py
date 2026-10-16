@@ -47,12 +47,17 @@ def check(conn, reviewed):
     return document
 
 
-def activate(conn, root, reviewed):
+def activate(conn, root, reviewed, *, expected_configuration_hash=None):
     with conn.transaction():
         owner(conn)
         multi_store.verify_acl(conn, principal="mfdata_verified_reader")
         current.verify_acl(conn)
         prior = current.configuration(conn)
+        if (
+            expected_configuration_hash is not None
+            and fingerprint(dict(prior)) != expected_configuration_hash
+        ):
+            raise ValueError("approved prior configuration changed before activation")
         if prior["policy_hash"] == fingerprint(multi_facts.current_policy()):
             check(conn, reviewed)
             return {"status": "ALREADY_ACTIVE", "source_rows_changed": 0}
