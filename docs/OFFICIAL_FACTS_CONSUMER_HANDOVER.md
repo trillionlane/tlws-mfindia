@@ -49,6 +49,9 @@ browser. Requests also require the existing signed backend assertion.
 | v6 `/api/enrichment/v6/funds/{code}/reviews` | Evidence-bound human attestation | Signed `review:admin`, stable Idempotency-Key, exact version/dependencies/evidence and real human actor |
 
 The 43-route OpenAPI contract preserves all earlier private paths and schemas.
+The refresh receipt's `field_gaps` covers only the five supported current
+scalar fields. An empty list is not whole-factsheet completeness: consult the
+v4 per-field statuses and process inventory for all 32 reporting slots.
 See `contracts/mfdataindia-fact-verification-v1.json` and
 [the operational runbook](OFFICIAL_MONTHLY_FACTS_RUNBOOK.md) for exact shapes.
 All responses are no-store. This release does not alter Insights or grant new
