@@ -137,7 +137,7 @@ scaffolding and certified samples must not become unsupported product claims.
 | DATA-05 | Initial review/proposal backend accepted for bounded private DEV scope | [Provider PR #33](https://github.com/trillionlane/tlws-mfindia/pull/33), rollout PRs #34–#37 | Actual six-route checks, diagnostic-only canary history, replay/concurrency and persistent source-bound records. No UI, human fund correctness approval, Insights RBAC acceptance or executable overrides. |
 | DEV review rollout | Complete — private provider DEV acceptance | [Provider PR #34](https://github.com/trillionlane/tlws-mfindia/pull/34), rollout fixes #35–#37, [runbook](VERIFIED_FUND_REVIEW_RUNBOOK.md#preservation-first-dev-rollout) | Fresh archive/restored clone, restricted identities/schema, finite generation, six-route certification and live non-destructive recovery passed in MF-E01. |
 | UI-01 | Planned | — | — |
-| ENR-01 | In progress — bounded source pilots accepted; recurring current-facts refresh pending | Provider PRs #56, #58, #60; FS-01–FS-05 below | Existing factsheet/portfolio cohorts are not all-AMC or whole-field coverage. The approved next five sprints establish official monthly updates in the current API while preserving originals. |
+| ENR-01 | Bounded recurring current-facts pilot accepted in DEV; broader AMC/field coverage planned | Provider PRs #56, #58, #60, #75; FS-01–FS-05 below | Daily official acquisition and current publication are accepted for the declared ABSL cohort. This is not all-AMC or whole-field coverage; originals remain preserved. |
 | ENR-02 | Planned | — | — |
 | IDCW-01 | Bounded reported-observation DEV pilot accepted; full event coverage remains open | [PR #65](https://github.com/trillionlane/tlws-mfindia/pull/65), [handover](runbooks/MF_E09_REPORTED_OBSERVATIONS_DEV.md#accepted-dev-rollout-and-backend-handover) | HDFC 101763: three original PDFs, one reported observation and three private reads. Fresh backup/clone, replay, candidate/final/recovery/restored certification, live capabilities and preservation passed. Coverage remains unknown; complete-history and adjusted-analytics gates remain separate. |
 | MF-E09B | Complete — bounded four-variant HDFC provider DEV pilot, 2026-10-15 | [PR #67](https://github.com/trillionlane/tlws-mfindia/pull/67), [backend handover](runbooks/MF_E09B_IDCW_EXPANSION_DEV.md#accepted-dev-rollout-and-backend-handover) | Runtime `532b125`; four private GET patterns (33 enhancement patterns total), four immutable snapshots and three retained originals. Fresh backup/new restored clone, independent per-plan reference, append/replay, candidate/final/recovery/restored HTTP, live privileges and final preservation passed. All 14,392 funds, 4,244,085 NAV rows and prior layers/v1 preserved. [42-receipt evidence](evidence/mf-e09b-dev-idcw-261015b.json). Coverage stays unknown; no adjusted analytics, UI, production or all-AMC claim. |
@@ -553,6 +553,25 @@ This does not prevent policy-bound calculations from already-held NAV data.
 ## Source-of-record strategy (decision, 2026-10-08)
 
 ### FS-01–FS-05: official monthly facts refresh (approved 2026-10-16)
+
+Runtime acceptance is separate from the implementation checkpoints below.
+The 2026-10-16 approval covers all five scoped backend sprints through review,
+merge, controlled DEV deployment and certification, not production, UI work,
+source deletion/correction or wholesale model replacement.
+
+| Delivery | Recorded DEV acceptance / release record |
+| --- | --- |
+| FS-01 current official facts | Accepted on merged `f4d5a77`; backup, restored clone, private/core HTTP and actual recovery. Seal `0d8653873051423f42b02ead5de91c3b3b7b14ad08b0552961bf6a3f9d2b31dc`. [Repair/release record](https://github.com/trillionlane/tlws-mfindia/pull/74). |
+| FS-02 two-period monthly reporting | Accepted on merged `f4d5a77`; two books, four variant snapshots and independent original-page references. Seal `17b03a824477653e4cedde067bbb067c5d530061c0c9903da7f7b9491793655b`. [Release record](https://github.com/trillionlane/tlws-mfindia/pull/73). |
+| FS-03 recurring current publication | Accepted on merged `4c04e25`; real timed source execution, exact runtime/archive/database/API reconciliation, recovery and preservation. Seal `8a8a814a56fb471c00eec731dd5665714e2efad8e3885cebe1fe408d3f8a2d9a`. Daily 09:00 Asia/Kolkata; NAV schedules unchanged. [Release record](https://github.com/trillionlane/tlws-mfindia/pull/75). |
+| FS-04 verification/history | Merged `e3f5b7b`. The separately recorded exact-image live acceptance and its preservation/recovery evidence belong to [the release record](https://github.com/trillionlane/tlws-mfindia/pull/76), not an inferred pass from this implementation checkpoint. |
+| FS-05 process certification | [Release record](https://github.com/trillionlane/tlws-mfindia/pull/77) must record final exact-merge private core/profile, actual scheduled source, restored-clone and recovery/preservation acceptance. Exploratory code tests and older-image certificates cannot substitute. |
+
+The scope is one declared fund name, two exact Regular variants and two
+reporting periods. Broader AMC adapters, missing field parsers, full economic
+exposure and distribution-adjusted IDCW analytics remain separate work. See
+[consumer handover](OFFICIAL_FACTS_CONSUMER_HANDOVER.md) for the coverage and
+interface boundaries; no human verification is fabricated by a rollout.
 
 The user approved implementation, self-review, merge and controlled DEV
 deployment of five finite sprints. Establish the complete process on ABSL
