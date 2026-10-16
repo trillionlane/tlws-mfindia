@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from mfdataindia.calculators import schemas as calculator_schemas
 from mfdataindia.calculators import historical_schemas
+from mfdataindia.enrichment import fact_review_schemas
 from mfdataindia.review import publication, schemas, store
 from mfdataindia.review.auth import AssertionVerifier, Principal
 from mfdataindia.review.privileges import verify_runtime
@@ -26,7 +27,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False, fact_refresh: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False, fact_refresh: bool = False, fact_verification: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -85,6 +86,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if fact_refresh:
                         from mfdataindia.enrichment.refresh_store import verify_acl as verify_refresh_acl
                         verify_refresh_acl(conn)
+                    if fact_verification:
+                        from mfdataindia.enrichment.fact_review_store import verify_acl as verify_fact_review_acl
+                        verify_fact_review_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -395,6 +399,31 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         def refresh_status(principal: Principal = Depends(identity)):
             return run(refresh_store.status)
 
+    if fact_verification:
+        from mfdataindia.enrichment import fact_review_store as fact_reviews
+
+        @app.get('/api/enrichment/v6/funds/{code}/history', response_model=fact_review_schemas.FactSourceHistory)
+        def fact_source_history(code: Code, principal: Principal = Depends(identity),
+            after_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None,
+            limit: int = Query(50,ge=1,le=100)):
+            return run(lambda conn: fact_reviews.history(conn,code,after_id=after_id,limit=limit))
+
+        @app.get('/api/enrichment/v6/funds/{code}/changes', response_model=fact_review_schemas.FactSourceChanges)
+        def fact_source_changes(code: Code,from_snapshot_id: Annotated[str, Query(pattern=r'^[0-9a-f]{64}$')],
+            to_snapshot_id: Annotated[str, Query(pattern=r'^[0-9a-f]{64}$')],principal: Principal = Depends(identity)):
+            return run(lambda conn: fact_reviews.changes(conn,code,from_snapshot_id,to_snapshot_id))
+
+        @app.get('/api/enrichment/v6/funds/{code}/verification', response_model=fact_review_schemas.FactReviewState)
+        def fact_verification_state(code: Code,principal: Principal = Depends(identity),
+            after_version: int = Query(0,ge=0),limit:int=Query(50,ge=1,le=100)):
+            return run(lambda conn: fact_reviews.state(conn,code,after_version=after_version,limit=limit))
+
+        @app.post('/api/enrichment/v6/funds/{code}/reviews', response_model=fact_review_schemas.FactReviewEvent)
+        def review_official_facts(code: Code,request: fact_review_schemas.FactReviewMutation,
+            idempotency_key: IdempotencyKey,principal: Principal = Depends(administrator)):
+            return run(lambda conn: fact_reviews.record(conn,code,request.model_dump(mode='json'),
+                caller=principal.caller,actor=principal.actor,idempotency_key=idempotency_key),write=True)
+
     return app
 
 
@@ -466,3 +495,8 @@ def create_monthly_facts_app(dsn: str | None = None, *, verifier: AssertionVerif
 def create_fact_refresh_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """39-route private profile; current provenance and bounded refresh status."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True,monthly_facts=True,fact_refresh=True)
+
+
+def create_fact_verification_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """43-route private profile; human decisions never edit source facts."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True,monthly_facts=True,fact_refresh=True,fact_verification=True)

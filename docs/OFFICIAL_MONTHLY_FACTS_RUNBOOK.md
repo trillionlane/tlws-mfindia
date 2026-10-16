@@ -206,3 +206,68 @@ failure. Reapply the approved graph and recertify after recovery. Keep existing
 NAV schedules unchanged. A new facts scheduler is accepted only after a real
 timed execution is reconciled to its job SHA/image, archived source, receipt
 and private core responses; manual execution is not a scheduled-run witness.
+
+## FS-04 human verification and source history
+
+The optional `036_official_fact_verification.sql` adds an isolated append-only
+human-review ledger. Runtime roles have no direct table write, schema-create,
+source-edit or rewrite privilege. Only the existing dedicated administrator
+principal can execute the narrow review function. Ingestion and the source
+generator cannot insert reviews or invoke that function. The function checks
+optimistic review version, exact dependency hash and selected evidence at the
+database boundary under the same publication lock used by source refresh.
+
+The 43-route private profile preserves all previous contracts and adds:
+
+- `GET /api/enrichment/v6/funds/{code}/history`: bounded retained monthly
+  snapshots, explicit publication status and a stable immutable-ID cursor.
+  The declared cursor order is not recency order.
+- `GET /api/enrichment/v6/funds/{code}/changes`: compare two retained same-fund,
+  same-identity snapshots. Report changed values/status/units/scopes/reasons;
+  an unchanged risk value is not a risk change just because its date advanced.
+  Nothing is applied to source records.
+- `GET /api/enrichment/v6/funds/{code}/verification`: current dependency
+  artifact/hash, optimistic version, per-field review status and bounded events.
+- `POST /api/enrichment/v6/funds/{code}/reviews`: signed `review:admin` only,
+  stable `Idempotency-Key`, explicit original-source human attestation, reason,
+  exact named fields and selected source snapshot IDs. The delegated actor
+  comes from the signed assertion, never the editable request body.
+
+Example body after reading the exact current state and original source:
+
+```json
+{
+  "expected_version": 0,
+  "expected_dependency_hash": "<hash from verification read>",
+  "decision": "verified",
+  "attestation": "human_reviewed_original",
+  "fields": ["risk_level"],
+  "evidence_snapshot_ids": ["<selected source snapshot ID>"],
+  "reason": "Inspected the explicit Current Month scheme risk row in the original."
+}
+```
+
+The backend is responsible for authenticating that real human before issuing
+the signed administrator assertion. The provider records the attestation and
+actor; it does not independently prove physical identity. A caller/actor,
+request or fund change under the same key is a conflict. Exact replay returns
+the original receipt, even after source changes; it never renews verification.
+
+Dependencies include the current identity and current policy, selected values,
+dates and snapshot IDs, and the latest field heads even where an older usable
+value is retained. New inputs therefore invalidate old human verification even
+if the displayed risk/value is unchanged. Only the latest actual review naming
+a field controls that field; reviewing another field cannot clear its stale
+review. A conflicting/unusable field cannot be marked verified by this API.
+Human review does not resolve a source conflict, edit facts, advance publication
+or change canonical analytics eligibility. Existing v3 field status uses its
+already-defined `verified`/`needs_verification`/`needs_revalidation` values;
+review events do not change the source facts revision.
+
+The human-review policy is immutable in the existing policy registry. Positive
+review/replay/concurrency tests belong on synthetic and restored clones, clearly
+labelled as tests. There is intentionally no DEV rollout CLI operation that
+creates a human review. Live certification submits only an incomplete,
+read-scope request which cannot create a review even if an authorization defect
+exists, and requires a denial plus an unchanged ledger. Never create fake live
+human approvals to close out a sprint. No admin UI is included here.

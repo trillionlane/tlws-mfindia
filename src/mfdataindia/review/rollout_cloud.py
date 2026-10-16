@@ -23,10 +23,11 @@ IDCW_FACTORY = 'mfdataindia.review.app:create_idcw_catalog_app'
 CURRENT_FACTS_FACTORY = 'mfdataindia.review.app:create_current_facts_app'
 MONTHLY_FACTS_FACTORY = 'mfdataindia.review.app:create_monthly_facts_app'
 FACT_REFRESH_FACTORY = 'mfdataindia.review.app:create_fact_refresh_app'
+FACT_VERIFICATION_FACTORY = 'mfdataindia.review.app:create_fact_verification_app'
 
 
 def api_args(factory):
-    if factory not in (REVIEW_FACTORY, RESEARCH_FACTORY, CALENDAR_FACTORY, ROLLING_FACTORY, CALCULATOR_FACTORY, HISTORICAL_FACTORY, ENRICHMENT_FACTORY, OFFICIAL_FACTS_FACTORY, PORTFOLIOS_FACTORY, OVERLAP_FACTORY, DISTRIBUTIONS_FACTORY, IDCW_FACTORY, CURRENT_FACTS_FACTORY, MONTHLY_FACTS_FACTORY, FACT_REFRESH_FACTORY):
+    if factory not in (REVIEW_FACTORY, RESEARCH_FACTORY, CALENDAR_FACTORY, ROLLING_FACTORY, CALCULATOR_FACTORY, HISTORICAL_FACTORY, ENRICHMENT_FACTORY, OFFICIAL_FACTS_FACTORY, PORTFOLIOS_FACTORY, OVERLAP_FACTORY, DISTRIBUTIONS_FACTORY, IDCW_FACTORY, CURRENT_FACTS_FACTORY, MONTHLY_FACTS_FACTORY, FACT_REFRESH_FACTORY, FACT_VERIFICATION_FACTORY):
         raise ValueError('unsupported private API deployment profile')
     return [factory, '--factory', '--host', '0.0.0.0', '--port', '8080', '--no-access-log']
 
@@ -36,7 +37,7 @@ def revision_name(manifest, factory=REVIEW_FACTORY):
     # One rollout can first establish a compatible six-route rollback target,
     # then stage the seven-route profile without reusing an immutable name or
     # manufacturing a different actor/canary solely for that second revision.
-    suffix = manifest.rollout_id + {REVIEW_FACTORY:'',RESEARCH_FACTORY:'-research',CALENDAR_FACTORY:'-calendar',ROLLING_FACTORY:'-rolling',CALCULATOR_FACTORY:'-calculator',HISTORICAL_FACTORY:'-historical',ENRICHMENT_FACTORY:'-enrichment',OFFICIAL_FACTS_FACTORY:'-facts',PORTFOLIOS_FACTORY:'-portfolios',OVERLAP_FACTORY:'-overlap',DISTRIBUTIONS_FACTORY:'-distributions',IDCW_FACTORY:'-idcw',CURRENT_FACTS_FACTORY:'-live-facts',MONTHLY_FACTS_FACTORY:'-monthly',FACT_REFRESH_FACTORY:'-refresh'}[factory]
+    suffix = manifest.rollout_id + {REVIEW_FACTORY:'',RESEARCH_FACTORY:'-research',CALENDAR_FACTORY:'-calendar',ROLLING_FACTORY:'-rolling',CALCULATOR_FACTORY:'-calculator',HISTORICAL_FACTORY:'-historical',ENRICHMENT_FACTORY:'-enrichment',OFFICIAL_FACTS_FACTORY:'-facts',PORTFOLIOS_FACTORY:'-portfolios',OVERLAP_FACTORY:'-overlap',DISTRIBUTIONS_FACTORY:'-distributions',IDCW_FACTORY:'-idcw',CURRENT_FACTS_FACTORY:'-live-facts',MONTHLY_FACTS_FACTORY:'-monthly',FACT_REFRESH_FACTORY:'-refresh',FACT_VERIFICATION_FACTORY:'-verify'}[factory]
     return SERVICE+'-'+suffix
 
 

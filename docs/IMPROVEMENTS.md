@@ -569,6 +569,17 @@ GitHub variables. An official update is not restricted to filling NULLs.
 | FS-04 — Verification/history | Private current/history/changes and evidence-bound human-verification backend; future admin UI can review exact versions. | Signed admin scope, optimistic versions, durable actor/evidence/reason and replay safety. New inputs require revalidation; review does not rewrite source facts. Distinguish provisional/verified, conflicts, stale and not-disclosed states. No admin UI or blanket analytics eligibility. |
 | FS-05 — Process certification | Whole-process DEV acceptance and backend handover, ready for later AMC adapters. | Fresh backup/restored clone, independent source-to-API references, existing core/extension routes, actual traffic/projection recovery and restoration, effective privileges, preservation, coverage/freshness/run inventory. State real month/fund/field coverage and all remaining gaps. |
 
+**FS-04 implementation checkpoint (not live acceptance):** private source
+history/semantic differences and a signed-admin, evidence-bound human-review
+ledger are implemented without source edits or UI. Direct runtime table writes
+are denied; the database review function enforces current dependencies,
+optimistic versions and actor-bound replay. New source inputs invalidate old
+reviews, and reviewing another field cannot renew a stale decision. Positive
+write mechanics are tested only on synthetic/restored clones; live rollout
+must not manufacture human verification. Full-profile restored-clone, private
+read/denial HTTP, recovery, ledger/source preservation and handover are still
+required for DEV acceptance.
+
 **FS-03 implementation checkpoint (not live acceptance):** optional immutable
 refresh receipts, complete-cohort database publication, version-2 current facts,
 fixed-source acquisition/archive/runtime, and the 39-route private profile are
