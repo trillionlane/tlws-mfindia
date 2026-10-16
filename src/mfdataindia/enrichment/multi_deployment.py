@@ -14,6 +14,8 @@ from mfdataindia.review.rollout import seal_evidence
 def execute(manifest, environment, operation, *, root=Path("/app")):
     if operation not in ("install", "activate", "recover", "inspect"):
         raise ValueError("unsupported registered source operation")
+    if set(manifest.cohort) != {101763,103173,103174}:
+        raise ValueError("exact approved two-source rollout cohort required")
     body = {}
     if operation in ("activate", "recover"):
         body = json.loads(environment["REGISTERED_FACTS_OPERATION"])
@@ -42,8 +44,14 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
                     "current": current_facts_store.capture(conn),
                     "status": multi_store.status(conn),
                     "facts": multi_store.get(conn, 101763),
-                    "current_hdfc": current_facts_store.get(conn, 101763),
-                }
+                "current_hdfc": current_facts_store.get(conn, 101763),
+                "configuration": dict(current_facts_store.configuration(conn)),
+                "core_definition": current_facts_store.view_definition(conn,"mf.current_fund_facts"),
+            }
+            if operation == "inspect":
+                from mfdataindia.api import queries
+                detail=queries.fund_detail(conn,101763)
+                result["core_values"]={alias:detail["facts"][alias] for aliases in current_facts_store.policy_document(conn)["supported_fields"].values() for alias in aliases}
             )
         elif operation == "activate":
             if set(body) != {"reviewed"}:

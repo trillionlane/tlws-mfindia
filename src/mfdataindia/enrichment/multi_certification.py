@@ -27,6 +27,8 @@ from mfdataindia.review.rollout import seal_evidence
 
 
 def expectation(manifest, environment):
+    if set(manifest.cohort) != {101763, 103173, 103174}:
+        raise ValueError("exact approved two-source certification cohort required")
     doc = json.loads(environment["REGISTERED_FACTS_CERTIFICATION"])
     if (
         set(doc) != {"reviewed", "prior_core_values", "execution_id", "pilot_snapshot_ids"}
@@ -91,7 +93,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
         metadata = current.get(conn, 101763)
         if active:
             multi_projection.check(conn, expected["reviewed"])
-            values = {}
+            values = {"risk_level": expected["prior_core_values"]["risk_level"]}
             for field, value in expected["reviewed"]["values"].items():
                 if field == "fund_managers":
                     value = "; ".join(value)
