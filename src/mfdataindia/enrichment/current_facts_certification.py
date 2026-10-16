@@ -100,7 +100,7 @@ def certify(manifest, environment, *, active: bool, recovery=False):
         verify_runtime(conn, "api")
         store.verify_acl(conn)
         before = (store.capture(conn), facts_store.capture(conn))
-        cases, core = projections(conn, reviewed, active=active)
+        cases, core = projections(conn, reviewed, active=active, core_queries=False)
     with requests.Session() as session:
         session.trust_env = False
         headers = {

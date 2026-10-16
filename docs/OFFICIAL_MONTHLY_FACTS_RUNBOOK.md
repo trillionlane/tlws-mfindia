@@ -131,6 +131,15 @@ explicit unit and availability status. HTTP/identity denials, replay,
 no-store, raw-byte restrictions and absence of user writes are checked.
 Cloud execution success and the exact bound certificate are both required.
 
+The restricted HTTP certifier must not run owner-only core SQL. It derives
+active expectations from the sealed original-source reference and recovery
+expectations from its already-authorized immutable baseline view, then compares
+the actual private core detail and batch HTTP responses. Missing baseline facts
+fail closed rather than guessing sibling fallback. Owner-side activation still
+runs the actual core SQL inside the switch transaction. No reader permission
+expansion is needed. The first candidate check exposed this distinction and
+was rolled back to the prior revision before correcting the certification path.
+
 Human verification remains a separate later action. Do not create a fake
 human verification in DEV merely to make a certificate green. Positive
 human-review mechanics can be tested on the restored/synthetic clone; live

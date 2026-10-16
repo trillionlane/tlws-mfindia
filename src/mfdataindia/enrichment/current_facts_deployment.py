@@ -31,7 +31,7 @@ def reference(manifest, environment):
     return document
 
 
-def projections(conn, reviewed, *, active):
+def projections(conn, reviewed, *, active, core_queries=True):
     if store.projection_state(conn) != active:
         raise ValueError("current-facts activation state differs")
     cases = [
@@ -53,13 +53,42 @@ def projections(conn, reviewed, *, active):
                 or expected["snapshot_id"] not in {s["snapshot_id"] for s in actual["sources"]}
             ):
                 raise ValueError("current-facts independent original-source reference differs")
-        detail = queries.fund_detail(conn, code)
-        batch = queries.funds_batch(conn, [str(code)])
-        if not detail or batch["found"] != 1:
-            raise ValueError("current-facts core code lookup unavailable")
-        values = {
-            alias: detail["facts"][alias] for aliases in engine.FIELDS.values() for alias in aliases
-        }
+        expected_values = {}
+        for field, aliases in engine.FIELDS.items():
+            value = expected["values"][field]
+            if field == "fund_managers":
+                value = "; ".join(value)
+            if field == "base_expense_ratio":
+                value = float(value)
+            expected_values.update({alias: value for alias in aliases})
+        if core_queries:
+            # Owner-side activation must still check actual core SQL inside the
+            # switch transaction. Never weaken that atomic publication guard.
+            detail = queries.fund_detail(conn, code)
+            batch = queries.funds_batch(conn, [str(code)])
+            if not detail or batch["found"] != 1:
+                raise ValueError("current-facts core code lookup unavailable")
+            values = {
+                alias: detail["facts"][alias]
+                for aliases in engine.FIELDS.values() for alias in aliases
+            }
+        elif active:
+            # The restricted certifier proves actual core behaviour over HTTP,
+            # against the independently sealed original-source reference.
+            values = expected_values
+        else:
+            # Already-authorized immutable baseline, not the core API tables or
+            # queries. Fail closed for absent/empty baseline facts: sibling
+            # fallback needs an explicit separate oracle, not guessed nulls.
+            row = conn.execute(
+                "SELECT benchmark_name,benchmark,fund_manager_name,base_expense_ratio "
+                "FROM mf_live_facts.baseline WHERE amfi_scheme_code=%s", (code,)
+            ).fetchone()
+            if not row or not any(row.values()):
+                raise ValueError("current-facts baseline reference unavailable")
+            values = dict(row)
+            if values["base_expense_ratio"] is not None:
+                values["base_expense_ratio"] = float(values["base_expense_ratio"])
         if active:
             for field, aliases in engine.FIELDS.items():
                 expected_value = expected["values"][field]
@@ -69,7 +98,7 @@ def projections(conn, reviewed, *, active):
                     expected_value = float(expected_value)
                 if any(values[a] != expected_value for a in aliases):
                     raise ValueError("existing core detail still serves a stale official fact")
-                for alias in aliases:
+                for alias in aliases if core_queries else ():
                     if alias != "benchmark" and batch["funds"][0].get(alias) != expected_value:
                         raise ValueError("existing core batch disagrees with official fact")
         core[key] = values
