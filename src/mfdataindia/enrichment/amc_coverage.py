@@ -14,6 +14,11 @@ from mfdataindia.review.store import NotFound, Conflict
 def capture(conn):
     if conn.execute("SHOW transaction_read_only").fetchone()["transaction_read_only"] != "on":
         raise ValueError("read-only coverage census required")
+    if (
+        conn.execute("SHOW transaction_isolation").fetchone()["transaction_isolation"]
+        != "repeatable read"
+    ):
+        raise ValueError("repeatable-read coverage snapshot required")
     verify_runtime(conn, "api")
     evidence.verify_acl(conn)
     monthly_store.verify_acl(conn)

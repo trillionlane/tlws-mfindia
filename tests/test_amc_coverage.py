@@ -312,6 +312,10 @@ def test_actual_restricted_reader_census_http_and_preservation(verified_db, monk
         with pytest.raises(ValueError, match="read-only"):
             coverage.summary(conn)
     with psycopg.connect(reader, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION READ ONLY")
+        with pytest.raises(ValueError, match="repeatable-read"):
+            coverage.summary(conn)
+    with psycopg.connect(reader, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
         result = coverage.summary(conn)
         from mfdataindia.enrichment.amc_coverage_certification import independent_denominator
