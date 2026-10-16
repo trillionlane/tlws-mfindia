@@ -19,6 +19,7 @@ from test_verified_review_api import runtime_dsn
 from test_verified_review_store import ROLES, connection, source_state
 from test_verified_review_store import verified_db as verified_db
 from mfdataindia.enrichment import refresh_acquisition as acquisition, refresh_runtime
+from mfdataindia.enrichment.refresh_certification import check_prior_state
 from mfdataindia.review.app import create_monthly_facts_app, create_fact_refresh_app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -348,6 +349,12 @@ def test_complete_publication_required_for_core_and_recovery_restores_previous_g
     with connection(verified_db, readonly=True) as conn:
         assert current.configuration(conn)["generation"] == 1
         assert refresh_store.capture(conn)["transitions"]["rows"] == 0
+        prior_state = {
+            "policy_hash": current.configuration(conn)["policy_hash"],
+            "projection_active": current.projection_state(conn),
+            "view_hashes": current.capture(conn)["view_hashes"],
+        }
+        check_prior_state(conn, prior_state)
     with connection(verified_db) as conn:
         refresh_store.append_run(conn, receipt(snapshots, "fixture-bootstrap"))
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
@@ -356,6 +363,8 @@ def test_complete_publication_required_for_core_and_recovery_restores_previous_g
         )
     with connection(verified_db, readonly=True) as conn:
         assert queries.fund_detail(conn, 103174)["facts"]["base_expense_ratio"] == 1.36
+        with pytest.raises(ValueError, match="not restored"):
+            check_prior_state(conn, prior_state)
     # A missing original SQL pin rolls back ALL partial view replacements, not
     # just the configuration row; the active graph remains fully readable.
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
@@ -387,6 +396,7 @@ def test_complete_publication_required_for_core_and_recovery_restores_previous_g
         assert queries.fund_detail(conn, 103174)["facts"]["base_expense_ratio"] == 2.22
         assert current.configuration(conn)["generation"] == 3
         current.verify_acl(conn)
+        check_prior_state(conn, prior_state)
         assert (
             current.get(conn, 103174)["policy_hash"] == current.configuration(conn)["policy_hash"]
         )
