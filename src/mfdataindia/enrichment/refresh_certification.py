@@ -9,7 +9,7 @@ import psycopg
 import requests
 from psycopg.rows import dict_row
 from mfdataindia.enrichment import current_facts_store as current, monthly_projection
-from mfdataindia.enrichment import refresh_policy, refresh_store, monthly_current
+from mfdataindia.enrichment import refresh_policy, refresh_store, monthly_current, multi_facts
 from mfdataindia.enrichment.certification import check_http
 from mfdataindia.enrichment.current_facts_certification import core_http, REVIEW_ORIGIN
 from mfdataindia.enrichment.deployment import pinned_dsn
@@ -90,7 +90,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
         if not active:
             check_prior_state(conn, document["prior_current_state"])
         core_projection_active = current.projection_state(conn)
-        monthly_projection_active = policy == monthly_current.policy() and core_projection_active
+        monthly_projection_active = policy in (monthly_current.policy(),multi_facts.current_policy()) and core_projection_active
         previous_cases = [
             ("/api/enrichment/v3/policy", {"policy_hash": fingerprint(policy), "document": policy})
         ]

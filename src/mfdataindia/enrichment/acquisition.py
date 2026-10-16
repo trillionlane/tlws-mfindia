@@ -73,6 +73,7 @@ def _fetch(
     url, official_hosts, *, timeout=20, maximum=MAX_BYTES,
     validate=public_url, media_types=("text/html", "application/pdf"),
     referer=None,
+    allow_redirects=True,
 ):
     if not 0 < maximum <= MAX_BYTES or not 0 < timeout <= 30:
         raise ValueError("bounded acquisition limits required")
@@ -103,6 +104,8 @@ def _fetch(
             response = conn.getresponse()
             chain.append(url)
             if response.status in (301, 302, 303, 307, 308):
+                if not allow_redirects:
+                    raise ValueError("official-source redirects are not permitted")
                 destination = response.getheader("Location")
                 if not destination:
                     raise ValueError("redirect without destination")

@@ -6,7 +6,7 @@ from pathlib import Path
 from psycopg.types.json import Jsonb
 
 from mfdataindia.enrichment import current_facts as engine, store as evidence
-from mfdataindia.enrichment import monthly_current
+from mfdataindia.enrichment import monthly_current, multi_facts
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
@@ -38,7 +38,7 @@ def configuration(conn):
     if (
         row["baseline_sha256"] != hashlib.sha256(row["baseline_definition"].encode()).hexdigest()
         or row["policy_hash"]
-        not in (fingerprint(engine.policy()), fingerprint(monthly_current.policy()))
+        not in (fingerprint(engine.policy()), fingerprint(monthly_current.policy()), fingerprint(multi_facts.current_policy()))
         or set(row["view_hashes"]) != VIEWS
         or set(row["view_definitions"]) != VIEWS
         or {k: fingerprint(v) for k, v in row["view_definitions"].items()} != row["view_hashes"]
@@ -49,7 +49,7 @@ def configuration(conn):
 
 def policy_document(conn):
     ph = configuration(conn)["policy_hash"]
-    return engine.policy() if ph == fingerprint(engine.policy()) else monthly_current.policy()
+    return next(p for p in (engine.policy(), monthly_current.policy(), multi_facts.current_policy()) if fingerprint(p) == ph)
 
 
 def view_definition(conn, name):
@@ -280,7 +280,7 @@ def get(conn, code):
         ).fetchone()
         is not None
     )
-    if not rows and current_policy["version"] == 2:
+    if not rows and current_policy["version"] in (2, 3):
         prior_identity = bool(conn.execute(
             "SELECT 1 FROM mf_monthly_facts.snapshots s WHERE s.amfi_scheme_code=%s "
             "AND EXISTS(SELECT 1 FROM mf_fact_refresh.publications p WHERE p.snapshot_ids ? s.snapshot_id) "
@@ -289,6 +289,10 @@ def get(conn, code):
             "t.document->>'mode'='activate_monthly_current' AND t.document->'legacy_snapshot_ids' ? s.snapshot_id) LIMIT 1",
             (code, code)
         ).fetchone())
+        if current_policy["version"] == 3:
+            prior_identity = prior_identity or bool(conn.execute(
+                "SELECT 1 FROM mf_multi_facts.snapshots s WHERE s.amfi_scheme_code=%s AND EXISTS(SELECT 1 FROM mf_multi_facts.runs r WHERE r.status<>'failed' AND r.document->'snapshot_ids' ? s.snapshot_id) LIMIT 1", (code,)
+            ).fetchone())
     for field, aliases in current_policy["supported_fields"].items():
         row = rows.get(field)
         conflict = row is not None and row["distinct_values"] != 1

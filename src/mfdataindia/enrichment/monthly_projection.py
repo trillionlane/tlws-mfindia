@@ -42,7 +42,8 @@ def owner(conn):
 def check_current(conn, reviewed, *, core_queries=True):
     if set(map(int, reviewed)) != {103173, 103174}:
         raise ValueError("exact current source-reference cohort required")
-    if current.policy_document(conn) != monthly_current.policy() or not current.projection_state(
+    from mfdataindia.enrichment import multi_facts
+    if current.policy_document(conn) not in (monthly_current.policy(),multi_facts.current_policy()) or not current.projection_state(
         conn
     ):
         raise ValueError("monthly scalar projection is not active")

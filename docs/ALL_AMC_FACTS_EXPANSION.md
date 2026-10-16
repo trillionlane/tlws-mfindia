@@ -115,6 +115,12 @@ retained/in-scope/defunct population during private HTTP certification.
 
 ## DEV acceptance still required after merge
 
+FS-07 implementation and controlled acceptance are specified in
+[the registered-source runbook](FS07_REGISTERED_SOURCE_ROLLOUT.md). Its second
+bounded proof is HDFC, not whole-SBI onboarding: the SBI catalogue rejected the
+research request. SBI remains FS-09. The HDFC reviewed-edition adapter must not
+be represented as automatic latest-month discovery or whole-factsheet coverage.
+
 Fresh backup/new restored clone; full preservation and actual populated census;
 exact-image private candidate and current-profile compatibility; activation;
 known prior traffic recovery and restoration; anonymous denial; final census
