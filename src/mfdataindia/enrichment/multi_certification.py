@@ -1,6 +1,7 @@
 """Exact-source private HTTP/core certification; not all-AMC or human acceptance."""
 
 import json
+import re
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -36,6 +37,32 @@ def expectation(manifest, environment):
         != environment["REGISTERED_FACTS_CERTIFICATION_HASH"]
     ):
         raise ValueError("independent original and prior-core certification binding required")
+    reviewed = doc["reviewed"]
+    if (
+        not isinstance(reviewed, dict)
+        or set(reviewed) != {"snapshot_id", "as_of", "values"}
+        or not re.fullmatch("[0-9a-f]{64}", str(reviewed["snapshot_id"]))
+        or reviewed["as_of"] != multi_facts.source()["edition"]["disclosure_as_of"]
+        or set(reviewed["values"])
+        != {"benchmark_name", "fund_managers", "base_expense_ratio", "aum"}
+    ):
+        raise ValueError("complete independent four-field reference required")
+    aliases = {
+        a for group in multi_facts.current_policy()["supported_fields"].values() for a in group
+    }
+    if not isinstance(doc["prior_core_values"], dict) or set(doc["prior_core_values"]) != aliases:
+        raise ValueError("all six prior core scalar aliases required")
+    ids = doc["pilot_snapshot_ids"]
+    if (
+        not isinstance(ids, list)
+        or len(ids) != 2
+        or len(set(ids)) != 2
+        or any(not re.fullmatch("[0-9a-f]{64}", str(s)) for s in ids)
+        or not re.fullmatch(
+            re.escape(multi_facts.JOB) + r"-[a-z0-9-]{1,40}", str(doc["execution_id"])
+        )
+    ):
+        raise ValueError("both exact pilot snapshots and execution required")
     return doc
 
 

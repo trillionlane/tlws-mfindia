@@ -1,6 +1,7 @@
 """Manifest-bound DEV operations; no flags added to GitHub environment configuration."""
 
 import json
+import re
 from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
@@ -65,6 +66,8 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
         elif operation == "activate":
             if set(body) != {"reviewed", "expected_configuration_hash"}:
                 raise ValueError("exact independent source reference required")
+            if not re.fullmatch("[0-9a-f]{64}", str(body["expected_configuration_hash"])):
+                raise ValueError("exact prior configuration hash required")
             result = multi_projection.activate(
                 conn,
                 root,

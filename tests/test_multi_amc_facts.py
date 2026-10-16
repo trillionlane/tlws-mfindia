@@ -3,7 +3,9 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import psycopg
 from psycopg.rows import dict_row
@@ -70,6 +72,67 @@ def test_registered_transport_rejects_even_a_redirect_to_the_same_pinned_url(mon
     with pytest.raises(ValueError, match="redirects are not permitted"):
         multi_runtime.fetch(url)
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "empty_values",
+        "missing_field",
+        "empty_prior",
+        "missing_risk",
+        "duplicate_pilot",
+        "empty_pilot",
+        "wrong_execution",
+    ],
+)
+def test_certification_cannot_false_pass_incomplete_source_or_recovery_expectations(defect):
+    from mfdataindia.enrichment.multi_certification import expectation
+
+    m = SimpleNamespace(cohort=[101763, 103173, 103174], seal="fixture")
+    doc = {
+        "reviewed": {
+            "snapshot_id": "a" * 64,
+            "as_of": "2026-09-30",
+            "values": multi_facts.source()["reviewed_values"],
+        },
+        "prior_core_values": {
+            "benchmark_name": "prior",
+            "benchmark": "prior",
+            "fund_manager_name": "prior",
+            "base_expense_ratio": 1.37,
+            "aum": 123,
+            "risk_level": "Very High",
+        },
+        "execution_id": multi_facts.JOB + "-fixture",
+        "pilot_snapshot_ids": ["b" * 64, "c" * 64],
+    }
+
+    def env():
+        return {
+            "REGISTERED_FACTS_CERTIFICATION": json.dumps(doc),
+            "REGISTERED_FACTS_CERTIFICATION_HASH": fingerprint(
+                {"manifest": m.seal, "expectation": doc}
+            ),
+        }
+
+    assert expectation(m, env()) == doc
+    if defect == "empty_values":
+        doc["reviewed"]["values"] = {}
+    elif defect == "missing_field":
+        doc["reviewed"]["values"].pop("aum")
+    elif defect == "empty_prior":
+        doc["prior_core_values"] = {}
+    elif defect == "missing_risk":
+        doc["prior_core_values"].pop("risk_level")
+    elif defect == "duplicate_pilot":
+        doc["pilot_snapshot_ids"] = ["b" * 64] * 2
+    elif defect == "empty_pilot":
+        doc["pilot_snapshot_ids"] = []
+    else:
+        doc["execution_id"] = "unregistered-source"
+    with pytest.raises(ValueError):
+        expectation(m, env())
 
 
 def test_hdfc_layout_includes_footnote_and_does_not_swap_average_or_direct():
