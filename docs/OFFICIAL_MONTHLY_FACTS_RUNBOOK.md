@@ -135,3 +135,65 @@ Human verification remains a separate later action. Do not create a fake
 human verification in DEV merely to make a certificate green. Positive
 human-review mechanics can be tested on the restored/synthetic clone; live
 reported fields remain honestly `needs_verification` until actually reviewed.
+
+## FS-03 recurring pilot and recovery
+
+The optional `035_official_fact_refresh.sql` adds immutable catalog originals,
+run receipts, complete-cohort publication receipts and owner-only transition
+history. It does not edit `mf` rows. The generator can append source/run
+evidence but cannot insert publication or transition records directly, execute
+owner functions, change the schema, rewrite originals or forge an owner
+bootstrap. The publication trigger requires the exact two current identities,
+one original, one disclosed date, the registered monthly policy, and retained
+catalog evidence. Provisional snapshot insertion alone cannot update core facts.
+
+`config/official-facts-dev.json` fixes the pilot, identity source and private
+archive. The recurring worker discovers the AMC's current-year catalog with a
+previous-year fallback, obtains at most one 16 MiB book, archives the exact
+original before parsing, and selects the exact fund's adjacent detail/change
+pages within the first 24 pages. It does not guess a page after layout drift.
+Catalogs retain their original bytes. Archive uploads use create-only
+preconditions; both new uploads and replays verify a pinned immutable generation
+and its SHA-256 before publication. Archive access is prefix-scoped create/read,
+not overwrite/delete or bucket-wide source access.
+
+The fixed single-task/no-retry job uses Cloud Run's
+[execution identity](https://docs.cloud.google.com/run/docs/container-contract#env-vars)
+for receipt replay. Acquisition or parsing failure records an allowlisted error
+phase/type without retaining exception bodies. A failed run cannot claim a
+successful freshness check or advance current heads. An uncertain commit is
+reconciled by the immutable execution receipt before recording failure; it is
+not automatically retried. Existing source provenance is reused for identical
+original bytes; a new acquisition alias belongs in the run, not an overwritten
+intake record.
+
+Current policy version 2 accepts five scalar fields: benchmark, managers,
+Regular BER, explicit scheme risk, and explicitly denominated INR-crore AUM.
+It preserves each original token and requires exact numeric round-trip through
+the existing column type; it never rounds an unsuitable disclosure into
+eligibility. Each field selects its own latest unambiguous usable disclosed
+date. Missing, unusable and conflicting newer fields retain their previous
+usable source/date with an explicit warning. Old archive arrivals cannot
+roll back newer heads. Publisher-reported statistics/returns remain separate
+from canonical analytics; neither IDCW eligibility nor NAV dataset version is
+changed by this process.
+
+The private 39-route profile adds only `/api/enrichment/v5/policy` and
+`/api/enrichment/v5/status`; every earlier route/component schema remains
+unchanged. Status shows the last ten immutable outcomes, not all-AMC coverage
+or human verification. Current-fact provenance and the monthly inclusion flag
+report which source snapshot contributes at least one selected scalar field;
+they do not claim the entire factsheet enters the core API.
+
+Before activation: fresh regional backup, actual restored-clone rehearsal,
+two-period original oracle, effective-role checks and private candidate HTTP.
+Activation has a 5-second statement/15-second transaction budget and checks
+actual core SQL inside the owner transaction. The restricted HTTP certifier
+uses independent source expectations, never owner-only core queries. Recovery
+restores all six captured views and the exact prior core view, not merely the
+two gates or an assumed raw baseline; append-only history is retained. Traffic
+restoration must run independently of lookup, verification or database-recovery
+failure. Reapply the approved graph and recertify after recovery. Keep existing
+NAV schedules unchanged. A new facts scheduler is accepted only after a real
+timed execution is reconciled to its job SHA/image, archived source, receipt
+and private core responses; manual execution is not a scheduled-run witness.

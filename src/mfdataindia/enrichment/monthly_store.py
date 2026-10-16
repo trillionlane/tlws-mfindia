@@ -356,4 +356,14 @@ def get(conn, code, *, snapshot_id=None):
     doc = schemas.MonthlySnapshot.model_validate(rows[0]["document"]).model_dump(mode="json")
     if doc["identity_hash"] != fingerprint(identity):
         return {**base, "state": "identity_changed"}
-    return {**base, "state": "available", "snapshot": doc}
+    included = False
+    if conn.execute("SELECT to_regnamespace('mf_fact_refresh') AS ns").fetchone()["ns"]:
+        from mfdataindia.enrichment import current_facts_store as current, monthly_current
+        if current.configuration(conn)["policy_hash"] == fingerprint(monthly_current.policy()):
+            included = current.projection_state(conn) and bool(conn.execute(
+                "SELECT 1 FROM mf_live_facts.selected_fields s WHERE s.code=%s "
+                "AND EXISTS(SELECT 1 FROM jsonb_array_elements(s.sources) x "
+                "WHERE x->>'snapshot_id'=%s) LIMIT 1", (code, doc["snapshot_id"])
+            ).fetchone())
+    return {**base, "state": "available", "snapshot": doc,
+        "current_core_projection_includes_monthly_snapshot": included}

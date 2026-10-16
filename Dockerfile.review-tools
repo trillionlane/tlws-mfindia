@@ -15,6 +15,7 @@ RUN /opt/review-tools/bin/uv sync --frozen --no-dev --no-editable --no-cache --p
 COPY scripts ./scripts
 COPY sql ./sql
 COPY contracts ./contracts
+COPY config ./config
 ENV PATH="/app/.venv/bin:${PATH}"
 USER 10001:10001
 ENTRYPOINT ["python", "/app/scripts/backup_verified_review_dev.py"]

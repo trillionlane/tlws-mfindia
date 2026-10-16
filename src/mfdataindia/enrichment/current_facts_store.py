@@ -6,6 +6,7 @@ from pathlib import Path
 from psycopg.types.json import Jsonb
 
 from mfdataindia.enrichment import current_facts as engine, store as evidence
+from mfdataindia.enrichment import monthly_current
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
@@ -36,13 +37,19 @@ def configuration(conn):
     row = rows[0]
     if (
         row["baseline_sha256"] != hashlib.sha256(row["baseline_definition"].encode()).hexdigest()
-        or row["policy_hash"] != fingerprint(engine.policy())
+        or row["policy_hash"]
+        not in (fingerprint(engine.policy()), fingerprint(monthly_current.policy()))
         or set(row["view_hashes"]) != VIEWS
         or set(row["view_definitions"]) != VIEWS
         or {k: fingerprint(v) for k, v in row["view_definitions"].items()} != row["view_hashes"]
     ):
         raise ValueError("current-facts configuration/policy differs")
     return row
+
+
+def policy_document(conn):
+    ph = configuration(conn)["policy_hash"]
+    return engine.policy() if ph == fingerprint(engine.policy()) else monthly_current.policy()
 
 
 def view_definition(conn, name):
@@ -257,6 +264,7 @@ def switch(conn, *, activate: bool):
 def get(conn, code):
     identity = evidence.identity(conn, code)
     verify_acl(conn)
+    current_policy = policy_document(conn)
     rows = {
         r["field"]: r
         for r in conn.execute(
@@ -272,7 +280,16 @@ def get(conn, code):
         ).fetchone()
         is not None
     )
-    for field, aliases in engine.FIELDS.items():
+    if not rows and current_policy["version"] == 2:
+        prior_identity = bool(conn.execute(
+            "SELECT 1 FROM mf_monthly_facts.snapshots s WHERE s.amfi_scheme_code=%s "
+            "AND EXISTS(SELECT 1 FROM mf_fact_refresh.publications p WHERE p.snapshot_ids ? s.snapshot_id) "
+            "UNION ALL SELECT 1 FROM mf_official_facts.snapshots s WHERE s.amfi_scheme_code=%s "
+            "AND EXISTS(SELECT 1 FROM mf_fact_refresh.transitions t WHERE "
+            "t.document->>'mode'='activate_monthly_current' AND t.document->'legacy_snapshot_ids' ? s.snapshot_id) LIMIT 1",
+            (code, code)
+        ).fetchone())
+    for field, aliases in current_policy["supported_fields"].items():
         row = rows.get(field)
         conflict = row is not None and row["distinct_values"] != 1
         unusable = row is not None and not row["usable"]
@@ -303,7 +320,12 @@ def get(conn, code):
             if row and row["selected_as_of"]
             else None,
             "latest_disclosure_as_of": row["as_of"].isoformat() if row else None,
-            "date_basis": "document_context_not_field_effective_date",
+            "date_basis": (
+                next(iter({s["date_basis"] for s in row["sources"]}))
+                if row and row["sources"] and len({s["date_basis"] for s in row["sources"]}) == 1
+                else "mixed_source_date_bases" if row and row["sources"]
+                else "document_context_not_field_effective_date"
+            ),
             "verification_status": "needs_verification",
             "freshness_status": "latest_retained_not_current_month_certified",
             "reason": reason,
@@ -320,12 +342,12 @@ def get(conn, code):
     return {
         "format": "current-official-facts-v1",
         "code": code,
-        "policy_hash": fingerprint(engine.policy()),
+        "policy_hash": fingerprint(current_policy),
         "identity_hash": fingerprint(identity),
         "facts_revision": fingerprint(
             {
                 "identity_hash": fingerprint(identity),
-                "policy_hash": fingerprint(engine.policy()),
+                "policy_hash": fingerprint(current_policy),
                 "fields": result,
             }
         ),

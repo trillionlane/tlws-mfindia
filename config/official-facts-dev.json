@@ -1,0 +1,13 @@
+{
+  "format": "official-facts-runtime-config-v1",
+  "project": "trillionlane-dev",
+  "connection": "trillionlane-dev:asia-south1:tlws-mf-data-dev",
+  "database": "mfdataindia",
+  "role": "mfdata_verified_generator",
+  "job": "tlws-mf-official-facts-refresh-dev",
+  "identity_document_id": "76888d30ebbb0c10f3d39d27d3e9734d2d9db17fd2642fd8b388102f53b7be50",
+  "identity_page": 28,
+  "cohort": [103173, 103174],
+  "archive_bucket": "tlws_mf_data_source",
+  "archive_prefix": "official-monthly-facts/absl-large-cap/"
+}
