@@ -104,6 +104,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         fact_refresh_baseline = capture_refresh(conn)
         from mfdataindia.enrichment.fact_review_store import capture as capture_fact_review
         fact_review_baseline = capture_fact_review(conn)
+        from mfdataindia.enrichment.multi_store import capture as capture_registered_facts
+        registered_facts_baseline = capture_registered_facts(conn)
         if not baseline['tables']['funds']['rows'] or not baseline['tables']['nav_history']['rows']:
             raise ValueError('operational backup must contain actual fund/NAV records')
         # Role names only. Password hashes and global role attributes are never
@@ -141,6 +143,8 @@ def fresh_backup(source_dsn, directory: Path, tools: PgTools):
         evidence['fact_refresh_baseline'] = fact_refresh_baseline
     if fact_review_baseline is not None:
         evidence['fact_review_baseline'] = fact_review_baseline
+    if registered_facts_baseline is not None:
+        evidence['registered_facts_baseline'] = registered_facts_baseline
     return evidence
 
 

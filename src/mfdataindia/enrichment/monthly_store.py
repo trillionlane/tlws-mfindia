@@ -358,8 +358,8 @@ def get(conn, code, *, snapshot_id=None):
         return {**base, "state": "identity_changed"}
     included = False
     if conn.execute("SELECT to_regnamespace('mf_fact_refresh') AS ns").fetchone()["ns"]:
-        from mfdataindia.enrichment import current_facts_store as current, monthly_current
-        if current.configuration(conn)["policy_hash"] == fingerprint(monthly_current.policy()):
+        from mfdataindia.enrichment import current_facts_store as current, monthly_current, multi_facts
+        if current.configuration(conn)["policy_hash"] in (fingerprint(monthly_current.policy()),fingerprint(multi_facts.current_policy())):
             included = current.projection_state(conn) and bool(conn.execute(
                 "SELECT 1 FROM mf_live_facts.selected_fields s WHERE s.code=%s "
                 "AND EXISTS(SELECT 1 FROM jsonb_array_elements(s.sources) x "

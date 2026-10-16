@@ -8,6 +8,15 @@ from mfdataindia.enrichment.refresh_policy import ARCHIVE_BUCKET, ARCHIVE_PREFIX
 
 
 def retain(session, content):
+    return _retain(session, content, prefix=ARCHIVE_PREFIX)
+
+
+def retain_registered(session, content):
+    """One separately authorized prefix; never a caller-selected bucket/path."""
+    return _retain(session, content, prefix="official-monthly-facts/hdfc-flexi-cap/")
+
+
+def _retain(session, content, *, prefix):
     if (
         not isinstance(content, bytes)
         or not content.startswith(b"%PDF-")
@@ -15,7 +24,7 @@ def retain(session, content):
     ):
         raise ValueError("bounded original PDF required for archive")
     digest = hashlib.sha256(content).hexdigest()
-    name = ARCHIVE_PREFIX + digest + ".pdf"
+    name = prefix + digest + ".pdf"
     identity = session.get(
         "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
         headers={"Metadata-Flavor": "Google"},

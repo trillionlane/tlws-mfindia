@@ -1,0 +1,49 @@
+{
+  "format": "official-facts-source-registry-v1",
+  "version": 1,
+  "job": "tlws-mf-official-facts-refresh-dev",
+  "maximum_sources_per_execution": 2,
+  "sources": [
+    {
+      "key": "absl-large-cap",
+      "adapter": "retained-absl-monthly-v1",
+      "amc": "Aditya Birla Sun Life Mutual Fund",
+      "cohort": [103173, 103174],
+      "discovery": "retained-official-sitecore-catalog",
+      "archive_prefix": "official-monthly-facts/absl-large-cap/"
+    },
+    {
+      "key": "hdfc-flexi-cap",
+      "adapter": "hdfc-reviewed-monthly-v1",
+      "amc": "HDFC Mutual Fund",
+      "cohort": [101763],
+      "discovery": "reviewed-edition-only-no-current-month-claim",
+      "archive_prefix": "official-monthly-facts/hdfc-flexi-cap/",
+      "reviewed_values": {
+        "benchmark_name": "NIFTY 500 Index (TRI)",
+        "base_expense_ratio": "1.27",
+        "aum": "108546.98",
+        "fund_managers": ["Amit Ganatra", "Bhagyesh Kagalkar", "Gopal Agrawal"]
+      },
+      "identity": {
+        "code": 101763,
+        "amc": "HDFC Mutual Fund",
+        "scheme_name": "HDFC Flexi Cap Fund",
+        "plan": "REGULAR",
+        "option": "IDCW",
+        "isins": ["INF179K01582", "INF179K01590"]
+      },
+      "identity_source": {
+        "url": "https://files.hdfcfund.com/s3fs-public/scheme_summary/2026-09/HDFCEQ_1789454586.pdf",
+        "sha256": "884ef54c8e0ffb4097652cccbbf72f863e8f45ee319064cf85e9b0d41d1eb3e3",
+        "pages": [1, 1]
+      },
+      "edition": {
+        "url": "https://files.hdfcfund.com/s3fs-public/2026-10/HDFC%20MF%20Factsheet%20-%20September%202026.pdf",
+        "sha256": "ab3d561bbacbc40aeb4ac5630f6e85b64e22a3433094b0312e279636907dcab4",
+        "disclosure_as_of": "2026-09-30",
+        "pages": [7, 8]
+      }
+    }
+  ]
+}

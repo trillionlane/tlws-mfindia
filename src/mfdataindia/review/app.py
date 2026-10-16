@@ -27,7 +27,7 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False, fact_refresh: bool = False, fact_verification: bool = False, amc_coverage: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False, fact_refresh: bool = False, fact_verification: bool = False, amc_coverage: bool = False, multi_amc: bool = False) -> FastAPI:
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -92,6 +92,9 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                     if amc_coverage:
                         from mfdataindia.enrichment.amc_register import load_register
                         load_register()
+                    if multi_amc:
+                        from mfdataindia.enrichment.multi_store import verify_acl as verify_multi_acl
+                        verify_multi_acl(conn)
                 yield
             finally:
                 pool.close()
@@ -446,6 +449,22 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             expected_revision: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None):
             return run(lambda conn:census.schemes(conn,amc_key,after_code=after_code,limit=limit,expected_revision=expected_revision))
 
+    if multi_amc:
+        from mfdataindia.enrichment import multi_facts, multi_store, multi_schemas
+        from mfdataindia.review.policy import fingerprint
+
+        @app.get('/api/enrichment/v8/policy', response_model=multi_schemas.RegisteredPolicy)
+        def registered_source_policy(principal: Principal = Depends(identity)):
+            return {'policy_hash':fingerprint(multi_facts.policy()),'document':multi_facts.policy()}
+
+        @app.get('/api/enrichment/v8/refresh/status', response_model=multi_schemas.RegisteredStatus)
+        def registered_source_status(principal: Principal = Depends(identity)):
+            return run(multi_store.status)
+
+        @app.get('/api/enrichment/v8/funds/{code}/facts', response_model=multi_schemas.RegisteredFacts)
+        def registered_source_facts(code: Code,principal: Principal = Depends(identity)):
+            return run(lambda conn:multi_store.get(conn,code))
+
     return app
 
 
@@ -527,3 +546,8 @@ def create_fact_verification_app(dsn: str | None = None, *, verifier: AssertionV
 def create_amc_coverage_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
     """46-route profile: all-AMC census, unchanged acquisition and earlier APIs."""
     return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True,monthly_facts=True,fact_refresh=True,fact_verification=True,amc_coverage=True)
+
+
+def create_multi_amc_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None):
+    """49 paths; explicit registry-driven source metadata profile."""
+    return create_review_app(dsn,verifier=verifier,research=True,calendar=True,rolling=True,calculators=True,historical=True,enrichment=True,official_facts=True,portfolios=True,overlap=True,distributions=True,idcw_catalog=True,current_facts=True,monthly_facts=True,fact_refresh=True,fact_verification=True,amc_coverage=True,multi_amc=True)

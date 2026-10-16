@@ -10,7 +10,7 @@ from psycopg.conninfo import conninfo_to_dict
 from mfdataindia.enrichment import refresh_runtime, refresh_policy
 
 
-def run(environment, root):
+def validate(environment, root, *, task_count=1):
     configuration = json.loads((root / "config/official-facts-dev.json").read_text())
     if configuration != {
         "format": "official-facts-runtime-config-v1",
@@ -36,11 +36,16 @@ def run(environment, root):
         or parsed.get("hostaddr")
         or not re.fullmatch("[0-9a-f]{40}", environment["DEPLOYMENT_GIT_SHA"])
         or environment.get("CLOUD_RUN_JOB") != configuration["job"]
-        or environment.get("CLOUD_RUN_TASK_INDEX") != "0"
-        or environment.get("CLOUD_RUN_TASK_COUNT") != "1"
+        or environment.get("CLOUD_RUN_TASK_INDEX") not in [str(n) for n in range(task_count)]
+        or environment.get("CLOUD_RUN_TASK_COUNT") != str(task_count)
         or environment.get("CLOUD_RUN_TASK_ATTEMPT") != "0"
     ):
         raise ValueError("single-task, no-retry exact DEV runtime required")
+    return dsn
+
+
+def run(environment, root):
+    dsn = validate(environment, root)
     return refresh_runtime.execute(dsn, environment["CLOUD_RUN_EXECUTION"])
 
 

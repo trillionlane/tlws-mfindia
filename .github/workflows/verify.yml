@@ -73,6 +73,7 @@ jobs:
           uv run python scripts/export_fact_refresh_openapi.py --check
           uv run python scripts/export_fact_verification_openapi.py --check
           uv run python scripts/export_amc_coverage_openapi.py --check
+          uv run python scripts/export_multi_amc_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -84,6 +85,9 @@ jobs:
           uv run python scripts/reconcile_restored_official_facts.py --help
           uv run python scripts/inventory_amc_coverage_dev.py --help
           uv run python scripts/certify_amc_coverage_dev.py --help
+          uv run python scripts/operate_registered_facts_dev.py --help
+          uv run python scripts/refresh_registered_facts_dev.py --help
+          uv run python scripts/certify_registered_facts_dev.py --help
 
       - name: Audit Python dependencies
         run: uv run pip-audit
@@ -219,6 +223,16 @@ jobs:
             'from mfdataindia.review.app import create_amc_coverage_app; from mfdataindia.enrichment.amc_register import load_register; assert len(create_amc_coverage_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 46; register = load_register(); assert len(register.members) == 57; assert all(not member.acquisition_enabled for member in register.members)'
           docker run --rm --entrypoint python "$image" /app/scripts/inventory_amc_coverage_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_coverage_dev.py --help
+
+      - name: Verify dormant registered multi-AMC profile
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_multi_amc_app; from mfdataindia.enrichment.multi_facts import registry; assert len(create_multi_amc_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 49; assert len(registry()["sources"]) == 2; assert Path("/app/sql/optional/037_registered_monthly_facts.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/refresh_registered_facts_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/operate_registered_facts_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_registered_facts_dev.py --help
 
       - name: Build and verify PostgreSQL 18 restore image
         run: |
