@@ -10,6 +10,7 @@ from mfdataindia.api import queries
 from mfdataindia.enrichment import current_facts as engine, current_facts_store as store
 from mfdataindia.enrichment.deployment import pinned_dsn
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review.preservation import capture_preservation
 from mfdataindia.review.rollout import seal_evidence
 
 
@@ -77,23 +78,42 @@ def projections(conn, reviewed, *, active):
 
 
 def execute(manifest, environment, operation, *, root=Path("/app")):
-    if operation not in ("install", "activate", "recover"):
+    if operation not in ("install", "activate", "recover", "inspect"):
         raise ValueError("unsupported current-facts operation")
-    reviewed = reference(manifest, environment) if operation != "recover" else None
+    reviewed = reference(manifest, environment) if operation in ("install", "activate") else None
     dsn = pinned_dsn(manifest, environment, "mfdata_admin")
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-        conn.execute("SET LOCAL statement_timeout='120s'")
+        if operation == "inspect":
+            conn.execute("SET TRANSACTION READ ONLY")
+        # The short switch/projection transaction must not consume the bulk
+        # installation/inspection budget while API readers wait on view DDL.
+        if operation in ("activate", "recover"):
+            conn.execute("SET LOCAL statement_timeout='5s'")
+            conn.execute("SET LOCAL transaction_timeout='15s'")
+        else:
+            conn.execute("SET LOCAL statement_timeout='120s'")
+            conn.execute("SET LOCAL transaction_timeout='420s'")
         conn.execute("SET LOCAL lock_timeout='5s'")
-        conn.execute("SET LOCAL transaction_timeout='420s'")
-        result = (
-            store.install(conn, root)
-            if operation == "install"
-            else store.switch(conn, activate=operation == "activate")
-        )
+        if operation == "inspect":
+            result = {
+                "preservation": capture_preservation(conn, current_facts_baseline=True),
+                "current_facts": store.capture(conn),
+                "current_view_definition_hash": fingerprint(
+                    store.view_definition(conn, "mf.current_fund_facts")
+                ),
+                "source_rows_changed": 0,
+                "read_only": True,
+            }
+        else:
+            result = (
+                store.install(conn, root)
+                if operation == "install"
+                else store.switch(conn, activate=operation == "activate")
+            )
         # Include post-switch source-to-existing-API proof in the same transaction;
         # any discrepancy rolls back the view switch rather than reporting PASS.
-        if operation != "recover":
+        if operation in ("install", "activate"):
             cases, values = projections(
                 conn,
                 reviewed,

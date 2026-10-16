@@ -154,6 +154,32 @@ def test_actual_core_queries_advance_and_recover_without_source_rewrites(verifie
 
 
 @pytest.mark.postgres
+def test_preservation_inspection_is_separate_read_only_and_requires_no_source_reference(
+    verified_db, monkeypatch
+):
+    prepared(verified_db, monkeypatch)
+    monkeypatch.setattr(deployment, "pinned_dsn", lambda *args: verified_db)
+    manifest = SimpleNamespace(seal="f" * 64)
+    real_capture = deployment.capture_preservation
+
+    def checked_capture(conn, **kwargs):
+        assert (
+            conn.execute("SHOW transaction_read_only").fetchone()["transaction_read_only"] == "on"
+        )
+        return real_capture(conn, **kwargs)
+
+    monkeypatch.setattr(deployment, "capture_preservation", checked_capture)
+    before = deployment.execute(manifest, {}, "inspect")["evidence"]
+    switch(verified_db, True)
+    after = deployment.execute(manifest, {}, "inspect")["evidence"]
+    compare_preservation(before["preservation"], after["preservation"], "")
+    assert before["read_only"] and after["read_only"]
+    assert not before["current_facts"]["projection_active"]
+    assert after["current_facts"]["projection_active"]
+    assert before["current_view_definition_hash"] != after["current_view_definition_hash"]
+
+
+@pytest.mark.postgres
 def test_new_month_advances_existing_values_late_arrivals_cannot_revert_and_conflicts_are_per_field(
     verified_db, monkeypatch
 ):
@@ -522,3 +548,17 @@ def test_same_running_core_api_serves_next_official_month_without_restart(verifi
             == batch.headers["cache-control"]
             == "no-store"
         )
+
+
+@pytest.mark.postgres
+def test_hot_view_switch_never_performs_a_bulk_preservation_copy(verified_db, monkeypatch):
+    prepared(verified_db, monkeypatch)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError(
+            "bulk source copy inside projection transaction can hold the hot view write lock"
+        )
+
+    monkeypatch.setattr(store, "capture_preservation", forbidden)
+    assert switch(verified_db, True)["projection_active"]
+    assert not switch(verified_db, False)["projection_active"]

@@ -597,6 +597,16 @@ columns describe the retained baseline; use per-field metadata for the
 composite current values' official provenance. API responses remain no-store;
 consumer caches must not treat the NAV dataset version as a facts revision.
 
+**FS-01 rollout availability repair:** activation/recovery use a short,
+owner-only transaction (5-second statement and 15-second total budget) for
+the reversible view switch and independent-reference projections. Whole-source
+hashing must never run while that transaction holds the hot API view lock.
+The separate `inspect` operation is repeatable-read and read-only, requires no
+source-reference inputs, and emits both the normalized preservation inventory
+and the actual view-definition hash. Pre/post inspection and retained regional
+backup comparison remain required rollout evidence; a successful switch alone
+is not preservation certification.
+
 Historical strategy below. For future enhancements, the 2026-10-13 additive
 roadmap above governs: no aggregator reactivation or mutation of retained source
 records is authorized by these older proposals.
