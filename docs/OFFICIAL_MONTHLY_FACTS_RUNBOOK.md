@@ -283,3 +283,20 @@ creates a human review. Live certification submits only an incomplete,
 read-scope request which cannot create a review even if an authorization defect
 exists, and requires a denial plus an unchanged ledger. Never create fake live
 human approvals to close out a sprint. No admin UI is included here.
+
+## FS-05 finite process certification
+
+`scripts/inventory_official_facts_dev.py` is a restricted-reader, read-only
+inventory, not a cloud acceptance shortcut. `scripts/certify_official_facts_core_dev.py`
+tests every actual private core read template and real nullable-quality evidence.
+`scripts/reconcile_restored_official_facts.py` is local scratch-only and requires
+the original backup hash and full preservation evidence before replaying a
+narrow known PostgreSQL view roundtrip. It cannot target the live database.
+
+The final acceptance sequence still requires a fresh backup/restored clone,
+all retained layers and original bytes, all 43 private contract paths with
+read/admin denials, the source-to-current manual oracle, actual traffic recovery
+and restoration, immutable scheduled execution/source evidence, no public
+access, unchanged NAV schedules and zero synthetic live human reviews.
+See [consumer handover](OFFICIAL_FACTS_CONSUMER_HANDOVER.md). Broader AMC adapters
+remain deliberately outside this pilot's completeness claim.

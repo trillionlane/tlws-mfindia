@@ -76,6 +76,12 @@ jobs:
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
 
+      - name: Verify read-only facts process tools
+        run: |
+          uv run python scripts/certify_official_facts_core_dev.py --help
+          uv run python scripts/inventory_official_facts_dev.py --help
+          uv run python scripts/reconcile_restored_official_facts.py --help
+
       - name: Audit Python dependencies
         run: uv run pip-audit
 
