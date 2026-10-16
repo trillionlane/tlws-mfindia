@@ -53,7 +53,12 @@ def policy():
         "version": 1,
         "registry_hash": fingerprint(registry()),
         "authority": "checked-in immutable adapter/cohort/edition registry; directory entries are not transport permission",
-        "bounds": {"sources": 2, "hdfc_requests": 2, "bytes_per_original": 8388608},
+        "bounds": {
+            "sources": 2,
+            "hdfc_requests": 2,
+            "hdfc_bytes_per_original": 8388608,
+            "retained_absl_book_bytes": 16777216,
+        },
         "transport": "public DNS pinned TLS; no proxy/cookies, redirect, decompression or retry; fixed registered URL only",
         "hdfc_discovery": "reviewed September 2026 edition only; new edition or layout requires reviewed registry update; not latest/current-month certification",
         "pdf_policy_hash": fingerprint(monthly_pdf.policy()),
