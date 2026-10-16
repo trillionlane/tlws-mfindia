@@ -276,6 +276,12 @@ or change canonical analytics eligibility. Existing v3 field status uses its
 already-defined `verified`/`needs_verification`/`needs_revalidation` values;
 review events do not change the source facts revision.
 
+The dependency hash is deliberately conservative: it binds the complete current
+five-field source context, not only the field selected in a review. A changed
+source/policy/identity anywhere in that context can require a fresh review.
+Consumers must use the returned dependency hash and version rather than derive
+their own narrower hash or assume an unchanged display value renews approval.
+
 The human-review policy is immutable in the existing policy registry. Positive
 review/replay/concurrency tests belong on synthetic and restored clones, clearly
 labelled as tests. There is intentionally no DEV rollout CLI operation that
