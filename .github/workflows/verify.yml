@@ -71,6 +71,7 @@ jobs:
           uv run python scripts/export_current_facts_openapi.py --check
           uv run python scripts/export_monthly_facts_openapi.py --check
           uv run python scripts/export_fact_refresh_openapi.py --check
+          uv run python scripts/export_fact_verification_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -191,6 +192,15 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/refresh_official_facts_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/operate_fact_refresh_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/certify_fact_refresh_dev.py --help
+
+      - name: Verify private official-facts history and human-verification backend
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'from pathlib import Path; from mfdataindia.review.app import create_fact_verification_app; import mfdataindia.enrichment.fact_review_store; assert len(create_fact_verification_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"]) == 43; assert Path("/app/sql/optional/036_official_fact_verification.sql").is_file()'
+          docker run --rm --entrypoint python "$image" /app/scripts/operate_fact_verification_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_fact_verification_dev.py --help
 
       - name: Build and verify PostgreSQL 18 restore image
         run: |

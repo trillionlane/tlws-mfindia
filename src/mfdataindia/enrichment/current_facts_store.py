@@ -339,7 +339,7 @@ def get(conn, code):
             else False,
             "core_api_fields": aliases,
         }
-    return {
+    response = {
         "format": "current-official-facts-v1",
         "code": code,
         "policy_hash": fingerprint(current_policy),
@@ -360,3 +360,9 @@ def get(conn, code):
         "fields": result,
         "originals_replaced": False,
     }
+    from mfdataindia.enrichment import fact_review_store
+    if fact_review_store.installed(conn):
+        status = fact_review_store.state(conn, code, limit=1)
+        for field, value in response["fields"].items():
+            value["verification_status"] = status["fields"][field]["status"]
+    return response
