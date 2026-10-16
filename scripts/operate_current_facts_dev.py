@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install/activate/recover current facts in DEV; --help performs no cloud calls."""
+"""Install/activate/recover/inspect current facts in DEV; --help performs no cloud calls."""
 
 import argparse
 import json
@@ -12,7 +12,7 @@ from mfdataindia.review.rollout import Manifest
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser(description=__doc__)
-        parser.add_argument("operation", choices=["install", "activate", "recover"])
+        parser.add_argument("operation", choices=["install", "activate", "recover", "inspect"])
         args = parser.parse_args()
         print(
             json.dumps(

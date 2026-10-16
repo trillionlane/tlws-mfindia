@@ -238,12 +238,13 @@ def switch(conn, *, activate: bool):
                 "whole_source_preservation_requires_post_recovery_certification": True,
             }
         verify_acl(conn)
-        before = capture_preservation(conn, current_facts_baseline=True)
+        # CREATE OR REPLACE holds the hot API view's exclusive lock until commit.
+        # Whole-source hashing belongs in a separate read-only inspection, never
+        # after this DDL while every reader is waiting for the lock.
         target = expected_active(conn)
         conn.execute("CREATE OR REPLACE VIEW mf.current_fund_facts AS " + target)
         if projection_state(conn) != activate:
             raise ValueError("current-facts projection activation mismatch")
-        compare_preservation(before, capture_preservation(conn, current_facts_baseline=True), "")
         return {
             "projection_active": activate,
             "source_rows_changed": 0,
@@ -251,6 +252,7 @@ def switch(conn, *, activate: bool):
             "current_view_definition_hash": fingerprint(
                 view_definition(conn, "mf.current_fund_facts")
             ),
+            "whole_source_preservation_requires_post_activation_certification": True,
         }
 
 
