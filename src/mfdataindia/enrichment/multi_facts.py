@@ -65,7 +65,7 @@ def policy():
         "hdfc_scope": "exact registered Regular IDCW identity; fund benchmark/AUM/managers and Regular BER; manager footnote retained; risk unavailable, no riskometer inference",
         "hdfc_dates": "BER and AUM retain their explicit as-on dates; benchmark and managers retain document-context disclosure dates, not inferred field-effective dates",
         "publication": "immutable originals and complete registered cohort plus database-sealed successful run receipt; direct snapshots do not publish",
-        "failures": "two fixed Cloud Run tasks, one registered adapter per index, parallelism two and zero retries; independent task timeout, transactions and receipts; one failure cannot roll back another source or erase last usable values; job is unsuccessful on any task failure",
+        "failures": "two fixed Cloud Run tasks, one registered adapter per index, parallelism one and zero retries; serial tasks avoid contending with each other for the shared publication lock; independent task timeout, transactions and receipts; one failure cannot roll back another source or erase last usable values; Cloud Run attempts all tasks and the job is unsuccessful on any task failure",
         "replay": "execution and source key identify a receipt; originals/snapshots are content-addressed; uncertain commit reconciled, never blindly retried",
         "preservation": "append-only sidecars; no source-record, NAV, identity or canonical calculation writes",
         "verification": "needs_verification is independent of publication; no synthetic human approvals",

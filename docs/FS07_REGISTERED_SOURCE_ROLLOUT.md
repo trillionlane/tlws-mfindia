@@ -37,11 +37,13 @@ undated SSD. No source-reported performance is repurposed as IDCW analytics.
 
 ## Isolation and publication
 
-One existing source job, two fixed tasks/parallelism two, zero retries, existing
+One existing source job, two fixed tasks/parallelism one, zero retries, existing
 generator identity, 600 seconds per task. Task index selects the checked-in
 adapter, never a caller URL, AMC or cohort. Each task commits its own receipts.
 Cloud Run tries all tasks and marks the job failed if any task fails; one task
-does not consume the other's timeout. Existing daily 09:00 Asia/Kolkata source
+does not consume the other's timeout. Serial task admission avoids the two
+adapters contending with each other for the existing shared publication lock.
+Existing daily 09:00 Asia/Kolkata source
 schedule and six-hour NAV/audit schedules are retained.
 
 HDFC originals use a separate create-only/read prefix:
