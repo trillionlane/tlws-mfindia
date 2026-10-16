@@ -32,6 +32,7 @@ def fetch(url):
         maximum=8 * 1024 * 1024,
         validate=validate,
         media_types=("application/pdf",),
+        allow_redirects=False,
     )
 
 

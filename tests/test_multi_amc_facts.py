@@ -62,6 +62,16 @@ def test_private_contract_keeps_all_46_previous_paths_and_components():
     )
 
 
+def test_registered_transport_rejects_even_a_redirect_to_the_same_pinned_url(monkeypatch):
+    from test_official_enrichment_transport import Response, transport
+
+    url = multi_facts.source()["edition"]["url"]
+    calls = transport(monkeypatch, [Response(status=302, headers={"Location": url})])
+    with pytest.raises(ValueError, match="redirects are not permitted"):
+        multi_runtime.fetch(url)
+    assert len(calls) == 1
+
+
 def test_hdfc_layout_includes_footnote_and_does_not_swap_average_or_direct():
     fields, context = hdfc_monthly.fields(DETAIL, NOTES, "2026-09-30")
     assert fields["fund_managers"]["value"] == [
