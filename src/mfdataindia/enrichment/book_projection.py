@@ -27,6 +27,10 @@ PROJECTIONS = {
         "amc_book_current_projection_v2.sql.inc",
         "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376",
     ),
+    4: (
+        "amc_book_current_projection_v2.sql.inc",
+        "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376",
+    ),
 }
 
 

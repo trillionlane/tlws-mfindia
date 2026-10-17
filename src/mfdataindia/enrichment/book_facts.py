@@ -97,4 +97,17 @@ def coverage(batch):
                 "source_acquisition", {"mode": "not_recorded_in_older_artifact"}
             ),
         )
+    if batch["source_key"] == "uti-expanded":
+        result.update(
+            language="English",
+            expense_basis="TER_separate_not_BER",
+            supplemental_accepted_fields={
+                "reported_total_expense_ratio": sum(
+                    r["result"]["reported_total_expense_ratio"]["status"] == "accepted"
+                    for r in rows
+                )
+            },
+            reporting_date_authority="actual_Portfolio_as_on_not_edition_filename_or_URL",
+            field_date_discrepancies=sum(len(r["result"]["date_discrepancies"]) for r in rows),
+        )
     return result

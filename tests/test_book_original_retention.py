@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 
 
-SOURCES = ["kotak"]
+SOURCES = ["kotak", "uti"]
 
 
 def prepared(monkeypatch, kind, *, failure=None, same_bytes=False):

@@ -5,6 +5,24 @@ Version-controlled backlog of planned improvements. Each item states the
 `RESEARCH.md` holds the source research; `README.md` documents what ships
 today. This file is the forward-looking "next" list.
 
+## Source operations follow-up — Kotak discovery (2026-10-17)
+
+Before 2026-11-01 UTC, revalidate ordinary live catalogue discovery from DEV.
+The reviewed known-document authority is a bounded October use of the exact
+September catalogue/PDF originals, not an automatically renewable discovery
+feed. Catalogue requests currently redirect to an anti-bot challenge; do not
+follow, solve or bypass it, rotate egress to evade it, or silently extend the
+window/pins. Use ordinary official distribution channels and separately review
+any new source authority/evidence. Preserve every original and earlier policy.
+
+Until live discovery is established, keep `latest_catalogue_discovery_available:
+false`, the use-window metadata and missing-month gaps visible to consumers.
+Expiry or unsuccessful refresh must retain prior accepted observations and
+record failure, never synthesize freshness or erase facts. A future authority
+change requires its own tests, exact-image source/canary certification and
+preservation/recovery gates. This roadmap entry is not an extra schedule,
+permission expansion or a claim that the current source rollout is accepted.
+
 ## Additive product enhancement roadmap (decision, 2026-10-13)
 
 **Status: implementation started for the initial backend bundle; remaining work
@@ -540,6 +558,12 @@ or a permitted authoritative supplier before its enrichment/distribution imports
 public web access and an old robots.txt research note are not permission proof.
 This does not prevent policy-bound calculations from already-held NAV data.
 
+This is the historical MF-E02 note, not a new permission/calling gate for the
+later approved FS programme. The user's subsequent authorization permits the
+governed ordinary public AMFI/AMC acquisition described below. Preserve source
+provenance and private originals; do not bypass authentication or challenges.
+That project authorization is not a claim that every form of reuse is unrestricted.
+
 ### Operational / API closeout remains separate
 
 - Observe the restored normal refresh and full audit cycle; activation probes
@@ -563,6 +587,26 @@ The checked-in discovery register has 57 dated official directory entries
 database-only and unmatched schemes stay accounted for. FS-06 adds private
 read-only reporting only; no source acquisition, source-row edits, UI, production,
 legacy fill-if-missing loader use or broader publication authority.
+
+### NAV availability investigation (open, discovered 2026-10-17)
+
+The normal 12:30 UTC refresh `tlws-mf-data-nav-refresh-dev-d5xkz` failed its
+future-date validator on nine 2026-10-18 ETF rows with 2026-10-17 as-of. The
+categories were Debt ETF and Other ETFs, not the explicitly permitted liquid/
+overnight category leaves. Exact-image file inspection
+`mf-nav-guard-inspect-261017a-plbbp` confirmed the exact script bytes and that
+validation precedes database-store construction. The inspection mounted no
+database credentials and triggered no ingestion; the failed refresh never
+reached the store. The existing guard remains unchanged.
+No ingestion rerun, as-of override or broader ETF exception is authorized by a
+factsheet source certificate.
+
+Before changing this guard, retain the failed source bytes create-only, establish
+exact AMFI/ISIN identities and authoritative valuation conventions, and propose
+a deterministic narrow rule with negative controls and restored-clone/raw-row
+preservation proof. Do not whitelist all ETFs, silently omit rows from a FULL
+snapshot, force tomorrow's as-of date, or reinterpret source failure as success.
+Track NAV scheduler health separately from metadata-enrichment acceptance.
 
 ### FS-01–FS-05: official monthly facts refresh (approved 2026-10-16)
 

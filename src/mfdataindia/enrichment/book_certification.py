@@ -39,6 +39,8 @@ def expectation(manifest, environment):
     keys = {"reviewed", "prior_core_values", "preserved_core_values", "execution_id", "sources"}
     if version > 1:
         keys |= {"prior_projection", "original_oracles"}
+    if version >= 4:
+        keys.add("supplemental_oracles")
     if (
         set(doc) != keys
         or not re.fullmatch(
@@ -133,7 +135,91 @@ def expectation(manifest, environment):
                 or any(v is None for v in sample["source_values"].values())
             ):
                 raise ValueError("nonempty exact original-source oracle required")
+    if version >= 4:
+        supplemental = doc["supplemental_oracles"]
+        if (
+            not isinstance(supplemental, list)
+            or not 4 <= len(supplemental) <= 8
+        ):
+            raise ValueError("distinct independent UTI TER references required")
+        identities = set()
+        for sample in supplemental:
+            if (
+                not isinstance(sample, dict)
+                or set(sample) != {"code", "batch_id", "as_of", "value"}
+                or type(sample["code"]) is not int
+                or sample["code"] not in manifest.cohort
+                or not isinstance(sample["batch_id"], str)
+                or sample["batch_id"] not in doc["sources"]["uti-expanded"]["batch_ids"]
+                or not isinstance(sample["as_of"], str)
+                or not re.fullmatch(r"20[0-9]{2}-[0-9]{2}-[0-9]{2}", sample["as_of"])
+                or not isinstance(sample["value"], str)
+                or not re.fullmatch(r"(?:[0-9](?:\.[0-9]{1,4})?|10(?:\.0{1,4})?)", sample["value"])
+            ):
+                raise ValueError("exact source-bound bounded Regular TER reference required")
+            identity = (sample["code"], sample["batch_id"])
+            if identity in identities:
+                raise ValueError("distinct independent UTI TER references required")
+            identities.add(identity)
     return doc
+
+
+def new_supplemental_oracles(conn, expected):
+    """UTI TER is independently source-checked; it must never become BER."""
+    if book_sources.CURRENT_VERSION < 4:
+        return {}
+    batches = {}
+    for batch_id in expected["sources"]["uti-expanded"]["batch_ids"]:
+        row = conn.execute(
+            "SELECT source_key,disclosure_as_of,document FROM mf_book_facts.batches WHERE batch_id=%s",
+            (batch_id,),
+        ).fetchone()
+        if not row or row["source_key"] != "uti-expanded":
+            raise ValueError("supplemental UTI batch differs")
+        batches[batch_id] = row
+    needed = {
+        (batch_id, extraction["content_hash"])
+        for batch_id, batch in batches.items()
+        for extraction in batch["document"]["monthly_extractions"]
+    }
+    latest = max(batches, key=lambda key: batches[key]["disclosure_as_of"])
+    observed, current_options = set(), set()
+    for sample in expected["supplemental_oracles"]:
+        facts = book_store.fund(conn, sample["code"])
+        matches = [o for o in facts["observations"] if o["batch_id"] == sample["batch_id"]]
+        if (
+            len(matches) != 1
+            or not matches[0]["current_identity_matches"]
+            or matches[0]["disclosure_as_of"] != sample["as_of"]
+        ):
+            raise ValueError("supplemental source identity/date differs")
+        result = matches[0]["result"]
+        ter = result.get("reported_total_expense_ratio")
+        ber = result.get("fields", {}).get("base_expense_ratio")
+        if (
+            not isinstance(ter, dict)
+            or ter.get("status") != "accepted"
+            or ter.get("value") != sample["value"]
+            or ter.get("unit") != "percent"
+            or ter.get("scope") != "regular_plan"
+            or ter.get("expense_basis") != "TER"
+            or not isinstance(ber, dict)
+            or ber.get("status") != "unavailable"
+            or "value" not in ber
+            or ber["value"] is not None
+            or (sample["batch_id"], ter.get("content_hash")) not in needed
+        ):
+            raise ValueError("independent source TER/basis or unavailable BER differs")
+        observed.add((sample["batch_id"], ter["content_hash"]))
+        if sample["batch_id"] == latest:
+            current_options.add(facts["identity"]["option"])
+    if observed != needed or not {"GROWTH", "IDCW"} <= current_options:
+        raise ValueError("TER needs every actual English book/period and current Growth/IDCW")
+    return {
+        "independent_supplemental_oracles_checked": True,
+        "supplemental_samples_checked": len(expected["supplemental_oracles"]),
+        "supplemental_originals_checked": len(needed),
+    }
 
 
 def new_source_oracles(conn, expected):
@@ -251,6 +337,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
         if not {"GROWTH", "IDCW"} <= options:
             raise ValueError("independent Growth and IDCW source samples required")
         original_oracles = new_source_oracles(conn, expected)
+        supplemental_oracles = new_supplemental_oracles(conn, expected)
         if active:
             book_projection.check(conn, expected["reviewed"])
         elif current.policy_document(conn) != (
@@ -396,6 +483,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
             "sources": expected["sources"],
             "independent_original_source_references_checked": True,
             **original_oracles,
+            **supplemental_oracles,
             "source_rows_changed": 0,
             "human_events_created": 0,
             "all_amc_data_complete": False,

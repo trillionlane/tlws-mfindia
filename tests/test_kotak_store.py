@@ -41,7 +41,9 @@ RAW_OLD = b"%PDF-SYNTHETIC-KOTAK-JULY-NOT-ISSUER"
 
 
 def accepted_sbi(dsn, monkeypatch):
-    registries = book_sources.REGISTRIES
+    # This historical accepted-state fixture models exactly FS-10, not later
+    # source versions whose publication has not been installed here.
+    registries = {k: v for k, v in book_sources.REGISTRIES.items() if k <= 3}
     monkeypatch.setattr(book_sources, "REGISTRIES", {k: v for k, v in registries.items() if k <= 2})
     accepted_fs08(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:

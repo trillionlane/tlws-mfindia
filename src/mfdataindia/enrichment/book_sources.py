@@ -5,15 +5,15 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book
+from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book, uti_book
 from mfdataindia.enrichment.evidence import public_url
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.enrichment import _registered_book_policy_v6
 
-CURRENT_VERSION = 3
+CURRENT_VERSION = 4
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
-POLICY_VERSIONS = {1: 4, 2: 5, 3: 7}
+POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8}
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -26,6 +26,10 @@ REGISTRIES = {
     3: (
         "official-book-sources-v3.json",
         "9453e96cff8c94a7ac1b7bc8851246c71ccd9b63b10dcded06d7ae78e5c77727",
+    ),
+    4: (
+        "official-book-sources-v4.json",
+        "acb158e5258646e278b9aa1ecea6219bd8b3d987afa088a6bd8d308334c2a482",
     ),
 }
 
@@ -54,6 +58,32 @@ def registry(version=None, root=None):
     ):
         raise ValueError("registered source task/cohort authority differs")
     for source in document["sources"]:
+        if source["key"] == uti_book.KEY:
+            if (
+                version < 4
+                or source["adapter"] != "uti-english-monthly-book-v1"
+                or source["amc"] != uti_book.AMC
+                or source["catalogue_api"] != uti_book.CATALOGUE
+                or source["catalogue_landing"] != "https://www.utimf.com/downloads/fund-watch"
+                or source["directory_url"] != uti_book.DIRECTORY
+                or source["book_prefix"] != uti_book.CDN
+                or source["maximum_identity_families"] != 200
+                or source["identity_workers"] != 4
+                or source["maximum_total_original_bytes"] != 83886080
+                or source["archive_prefix"] != "official-monthly-facts/uti-expanded/"
+                or source["plan"] != "REGULAR"
+                or source["in_scope"] is not True
+                or source["period_count"] != 2
+                or source["minimum_detail_pages"] != {"active": 20, "passive": 15}
+                or source["maximum_current_variants"] != 1024
+                or source["preserved_projection_codes"] != [101763, 103173, 103174]
+                or source["language"] != "English"
+                or source["expense_basis"] != "TER_separate_not_BER"
+                or source["supplemental_fields"] != ["reported_total_expense_ratio"]
+                or source["minimum_catalogue_originals"] != 2
+            ):
+                raise ValueError("bounded English UTI source authority differs")
+            continue
         if source["key"] == kotak_book.KEY:
             if (
                 version < 3
@@ -131,6 +161,7 @@ def specification(key, *, version=None):
         "sbi-full-book-v1": sbi_book,
         "absl-full-book-v1": absl_expansion,
         "kotak-monthly-book-v1": kotak_book,
+        "uti-english-monthly-book-v1": uti_book,
     }[item["adapter"]]
     item["parser_policy"] = parser.policy()
     item["parser_policy_hash"] = fingerprint(item["parser_policy"])
@@ -186,6 +217,31 @@ def specification(key, *, version=None):
             Path(layout_book_pdf.__file__).read_bytes()
             + Path(layout_book_pdf.__file__).with_name("_layout_book_pdf_worker.py").read_bytes()
         ).hexdigest()
+    if parser is uti_book:
+        from mfdataindia.enrichment import (
+            amfi_summary_identity,
+            layout_book_archive,
+            layout_book_http,
+            uti_acquisition,
+            uti_batch,
+            uti_book_pdf,
+            uti_runtime,
+        )
+
+        item["evidence_engine_hashes"] = {
+            module.__name__.rsplit(".", 1)[-1]: hashlib.sha256(
+                Path(module.__file__).read_bytes()
+            ).hexdigest()
+            for module in (
+                amfi_summary_identity,
+                layout_book_archive,
+                layout_book_http,
+                uti_acquisition,
+                uti_batch,
+                uti_runtime,
+            )
+        }
+        item["decoder_engine_hash"] = uti_book_pdf.engine_hash()
     return item
 
 

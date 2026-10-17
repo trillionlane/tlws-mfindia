@@ -113,3 +113,77 @@ are not full holdings or full economic overlap. No future expansion may infer
 distribution/reinvestment completeness, synthesize missing NAVs, or replace
 canonical calculations with publisher tables without a separately versioned
 deterministic mathematical policy and approved analytics layer.
+
+## FS-08–FS-11 additive book coverage
+
+The pilot above stays frozen. The separate book process adds ABSL, SBI, Kotak
+and UTI source coverage sequentially, without turning the pilot into an
+all-AMC or all-field completeness claim. Treat each source as deployed only
+after its own exact-image DEV acceptance artifact; this contract description
+does not certify a pending sprint.
+
+Use the existing private review-service origin, not the core-service origin,
+for the following read-only routes. Cloud Run's service-origin ID token goes
+in `X-Serverless-Authorization`; the existing delegated backend assertion goes
+in `Authorization: Bearer ...` and must contain `review:read` or `review:admin`.
+Keep both server-side. Do not create browser credentials, new API keys or a
+new invoker grant to consume these contracts.
+
+| Route | Read it for | Important boundary |
+| --- | --- | --- |
+| `GET /api/enrichment/v9/policy` | Installed configuration hash and the reviewed source registry/parser policies | Read installed authority, not an assumed version inferred from a deployment SHA |
+| `GET /api/enrichment/v9/coverage` | Per-source latest attempt/last success, reporting periods, complete retained cohort and explicit gap counts | Failed acquisition is not zero funds; usable observations are not verified or all-fields complete |
+| `GET /api/enrichment/v9/funds/{code}/facts` | Identity-bound book observations, per-field source evidence and reporting dates | `{code}` is the exact AMFI scheme code; check `current_identity_matches` and each field's state before use |
+
+The three retained v8 policy/status/fund-facts routes remain compatibility
+reads for the earlier registered-source process. They are not a substitute
+for the expanded v9 book ledger. The six-route rollout certification checks
+both sets; all 19 private core read routes are certified separately.
+The additive book profile's 52-path interface is recorded in
+[`contracts/mfdataindia-amc-books-v1.json`](../contracts/mfdataindia-amc-books-v1.json);
+the older 43-path pilot contract above is not replaced.
+
+A book-facts response is a bounded collection of at most 20 observations,
+ordered by disclosure date and stable batch ID. It is not a complete-history
+export or a promise of fetch-time ordering. Retained observations can survive
+a graph recovery; their presence does not prove that their values are
+currently projected. Use the core current facts and installed policy/coverage
+alongside the dated evidence. Keep snapshot/batch IDs and policy hashes when
+storing a downstream interpretation; do not silently merge different versions.
+The v9 policy describes installed acquisition authority; activation of the
+current scalar projection is a separate step, not implied by its presence.
+Respect `no-store`: do not key a cached official-facts response solely by the
+NAV dataset version. A new book publication or source check can advance
+independently of NAV ingestion. Re-fetch the relevant current facts/evidence
+before persisting a downstream interpretation.
+
+For UTI, read reported TER from
+`observations[].result.reported_total_expense_ratio`. Require its accepted
+state and retain the reported percent unit, Regular-plan scope, disclosure
+date, actual source anchor and `expense_basis: TER`. Never copy this value
+into `base_expense_ratio`; any legacy BER retained by the current core view
+has not been newly validated by the UTI adapter. Missing values remain missing,
+not zero. No conversion from TER to BER is supplied.
+
+For Kotak, inspect `observations[].result.source_acquisition` and the coverage
+record's same object. `reviewed_known_document_not_live_catalogue` identifies a
+dated, exact-hash reviewed public document, not successful current catalogue
+discovery. Retain its `latest_catalogue_discovery_available: false`, original
+catalogue/PDF pins, review date and use-window metadata. It does not prove
+consecutive monthly coverage or the absence of newer issuer corrections. The
+known-document acquisition route expires before 2026-11-01 UTC; unsuccessful
+refreshes must retain prior evidence and surface their warning, not fabricate
+freshness or clear existing observations.
+
+Book observations remain `needs_verification`; source/reference validation is
+not human attestation. The v6 pilot review ledger cannot be presented as a
+human verification of a different v9 book observation. No admin UI or new
+book-review mutation is included. IDCW metadata availability still does not
+establish distribution/reinvestment completeness, return eligibility or full
+economic overlap.
+
+The source-specific scope, actual available-period previews and DEV gates are
+documented in [SBI onboarding](FS09_SBI_ONBOARDING.md),
+[Kotak onboarding](FS10_KOTAK_ONBOARDING.md) and
+[UTI onboarding](FS11_UTI_ONBOARDING.md). These documents intentionally retain
+missing periods, identity conflicts and unsupported layouts as gaps.

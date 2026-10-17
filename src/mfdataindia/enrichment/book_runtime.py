@@ -64,7 +64,7 @@ def retain_source(conn, key, original):
         (key, digest),
     ).fetchone()
     expected = {"source_url": url, "media_type": media, "byte_length": len(raw), "checksum": digest}
-    if key in ("sbi-expanded", "kotak-expanded"):
+    if key in ("sbi-expanded", "kotak-expanded", "uti-expanded"):
         # BEFORE INSERT has independently checked this acquired alias URL and
         # its retained parent index/catalogue even when ON CONFLICT skips the
         # content-addressed row. Preserve its FIRST source_url; all actual URL
@@ -244,12 +244,13 @@ def execute(dsn, execution, *, task_index):
     if task_index < 2:
         return multi_runtime.execute(dsn, execution, task_index=task_index)
     source = registry["sources"][task_index - 2]
-    from mfdataindia.enrichment import sbi_runtime, kotak_runtime
+    from mfdataindia.enrichment import sbi_runtime, kotak_runtime, uti_runtime
 
     result = {
         "absl-full-book-v1": absl,
         "sbi-full-book-v1": sbi_runtime.run,
         "kotak-monthly-book-v1": kotak_runtime.run,
+        "uti-english-monthly-book-v1": uti_runtime.run,
     }[source["adapter"]](dsn, execution)
     return {
         "format": "official-amc-book-task-v1",
