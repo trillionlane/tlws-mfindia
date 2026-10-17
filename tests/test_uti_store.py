@@ -380,9 +380,11 @@ def test_all_previous_source_and_executable_bytes_remain_frozen():
     )[1]
     assert new == "    IF spec->>'adapter'='kotak-monthly-book-v1' THEN" + old
     assert book_projection.PROJECTIONS[4] == book_projection.PROJECTIONS[3]
+    # Final FS-10 baseline includes retain-before-decode. Its
+    # independent hash stays literal here: UTI must not change that authority.
     assert (
         fingerprint(book_sources.configuration(3))
-        == "c2e70369eece3ee715d9ca4f7b035ea9ed6c96a60c3d44f57bdcb1595ab8da9c"
+        == "4a0ccc6fc01bacef173bc2631d5122a78d6dabc922c0259d7f83e0b1e8405d09"
     )
     assert book_sources.registry(4)["maximum_sources_per_execution"] == 6
 

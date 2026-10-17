@@ -152,6 +152,10 @@ alongside the dated evidence. Keep snapshot/batch IDs and policy hashes when
 storing a downstream interpretation; do not silently merge different versions.
 The v9 policy describes installed acquisition authority; activation of the
 current scalar projection is a separate step, not implied by its presence.
+Respect `no-store`: do not key a cached official-facts response solely by the
+NAV dataset version. A new book publication or source check can advance
+independently of NAV ingestion. Re-fetch the relevant current facts/evidence
+before persisting a downstream interpretation.
 
 For UTI, read reported TER from
 `observations[].result.reported_total_expense_ratio`. Require its accepted

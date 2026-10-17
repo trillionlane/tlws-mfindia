@@ -62,6 +62,7 @@ def run(
     phase = "scope"
     originals = []
     archives = []
+    archived_pdf_hashes = set()
     availability = []
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
@@ -83,6 +84,7 @@ def run(
             raise TimeoutError("UTI task deadline")
 
     def keep(original):
+        nonlocal phase
         deadline()
         same = [o for o in originals if o["source_url"] == original["source_url"]]
         if same:
@@ -92,7 +94,16 @@ def run(
         originals.append(original)
         if sum(len(o["content"]) for o in originals) > spec["maximum_total_original_bytes"]:
             raise ValueError("UTI total original byte bound exceeded")
-        return hashlib.sha256(original["content"]).hexdigest()
+        checksum = hashlib.sha256(original["content"]).hexdigest()
+        if original["media_type"] == "application/pdf" and checksum not in archived_pdf_hashes:
+            previous_phase, phase = phase, "archive"
+            with requests.Session() as session:
+                session.trust_env = False
+                archives.append(archive(session, original["content"], media_type="application/pdf"))
+            archived_pdf_hashes.add(checksum)
+            deadline()
+            phase = previous_phase
+        return checksum
 
     try:
         phase = "English_catalogues"
@@ -183,7 +194,7 @@ def run(
             if issue:
                 availability.append(issue)
         phase = "archive"
-        seen = set()
+        seen = set(archived_pdf_hashes)
         with requests.Session() as session:
             session.trust_env = False
             for original in originals:

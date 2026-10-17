@@ -14,6 +14,12 @@ translated. Retain all four original PDFs and returned AMFI identity XMLs in
 create-only, generation/SHA-verified storage; retain catalogue/index originals
 byte-for-byte in the append-only evidence tables.
 
+Create-only PDF archival precedes decoding. A later parser, identity-discovery
+or deadline failure retains already archived books in the failed run's evidence
+without publishing observations. Archive failures are not retried ambiguously;
+the later XML/originals phase skips PDF hashes already retained. Permissions,
+publication atomicity and task/time bounds are unchanged.
+
 The actual `Portfolio as on` date must agree across both books and equal each
 expected last-closed month. Edition, URL, filename and PDF metadata dates never
 stamp an observation. A missing source, unsupported identity or ambiguous
