@@ -93,7 +93,7 @@ facts remain explicit nulls. Full original-table and entire prior-projection
 row seals remain unchanged; no data, comparison field or database grant is
 removed. The transport retry and failed attempt remain separately recorded.
 
-The separate FS-09 core-read-cost hotfixes (#86, #87 and #88) are rollout prerequisites.
+The separate FS-09 core-read-cost hotfixes (#86, #87, #88 and #89) are rollout prerequisites.
 Their single-pass scalar expansion and equivalent predicate-friendly facade are
 also used by v3; the dated field-selection policy and v2 field-versions SQL
 remain unchanged. The bounded batch lookup resolves identifiers before querying
@@ -105,6 +105,14 @@ anti-flattening boundary without changing eligibility or response semantics.
 The exact-image rehearsal must check the actual core HTTP
 detail/batch paths as well as metadata, then all 19 core routes. Increasing
 client timeouts is not an acceptance substitute.
+
+The [SBI source closeout](evidence/FS09_DEV_ACCEPTANCE_2026-10-17.md) and
+[actual API-only acceptance](evidence/FS09_API_PAGED_DEV_ACCEPTANCE_2026-10-17.md)
+are now separately recorded. The latter proves candidate and serving
+fund-list/family-list/risk reads below the five-second readiness budget while
+retaining the original request timeout and source configuration. This is not
+permission to page before global AUM/expense/return/NAV ranking, bypass current
+facts for stale raw categories, or reuse a source certificate as API readiness.
 
 ## Read-only available-period preview, not DEV acceptance
 

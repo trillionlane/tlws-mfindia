@@ -88,8 +88,10 @@ has complete ordered actual-data old/new response equality and a narrower
 paged/peer facts lookup. It merged as
 `2f173e4abc4b05e2c4c20c69d96029c29646373d` after exact-head CI passed
 1,743 tests with one skip. Main CI, immutable images and actual private
-candidate/live certification are a separate prerequisite before Kotak/UTI;
-merge alone does not mean that API revision is serving.
+candidate/live certification were a separate prerequisite before Kotak/UTI;
+merge alone did not mean that API revision was serving. That subsequent
+[API-only acceptance](FS09_API_PAGED_DEV_ACCEPTANCE_2026-10-17.md) now records
+the actual serving revision, protected runtime and measured private HTTP.
 
 The separately recorded normal 12:30 UTC NAV refresh failed on next-day ETF
 records before database storage. This source sprint does not weaken its date
