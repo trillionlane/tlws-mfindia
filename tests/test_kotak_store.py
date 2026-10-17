@@ -289,6 +289,18 @@ def test_complete_population_publication_honest_dates_recovery_and_original_pres
         "2026-09-30",
         "2026-08-31",
     ]
+    # Registered evidence is readable privately before activation, but cannot
+    # leak through the accepted prior policy's scalar projection.
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
+        assert dict(current.configuration(conn)) == prior
+        assert book_store.fund(conn, 112090)["observations"]
+        before_activation = current.get(conn, 112090)
+        assert before_activation["fields"]["aum"]["value"] != "53086.64"
+        assert all(
+            source.get("batch_id") not in {b["batch_id"] for b in inputs[0]}
+            for source in before_activation["fields"]["aum"]["sources"]
+        )
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
         activated = book_projection.activate(
             conn, ROOT, references(inputs[0][0]), expected_configuration_hash=fingerprint(prior)
