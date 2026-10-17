@@ -144,6 +144,17 @@ network/image checks. Missing evidence alone is retryable; malformed/duplicate
 certificates, drift and API failures fail immediately. No writer/deployment/job
 execution is retried to manufacture evidence.
 
+Expanded evidence can exceed one compressed log entry even when the raw result
+is small. Retain legacy single-entry transport when it fits; otherwise emit at
+most64 structured parts, each below80,000bytes, preserving the same8MiB raw
+ceiling. The reader requires every unique part with consistent metadata before
+bounded decompression and full original seal verification. Incomplete delivery
+alone is retryable; duplicate, malformed, mixed or tampered evidence fails closed.
+No subset or shortened certificate can pass. The actual restored SBI state was
+274,871rawbytes and needed two entries (60,217/28,745bytes); complete reordered
+delivery and original inner seal passed, missing/duplicate parts were rejected.
+This read-only local transport proof is not a live Cloud Logging certificate.
+
 FS-10 Kotak and FS-11 UTI follow as separate reviewed and certified deliveries.
 
 ## Pre-merge evidence, not DEV acceptance
