@@ -384,7 +384,7 @@ def test_all_previous_source_and_executable_bytes_remain_frozen():
     # independent hash stays literal here: UTI must not change that authority.
     assert (
         fingerprint(book_sources.configuration(3))
-        == "4a0ccc6fc01bacef173bc2631d5122a78d6dabc922c0259d7f83e0b1e8405d09"
+        == "addd97f4c2acbf7a66b72ca2c0ffa61b7bae5242f69c36c8b8ed7f2bbb3eec7f"
     )
     assert book_sources.registry(4)["maximum_sources_per_execution"] == 6
 

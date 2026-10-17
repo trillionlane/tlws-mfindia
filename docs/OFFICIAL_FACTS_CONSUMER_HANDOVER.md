@@ -165,6 +165,16 @@ into `base_expense_ratio`; any legacy BER retained by the current core view
 has not been newly validated by the UTI adapter. Missing values remain missing,
 not zero. No conversion from TER to BER is supplied.
 
+For Kotak, inspect `observations[].result.source_acquisition` and the coverage
+record's same object. `reviewed_known_document_not_live_catalogue` identifies a
+dated, exact-hash reviewed public document, not successful current catalogue
+discovery. Retain its `latest_catalogue_discovery_available: false`, original
+catalogue/PDF pins, review date and use-window metadata. It does not prove
+consecutive monthly coverage or the absence of newer issuer corrections. The
+known-document acquisition route expires before 2026-11-01 UTC; unsuccessful
+refreshes must retain prior evidence and surface their warning, not fabricate
+freshness or clear existing observations.
+
 Book observations remain `needs_verification`; source/reference validation is
 not human attestation. The v6 pilot review ledger cannot be presented as a
 human verification of a different v9 book observation. No admin UI or new

@@ -353,6 +353,39 @@ DECLARE spec jsonb; item jsonb; field jsonb; pair record; pop jsonb; ids jsonb; 
             AND EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.document->'observations') o WHERE o->'result'->>'status'='usable')
         ) IS TRUE THEN RAISE EXCEPTION 'whole-AMC batch source/policy/seal differs'; END IF;
 
+        field=NEW.document->'source_acquisition';
+        IF field->>'mode'='reviewed_known_document_not_live_catalogue' THEN
+            IF NOT (NEW.disclosure_as_of::text=spec->'reviewed_known_document_policy'->>'expected_period'
+                AND NEW.content_hash=spec->'reviewed_known_document_policy'->>'pdf_sha256'
+                AND field=jsonb_build_object(
+                    'mode','reviewed_known_document_not_live_catalogue',
+                    'policy_hash',encode(sha256(convert_to(mf_review.canonical_json(spec->'reviewed_known_document_policy'),'UTF8')),'hex'),
+                    'catalogue_original_sha256',spec->'reviewed_known_document_policy'->>'catalogue_sha256',
+                    'catalogue_source_url',spec->'reviewed_known_document_policy'->>'catalogue_url',
+                    'expected_pdf_sha256',spec->'reviewed_known_document_policy'->>'pdf_sha256',
+                    'reviewed_on',spec->'reviewed_known_document_policy'->>'reviewed_on',
+                    'valid_before',spec->'reviewed_known_document_policy'->>'valid_before',
+                    'latest_catalogue_discovery_available',false)
+                AND EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.document->'document_refs') r
+                    JOIN mf_book_facts.sources s ON s.source_key=NEW.source_key AND s.content_hash=r->>'content_hash'
+                    WHERE r->>'role'='catalogue' AND r->>'content_hash'=field->>'catalogue_original_sha256'
+                    AND r->>'source_url'=field->>'catalogue_source_url' AND s.media_type='application/json'
+                    AND s.byte_length=(spec->'reviewed_known_document_policy'->>'catalogue_bytes')::integer)
+            ) IS TRUE THEN RAISE EXCEPTION 'known document provenance or exact original differs'; END IF;
+        ELSIF field->>'mode'='reviewed_historical_one_pager' THEN
+            IF field IS DISTINCT FROM jsonb_build_object('mode','reviewed_historical_one_pager')
+                OR NEW.document->>'source_url' IS DISTINCT FROM spec->'reviewed_historical'->>'url' THEN
+                RAISE EXCEPTION 'reviewed historical source provenance differs'; END IF;
+        ELSIF field->>'mode'='live_catalogue' THEN
+            IF NOT (field=jsonb_build_object('mode','live_catalogue','source_url',field->>'source_url')
+                AND NEW.document->>'source_url'<>spec->'reviewed_historical'->>'url'
+                AND EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.document->'document_refs') r
+                    WHERE r->>'role'='catalogue' AND r->>'source_url'=field->>'source_url')) IS TRUE THEN
+                RAISE EXCEPTION 'live catalogue provenance differs'; END IF;
+        ELSE RAISE EXCEPTION 'explicit source acquisition provenance required'; END IF;
+        IF EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.document->'observations') o
+            WHERE o->'result'->'source_acquisition' IS DISTINCT FROM field) THEN
+            RAISE EXCEPTION 'fund observation source acquisition provenance differs'; END IF;
         FOR item IN SELECT value FROM jsonb_array_elements(NEW.document->'document_refs') LOOP
             IF NOT (item->>'role' IN('catalogue','directory','index','identity','book')
                 AND EXISTS(SELECT 1 FROM mf_book_facts.sources s WHERE s.source_key=NEW.source_key
@@ -510,6 +543,14 @@ DECLARE spec jsonb; item jsonb; field jsonb; pair record; pop jsonb; ids jsonb; 
         IF (SELECT jsonb_agg(x->'identity' ORDER BY (x->'identity'->>'code')::integer) FROM jsonb_array_elements(b.document->'observations') x) IS DISTINCT FROM pop
             OR b.disclosure_as_of>NEW.observed_at::date OR b.document->>'specification_hash'<>NEW.document->>'specification_hash' THEN
             RAISE EXCEPTION 'batch current identity/specification differs'; END IF;
+        IF b.document->'source_acquisition'->>'mode'='reviewed_known_document_not_live_catalogue' AND (
+            (NEW.observed_at AT TIME ZONE 'UTC')::date<(spec->'reviewed_known_document_policy'->>'reviewed_on')::date
+            OR (NEW.observed_at AT TIME ZONE 'UTC')::date>=(spec->'reviewed_known_document_policy'->>'valid_before')::date
+            OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.document->'availability') gap
+                WHERE gap->>'expected_period'=b.disclosure_as_of::text
+                AND gap->>'reason'='ordinary_source_unavailable_reviewed_known_document_used'
+                AND gap->'latest_catalogue_discovery_available'='false'::jsonb)) THEN
+            RAISE EXCEPTION 'known document use outside reviewed window or missing discovery warning'; END IF;
     END LOOP;
     IF (SELECT dataset_version::text FROM mf.dataset_summary WHERE singleton) IS DISTINCT FROM NEW.document->>'dataset_version' THEN
         RAISE EXCEPTION 'run live dataset receipt differs'; END IF;

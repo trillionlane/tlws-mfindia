@@ -8,6 +8,21 @@ retained pilots and the four expanded AMC sources. No raw fund, NAV, holding,
 analytics, review or original-source record is edited or deleted. All prior
 registries, parser bytes and executable database branches remain frozen.
 
+This branch inherits the reviewed #91 Kotak known-document authority, including
+its explicit unavailable-discovery provenance and expiry before November. The
+entire Kotak/SBI/ABSL executable tail in migration 041 is byte-identical to the
+reviewed migration 040; UTI does not relax or replace that authority. The
+separate [failed-attempt recovery record](evidence/FS10_CATALOGUE_DISCOVERY_RECOVERY_2026-10-17.md)
+remains retained. This implementation is not permission to push or roll out UTI
+before actual Kotak DEV acceptance.
+
+Current deterministic pins after that inheritance:
+
+- Source-v3 configuration: `addd97f4c2acbf7a66b72ca2c0ffa61b7bae5242f69c36c8b8ed7f2bbb3eec7f`.
+- Source-v4 configuration: `6fb6c0c804a1dac20e4e2c4aa25f3cd107ce7c58517164409ae2da52e97869d4`.
+- Policy-v7 hash: `38be4edfda0fedfe2156c203b685e06b7e15589bf1c88b752d5e095b5c9786b7`.
+- Migration 041: `ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702`.
+
 Use the production UTI catalogue and its exact **English Active and Passive**
 PDF rows for each of two editions. Hindi is never fetched as a fallback or
 translated. Retain all four original PDFs and returned AMFI identity XMLs in

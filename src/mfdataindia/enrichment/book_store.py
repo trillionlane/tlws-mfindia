@@ -27,7 +27,7 @@ MIGRATIONS = {
     ),
     4: (
         "041_uti_book_evidence.sql",
-        "2ab32813b46ee36d37cde86bf1f8278cf68c2fb85c2f0199d6041add8e57666b",
+        "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702",
     ),
 }
 TABLES = {"configuration", "sources", "batches", "runs", "transitions"}
