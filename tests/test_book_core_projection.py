@@ -11,6 +11,7 @@ from mfdataindia.enrichment import (
     book_preservation,
     book_projection,
     book_runtime,
+    book_sources,
     book_store,
     book_upgrade,
     current_facts_store as current,
@@ -40,6 +41,11 @@ def test_reviewed_sql_is_pinned_and_does_not_rewrite_previous_sources(tmp_path):
 def test_full_facade_values_columns_and_all_old_amc_rows_identical_then_recovery(
     verified_db, monkeypatch
 ):
+    # Historical SBI equivalence proof: later AMC source authorities have not
+    # been installed by this fixture. Their upgrades have separate tests.
+    monkeypatch.setattr(
+        book_sources, "REGISTRIES", {k: v for k, v in book_sources.REGISTRIES.items() if k <= 2}
+    )
     accepted_fs08(verified_db, monkeypatch)
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")

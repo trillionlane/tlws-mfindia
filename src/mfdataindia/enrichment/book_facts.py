@@ -70,7 +70,7 @@ def compile_batch(source_key, identities, monthly, summary, *, as_of, source_url
 
 def coverage(batch):
     rows = batch["observations"]
-    return {
+    result = {
         "batch_id": batch["batch_id"],
         "disclosure_as_of": batch["disclosure_as_of"],
         "population_hash": batch["population_hash"],
@@ -88,3 +88,10 @@ def coverage(batch):
         "verification_status": "needs_verification",
         "all_fields_complete": False,
     }
+    if batch["source_key"] == "kotak-expanded":
+        result.update(
+            expected_recent_reporting_periods=batch["expected_recent_reporting_periods"],
+            single_fund_historical_disclosure=batch["single_fund_historical_disclosure"],
+            reporting_date_authority="actual_source_text_not_filename_or_URL",
+        )
+    return result

@@ -11,6 +11,12 @@ from mfdataindia.enrichment.book_certification import expectation
 from mfdataindia.review.policy import fingerprint
 
 
+@pytest.fixture(autouse=True)
+def frozen_sbi_certification_authority(monkeypatch):
+    """This historical envelope certifies v2, not a newer AMC's scope."""
+    monkeypatch.setattr(book_sources, "CURRENT_VERSION", 2)
+
+
 def fixture():
     manifest = SimpleNamespace(
         seal="synthetic-not-DEV", cohort=[100001, 101763, 103173, 103174, 103215, 103216, 102272]
