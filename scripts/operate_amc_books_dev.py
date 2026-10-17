@@ -2,12 +2,12 @@
 """Owner-only registered whole-AMC operations; help performs no cloud access."""
 
 import argparse
-import json
 import os
 import sys
 
 from mfdataindia.enrichment.book_deployment import execute
 from mfdataindia.review.rollout import Manifest
+from mfdataindia.review.evidence_transport import render_evidence
 
 
 if __name__ == "__main__":
@@ -16,13 +16,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         print(
-            json.dumps(
+            render_evidence(
                 execute(
                     Manifest.model_validate_json(os.environ["REVIEW_MANIFEST"]),
                     os.environ,
                     args.operation,
                 ),
-                sort_keys=True,
             ),
             flush=True,
         )

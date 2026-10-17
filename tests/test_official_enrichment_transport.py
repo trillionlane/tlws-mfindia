@@ -59,6 +59,69 @@ def test_one_numeric_address_no_proxy_cookie_or_query_transport(monkeypatch):
     assert "Cookie" not in calls[0]["headers"] and "Authorization" not in calls[0]["headers"]
 
 
+def test_dual_stack_prefers_public_ipv4_not_lexically_first_ipv6(monkeypatch):
+    calls = transport(monkeypatch, [Response()])
+    monkeypatch.setattr(
+        acquisition.socket,
+        "getaddrinfo",
+        lambda *a, **k: [
+            (10, 1, 6, "", ("2600:1409:9800::1", 443, 0, 0)),
+            (2, 1, 6, "", ("49.44.10.20", 443)),
+        ],
+    )
+    acquisition.fetch("https://official.example/facts", ["official.example"])
+    assert calls[0]["address"] == "49.44.10.20"
+
+
+def test_ipv4_preference_still_rejects_any_private_ipv6_answer(monkeypatch):
+    calls = transport(monkeypatch, [Response()])
+    monkeypatch.setattr(
+        acquisition.socket,
+        "getaddrinfo",
+        lambda *a, **k: [
+            (2, 1, 6, "", ("49.44.10.20", 443)),
+            (10, 1, 6, "", ("fd00::1", 443, 0, 0)),
+        ],
+    )
+    with pytest.raises(ValueError, match="non-public"):
+        acquisition.fetch("https://official.example/facts", ["official.example"])
+    assert calls == []
+
+
+def test_ipv6_only_public_source_stays_pinned(monkeypatch):
+    calls = transport(monkeypatch, [Response()])
+    monkeypatch.setattr(
+        acquisition.socket,
+        "getaddrinfo",
+        lambda *a, **k: [
+            (10, 1, 6, "", ("2600:1409:9800::1", 443, 0, 0)),
+        ],
+    )
+    acquisition.fetch("https://official.example/facts", ["official.example"])
+    assert calls[0]["address"] == "2600:1409:9800::1"
+
+
+def test_transport_failure_does_not_rotate_addresses_or_retry(monkeypatch):
+    calls = transport(monkeypatch, [Response()])
+    monkeypatch.setattr(
+        acquisition.socket,
+        "getaddrinfo",
+        lambda *a, **k: [
+            (2, 1, 6, "", ("49.44.10.20", 443)),
+            (2, 1, 6, "", ("96.17.150.144", 443)),
+        ],
+    )
+
+    def fail(host, address, timeout):
+        calls.append(address)
+        raise OSError("fixture-only connection failure")
+
+    monkeypatch.setattr(acquisition, "PinnedHTTPS", fail)
+    with pytest.raises(OSError):
+        acquisition.fetch("https://official.example/facts", ["official.example"])
+    assert calls == ["49.44.10.20"]
+
+
 @pytest.mark.parametrize(
     "location",
     [

@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 
 from mfdataindia.review.rollout import API_SA, CALLER_SA, CONNECTION, PROJECT, REGION, SERVICE, Manifest, service_origin
+from mfdataindia.review.evidence_transport import execution_evidence
 
 REVIEW_FACTORY = 'mfdataindia.review.app:create_review_app'
 RESEARCH_FACTORY = 'mfdataindia.review.app:create_research_app'
@@ -243,19 +244,7 @@ class Cloud:
                     raise ValueError('execution credential secret/version differs')
         logs = self.command('logging', 'read', 'resource.type="cloud_run_job" AND labels."run.googleapis.com/execution_name"="' + execution['metadata']['name'] + '"',
                             '--project=' + PROJECT, '--format=json', '--limit=100', json_output=True)
-        evidence = []
-        for log in logs:
-            value = log.get('jsonPayload')
-            if value is None and log.get('textPayload'):
-                try:
-                    value = json.loads(log['textPayload'])
-                except ValueError:
-                    continue
-            if isinstance(value, dict) and value.get('format') == 'mfdata-review-rollout-evidence-v1':
-                evidence.append(value)
-        if len(evidence) != 1:
-            raise ValueError('require exactly one structured execution certificate')
-        return execution, evidence[0]
+        return execution, execution_evidence(logs)
 
 
 def verify_service(service):

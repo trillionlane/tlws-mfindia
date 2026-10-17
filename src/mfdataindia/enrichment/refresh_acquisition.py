@@ -39,7 +39,11 @@ def fetch(url, *, book=False, catalog_api=False):
         raise ValueError("fixed official landing required")
     parsed = urlsplit(url)
     addresses = sorted(
-        {r[4][0] for r in socket.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM)}
+        {r[4][0] for r in socket.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM)},
+        key=lambda address: (
+            ipaddress.ip_address(address).version,
+            ipaddress.ip_address(address).packed,
+        ),
     )
     if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
         raise ValueError("official source DNS not public")

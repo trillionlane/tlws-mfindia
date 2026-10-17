@@ -9,19 +9,40 @@ URL = "https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/fac
 
 @pytest.mark.parametrize(
     "fault",
-    ["none", "redirect", "compressed", "wrong_media", "large", "short", "private_dns", "not_pdf"],
+    [
+        "none",
+        "redirect",
+        "compressed",
+        "wrong_media",
+        "large",
+        "short",
+        "private_dns",
+        "not_pdf",
+        "dual_stack",
+        "mixed_private_ipv6",
+    ],
 )
 def test_book_fetch_pins_public_dns_and_rejects_unsafe_or_incomplete_transport(monkeypatch, fault):
     raw = b"%PDF-fixture" if fault != "not_pdf" else b"HTML not PDF"
     address = "127.0.0.1" if fault == "private_dns" else "8.8.8.8"
+    addresses = [address]
+    if fault == "dual_stack":
+        addresses = ["2600:1409:9800::1", "96.17.150.144"]
+    if fault == "mixed_private_ipv6":
+        addresses.append("fd00::1")
     monkeypatch.setattr(
-        acquisition.socket, "getaddrinfo", lambda *a, **k: [(0, 0, 0, "", (address, 443))]
+        acquisition.socket,
+        "getaddrinfo",
+        lambda *a, **k: [(0, 0, 0, "", (a, 443)) for a in addresses],
     )
     calls = []
 
     class Connection:
         def __init__(self, host, pinned, timeout):
-            assert pinned == "8.8.8.8" and timeout == 120
+            assert (
+                pinned == ("96.17.150.144" if fault == "dual_stack" else "8.8.8.8")
+                and timeout == 120
+            )
             self.sock = SimpleNamespace(settimeout=lambda value: None)
             self.chunks = [raw, b""]
 
@@ -47,9 +68,9 @@ def test_book_fetch_pins_public_dns_and_rejects_unsafe_or_incomplete_transport(m
             pass
 
     monkeypatch.setattr(acquisition, "PinnedHTTPS", Connection)
-    if fault == "none":
+    if fault in ("none", "dual_stack"):
         assert acquisition.fetch(URL, book=True)["content"] == raw
     else:
         with pytest.raises(ValueError):
             acquisition.fetch(URL, book=True)
-    assert len(calls) == (0 if fault == "private_dns" else 1)
+    assert len(calls) == (0 if fault in ("private_dns", "mixed_private_ipv6") else 1)
