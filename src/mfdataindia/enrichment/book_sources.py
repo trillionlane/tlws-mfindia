@@ -59,15 +59,15 @@ def registry(version=None, root=None):
     return document
 
 
-def source(key):
-    matches = [s for s in registry()["sources"] if s["key"] == key]
+def source(key, *, version=None):
+    matches = [s for s in registry(version)["sources"] if s["key"] == key]
     if len(matches) != 1:
         raise ValueError("registered whole-AMC source key required")
     return matches[0]
 
 
-def specification(key):
-    item = deepcopy(source(key))
+def specification(key, *, version=None):
+    item = deepcopy(source(key, version=version))
     item["parser_policy"] = absl_expansion.policy()
     item["parser_policy_hash"] = fingerprint(item["parser_policy"])
     item["parser_engine_hash"] = hashlib.sha256(
@@ -76,12 +76,15 @@ def specification(key):
     return item
 
 
-def configuration():
-    document = registry()
+def configuration(version=None):
+    document = registry(version)
     return {
         "registry": document,
         "registry_hash": fingerprint(document),
-        "source_specifications": {s["key"]: specification(s["key"]) for s in document["sources"]},
+        "source_specifications": {
+            s["key"]: specification(s["key"], version=document["version"])
+            for s in document["sources"]
+        },
     }
 
 
@@ -96,6 +99,7 @@ def current_policy(version=None):
             else current_policy(document["version"] - 1)
         ),
         book_source_registry_hash=fingerprint(document),
+        book_source_configuration_hash=fingerprint(configuration(document["version"])),
         scope="retained v3 assertion graph plus approved exact-identity whole-AMC book observations",
         publication_boundary="only complete receipted fund/period batches; frozen pilot excluded from replacement; unavailable fields never erase prior usable values",
     )

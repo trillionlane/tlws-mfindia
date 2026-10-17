@@ -5,7 +5,7 @@ WITH active_authority AS MATERIALIZED (
     JOIN mf_review.policies policy USING(policy_hash)
     CROSS JOIN LATERAL (
         SELECT document FROM mf_book_facts.configuration source
-        WHERE source.document->>'registry_hash'=policy.document->>'book_source_registry_hash'
+        WHERE source.configuration_hash=policy.document->>'book_source_configuration_hash'
         ORDER BY source.generation DESC LIMIT 1
     ) source
     WHERE active_config.generation=(SELECT max(generation) FROM mf_live_facts.configuration)

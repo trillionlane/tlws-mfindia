@@ -80,7 +80,11 @@ inventory, not a silent redefinition of those historical counts.
 Current policy v4 retains the exact accepted v3 graph and its existing pilot
 and HDFC values. Its parent policy is v3. Each current assertion must match a
 source key and exact specification in the immutable registry selected by the
-active current-policy document, not merely the latest installed registry.
+active current-policy document, not merely the latest installed registry. The
+policy binds the complete compiled configuration hash (including parser policy
+and engine hashes), so reusing a registry hash with a different parser cannot
+activate new interpretation implicitly. Historical registry files and their
+versioned adapters remain frozen for recognition and recovery.
 Thus installing/staging another source cannot publish it as current before
 its own owner-approved activation; restoring an earlier active policy excludes
 later sources without deleting their retained historical evidence. Wider

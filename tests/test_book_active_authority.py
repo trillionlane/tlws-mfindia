@@ -73,8 +73,9 @@ def test_retained_cohort_never_falls_into_book_projection_after_identity_drift(
 
 
 @pytest.mark.postgres
+@pytest.mark.parametrize("same_registry_new_parser", [False, True])
 def test_staged_future_source_and_registry_replay_cannot_leak_into_active_policy(
-    verified_db, monkeypatch
+    verified_db, monkeypatch, same_registry_new_parser
 ):
     identities, inputs, _ = prepared(verified_db, monkeypatch)
     first = publish(verified_db, identities, inputs)
@@ -95,13 +96,16 @@ def test_staged_future_source_and_registry_replay_cannot_leak_into_active_policy
         )
     original = book_sources.configuration()
     staged = deepcopy(original)
-    key = "future-source-fixture"
+    key = KEY if same_registry_new_parser else "future-source-fixture"
     specification = deepcopy(staged["source_specifications"][KEY])
     specification.update(key=key, archive_prefix="official-monthly-facts/" + key + "/")
+    if same_registry_new_parser:
+        specification["parser_engine_hash"] = "f" * 64
     staged["source_specifications"][key] = specification
-    staged["registry"]["sources"].append({**staged["registry"]["sources"][0], "key": key})
-    staged["registry"]["version"] = 2
-    staged["registry"]["maximum_sources_per_execution"] = 4
+    if not same_registry_new_parser:
+        staged["registry"]["sources"].append({**staged["registry"]["sources"][0], "key": key})
+        staged["registry"]["version"] = 2
+        staged["registry"]["maximum_sources_per_execution"] = 4
     staged["registry_hash"] = fingerprint(staged["registry"])
     with psycopg.connect(verified_db) as conn:
         conn.execute(
@@ -154,12 +158,9 @@ def test_staged_future_source_and_registry_replay_cannot_leak_into_active_policy
         assert field["disclosure_as_of"] == "2026-09-30"
         assert field["source_count"] == 1
         assert field["sources"][0]["batch_id"] == inputs[0][0]["batch_id"]
-        assert (
-            conn.execute(
-                "SELECT count(*) AS n FROM mf_book_facts.runs WHERE source_key=%s", (key,)
-            ).fetchone()["n"]
-            == 1
-        )
+        assert conn.execute(
+            "SELECT count(*) AS n FROM mf_book_facts.runs WHERE source_key=%s", (key,)
+        ).fetchone()["n"] == (2 if same_registry_new_parser else 1)
         book_projection.recover(conn, ROOT, activation["transition_id"])
     # Restore the previous registry as a new immutable owner generation, then
     # reactivate. Replayed matching registry hashes must not duplicate sources.
@@ -180,7 +181,8 @@ def test_staged_future_source_and_registry_replay_cannot_leak_into_active_policy
         assert field["disclosure_as_of"] == "2026-09-30" and field["source_count"] == 1
         assert (
             conn.execute(
-                "SELECT count(*) AS n FROM mf_book_facts.batches WHERE source_key=%s", (key,)
+                "SELECT count(*) AS n FROM mf_book_facts.batches WHERE batch_id=ANY(%s)",
+                ([b["batch_id"] for b in batches],),
             ).fetchone()["n"]
             == 2
         )
