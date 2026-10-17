@@ -1,5 +1,20 @@
 -- Retain the exact accepted v3 graph; aggregate equal-date book assertions.
 CREATE OR REPLACE VIEW mf_live_facts.field_versions AS
+WITH active_authority AS MATERIALIZED (
+    SELECT source.document FROM mf_live_facts.configuration active_config
+    JOIN mf_review.policies policy USING(policy_hash)
+    CROSS JOIN LATERAL (
+        SELECT document FROM mf_book_facts.configuration source
+        WHERE source.configuration_hash=policy.document->>'book_source_configuration_hash'
+        ORDER BY source.generation DESC LIMIT 1
+    ) source
+    WHERE active_config.generation=(SELECT max(generation) FROM mf_live_facts.configuration)
+), registered_specs AS MATERIALIZED (
+    SELECT source.key AS source_key,source.value->'preserved_projection_codes' AS preserved_codes,
+        encode(sha256(convert_to(mf_review.canonical_json(source.value),'UTF8')),'hex') AS specification_hash
+    FROM active_authority authority
+    CROSS JOIN LATERAL jsonb_each(authority.document->'source_specifications') source
+)
 SELECT * FROM mf_book_facts.prior_field_versions
 UNION ALL
 SELECT code,field,as_of,
@@ -22,11 +37,14 @@ FROM (
             'field_effective_date',k.value->>'field_effective_date',
             'detail_page',x.value->'result'->'detail_page','changes_page',x.value->'result'->'changes_page') AS evidence
     FROM mf_book_facts.batches b
+    JOIN registered_specs registered ON registered.source_key=b.source_key
+        AND registered.specification_hash=b.document->>'specification_hash'
     CROSS JOIN LATERAL jsonb_array_elements(b.document->'observations') x
     CROSS JOIN LATERAL jsonb_each(x.value->'result'->'fields') k
     JOIN mf.funds f ON f.amfi_scheme_code=(x.value->'identity'->>'code')::integer
     JOIN mf.amcs a USING(amc_id)
     WHERE EXISTS(SELECT 1 FROM mf_book_facts.runs r WHERE r.status<>'failed' AND r.document->'batch_ids' ? b.batch_id)
+    AND NOT (registered.preserved_codes @> jsonb_build_array(f.amfi_scheme_code))
     AND NOT EXISTS(SELECT 1 FROM mf_book_facts.prior_field_versions p WHERE p.code=f.amfi_scheme_code)
     AND f.in_scope
     AND x.value->'identity'=jsonb_build_object('code',f.amfi_scheme_code,'amc',a.amfi_amc_name,

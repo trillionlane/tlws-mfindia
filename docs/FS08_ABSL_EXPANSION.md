@@ -78,7 +78,24 @@ namespace counters retain their original meaning; v9 is the broader book
 inventory, not a silent redefinition of those historical counts.
 
 Current policy v4 retains the exact accepted v3 graph and its existing pilot
-and HDFC values. Wider exact-identity assertions are grouped per fund/field/date:
+and HDFC values. Its parent policy is v3. Each current assertion must match a
+source key and exact specification in the immutable registry selected by the
+active current-policy document, not merely the latest installed registry. The
+policy binds the complete compiled configuration hash (including parser policy
+and engine hashes), so reusing a registry hash with a different parser cannot
+activate new interpretation implicitly. Historical registry files and their
+versioned adapters remain frozen for recognition and recovery.
+Thus installing/staging another source cannot publish it as current before
+its own owner-approved activation; restoring an earlier active policy excludes
+later sources without deleting their retained historical evidence. Wider
+exact-identity assertions are grouped per fund/field/date:
+
+The retained cohort `[101763, 103173, 103174]` is explicitly protected by the
+new source authority, not only by presence in the prior live view. If an old
+mapping's identity changes and disappears from that view, a broad-book gap or
+assertion still cannot silently take over its current projection. Existing
+identity-change warnings survive; changing the protected cohort requires a
+separately reviewed authority version.
 equal assertions corroborate; conflicting or unavailable later evidence retains
 the previous usable dated value, otherwise the legacy baseline. Metadata states
 the unresolved conflict/gap. Existing core scalar aliases consume this same
