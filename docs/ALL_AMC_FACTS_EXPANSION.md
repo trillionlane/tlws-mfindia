@@ -115,6 +115,13 @@ retained/in-scope/defunct population during private HTTP certification.
 
 ## DEV acceptance still required after merge
 
+FS-08–FS-11 were approved on 2026-10-17, in this order and as separate PRs.
+The whole-AMC batch boundary, explicit per-period gaps, additive private v9
+contract and preservation/recovery drill are specified in
+[FS-08 ABSL expansion](FS08_ABSL_EXPANSION.md). Approval is not evidence of
+merge, source publication or runtime acceptance; each sprint records those
+separately before proceeding to its next deployment.
+
 FS-07 implementation and controlled acceptance are specified in
 [the registered-source runbook](FS07_REGISTERED_SOURCE_ROLLOUT.md). Its second
 bounded proof is HDFC, not whole-SBI onboarding: the SBI catalogue rejected the

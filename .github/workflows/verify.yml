@@ -74,6 +74,7 @@ jobs:
           uv run python scripts/export_fact_verification_openapi.py --check
           uv run python scripts/export_amc_coverage_openapi.py --check
           uv run python scripts/export_multi_amc_openapi.py --check
+          uv run python scripts/export_amc_book_openapi.py --check
 
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
@@ -88,6 +89,9 @@ jobs:
           uv run python scripts/operate_registered_facts_dev.py --help
           uv run python scripts/refresh_registered_facts_dev.py --help
           uv run python scripts/certify_registered_facts_dev.py --help
+          uv run python scripts/refresh_amc_books_dev.py --help
+          uv run python scripts/operate_amc_books_dev.py --help
+          uv run python scripts/certify_amc_books_dev.py --help
 
       - name: Audit Python dependencies
         run: uv run pip-audit
@@ -318,3 +322,13 @@ jobs:
           docker build --build-arg VCS_REF="${{ github.sha }}" --file Dockerfile.review-tools --tag "$tools_image" .
           docker run --rm --entrypoint pg_dump "$tools_image" --version | grep -F 'PostgreSQL) 18.'
           docker run --rm --entrypoint python "$tools_image" -c 'from mfdataindia.review.regional_backup import NativePg18; from pathlib import Path; assert Path("/app/scripts/backup_verified_review_dev.py").is_file()'
+
+      - name: Verify dormant complete-AMC book profile and bounded decoder
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" -c \
+            'import io; from pathlib import Path; from pypdf import PdfWriter; from mfdataindia.review.app import create_amc_books_app; from mfdataindia.enrichment import amc_book_pdf,book_sources,book_store; assert len(create_amc_books_app("postgresql://fixture:fixture@127.0.0.1:1/fixture").openapi()["paths"])==52; assert book_sources.registry()["maximum_sources_per_execution"]==3; book_store.migration_source(); assert Path("/app/contracts/mfdataindia-amc-books-v1.json").is_file(); w=PdfWriter(); w.add_blank_page(width=200,height=200); b=io.BytesIO(); w.write(b); assert amc_book_pdf.extract(b.getvalue())["whole_document_semantic_coverage"] is False'
+          docker run --rm --entrypoint python "$image" /app/scripts/refresh_amc_books_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/operate_amc_books_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_books_dev.py --help
