@@ -49,6 +49,34 @@ counts this supplemental field separately from the five existing scalar fields.
 Every observation remains `needs_verification`; source validation creates no
 human review decision. Adjusted IDCW analytics remain disabled.
 
+## Read-only breadth preview, not acceptance
+
+On 2026-10-17 an ordinary GCP DEV network diagnostic attempted all 81 candidate
+families, retaining 128 actual index/XML responses and 17 availability gaps.
+It used the already-merged public AMFI transport without database credentials,
+source publication, network retries or access-control bypass. The same larger
+discovery attempted locally hit its unchanged 520-second bound; that failed
+local attempt is retained, not counted as accepted evidence.
+
+Compiling those actual GCP identity responses against the four retained English
+books and the complete read-only local cohort produced, for **each** of the
+September and August 2026 reporting periods:
+
+- 208 retained variants; 80 usable observations and 128 explicit gaps.
+- 78 closing-AUM values, 80 benchmarks, 80 manager blocks, and 78 separately
+  labelled Regular TER observations. September has four explicit same-fund risk
+  observations; the older book does not supply those matching cover dates.
+- Gaps: 48 missing exact bridges, 40 variant-identity conflicts, two family
+  conflicts, 15 missing/ambiguous monthly headings and 23 unsupported current
+  identities. No matching or source-correction rule was weakened to clear them.
+
+All independent current/older-book and TER/basis references passed. This preview
+combines retained books/directory with actual GCP identity acquisition; it does
+**not** refetch the whole source process under the final image, create verified
+archive generations, exercise live publication, or establish DEV acceptance.
+The full sequential gates below remain mandatory. `Usable` is not all-fields
+complete, human-verified, economically complete, or permission for IDCW analytics.
+
 ## Sequential DEV acceptance
 
 1. Review, full exact-head CI and normal merge, then verify both immutable
