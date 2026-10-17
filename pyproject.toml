@@ -23,6 +23,7 @@ dependencies = [
     "PyJWT[crypto]>=2.10.1",
     "pypdf>=6.20.1,<7",
     "xlrd==2.0.2",
+    "defusedxml==0.7.1",
 ]
 
 [project.optional-dependencies]

@@ -469,13 +469,16 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             return run(lambda conn:multi_store.get(conn,code))
 
     if amc_books:
-        from mfdataindia.enrichment import book_sources, book_store, book_schemas
+        from mfdataindia.enrichment import book_store, book_schemas
         from mfdataindia.review.policy import fingerprint
 
         @app.get('/api/enrichment/v9/policy', response_model=book_schemas.BookPolicy)
         def amc_book_policy(principal: Principal = Depends(identity)):
-            document = book_sources.configuration()
-            return {'configuration_hash': fingerprint(document), 'document': document}
+            def installed_policy(conn):
+                book_store.verify_acl(conn)
+                row = book_store.installed_configuration(conn)
+                return {'configuration_hash': row['configuration_hash'], 'document': row['document']}
+            return run(installed_policy)
 
         @app.get('/api/enrichment/v9/coverage', response_model=book_schemas.BookStatus)
         def amc_book_coverage(principal: Principal = Depends(identity)):

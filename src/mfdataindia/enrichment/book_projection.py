@@ -16,6 +16,13 @@ from mfdataindia.review.policy import fingerprint
 
 PROJECTION = "amc_book_current_projection.sql.inc"
 PROJECTION_SHA256 = "b6d98a57b40dbbcda400b26adf87218b697b8a00aaa3f013a52b3853bcb9aa82"
+PROJECTIONS = {
+    1: (PROJECTION, PROJECTION_SHA256),
+    2: (
+        "amc_book_current_projection_v2.sql.inc",
+        "f0132c7dc486a51de188553946ae46f18bceb2abbc8c7e7a08b3fecf08c1f72d",
+    ),
+}
 
 
 def transition(conn, body):
@@ -24,17 +31,43 @@ def transition(conn, body):
 
 
 def check(conn, reviewed):
-    if current.policy_document(
-        conn
-    ) != book_sources.current_policy() or not current.projection_state(conn):
+    version = book_store.installed_configuration(conn)["document"]["registry"]["version"]
+    if current.policy_document(conn) != book_sources.current_policy(
+        version
+    ) or not current.projection_state(conn):
         raise ValueError("registered book projection required")
     if not isinstance(reviewed, list) or not 1 <= len(reviewed) <= 10:
         raise ValueError("bounded independent original-field references required")
     if len({r["code"] for r in reviewed}) != len(reviewed):
         raise ValueError("distinct reviewed fund samples required")
     for sample in reviewed:
-        if set(sample) != {"code", "batch_id", "as_of", "values"} or not sample["values"]:
+        keys = {"code", "batch_id", "as_of", "values"}
+        if version > 1:
+            keys.add("source_values")
+        if set(sample) != keys or not sample["values"]:
             raise ValueError("nonempty reviewed fields and dated batch reference required")
+        if version > 1:
+            if not isinstance(sample["source_values"], dict) or set(sample["source_values"]) != set(
+                sample["values"]
+            ):
+                raise ValueError("separate original-token and canonical-value references required")
+            matches = [
+                r
+                for r in book_store.fund(conn, sample["code"])["observations"]
+                if r["batch_id"] == sample["batch_id"]
+            ]
+            if (
+                len(matches) != 1
+                or not matches[0]["current_identity_matches"]
+                or matches[0]["disclosure_as_of"] != sample["as_of"]
+            ):
+                raise ValueError("exact original source sample required")
+            for key, value in sample["source_values"].items():
+                actual = matches[0]["result"]["fields"].get(key)
+                if not actual or actual["status"] != "accepted" or actual["value"] != value:
+                    raise ValueError(
+                        "original source disagrees with independent raw-token reference"
+                    )
         doc = current.get(conn, sample["code"])
         for field, value in sample["values"].items():
             actual = doc["fields"].get(field)
@@ -53,6 +86,9 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
     with conn.transaction():
         owner(conn)
         book_store.verify_acl(conn, principal="mfdata_verified_reader")
+        version = book_store.installed_configuration(conn)["document"]["registry"]["version"]
+        if version != book_sources.CURRENT_VERSION:
+            raise ValueError("latest reviewed source authority must be installed before activation")
         prior = current.configuration(conn)
         if fingerprint(dict(prior)) != expected_configuration_hash:
             raise ValueError("approved prior configuration changed before book activation")
@@ -61,17 +97,27 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
             return {"status": "ALREADY_ACTIVE", "source_rows_changed": 0}
         if prior["policy_hash"] != fingerprint(
             multi_facts.current_policy()
+            if version == 1
+            else book_sources.current_policy(version - 1)
         ) or not current.projection_state(conn):
-            raise ValueError("accepted active v3 baseline required")
+            raise ValueError("accepted previous active book baseline required")
         status = book_store.status(conn)
         if any(
             not s["population_matches_latest_success"] or len(s["periods"]) != 2
             for s in status["sources"]
         ):
             raise ValueError("complete current two-period source receipts required")
-        raw = (root / "sql/optional" / PROJECTION).read_text()
-        if hashlib.sha256(raw.encode()).hexdigest() != PROJECTION_SHA256:
+        projection, projection_hash = PROJECTIONS[version]
+        raw = (root / "sql/optional" / projection).read_text()
+        if hashlib.sha256(raw.encode()).hexdigest() != projection_hash:
             raise ValueError("book projection differs from reviewed pin")
+        source_upgrade = None
+        if version > 1:
+            from mfdataindia.enrichment import book_upgrade
+
+            source_upgrade = book_upgrade.prior_upgrade(conn, version)
+            if source_upgrade["prior_current_configuration_hash"] != fingerprint(dict(prior)):
+                raise ValueError("source upgrade was reviewed against a different prior graph")
         intent = transition(
             conn,
             {
@@ -80,6 +126,7 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
                 "prior_configuration": dict(prior),
                 "prior_core_definition": current.view_definition(conn, "mf.current_fund_facts"),
                 "to_generation": prior["generation"] + 1,
+                **({"source_upgrade_intent": source_upgrade} if source_upgrade else {}),
             },
         )
         conn.execute(raw)
@@ -120,10 +167,14 @@ def recover(conn, root, activation_id):
             raise ValueError("book recovery intent differs")
         prior = doc["prior_configuration"]
         if (
-            prior["policy_hash"] != fingerprint(multi_facts.current_policy())
+            prior["policy_hash"]
+            not in {
+                fingerprint(multi_facts.current_policy()),
+                *(fingerprint(p) for p in book_sources.current_policies()),
+            }
             or doc["prior_core_definition"] != prior["view_definitions"]["resolved"]
         ):
-            raise ValueError("sealed active prior v3 graph required")
+            raise ValueError("sealed recognized historical prior graph required")
         latest = conn.execute(
             "SELECT generation FROM mf_live_facts.configuration ORDER BY generation DESC LIMIT 1"
         ).fetchone()["generation"]
@@ -174,6 +225,10 @@ def recover(conn, root, activation_id):
             prior["policy_hash"],
             prior["view_definitions"],
         )
+        if doc.get("source_upgrade_intent"):
+            from mfdataindia.enrichment import book_upgrade
+
+            book_upgrade.restore(conn, doc["source_upgrade_intent"])
         result = transition(
             conn,
             {

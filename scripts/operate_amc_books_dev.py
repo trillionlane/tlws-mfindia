@@ -12,7 +12,9 @@ from mfdataindia.review.evidence_transport import render_evidence
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["install", "activate", "recover", "inspect"])
+    parser.add_argument(
+        "operation", choices=["install", "activate", "recover", "recover-source", "inspect"]
+    )
     args = parser.parse_args()
     try:
         print(

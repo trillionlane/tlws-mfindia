@@ -222,3 +222,49 @@ def test_actual_execution_verifier_keeps_runtime_checks_before_log_decode(drift)
     else:
         actual, doc = boundary.inspect_execution(*args)
         assert actual == observed and doc == certificate() and boundary.logs_read == 1
+
+
+@pytest.mark.parametrize("mode", ["delayed", "absent", "duplicate", "malformed", "drift_after_wait", "api_failure"])
+def test_execution_delivery_wait_is_bounded_and_only_absence_is_retryable(monkeypatch, mode):
+    waits = []
+    monkeypatch.setattr("mfdataindia.review.rollout_cloud.time.sleep", waits.append)
+
+    class Boundary(Cloud):
+        reads = 0
+        metadata_reads = 0
+
+        def command(self, *args, **kwargs):
+            if args[:2] == ("logging", "read"):
+                self.reads += 1
+                if mode == "api_failure":
+                    raise RuntimeError("fixture API unavailable")
+                if mode == "duplicate":
+                    return [{"jsonPayload": envelope()}, {"jsonPayload": envelope()}]
+                if mode == "malformed":
+                    return [{"jsonPayload": {"format": "mfdata-review-evidence-transport-v1"}}]
+                if mode == "delayed" and self.reads == 3:
+                    return [{"jsonPayload": envelope()}]
+                return []
+            assert args[:4] == ("run", "jobs", "executions", "describe")
+            self.metadata_reads += 1
+            value = execution()
+            if mode == "drift_after_wait" and self.metadata_reads == 2:
+                value["spec"]["template"]["spec"]["serviceAccountName"] = "privileged"
+            return value
+
+    boundary = Boundary()
+    arguments = (manifest(), "fixture-execution", "fixture-reader", ["fixture.py"],
+                 {"DEPLOYMENT_GIT_SHA": manifest().git_sha}, [])
+    if mode == "delayed":
+        _, doc = boundary.inspect_execution(*arguments)
+        assert doc == certificate() and boundary.reads == boundary.metadata_reads == 3
+        assert waits == [5, 5]
+    else:
+        with pytest.raises((ValueError, RuntimeError)):
+            boundary.inspect_execution(*arguments)
+        if mode == "absent":
+            assert boundary.reads == boundary.metadata_reads == 6 and waits == [5] * 5
+        elif mode == "drift_after_wait":
+            assert boundary.reads == 1 and boundary.metadata_reads == 2 and waits == [5]
+        else:
+            assert boundary.reads == boundary.metadata_reads == 1 and waits == []

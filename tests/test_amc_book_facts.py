@@ -40,6 +40,12 @@ KEY = "absl-expanded"
 NOW = datetime(2026, 10, 17, tzinfo=timezone.utc)
 
 
+@pytest.fixture(autouse=True)
+def frozen_fs08_authority(monkeypatch):
+    """These are historical v1 proofs, not an incomplete v2 source certificate."""
+    monkeypatch.setattr(book_sources, "CURRENT_VERSION", 1)
+
+
 def test_contract_is_additive_and_private_without_configured_verifier():
     from fastapi.testclient import TestClient
 
@@ -194,6 +200,7 @@ def fixtures(identities, summary_raw):
 
 
 def prepared(dsn, monkeypatch):
+    monkeypatch.setattr(book_sources, "CURRENT_VERSION", 1)
     originals, archives, _ = setup_prior(dsn, monkeypatch)
     publish_prior(dsn, originals, archives)
     snapshot = hdfc_monthly.derive(

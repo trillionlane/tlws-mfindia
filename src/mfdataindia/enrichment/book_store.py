@@ -15,6 +15,13 @@ from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
 MIGRATION = "038_amc_book_facts.sql"
 SCHEMA_SHA256 = "62a526c54d1d069ed1f68e0a681e1110ede700249051ff4de57bf97675dd8928"
+MIGRATIONS = {
+    1: (MIGRATION, SCHEMA_SHA256),
+    2: (
+        "039_sbi_book_evidence.sql",
+        "64618433ce87e5b81f3ebbe072576803c63d2a6ca58643551d602053a76b05b7",
+    ),
+}
 TABLES = {"configuration", "sources", "batches", "runs", "transitions"}
 APPEND = {"sources", "batches", "runs"}
 
@@ -23,16 +30,32 @@ def installed(conn):
     return bool(conn.execute("SELECT to_regnamespace('mf_book_facts') AS name").fetchone()["name"])
 
 
-def migration_source(root=None):
+def migration_source(root=None, *, version=1):
+    filename, digest = MIGRATIONS[version]
     root = root or (
         Path("/app")
-        if (Path("/app/sql/optional") / MIGRATION).is_file()
+        if (Path("/app/sql/optional") / filename).is_file()
         else Path(__file__).resolve().parents[3]
     )
-    raw = (root / "sql/optional" / MIGRATION).read_text()
-    if hashlib.sha256(raw.encode()).hexdigest() != SCHEMA_SHA256:
+    raw = (root / "sql/optional" / filename).read_text()
+    if hashlib.sha256(raw.encode()).hexdigest() != digest:
         raise ValueError("book migration differs from reviewed pin")
     return raw
+
+
+def installed_configuration(conn):
+    row = conn.execute(
+        "SELECT generation,configuration_hash,document FROM mf_book_facts.configuration ORDER BY generation DESC LIMIT 1"
+    ).fetchone()
+    version = row["document"].get("registry", {}).get("version") if row else None
+    if (
+        type(version) is not int
+        or version not in book_sources.REGISTRIES
+        or row["document"] != book_sources.configuration(version)
+        or row["configuration_hash"] != fingerprint(row["document"])
+    ):
+        raise ValueError("installed book authority differs from recognized reviewed configuration")
+    return row
 
 
 def verify_acl(conn, *, principal=None):
@@ -64,10 +87,16 @@ def verify_acl(conn, *, principal=None):
         }
     ]:
         raise ValueError("book executable boundary differs")
+    cfg = installed_configuration(conn)
     body = conn.execute(
         "SELECT prosrc FROM pg_proc WHERE pronamespace='mf_book_facts'::regnamespace AND proname='seal_input'"
     ).fetchone()["prosrc"]
-    if body != migration_source().split("AS $$", 1)[1].split("$$;", 1)[0]:
+    if (
+        body
+        != migration_source(version=cfg["document"]["registry"]["version"])
+        .split("AS $$", 1)[1]
+        .split("$$;", 1)[0]
+    ):
         raise ValueError("book executable body differs from reviewed pin")
     triggers = conn.execute(
         "SELECT c.relname,t.tgname,t.tgenabled FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relnamespace='mf_book_facts'::regnamespace AND NOT t.tgisinternal"
@@ -106,11 +135,6 @@ def verify_acl(conn, *, principal=None):
     ).fetchone()
     if raw != {"allowed": principal == evidence.ROLES[0], "ddl": False}:
         raise ValueError("book raw/DDL boundary differs")
-    cfg = conn.execute(
-        "SELECT document FROM mf_book_facts.configuration ORDER BY generation DESC LIMIT 1"
-    ).fetchone()
-    if not cfg or cfg["document"] != book_sources.configuration():
-        raise ValueError("installed book authority differs from reviewed configuration")
     prior = conn.execute(
         "SELECT view_definitions->>'field_versions' AS definition FROM mf_live_facts.configuration WHERE policy_hash=%s ORDER BY generation DESC LIMIT 1",
         (fingerprint(multi_facts.current_policy()),),
@@ -181,6 +205,13 @@ def install(conn, root):
         acquire_nav_data_operation_lock(conn)
         if installed(conn):
             verify_acl(conn, principal=evidence.ROLES[1])
+            if (
+                installed_configuration(conn)["document"]["registry"]["version"]
+                < book_sources.CURRENT_VERSION
+            ):
+                from mfdataindia.enrichment import book_upgrade
+
+                return book_upgrade.install(conn, root)
             return {"status": "ALREADY_INSTALLED", "source_rows_changed": 0}
         if current.policy_document(conn) != multi_facts.current_policy():
             raise ValueError("accepted v3 registered baseline required")
@@ -194,7 +225,7 @@ def install(conn, root):
         ):
             raise ValueError("book migration differs from reviewed pin")
         conn.execute(raw.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
-        document = book_sources.configuration()
+        document = book_sources.configuration(1)
         conn.execute(
             "INSERT INTO mf_book_facts.configuration VALUES(1,%s,%s)",
             (fingerprint(document), Jsonb(document)),
@@ -218,7 +249,7 @@ def install(conn, root):
                     sql.Identifier(role)
                 )
             )
-        p = book_sources.current_policy()
+        p = book_sources.current_policy(1)
         review._insert_exact(
             conn,
             "policies",
@@ -300,8 +331,9 @@ def append_run(conn, body):
 
 def status(conn):
     verify_acl(conn, principal=evidence.ROLES[1])
+    config = installed_configuration(conn)["document"]
     sources = []
-    for source in book_sources.registry()["sources"]:
+    for source in config["registry"]["sources"]:
         rows = conn.execute(
             "SELECT document FROM mf_book_facts.runs WHERE source_key=%s ORDER BY observed_at DESC,run_id DESC LIMIT 1",
             (source["key"],),
@@ -333,7 +365,7 @@ def status(conn):
         )
     return {
         "format": "official-amc-book-status-v1",
-        "configuration_hash": fingerprint(book_sources.configuration()),
+        "configuration_hash": fingerprint(config),
         "sources": sources,
         "source_rows_changed": 0,
         "all_amc_data_complete": False,

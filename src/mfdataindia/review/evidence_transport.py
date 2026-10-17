@@ -16,6 +16,10 @@ MAX_RAW_BYTES = 8 * 1024 * 1024
 MAX_LOG_BYTES = 80000
 
 
+class ExecutionEvidenceNotDelivered(ValueError):
+    """Only absence may be re-read; malformed/duplicate evidence never may."""
+
+
 def _certificate(value):
     if (
         not isinstance(value, dict)
@@ -112,6 +116,8 @@ def execution_evidence(logs):
         certificate = decode_evidence(value)
         if certificate is not None:
             certificates.append(certificate)
+    if not certificates:
+        raise ExecutionEvidenceNotDelivered("require exactly one structured execution certificate")
     if len(certificates) != 1:
         raise ValueError("require exactly one structured execution certificate")
     return certificates[0]

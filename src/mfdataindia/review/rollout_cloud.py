@@ -4,10 +4,11 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import time
 from pathlib import Path
 
 from mfdataindia.review.rollout import API_SA, CALLER_SA, CONNECTION, PROJECT, REGION, SERVICE, Manifest, service_origin
-from mfdataindia.review.evidence_transport import execution_evidence
+from mfdataindia.review.evidence_transport import ExecutionEvidenceNotDelivered, execution_evidence
 
 REVIEW_FACTORY = 'mfdataindia.review.app:create_review_app'
 RESEARCH_FACTORY = 'mfdataindia.review.app:create_research_app'
@@ -203,6 +204,20 @@ class Cloud:
         return observed['metadata']['name'], evidence
 
     def inspect_execution(self, manifest, name, account, arguments, environment, secrets, *, image=None):
+        # Cloud Run completion may precede delivery to Cloud Logging. Retry only
+        # read-only verification of this exact immutable execution, never its
+        # creation/run/promotion or a malformed/duplicate certificate. All runtime
+        # guards are repeated before every log read, including the final one.
+        for attempt in range(6):
+            try:
+                return self._inspect_execution_once(manifest, name, account, arguments, environment, secrets, image=image)
+            except ExecutionEvidenceNotDelivered:
+                if attempt == 5:
+                    raise
+                time.sleep(5)
+        raise AssertionError('bounded execution evidence read exhausted')
+
+    def _inspect_execution_once(self, manifest, name, account, arguments, environment, secrets, *, image=None):
         """Read-only immutable execution verification; never runs/deploys a job."""
         if not re.fullmatch('[a-z][a-z0-9-]{1,62}', name):
             raise ValueError('require an exact immutable execution name')

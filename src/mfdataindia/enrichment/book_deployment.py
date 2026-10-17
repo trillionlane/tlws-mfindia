@@ -6,7 +6,14 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 
-from mfdataindia.enrichment import book_projection, book_store, current_facts_store as current
+from mfdataindia.enrichment import (
+    book_projection,
+    book_store,
+    book_preservation,
+    book_sources,
+    book_upgrade,
+    current_facts_store as current,
+)
 from mfdataindia.enrichment.deployment import pinned_dsn
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.preservation import capture_preservation
@@ -24,10 +31,14 @@ def bound(manifest, environment, purpose):
 
 
 def execute(manifest, environment, operation, *, root=Path("/app")):
-    if operation not in ("install", "activate", "recover", "inspect"):
+    if operation not in ("install", "activate", "recover", "recover-source", "inspect"):
         raise ValueError("unsupported book owner operation")
     dsn = pinned_dsn(manifest, environment, "mfdata_admin")
-    body = bound(manifest, environment, "OPERATION") if operation in ("activate", "recover") else {}
+    body = (
+        bound(manifest, environment, "OPERATION")
+        if operation in ("activate", "recover", "recover-source")
+        else {}
+    )
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         if operation in ("install", "inspect"):
             conn.execute(
@@ -50,6 +61,15 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
                     "status": book_store.status(conn),
                     "configuration": dict(current.configuration(conn)),
                     "core_definition": current.view_definition(conn, "mf.current_fund_facts"),
+                    **(
+                        {
+                            "prior_projection": book_preservation.capture(
+                                conn, book_sources.CURRENT_VERSION - 1
+                            )
+                        }
+                        if book_sources.CURRENT_VERSION > 1
+                        else {}
+                    ),
                     "samples": {
                         str(code): {
                             "book": book_store.fund(conn, code),
@@ -70,6 +90,10 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
                 body["reviewed"],
                 expected_configuration_hash=body["expected_configuration_hash"],
             )
+        elif operation == "recover-source":
+            if set(body) != {"upgrade_id"}:
+                raise ValueError("one sealed source-upgrade intent required")
+            result = book_upgrade.recover_unactivated(conn, body["upgrade_id"])
         else:
             if set(body) != {"activation_id"}:
                 raise ValueError("one sealed prior book intent required")
