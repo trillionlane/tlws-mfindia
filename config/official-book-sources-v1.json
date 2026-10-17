@@ -27,7 +27,7 @@
         }
       ],
       "archive_prefix": "official-monthly-facts/absl-expanded/",
-      "preserved_projection_codes": [103173, 103174],
+      "preserved_projection_codes": [101763, 103173, 103174],
       "publication_status": "needs_verification"
     }
   ]

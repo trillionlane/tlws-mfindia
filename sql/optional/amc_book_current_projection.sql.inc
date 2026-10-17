@@ -10,7 +10,7 @@ WITH active_authority AS MATERIALIZED (
     ) source
     WHERE active_config.generation=(SELECT max(generation) FROM mf_live_facts.configuration)
 ), registered_specs AS MATERIALIZED (
-    SELECT source.key AS source_key,
+    SELECT source.key AS source_key,source.value->'preserved_projection_codes' AS preserved_codes,
         encode(sha256(convert_to(mf_review.canonical_json(source.value),'UTF8')),'hex') AS specification_hash
     FROM active_authority authority
     CROSS JOIN LATERAL jsonb_each(authority.document->'source_specifications') source
@@ -44,6 +44,7 @@ FROM (
     JOIN mf.funds f ON f.amfi_scheme_code=(x.value->'identity'->>'code')::integer
     JOIN mf.amcs a USING(amc_id)
     WHERE EXISTS(SELECT 1 FROM mf_book_facts.runs r WHERE r.status<>'failed' AND r.document->'batch_ids' ? b.batch_id)
+    AND NOT (registered.preserved_codes @> jsonb_build_array(f.amfi_scheme_code))
     AND NOT EXISTS(SELECT 1 FROM mf_book_facts.prior_field_versions p WHERE p.code=f.amfi_scheme_code)
     AND f.in_scope
     AND x.value->'identity'=jsonb_build_object('code',f.amfi_scheme_code,'amc',a.amfi_amc_name,

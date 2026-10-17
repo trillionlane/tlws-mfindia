@@ -85,6 +85,13 @@ Thus installing/staging another source cannot publish it as current before
 its own owner-approved activation; restoring an earlier active policy excludes
 later sources without deleting their retained historical evidence. Wider
 exact-identity assertions are grouped per fund/field/date:
+
+The retained cohort `[101763, 103173, 103174]` is explicitly protected by the
+new source authority, not only by presence in the prior live view. If an old
+mapping's identity changes and disappears from that view, a broad-book gap or
+assertion still cannot silently take over its current projection. Existing
+identity-change warnings survive; changing the protected cohort requires a
+separately reviewed authority version.
 equal assertions corroborate; conflicting or unavailable later evidence retains
 the previous usable dated value, otherwise the legacy baseline. Metadata states
 the unresolved conflict/gap. Existing core scalar aliases consume this same

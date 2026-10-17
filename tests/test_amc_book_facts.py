@@ -61,7 +61,7 @@ def test_contract_is_additive_and_private_without_configured_verifier():
 def test_registry_cannot_be_overridden_and_retains_frozen_two_sources(tmp_path):
     document = book_sources.registry()
     assert document["maximum_sources_per_execution"] == 3
-    assert document["sources"][0]["preserved_projection_codes"] == [103173, 103174]
+    assert document["sources"][0]["preserved_projection_codes"] == [101763, 103173, 103174]
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "official-book-sources-v1.json").write_text("{}")
     with pytest.raises(ValueError, match="registry differs"):

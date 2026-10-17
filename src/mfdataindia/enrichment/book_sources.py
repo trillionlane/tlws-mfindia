@@ -13,7 +13,7 @@ CURRENT_VERSION = 1
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
-        "5dec71683d2b62fd02880375e489b8a0dcecaeca3d0c85f361568a3098feadba",
+        "2696318170d417cdcd8de581a665252425984cc1b9dcb648d93fd30efcbccd8c",
     )
 }
 
@@ -51,7 +51,7 @@ def registry(version=None, root=None):
             or source["in_scope"] is not True
             or source["period_count"] != 2
             or source["maximum_current_variants"] != 1024
-            or source["preserved_projection_codes"] != [103173, 103174]
+            or source["preserved_projection_codes"] != [101763, 103173, 103174]
         ):
             raise ValueError("bounded whole-AMC adapter scope differs")
         for original in source["identity_documents"]:

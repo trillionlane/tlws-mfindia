@@ -16,6 +16,7 @@ from mfdataindia.enrichment import (
     current_facts_store as current,
     multi_facts,
 )
+from mfdataindia.enrichment.store import identity
 from mfdataindia.review.policy import fingerprint
 from test_amc_book_facts import KEY, ROOT, prepared, publish
 from test_verified_review_api import runtime_dsn
@@ -27,6 +28,48 @@ def test_book_policy_parent_is_the_retained_registered_v3_graph():
     assert book_sources.current_policy()["previous_policy_hash"] == fingerprint(
         multi_facts.current_policy()
     )
+
+
+@pytest.mark.postgres
+def test_retained_cohort_never_falls_into_book_projection_after_identity_drift(
+    verified_db, monkeypatch
+):
+    identities, inputs, _ = prepared(verified_db, monkeypatch)
+    publish(verified_db, identities, inputs)
+    reference = [
+        {
+            "code": 100001,
+            "batch_id": inputs[0][0]["batch_id"],
+            "as_of": "2026-09-30",
+            "values": {"aum": "12345.67"},
+        }
+    ]
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        book_projection.activate(
+            conn,
+            ROOT,
+            reference,
+            expected_configuration_hash=fingerprint(dict(current.configuration(conn))),
+        )
+        conn.execute(
+            "UPDATE mf.funds SET scheme_name=scheme_name||' RENAMED SYNTHETIC FIXTURE' WHERE amfi_scheme_code=103174"
+        )
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        changed = book_store.population(conn, KEY)
+        changed_identity = identity(conn, 103174)
+    batches, originals, archives = deepcopy(inputs)
+    for batch in batches:
+        next(r for r in batch["observations"] if r["identity"]["code"] == 103174)["identity"] = (
+            changed_identity
+        )
+        batch["population_hash"] = fingerprint(changed)
+        batch["batch_id"] = fingerprint({k: v for k, v in batch.items() if k != "batch_id"})
+    publish(verified_db, changed, (batches, originals, archives), "protected-identity-drift")
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        assert not conn.execute(
+            "SELECT 1 FROM mf_live_facts.field_versions WHERE code=103174"
+        ).fetchone()
+        assert current.get(conn, 103174)["mapping_state"] == "identity_changed"
 
 
 @pytest.mark.postgres
