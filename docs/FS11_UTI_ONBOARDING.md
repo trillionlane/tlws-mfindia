@@ -104,6 +104,16 @@ complete, human-verified, economically complete, or permission for IDCW analytic
 
 ## Sequential DEV acceptance
 
+The controlled operator verifies every archived original's exact generation,
+byte count, SHA-256 and MD5. The reviewed `archive_verification.verify_all`
+helper permits only four concurrent read-only checks, preserves input/proof
+order and duplicates, and rejects any failed original before the next chunk.
+It never samples, trusts a receipt instead of bytes, retries ambiguous writes
+or increases source-job concurrency. This changes verification latency only;
+source execution, publication, resource/time bounds and all preservation gates
+remain unchanged. Native scratch timing emits stack locations only, never
+query text, bind values or credentials.
+
 1. Review, full exact-head CI and normal merge, then verify both immutable
    final images. Generic auto-deployment remains disabled.
 2. Fresh regional backup and restored-clone full preservation rehearsal using
