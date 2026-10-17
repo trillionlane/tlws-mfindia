@@ -1,6 +1,8 @@
 """Physical column identity/grouping without network or filesystem writes."""
 
 from types import SimpleNamespace
+import hashlib
+import io
 
 import pytest
 
@@ -57,3 +59,38 @@ def test_decoder_never_changes_frozen_shared_profile_or_uses_layout_fallback():
     assert policy["maximum_source_bytes"] == 16777216
     assert "no guessed layout-text fallback" in policy["ambiguity"]
     assert len(uti_book_pdf.engine_hash()) == 64
+
+
+def test_real_isolated_workers_accept_explicit_empty_content_stream():
+    from pypdf import PdfWriter
+    from pypdf.generic import DecodedStreamObject
+    from mfdataindia.enrichment import book_sources, uti_book
+    from mfdataindia.review.policy import fingerprint
+
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=200, height=200)
+    stream = DecodedStreamObject()
+    stream.set_data(b"")
+    page.replace_contents(stream)
+    output = io.BytesIO()
+    writer.write(output)
+    raw = output.getvalue()
+    result = uti_book_pdf.extract(raw)
+    assert result["source_hash"] == hashlib.sha256(raw).hexdigest()
+    assert result["document_pages"] == 1
+    assert result["pages"][0]["text"] == ""
+    assert result["pages"][0]["physical_left_text"] is None
+    assert result["policy_hash"] == fingerprint(uti_book_pdf.policy())
+    assert result["engine_hash"] == book_sources.specification(uti_book.KEY)["decoder_engine_hash"]
+    assert result["whole_document_semantic_coverage"] is False
+
+
+def test_missing_content_stream_still_fails_closed_without_source_repair():
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    output = io.BytesIO()
+    writer.write(output)
+    with pytest.raises(ValueError, match="layout book decoder failed"):
+        uti_book_pdf.extract(output.getvalue())
