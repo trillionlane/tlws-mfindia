@@ -23,7 +23,7 @@ MIGRATIONS = {
     ),
     3: (
         "040_kotak_book_evidence.sql",
-        "c29b0bbcd0b45c9452c31fe65502adfceb7aeba53e9bc9720596731682835bcd",
+        "0ffc43a8759c498ee67708a87118160b00e9901aac6e293e1bc9d0c513bdccb3",
     ),
 }
 TABLES = {"configuration", "sources", "batches", "runs", "transitions"}

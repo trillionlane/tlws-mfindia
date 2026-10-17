@@ -21,6 +21,7 @@ from mfdataindia.enrichment import (
     kotak_acquisition,
     kotak_batch,
     kotak_book,
+    kotak_known_document,
     layout_book_pdf,
 )
 from mfdataindia.review.policy import fingerprint
@@ -123,7 +124,7 @@ def accepted_sbi(dsn, monkeypatch):
     )
 
 
-def fixtures(identities):
+def fixtures(identities, *, known_source=False):
     catalogue = {
         "source_url": kotak_acquisition.recent_catalogues(NOW)[0]["source_url"],
         "media_type": "application/json",
@@ -148,6 +149,11 @@ def fixtures(identities):
         "role": "directory",
         "content": b'[{"scheme_id":"4372","scheme_name":"Kotak Flexicap Fund"}]',
     }
+    if known_source:
+        catalogue = kotak_known_document.original(
+            {"source_url": kotak_known_document.CATALOGUE_URL,
+             "expected_period": "2026-09-30"}, NOW
+        )
     url = "https://portal.amfiindia.com/spages/SSD_4372.xml"
     index = {
         "source_url": "https://www.amfiindia.com/api/schemes/4372/documents",
@@ -201,7 +207,13 @@ def fixtures(identities):
         batches.append(
             kotak_batch.compile_batch(
                 identities,
-                {"source_url": url, "extraction": extraction},
+                {"source_url": url, "extraction": extraction,
+                 "source_acquisition": (
+                     {"mode": "reviewed_historical_one_pager"}
+                     if url == kotak_book.HISTORICAL else
+                     kotak_known_document.authority() if known_source else
+                     {"mode": "live_catalogue", "source_url": catalogue["source_url"]}
+                 )},
                 bridges,
                 originals,
                 as_of=as_of,
@@ -272,6 +284,62 @@ def references(batch):
             }
         )
     return result
+
+
+@pytest.mark.postgres
+def test_known_document_database_fences_and_private_provenance(verified_db, monkeypatch):
+    # Synthetic publication/DB proof only, not an issuer-data certificate.
+    monkeypatch.setattr(kotak_known_document, "PDF_SHA256", hashlib.sha256(RAW_CURRENT).hexdigest())
+    identities, _, prior, _, original = prepared(verified_db, monkeypatch)
+    batches, originals, archives = fixtures(identities, known_source=True)
+
+    def attempt(values, *, observed=NOW, warning=True):
+        availability = [{"expected_period": "2026-08-31",
+                         "reason": "expected_recent_period_not_acquired"}]
+        if warning:
+            availability.append({
+                "expected_period": "2026-09-30", "phase": "catalogue",
+                "reason": "ordinary_source_unavailable_reviewed_known_document_used",
+                "latest_catalogue_discovery_available": False,
+            })
+        with psycopg.connect(runtime_dsn(verified_db, ROLES[0]), row_factory=dict_row) as conn:
+            return book_runtime.publish(
+                conn, kotak_book.KEY, "tlws-mf-official-facts-refresh-dev-known-synthetic",
+                observed, identities, values, originals, archives, availability=availability,
+            )
+
+    for key, invalid in [
+        ("expected_pdf_sha256", "a" * 64),
+        ("catalogue_original_sha256", "a" * 64),
+        ("policy_hash", "a" * 64),
+        ("latest_catalogue_discovery_available", True),
+        ("reviewed_on", "2026-01-01"),
+        ("valid_before", "2027-01-01"),
+        ("mode", "unreviewed_source"),
+    ]:
+        changed = deepcopy(batches)
+        changed[0]["source_acquisition"][key] = invalid
+        changed[0]["batch_id"] = fingerprint({k: v for k,v in changed[0].items() if k != "batch_id"})
+        with pytest.raises(psycopg.Error):
+            attempt(changed)
+    changed = deepcopy(batches)
+    changed[0]["observations"][0]["result"]["source_acquisition"] = {"mode": "different"}
+    changed[0]["batch_id"] = fingerprint({k: v for k,v in changed[0].items() if k != "batch_id"})
+    with pytest.raises(psycopg.Error, match="fund observation source acquisition"):
+        attempt(changed)
+    with pytest.raises(psycopg.Error, match="outside reviewed window or missing discovery warning"):
+        attempt(batches, warning=False)
+    with pytest.raises(psycopg.Error, match="outside reviewed window or missing discovery warning"):
+        attempt(batches, observed=datetime(2026, 11, 1, tzinfo=timezone.utc))
+    receipt = attempt(batches)
+    assert receipt["coverage"][0]["source_acquisition"] == kotak_known_document.authority()
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        assert dict(current.configuration(conn)) == prior  # Still pending, never implicitly active.
+        observations = book_store.fund(conn, 112090)["observations"]
+        latest = next(o for o in observations if o["batch_id"] == batches[0]["batch_id"])
+        assert latest["result"]["source_acquisition"] == kotak_known_document.authority()
+        assert latest["result"]["source_acquisition"]["latest_catalogue_discovery_available"] is False
+        assert source_state(conn) == original
 
 
 @pytest.mark.postgres

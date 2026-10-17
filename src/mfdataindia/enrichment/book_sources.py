@@ -155,11 +155,14 @@ def specification(key, *, version=None):
             amfi_summary_identity,
             kotak_acquisition,
             kotak_batch,
+            kotak_known_document,
             kotak_runtime,
             layout_book_archive,
             layout_book_http,
             layout_book_pdf,
         )
+
+        item["reviewed_known_document_policy"] = kotak_known_document.policy()
 
         item["evidence_engine_hashes"] = {
             module.__name__.rsplit(".", 1)[-1]: hashlib.sha256(
@@ -169,6 +172,7 @@ def specification(key, *, version=None):
                 amfi_summary_identity,
                 kotak_acquisition,
                 kotak_batch,
+                kotak_known_document,
                 kotak_runtime,
                 layout_book_archive,
                 layout_book_http,
