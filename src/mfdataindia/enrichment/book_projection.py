@@ -130,6 +130,10 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
             },
         )
         conn.execute(raw)
+        if version >= 2:
+            from mfdataindia.enrichment import book_core_projection
+
+            book_core_projection.install(conn, root)
         definitions = {
             name: current.view_definition(conn, "mf_live_facts." + name) for name in ORDER
         }
