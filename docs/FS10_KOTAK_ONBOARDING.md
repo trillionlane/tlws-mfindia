@@ -85,3 +85,10 @@ core comparison, using the real API query and its sibling fallback. Missing
 facts remain explicit nulls. Full original-table and entire prior-projection
 row seals remain unchanged; no data, comparison field or database grant is
 removed. The transport retry and failed attempt remain separately recorded.
+
+The separate FS-09 core-read-cost hotfix (#86) is a rollout prerequisite.
+Its single-pass scalar expansion and equivalent predicate-friendly facade are
+also used by v3; the dated field-selection policy and v2 field-versions SQL
+remain unchanged. The exact-image rehearsal must check the actual core HTTP
+detail/batch paths as well as metadata, then all 19 core routes. Increasing
+client timeouts is not an acceptance substitute.
