@@ -79,6 +79,14 @@ def compile_batch(
     observations = [
         {"identity": i, "result": book.derive(i, bridges, details, as_of)} for i in identities
     ]
+    authority = monthly.get("source_acquisition")
+    if not isinstance(authority, dict) or authority.get("mode") not in (
+        "live_catalogue", "reviewed_historical_one_pager",
+        "reviewed_known_document_not_live_catalogue",
+    ):
+        raise ValueError("explicit source acquisition provenance required")
+    for observation in observations:
+        observation["result"]["source_acquisition"] = authority
     if not any(r["result"]["status"] == "usable" for r in observations):
         raise ValueError("no usable exact-identity evidence; retain prior publication")
     monthly_extractions = [
@@ -100,6 +108,7 @@ def compile_batch(
         "population_hash": fingerprint(identities),
         "content_hash": extraction["source_hash"],
         "source_url": monthly["source_url"],
+        "source_acquisition": authority,
         "identity_content_hash": directory_hash,
         "identity_content_role": "actual_amfi_directory_json_not_pdf",
         "disclosure_as_of": date.fromisoformat(as_of).isoformat(),

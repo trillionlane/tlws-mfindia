@@ -93,5 +93,8 @@ def coverage(batch):
             expected_recent_reporting_periods=batch["expected_recent_reporting_periods"],
             single_fund_historical_disclosure=batch["single_fund_historical_disclosure"],
             reporting_date_authority="actual_source_text_not_filename_or_URL",
+            source_acquisition=batch.get(
+                "source_acquisition", {"mode": "not_recorded_in_older_artifact"}
+            ),
         )
     return result

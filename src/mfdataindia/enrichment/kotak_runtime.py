@@ -18,6 +18,7 @@ from mfdataindia.enrichment import (
     kotak_acquisition,
     kotak_batch,
     kotak_book,
+    kotak_known_document,
     layout_book_archive,
     layout_book_pdf,
     sbi_acquisition,
@@ -55,6 +56,26 @@ def candidates(directory, identities, extracts):
     if not 1 <= len(result) <= 200:
         raise ValueError("bounded complete identity discovery cohort required")
     return sorted(result, key=lambda r: int(r["scheme_id"]))
+
+
+def catalogue_input(request, observed, transport):
+    """Use a retained original only if acquisition itself failed, never parsing."""
+    try:
+        original = transport(request["source_url"])
+    except Exception as error:
+        original = kotak_known_document.original(request, observed)
+        if original is None:
+            raise
+        issue = {
+            "expected_period": request["expected_period"], "phase": "catalogue",
+            "reason": "ordinary_source_unavailable_reviewed_known_document_used",
+            "error_type": type(error).__name__
+            if type(error).__name__ in ("ValueError", "TimeoutError", "OSError")
+            else "SourceError",
+            "latest_catalogue_discovery_available": False,
+        }
+        return original, kotak_known_document.authority(), issue
+    return original, {"mode": "live_catalogue", "source_url": request["source_url"]}, None
 
 
 def run(
@@ -109,7 +130,9 @@ def run(
         monthly = []
         for request in expected:
             try:
-                original = transport(request["source_url"])
+                original, authority, issue = catalogue_input(request, observed, transport)
+                if issue:
+                    availability.append(issue)
                 kept(original)
                 url = kotak_acquisition.catalogue_book(original["content"], original["source_url"])
             except Exception as error:
@@ -127,9 +150,14 @@ def run(
             phase = "books"
             original = transport(url)
             kept(original)
+            if (authority["mode"] == "reviewed_known_document_not_live_catalogue"
+                    and hashlib.sha256(original["content"]).hexdigest()
+                    != authority["expected_pdf_sha256"]):
+                raise ValueError("known document changed; retain original for separate review")
             extraction = extractor(original["content"])
             as_of = kotak_book.period(extraction, observed)
-            monthly.append({"source_url": url, "extraction": extraction, "as_of": as_of})
+            monthly.append({"source_url": url, "extraction": extraction, "as_of": as_of,
+                            "source_acquisition": authority})
             if as_of != request["expected_period"]:
                 availability.append(
                     {
@@ -155,7 +183,8 @@ def run(
                     "reviewed historical disclosure changed; retain it for separate review"
                 )
             monthly.append(
-                {"source_url": original["source_url"], "extraction": extraction, "as_of": as_of}
+                {"source_url": original["source_url"], "extraction": extraction, "as_of": as_of,
+                 "source_acquisition": {"mode": "reviewed_historical_one_pager"}}
             )
         if len(monthly) != 2 or len({m["as_of"] for m in monthly}) != 2:
             raise ValueError("two actual distinct available reporting periods required")

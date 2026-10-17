@@ -18,6 +18,16 @@ single-fund Nifty 50 one-pager; its **actual July date** is retained despite
 its August URL. The missing expected August period remains an explicit gap.
 Two available reporting dates do not mean two consecutive full-AMC books.
 
+The first DEV source attempt subsequently encountered a catalogue anti-bot
+redirect and was recovered without changing original data or prior projections.
+The [failure and recovery record](evidence/FS10_CATALOGUE_DISCOVERY_RECOVERY_2026-10-17.md)
+describes the evidence and the narrowly dated known-document authority. It
+retains the actual September catalogue original, requires the exact reviewed
+ordinary CDN PDF hash, expires before November and explicitly reports discovery
+as unavailable. It never follows a challenge or substitutes for a successfully
+acquired contradictory catalogue. Both coverage and per-fund observations carry
+that provenance; the database independently enforces its pins/window/warning.
+
 ## Evidence and identity
 
 - Retain the exact forms catalogue, directory, returned AMFI document index,
