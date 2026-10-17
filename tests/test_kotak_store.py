@@ -25,6 +25,8 @@ from mfdataindia.enrichment import (
     layout_book_pdf,
 )
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.enrichment import _registered_book_policy_v6
+from mfdataindia.review import store as review_store
 from test_amc_book_facts import ROOT
 from test_kotak_book import text
 from test_sbi_store import accepted_fs08, source_inputs
@@ -237,16 +239,54 @@ def fixtures(identities, *, known_source=False):
     return batches, originals, archives
 
 
-def prepared(dsn, monkeypatch):
+def prepared(dsn, monkeypatch, *, registered_failed_policy=False):
     accepted_sbi(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        if registered_failed_policy:
+            document = _registered_book_policy_v6.policy()
+            review_store._insert_exact(
+                conn, "policies", "policy_hash", fingerprint(document), document,
+                {"policy_id": document["id"], "policy_version": document["version"]},
+            )
         prior = dict(current.configuration(conn))
         preserved = book_preservation.capture(conn, 2)
         original = source_state(conn)
         book_upgrade.install(conn, ROOT)
         identities = book_store.population(conn, kotak_book.KEY)
     return identities, fixtures(identities), prior, preserved, original
+
+
+@pytest.mark.postgres
+def test_registered_failed_policy_is_retained_through_new_revision_activation_recovery(
+    verified_db, monkeypatch
+):
+    identities, inputs, prior, _, original = prepared(
+        verified_db, monkeypatch, registered_failed_policy=True
+    )
+    legacy = _registered_book_policy_v6.policy()
+    revised = book_sources.current_policy(3)
+    assert legacy["version"] == 6 and revised["version"] == 7
+    assert legacy["id"] == revised["id"] and fingerprint(legacy) != fingerprint(revised)
+    assert revised["supersedes_unaccepted_policy_hash"] == fingerprint(legacy)
+    receipt = publish(verified_db, identities, inputs, execution="registered-failed-policy")
+    assert receipt["status"] == "updated"
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        result = book_projection.activate(
+            conn, ROOT, references(inputs[0][0]),
+            expected_configuration_hash=fingerprint(dict(current.configuration(conn))),
+        )
+        assert current.policy_document(conn) == revised
+        assert conn.execute("SELECT document FROM mf_review.policies WHERE policy_hash=%s",
+                            (fingerprint(legacy),)).fetchone()["document"] == legacy
+        assert conn.execute("SELECT document FROM mf_review.policies WHERE policy_hash=%s",
+                            (fingerprint(revised),)).fetchone()["document"] == revised
+        book_projection.recover(conn, ROOT, result["transition_id"])
+        book_projection.recover(conn, ROOT, result["transition_id"])
+        assert current.policy_document(conn) == book_sources.current_policy(2)
+        assert conn.execute("SELECT document FROM mf_review.policies WHERE policy_hash=%s",
+                            (fingerprint(legacy),)).fetchone()["document"] == legacy
+        assert source_state(conn) == original
 
 
 def publish(dsn, identities, inputs, *, execution="synthetic-kotak", gaps=True):

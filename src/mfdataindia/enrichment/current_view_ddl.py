@@ -16,9 +16,9 @@ def replay_current_values(conn, root: Path, *, policy_hash: str, expected_defini
         from mfdataindia.enrichment import book_core_projection
 
         if policy_hash not in [
-            fingerprint(book_sources.current_policy(version))
-            for version in book_sources.REGISTRIES
-            if version >= 2
+            fingerprint(document)
+            for document in book_sources.current_policies()
+            if document["version"] >= 5
         ]:
             raise ValueError("single-pass graph requires a recognized book policy")
         book_core_projection.replay_values(conn, root, expected_definition)

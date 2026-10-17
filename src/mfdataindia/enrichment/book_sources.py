@@ -8,8 +8,12 @@ from pathlib import Path
 from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book
 from mfdataindia.enrichment.evidence import public_url
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.enrichment import _registered_book_policy_v6
 
 CURRENT_VERSION = 3
+# Registry versions count source waves; policy revisions are independently
+# allocated and never reuse an already-registered (id, version) candidate.
+POLICY_VERSIONS = {1: 4, 2: 5, 3: 7}
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -206,7 +210,7 @@ def current_policy(version=None):
     document = registry(version)
     result = deepcopy(multi_facts.current_policy())
     result.update(
-        version=3 + document["version"],
+        version=POLICY_VERSIONS[document["version"]],
         previous_policy_hash=fingerprint(
             multi_facts.current_policy()
             if document["version"] == 1
@@ -223,8 +227,15 @@ def current_policy(version=None):
             "incomplete_evidence": "retain accepted same-date value and every unavailable assertion as provenance; never invent a value",
             "legacy_book_v1": "unchanged historical selection and conflict behavior",
         }
+    if document["version"] >= 3:
+        result["source_registry_version"] = document["version"]
+    if document["version"] == 3:
+        result["supersedes_unaccepted_policy_hash"] = _registered_book_policy_v6.POLICY_HASH
     return result
 
 
 def current_policies():
-    return [current_policy(version) for version in sorted(REGISTRIES)]
+    documents = [current_policy(version) for version in sorted(REGISTRIES)]
+    if 3 in REGISTRIES:
+        documents.append(_registered_book_policy_v6.policy())
+    return sorted(documents, key=lambda document: document["version"])
