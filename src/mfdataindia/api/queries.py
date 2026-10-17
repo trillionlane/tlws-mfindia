@@ -790,7 +790,12 @@ def list_funds(
             WHERE n.amfi_scheme_code = p.amfi_scheme_code
             ORDER BY n.nav_date DESC LIMIT 1
         ) lt ON true
-        LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = p.amfi_scheme_code
+        LEFT JOIN LATERAL (
+            SELECT aum, expense_ratio, return_5year
+            FROM mf.current_fund_facts
+            WHERE amfi_scheme_code = p.amfi_scheme_code
+            OFFSET 0
+        ) ff ON true
         ORDER BY p.pos
         """,
         params,
@@ -1284,16 +1289,25 @@ def risk_reward(conn, code: int) -> dict[str, Any]:
 
     rows = conn.execute(
         f"""
-        SELECT f.amfi_scheme_code, f.scheme_name, ff.aum,
-               rp.annual_vol, rp.cagr, rp.max_drawdown, rp.points AS nav_points
-        FROM mf.current_risk_profile rp
-        JOIN mf.funds f ON f.amfi_scheme_code = rp.amfi_scheme_code
-        JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
-        WHERE ff.sebi_category_name = %(cat)s
-          AND f.in_scope AND NOT f.is_defunct
-          AND {_plan_predicate()}
-          AND {_comparison_eligible_predicate("f")}
-        ORDER BY rp.annual_vol
+        WITH peers AS MATERIALIZED (
+            SELECT f.amfi_scheme_code, f.scheme_name,
+                   rp.annual_vol, rp.cagr, rp.max_drawdown, rp.points AS nav_points
+            FROM mf.current_risk_profile rp
+            JOIN mf.funds f ON f.amfi_scheme_code = rp.amfi_scheme_code
+            JOIN mf.current_fund_facts category ON category.amfi_scheme_code = f.amfi_scheme_code
+            WHERE category.sebi_category_name = %(cat)s
+              AND f.in_scope AND NOT f.is_defunct
+              AND {_plan_predicate()}
+              AND {_comparison_eligible_predicate("f")}
+        )
+        SELECT peers.*, ff.aum
+        FROM peers
+        JOIN LATERAL (
+            SELECT aum FROM mf.current_fund_facts
+            WHERE amfi_scheme_code = peers.amfi_scheme_code
+            OFFSET 0
+        ) ff ON true
+        ORDER BY peers.annual_vol
         """,
         {"cat": me["sebi_category_name"]},
     ).fetchall()
@@ -1986,6 +2000,33 @@ def list_fund_families(
     ).fetchone()["n"]
     params["per"] = per_page
     params["off"] = (page - 1) * per_page
+    # Name ordering depends only on the representative identity. Select its page
+    # before evaluating current facts or latest NAV, and keep scalar equality
+    # behind an anti-flattening boundary. Facts/NAV ordering still evaluates the
+    # entire eligible family cohort before pagination: paging those early would
+    # silently change ranking semantics.
+    if sort not in ("nav", "aum", "expense", "return_5y"):
+        representatives = f"""
+            SELECT * FROM ({base} WHERE rn = 1) s
+            ORDER BY s.scheme_name, s.amfi_scheme_code
+            LIMIT %(per)s OFFSET %(off)s
+        """
+        facts_join = """
+            LEFT JOIN LATERAL (
+                SELECT aum, expense_ratio, return_5year
+                FROM mf.current_fund_facts
+                WHERE amfi_scheme_code = s.amfi_scheme_code
+                OFFSET 0
+            ) ff ON true
+        """
+        pagination = ""
+    else:
+        representatives = f"{base} WHERE rn = 1"
+        facts_join = (
+            "LEFT JOIN mf.current_fund_facts ff "
+            "ON ff.amfi_scheme_code = s.amfi_scheme_code"
+        )
+        pagination = "LIMIT %(per)s OFFSET %(off)s"
     rows = conn.execute(
         f"""
         SELECT s.amfi_scheme_code, s.scheme_name, s.plan_type, s.option_type,
@@ -1993,15 +2034,15 @@ def list_fund_families(
                s.amfi_amc_name, s.variant_count, s.fam_key,
                lt.nav AS latest_nav, lt.nav_date AS latest_nav_date,
                ff.aum, ff.expense_ratio, ff.return_5year
-        FROM ({base} WHERE rn = 1) s
+        FROM ({representatives}) s
         LEFT JOIN LATERAL (
             SELECT n.nav, n.nav_date FROM mf.nav_history n
             WHERE n.amfi_scheme_code = s.amfi_scheme_code
             ORDER BY n.nav_date DESC LIMIT 1
         ) lt ON true
-        LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = s.amfi_scheme_code
+        {facts_join}
         ORDER BY {order}, s.amfi_scheme_code
-        LIMIT %(per)s OFFSET %(off)s
+        {pagination}
         """,
         params,
     ).fetchall()

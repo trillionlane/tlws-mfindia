@@ -292,6 +292,58 @@ def test_family_widening_plan_does_not_bypass_curation(scope_db):
     assert widened["results"][0]["variant_count"] == default["results"][0]["variant_count"]
 
 
+@pytest.fixture
+def paged_scope_db(scope_db_with_nav):
+    conn = scope_db_with_nav
+    conn.execute("UPDATE mf.fund_variants SET group_key='PLANSCOPE-G2' WHERE amfi_scheme_code IN (900207,900210)")
+    for code, aum, expense, returns in ((900200, 1, 2, 4), (900207, 100, .5, 20), (900210, 10000, .01, 100)):
+        conn.execute("INSERT INTO mf.fund_facts(amfi_scheme_code,aum,expense_ratio,return_5year,source) VALUES (%s,%s,%s,%s,'MANUAL')", (code, aum, expense, returns))
+    ref = conn.execute("SELECT max(nav_date) AS d FROM mf.nav_history").fetchone()["d"]
+    for code, value in ((900207, 50), (900210, 1000)):
+        conn.execute("INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav) VALUES (%s,%s,%s)", (code, ref, value))
+    # The API correctly ignores unversioned raw published returns. Supply real
+    # synthetic histories and use the existing deterministic publication path,
+    # rather than teaching this fixture to bypass current-calculation policy.
+    for code, value in ((900200, 100), (900207, 25), (900210, 100)):
+        conn.execute("INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav) VALUES (%s,%s,%s)", (code, ref-timedelta(days=2000), value))
+    from mfdataindia.jobs.nav_calculations import recompute
+    recompute(conn, [900200,900207,900210])
+    return conn
+
+
+@pytest.mark.parametrize("sort,first", [("name",900200),("unknown",900200),("nav",900200),("aum",900207),("expense",900207),("return_5y",900207)])
+def test_family_paging_keeps_global_sort_and_representative_facts(paged_scope_db, sort, first):
+    page = queries.list_fund_families(paged_scope_db, q=_NAME, sort=sort, per_page=1)
+    assert page["total"] == 2
+    row = page["results"][0]
+    assert row["amfi_scheme_code"] == first
+    assert row["aum"] == (1.0 if first == 900200 else 100.0)
+    assert row["variant_count"] == (3 if first == 900200 else 2)
+    next_page = queries.list_fund_families(paged_scope_db, q=_NAME, sort=sort, per_page=1, page=2)
+    assert next_page["total"] == 2
+    assert next_page["results"][0]["amfi_scheme_code"] == ({900200,900207}-{first}).pop()
+    assert queries.list_fund_families(paged_scope_db, q=_NAME, sort=sort, per_page=1, page=3)["results"] == []
+
+
+def test_fund_paging_keeps_null_facts_and_global_fact_order(paged_scope_db):
+    page = queries.list_funds(paged_scope_db, q=_NAME, per_page=2, page=2)
+    assert page["total"] == 5
+    assert [r["amfi_scheme_code"] for r in page["results"]] == [900204,900207]
+    assert page["results"][0]["aum"] is None
+    assert page["results"][1]["aum"] == 100.0
+    largest = queries.list_funds(paged_scope_db, q=_NAME, sort="aum", per_page=1)
+    assert largest["results"][0]["amfi_scheme_code"] == 900210
+    assert largest["results"][0]["aum"] == 10000.0
+
+
+def test_family_identity_filters_still_apply_before_representative_choice(paged_scope_db):
+    page = queries.list_fund_families(paged_scope_db, q=_NAME, option="IDCW", per_page=1)
+    assert page["total"] == 1
+    assert page["results"][0]["amfi_scheme_code"] == 900201
+    assert page["results"][0]["variant_count"] == 1
+    assert page["results"][0]["aum"] is None
+
+
 # -- sibling navigation -------------------------------------------------------
 
 def test_siblings_exclude_direct_by_default(scope_db):
