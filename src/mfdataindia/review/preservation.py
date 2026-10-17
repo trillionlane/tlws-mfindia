@@ -70,11 +70,14 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False, structur
     conn.execute("SET LOCAL DateStyle='ISO, YMD'")
     conn.execute("SET LOCAL IntervalStyle='postgres'")
     conn.execute('SET LOCAL search_path=pg_catalog')
-    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','mf_official_facts','mf_portfolios','mf_overlap','mf_distributions','mf_idcw','mf_live_facts','mf_monthly_facts','mf_fact_refresh','mf_fact_review','mf_multi_facts','pg_catalog','information_schema') "
+    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','mf_official_facts','mf_portfolios','mf_overlap','mf_distributions','mf_idcw','mf_live_facts','mf_monthly_facts','mf_fact_refresh','mf_fact_review','mf_multi_facts','mf_book_facts','pg_catalog','information_schema') "
                     "AND n.nspname NOT LIKE 'pg_%' AND c.relkind IN('r','p','m') AND c.relowner=(SELECT oid FROM pg_roles WHERE rolname=session_user) LIMIT 1").fetchone():
         raise ValueError('unmodelled administrator-owned source relation outside mf; expand preservation inventory first')
     # This explicitly recognized append-only layer is captured independently,
     # like mf_review. Never silently ignore unknown tables within its namespace.
+    if conn.execute("SELECT to_regnamespace('mf_book_facts') AS namespace").fetchone()['namespace']:
+        from mfdataindia.enrichment.book_store import capture as capture_book
+        capture_book(conn)
     if conn.execute("SELECT to_regnamespace('mf_multi_facts') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.multi_store import capture as capture_multi
         capture_multi(conn)

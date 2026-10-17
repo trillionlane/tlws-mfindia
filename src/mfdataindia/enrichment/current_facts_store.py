@@ -6,7 +6,7 @@ from pathlib import Path
 from psycopg.types.json import Jsonb
 
 from mfdataindia.enrichment import current_facts as engine, store as evidence
-from mfdataindia.enrichment import monthly_current, multi_facts
+from mfdataindia.enrichment import monthly_current, multi_facts, book_sources
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
@@ -26,6 +26,17 @@ VIEWS = {
 }
 
 
+def known_policy(policy_hash):
+    # Old factories do not depend on a newly installed source registry.
+    for document in (engine.policy(), monthly_current.policy(), multi_facts.current_policy()):
+        if fingerprint(document) == policy_hash:
+            return document
+    for document in book_sources.current_policies():
+        if fingerprint(document) == policy_hash:
+            return document
+    raise ValueError("unknown current-facts policy")
+
+
 def configuration(conn):
     rows = conn.execute(
         "SELECT generation,baseline_definition,baseline_sha256,policy_hash,view_hashes,view_definitions FROM mf_live_facts.configuration ORDER BY generation DESC LIMIT 101"
@@ -37,19 +48,18 @@ def configuration(conn):
     row = rows[0]
     if (
         row["baseline_sha256"] != hashlib.sha256(row["baseline_definition"].encode()).hexdigest()
-        or row["policy_hash"]
-        not in (fingerprint(engine.policy()), fingerprint(monthly_current.policy()), fingerprint(multi_facts.current_policy()))
         or set(row["view_hashes"]) != VIEWS
         or set(row["view_definitions"]) != VIEWS
         or {k: fingerprint(v) for k, v in row["view_definitions"].items()} != row["view_hashes"]
     ):
         raise ValueError("current-facts configuration/policy differs")
+    known_policy(row["policy_hash"])
     return row
 
 
 def policy_document(conn):
     ph = configuration(conn)["policy_hash"]
-    return next(p for p in (engine.policy(), monthly_current.policy(), multi_facts.current_policy()) if fingerprint(p) == ph)
+    return known_policy(ph)
 
 
 def view_definition(conn, name):
@@ -280,7 +290,7 @@ def get(conn, code):
         ).fetchone()
         is not None
     )
-    if not rows and current_policy["version"] in (2, 3):
+    if not rows and current_policy["version"] >= 2:
         prior_identity = bool(conn.execute(
             "SELECT 1 FROM mf_monthly_facts.snapshots s WHERE s.amfi_scheme_code=%s "
             "AND EXISTS(SELECT 1 FROM mf_fact_refresh.publications p WHERE p.snapshot_ids ? s.snapshot_id) "
@@ -289,9 +299,13 @@ def get(conn, code):
             "t.document->>'mode'='activate_monthly_current' AND t.document->'legacy_snapshot_ids' ? s.snapshot_id) LIMIT 1",
             (code, code)
         ).fetchone())
-        if current_policy["version"] == 3:
+        if current_policy["version"] >= 3:
             prior_identity = prior_identity or bool(conn.execute(
                 "SELECT 1 FROM mf_multi_facts.snapshots s WHERE s.amfi_scheme_code=%s AND EXISTS(SELECT 1 FROM mf_multi_facts.runs r WHERE r.status<>'failed' AND r.document->'snapshot_ids' ? s.snapshot_id) LIMIT 1", (code,)
+            ).fetchone())
+        if current_policy["version"] >= 4:
+            prior_identity = prior_identity or bool(conn.execute(
+                "SELECT 1 FROM mf_book_facts.batches b CROSS JOIN LATERAL jsonb_array_elements(b.document->'observations') x WHERE (x.value->'identity'->>'code')::integer=%s AND EXISTS(SELECT 1 FROM mf_book_facts.runs r WHERE r.status<>'failed' AND r.document->'batch_ids' ? b.batch_id) LIMIT 1", (code,)
             ).fetchone())
     for field, aliases in current_policy["supported_fields"].items():
         row = rows.get(field)

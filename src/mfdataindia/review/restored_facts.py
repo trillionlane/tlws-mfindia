@@ -8,7 +8,7 @@ Full source/row/privilege comparison remains the caller's next mandatory gate.
 import re
 from pathlib import Path
 from mfdataindia.enrichment import current_facts, current_facts_store as current
-from mfdataindia.enrichment import monthly_current, refresh_store, multi_facts
+from mfdataindia.enrichment import monthly_current, refresh_store, multi_facts, book_sources
 from mfdataindia.enrichment.current_view_ddl import replay_current_values
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
@@ -70,7 +70,8 @@ def replay_owned_current_values(conn, root: Path, *, scratch_database: str, back
             1
             if cfg["policy_hash"] == fingerprint(current_facts.policy())
             else 2
-            if cfg["policy_hash"] in (fingerprint(monthly_current.policy()), fingerprint(multi_facts.current_policy()))
+            if (cfg["policy_hash"] in (fingerprint(monthly_current.policy()), fingerprint(multi_facts.current_policy()))
+                or cfg["policy_hash"] in [fingerprint(p) for p in book_sources.current_policies()])
             else None
         )
         if version is None:

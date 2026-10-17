@@ -2,7 +2,7 @@
 
 import hashlib
 from pathlib import Path
-from mfdataindia.enrichment import current_facts, current_facts_store as current, monthly_current, multi_facts
+from mfdataindia.enrichment import current_facts, current_facts_store as current, monthly_current, multi_facts, book_sources
 from mfdataindia.review.policy import fingerprint
 
 
@@ -18,7 +18,8 @@ def replay_current_values(conn, root: Path, *, policy_hash: str, expected_defini
             current.SCHEMA_SHA256,
             "CREATE VIEW mf_live_facts.current_values AS\n",
         )
-    elif policy_hash in (fingerprint(monthly_current.policy()), fingerprint(multi_facts.current_policy())):
+    elif (policy_hash in (fingerprint(monthly_current.policy()), fingerprint(multi_facts.current_policy()))
+          or policy_hash in [fingerprint(p) for p in book_sources.current_policies()]):
         from mfdataindia.enrichment import refresh_store
 
         filename, pin, marker = (
