@@ -90,6 +90,11 @@ def current_policy(version=None):
     result = deepcopy(multi_facts.current_policy())
     result.update(
         version=3 + document["version"],
+        previous_policy_hash=fingerprint(
+            multi_facts.current_policy()
+            if document["version"] == 1
+            else current_policy(document["version"] - 1)
+        ),
         book_source_registry_hash=fingerprint(document),
         scope="retained v3 assertion graph plus approved exact-identity whole-AMC book observations",
         publication_boundary="only complete receipted fund/period batches; frozen pilot excluded from replacement; unavailable fields never erase prior usable values",
