@@ -18,13 +18,18 @@ WITH active_authority AS MATERIALIZED (
 SELECT * FROM mf_book_facts.prior_field_versions
 UNION ALL
 SELECT code,field,as_of,
-    CASE WHEN field IN('aum','base_expense_ratio') AND bool_and(usable)
+    CASE WHEN book_v2 THEN
+        (jsonb_agg(value ORDER BY batch_id) FILTER (WHERE usable))->0
+        WHEN field IN('aum','base_expense_ratio') AND bool_and(usable)
         THEN to_jsonb(trim_scale(((jsonb_agg(value ORDER BY batch_id))->>0)::numeric)::text)
         ELSE (jsonb_agg(value ORDER BY batch_id))->0 END AS value,
-    count(DISTINCT value)::integer AS distinct_values,bool_and(usable) AS usable,
+    CASE WHEN book_v2 THEN count(DISTINCT value) FILTER (WHERE usable)
+        ELSE count(DISTINCT value) END::integer AS distinct_values,
+    CASE WHEN book_v2 THEN bool_or(usable) ELSE bool_and(usable) END AS usable,
     jsonb_agg(evidence ORDER BY batch_id) AS sources
 FROM (
     SELECT f.amfi_scheme_code AS code,k.key AS field,b.disclosure_as_of AS as_of,b.batch_id,
+        b.document->>'format'='official-amc-book-batch-v2' AS book_v2,
         CASE WHEN k.key IN('aum','base_expense_ratio') AND k.value->>'status'='accepted'
             THEN to_jsonb(trim_scale((k.value->>'value')::numeric)::text) ELSE k.value->'value' END AS value,
         k.value->>'status'='accepted' AS usable,
@@ -66,4 +71,4 @@ FROM (
         'scheme_name',f.scheme_name,'plan',f.plan_type,'option',f.option_type,
         'isins',COALESCE((SELECT jsonb_agg(i ORDER BY i) FROM (SELECT DISTINCT btrim(z) AS i
             FROM unnest(ARRAY[f.isin_growth_or_div_payout::text,f.isin_div_reinvest::text]) z WHERE z IS NOT NULL) identifiers),'[]'::jsonb))
-) assertions GROUP BY code,field,as_of;
+) assertions GROUP BY code,field,as_of,book_v2;

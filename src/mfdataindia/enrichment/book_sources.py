@@ -150,6 +150,12 @@ def current_policy(version=None):
         scope="retained v3 assertion graph plus approved exact-identity whole-AMC book observations",
         publication_boundary="only complete receipted fund/period batches; frozen pilot excluded from replacement; unavailable fields never erase prior usable values",
     )
+    if document["version"] >= 2:
+        result["book_v2_same_date_selection"] = {
+            "accepted_values": "canonical distinct accepted values only; one selects, multiple conflict, none unavailable",
+            "incomplete_evidence": "retain accepted same-date value and every unavailable assertion as provenance; never invent a value",
+            "legacy_book_v1": "unchanged historical selection and conflict behavior",
+        }
     return result
 
 

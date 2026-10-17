@@ -291,22 +291,30 @@ def get(conn, code):
         is not None
     )
     if not rows and current_policy["version"] >= 2:
-        prior_identity = bool(conn.execute(
-            "SELECT 1 FROM mf_monthly_facts.snapshots s WHERE s.amfi_scheme_code=%s "
-            "AND EXISTS(SELECT 1 FROM mf_fact_refresh.publications p WHERE p.snapshot_ids ? s.snapshot_id) "
-            "UNION ALL SELECT 1 FROM mf_official_facts.snapshots s WHERE s.amfi_scheme_code=%s "
-            "AND EXISTS(SELECT 1 FROM mf_fact_refresh.transitions t WHERE "
-            "t.document->>'mode'='activate_monthly_current' AND t.document->'legacy_snapshot_ids' ? s.snapshot_id) LIMIT 1",
-            (code, code)
-        ).fetchone())
+        prior_identity = bool(
+            conn.execute(
+                "SELECT 1 FROM mf_monthly_facts.snapshots s WHERE s.amfi_scheme_code=%s "
+                "AND EXISTS(SELECT 1 FROM mf_fact_refresh.publications p WHERE p.snapshot_ids ? s.snapshot_id) "
+                "UNION ALL SELECT 1 FROM mf_official_facts.snapshots s WHERE s.amfi_scheme_code=%s "
+                "AND EXISTS(SELECT 1 FROM mf_fact_refresh.transitions t WHERE "
+                "t.document->>'mode'='activate_monthly_current' AND t.document->'legacy_snapshot_ids' ? s.snapshot_id) LIMIT 1",
+                (code, code),
+            ).fetchone()
+        )
         if current_policy["version"] >= 3:
-            prior_identity = prior_identity or bool(conn.execute(
-                "SELECT 1 FROM mf_multi_facts.snapshots s WHERE s.amfi_scheme_code=%s AND EXISTS(SELECT 1 FROM mf_multi_facts.runs r WHERE r.status<>'failed' AND r.document->'snapshot_ids' ? s.snapshot_id) LIMIT 1", (code,)
-            ).fetchone())
+            prior_identity = prior_identity or bool(
+                conn.execute(
+                    "SELECT 1 FROM mf_multi_facts.snapshots s WHERE s.amfi_scheme_code=%s AND EXISTS(SELECT 1 FROM mf_multi_facts.runs r WHERE r.status<>'failed' AND r.document->'snapshot_ids' ? s.snapshot_id) LIMIT 1",
+                    (code,),
+                ).fetchone()
+            )
         if current_policy["version"] >= 4:
-            prior_identity = prior_identity or bool(conn.execute(
-                "SELECT 1 FROM mf_book_facts.batches b CROSS JOIN LATERAL jsonb_array_elements(b.document->'observations') x WHERE (x.value->'identity'->>'code')::integer=%s AND EXISTS(SELECT 1 FROM mf_book_facts.runs r WHERE r.status<>'failed' AND r.document->'batch_ids' ? b.batch_id) LIMIT 1", (code,)
-            ).fetchone())
+            prior_identity = prior_identity or bool(
+                conn.execute(
+                    "SELECT 1 FROM mf_book_facts.batches b CROSS JOIN LATERAL jsonb_array_elements(b.document->'observations') x WHERE (x.value->'identity'->>'code')::integer=%s AND EXISTS(SELECT 1 FROM mf_book_facts.runs r WHERE r.status<>'failed' AND r.document->'batch_ids' ? b.batch_id) LIMIT 1",
+                    (code,),
+                ).fetchone()
+            )
     for field, aliases in current_policy["supported_fields"].items():
         row = rows.get(field)
         conflict = row is not None and row["distinct_values"] != 1
@@ -323,6 +331,10 @@ def get(conn, code):
                 if prior_identity
                 else "no_accepted_official_value"
             )
+        elif current_policy["version"] >= 5 and any(
+            s.get("status") == "unavailable" for s in row["sources"] or []
+        ):
+            reason = "incomplete_same_date_evidence_last_usable_retained"
         result[field] = {
             "state": "unusable"
             if unusable
@@ -341,7 +353,8 @@ def get(conn, code):
             "date_basis": (
                 next(iter({s["date_basis"] for s in row["sources"]}))
                 if row and row["sources"] and len({s["date_basis"] for s in row["sources"]}) == 1
-                else "mixed_source_date_bases" if row and row["sources"]
+                else "mixed_source_date_bases"
+                if row and row["sources"]
                 else "document_context_not_field_effective_date"
             ),
             "verification_status": "needs_verification",
@@ -379,6 +392,7 @@ def get(conn, code):
         "originals_replaced": False,
     }
     from mfdataindia.enrichment import fact_review_store
+
     if fact_review_store.installed(conn):
         status = fact_review_store.state(conn, code, limit=1)
         for field, value in response["fields"].items():

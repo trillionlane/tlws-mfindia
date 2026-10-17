@@ -20,7 +20,7 @@ PROJECTIONS = {
     1: (PROJECTION, PROJECTION_SHA256),
     2: (
         "amc_book_current_projection_v2.sql.inc",
-        "f0132c7dc486a51de188553946ae46f18bceb2abbc8c7e7a08b3fecf08c1f72d",
+        "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376",
     ),
 }
 

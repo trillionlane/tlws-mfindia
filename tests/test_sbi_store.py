@@ -91,7 +91,7 @@ def accepted_fs08(dsn, monkeypatch):
     return prior_graph, old
 
 
-def source_inputs(identities, *, aliases=False):
+def source_inputs(identities, *, aliases=False, september_aum="22,109.87"):
     """Four distinct synthetic PDFs, original catalogue/index/XML and two periods."""
     from datetime import datetime
 
@@ -136,6 +136,13 @@ def source_inputs(identities, *, aliases=False):
         monthly = {}
         for kind, url in edition["documents"].items():
             raw = b"%PDF-synthetic-not-live-" + (edition["as_of"] + kind).encode()
+            corrected = (
+                edition["as_of"] == "2026-09-30"
+                and kind == "active"
+                and september_aum != "22,109.87"
+            )
+            if corrected:
+                raw += b"-new-original-" + september_aum.encode()
             original = {
                 "source_url": url,
                 "media_type": "application/pdf",
@@ -151,6 +158,8 @@ def source_inputs(identities, *, aliases=False):
                     else "SBI SYNTHETIC " + chr(65 + n) + " FUND"
                 )
                 text = ACTIVE.replace("SBI FLEXICAP FUND", heading)
+                if corrected:
+                    text = text.replace("22,109.87", september_aum)
                 if edition["as_of"] == "2026-08-31":
                     text = text.replace("30/09/2026", "31/08/2026")
                 pages.append(
@@ -626,3 +635,106 @@ def test_unactivated_recovery_does_not_depend_on_failed_candidate_specification(
             book_upgrade.recover_unactivated(conn, upgrade["upgrade_id"])["status"] == "RECOVERED"
         )
         assert book_store.installed_configuration(conn)["document"]["registry"]["version"] == 1
+
+
+@pytest.mark.postgres
+def test_transient_identity_gap_never_erases_same_period_last_usable_value(
+    verified_db, monkeypatch
+):
+    from test_amc_book_facts import NOW
+
+    accepted_fs08(verified_db, monkeypatch)
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        book_upgrade.install(conn, ROOT)
+        identities = book_store.population(conn, sbi_book.KEY)
+    batches, originals, archives = source_inputs(identities)
+    with psycopg.connect(runtime_dsn(verified_db, ROLES[0]), row_factory=dict_row) as conn:
+        book_runtime.publish(
+            conn,
+            sbi_book.KEY,
+            "tlws-mf-official-facts-refresh-dev-initial-gap-proof",
+            NOW,
+            identities,
+            batches,
+            originals,
+            archives,
+        )
+    reference = [
+        {
+            "code": 103215,
+            "batch_id": batches[0]["batch_id"],
+            "as_of": "2026-09-30",
+            "values": {"aum": "22109.87"},
+            "source_values": {"aum": "22109.87"},
+        }
+    ]
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        book_projection.activate(
+            conn,
+            ROOT,
+            reference,
+            expected_configuration_hash=fingerprint(dict(current.configuration(conn))),
+        )
+    changed = deepcopy(batches)
+    for batch in changed:
+        batch["document_refs"] = [
+            r for r in batch["document_refs"] if not r["source_url"].endswith("SSD_11605.xml")
+        ]
+        for row in batch["observations"]:
+            if row["identity"]["code"] in (103215, 103216):
+                row["result"] = sbi_book.derive(row["identity"], [], [], batch["disclosure_as_of"])
+        batch["batch_id"] = fingerprint({k: v for k, v in batch.items() if k != "batch_id"})
+    xml = next(o for o in originals if o["source_url"].endswith("SSD_11605.xml"))
+    originals = [o for o in originals if o is not xml]
+    archives = [a for a in archives if a["sha256"] != hashlib.sha256(xml["content"]).hexdigest()]
+    with psycopg.connect(runtime_dsn(verified_db, ROLES[0]), row_factory=dict_row) as conn:
+        book_runtime.publish(
+            conn,
+            sbi_book.KEY,
+            "tlws-mf-official-facts-refresh-dev-transient-gap-proof",
+            NOW,
+            identities,
+            changed,
+            originals,
+            archives,
+            availability=[
+                {
+                    "scheme_id": "11605",
+                    "phase": "xml",
+                    "reason": "source_unavailable_or_invalid",
+                    "error_type": "TimeoutError",
+                }
+            ],
+        )
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        field = current.get(conn, 103215)["fields"]["aum"]
+        assert field["value"] == "22109.87" and field["disclosure_as_of"] == "2026-09-30"
+        assert any(s["status"] == "unavailable" for s in field["sources"])
+        assert field["state"] == "available"
+        assert field["reason"] == "incomplete_same_date_evidence_last_usable_retained"
+    # A different accepted original is not a gap: retain the contradiction and
+    # select the previous month's accepted value, never arbitrarily pick one.
+    conflicting, originals, archives = source_inputs(identities, september_aum="32,109.87")
+    with psycopg.connect(runtime_dsn(verified_db, ROLES[0]), row_factory=dict_row) as conn:
+        book_runtime.publish(
+            conn,
+            sbi_book.KEY,
+            "tlws-mf-official-facts-refresh-dev-conflicting-original-proof",
+            NOW,
+            identities,
+            conflicting,
+            originals,
+            archives,
+        )
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        field = current.get(conn, 103215)["fields"]["aum"]
+        assert field["state"] == "conflicting"
+        assert field["value"] == "22109.87" and field["disclosure_as_of"] == "2026-08-31"
+        assert field["reason"] == "same_date_conflict_previous_official_retained"
+        assert {
+            s["raw_value"] for s in field["unresolved_sources"] if s["status"] == "accepted"
+        } == {
+            "22,109.87",
+            "32,109.87",
+        }

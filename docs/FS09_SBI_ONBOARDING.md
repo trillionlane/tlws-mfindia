@@ -88,6 +88,16 @@ coverage HTTP responses describe the **installed** recognized authority, enablin
 the compatible new image to serve the old state before upgrade and after recovery.
 No reader/admin receives EXECUTE on the private canonical-JSON helper.
 
+V5 additionally seals same-date selection for v2 evidence: compare canonical
+accepted values only. Missing identity/field evidence cannot erase an accepted
+value for that same date; every gap remains in provenance and the response
+reason says `incomplete_same_date_evidence_last_usable_retained`. Two different
+accepted values still conflict and retain an older usable value if one exists.
+No accepted value still means unavailable, never zero or inferred data. The v1
+book aggregation and v4 policy remain unchanged. A PostgreSQL regression first
+reproduced the erasure, then verified both gap retention and accepted-conflict
+fallback through actual restricted publication and current-facts reads.
+
 ## Private API and genuine operations
 
 Keep the same 52-path private app and unchanged old path/component contracts.
