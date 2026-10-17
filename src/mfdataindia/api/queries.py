@@ -540,7 +540,10 @@ _BATCH_SIBLING_SOURCE_SQL = f"""
              ON v2.group_key = v1.group_key
             AND v2.amfi_scheme_code <> v1.amfi_scheme_code
         JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
-        JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
+        JOIN LATERAL (
+            SELECT * FROM mf.current_fund_facts
+            WHERE amfi_scheme_code = v2.amfi_scheme_code OFFSET 0
+        ) ff ON true
         WHERE v1.amfi_scheme_code = ANY(%(codes)s::int[])
           AND f.plan_type = f1.plan_type
           AND f.option_type = f1.option_type
@@ -572,6 +575,38 @@ _BATCH_FACTS_KEYS = (
 #: scheme performance metrics (return_5year, sharpe_ratio, beta) are computed
 #: from each code's own NAV series and are never inherited.
 _BATCH_BORROW_FACTS_KEYS = tuple(k for k in _BATCH_FACTS_KEYS if k in _FAMILY_SAFE_FACTS_FIELDS)
+
+
+def _batch_current_facts(conn, codes: list[int], *, family_only: bool = False):
+    """One query, with a scalar view predicate for each resolved scheme.
+
+    ANY(array) filters the baseline but need not restrict its LEFT JOINed
+    overlay. OFFSET 0 keeps the lateral read parameterized instead of letting
+    the planner flatten it back into a whole-universe facts join.
+    """
+    if not codes:
+        return []
+    columns = (
+        "amfi_scheme_code, aum, expense_ratio, base_expense_ratio,"
+        " COALESCE(benchmark_name, benchmark) AS benchmark_name,"
+        " risk_level, fund_manager_name, inception_date"
+        if family_only else
+        "amfi_scheme_code, aum, expense_ratio, base_expense_ratio,"
+        " return_5year, sharpe_ratio, beta, risk_level, fund_manager_name, benchmark,"
+        " COALESCE(benchmark_name, benchmark) AS benchmark_name, inception_date"
+    )
+    # Only the two fixed application projections above are interpolated;
+    # requested identifiers remain bound parameters, never SQL fragments.
+    return conn.execute(
+        f"""
+        SELECT chosen.* FROM unnest(%(codes)s::int[]) AS requested(code)
+        CROSS JOIN LATERAL (
+            SELECT {columns} FROM mf.current_fund_facts
+            WHERE amfi_scheme_code = requested.code OFFSET 0
+        ) chosen
+        """,
+        {"codes": sorted(set(codes))},
+    ).fetchall()
 
 
 def _facts_are_usable(facts: Optional[dict]) -> bool:
@@ -1324,36 +1359,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         {"codes": codes, "isins": isins},
     ).fetchall()
 
-    # Resolve identifiers before reading the layered facts facade. Joining it
-    # to the OR-filtered fund lookup lets PostgreSQL evaluate every fund's
-    # facts before discarding unrelated rows. An explicit code predicate keeps
-    # that work bounded by the requested cohort (also for ISIN-only requests).
-    # The API's repeatable-read transaction keeps both reads on one snapshot.
-    own_facts = {}
-    if rows:
-        own_facts = {
-            r["amfi_scheme_code"]: r
-            for r in conn.execute(
-                """
-                SELECT amfi_scheme_code, aum, expense_ratio, base_expense_ratio,
-                       return_5year, sharpe_ratio, beta, risk_level,
-                       fund_manager_name, benchmark,
-                       COALESCE(benchmark_name, benchmark) AS benchmark_name,
-                       inception_date
-                FROM mf.current_fund_facts
-                WHERE amfi_scheme_code = ANY(%(codes)s::int[])
-                """,
-                {"codes": sorted({r["amfi_scheme_code"] for r in rows})},
-            ).fetchall()
-        }
-    by_code = {
-        r["amfi_scheme_code"]: {
-            **r,
-            **{k: own_facts.get(r["amfi_scheme_code"], {}).get(k)
-               for k in (*_BATCH_FACTS_KEYS, "benchmark")},
-        }
-        for r in rows
-    }
+    by_code = {r["amfi_scheme_code"]: r for r in rows}
     by_isin: dict[str, int] = {}
     for r in rows:
         for col in ("isin_growth_or_div_payout", "isin_div_reinvest"):
@@ -1381,6 +1387,18 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         if i not in code_inputs[resolved]:
             code_inputs[resolved].append(i)
 
+    # Fetch only the actually resolved cohort, not every metadata candidate
+    # (an old/shared ISIN can match more than one historical row). Keep one
+    # SQL call, one scalar predicate per code, and the same RR API snapshot.
+    own_facts = {
+        r["amfi_scheme_code"]: r for r in _batch_current_facts(conn, order)
+    }
+    for code in order:
+        by_code[code] = {
+            **by_code[code],
+            **{k: own_facts.get(code, {}).get(k) for k in (*_BATCH_FACTS_KEYS, "benchmark")},
+        }
+
     # Variant-group facts fallback (same rule as fund_detail): codes whose own
     # fund_facts row is empty borrow the family's canonical variant facts, so
     # batch summaries match what the detail page shows. The "is it empty" test
@@ -1401,13 +1419,7 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
             # column, mirroring the main projection.
             source_facts = {
                 int(r["amfi_scheme_code"]): dict(r)
-                for r in conn.execute(
-                    "SELECT amfi_scheme_code, aum, expense_ratio, base_expense_ratio,"
-                    " COALESCE(benchmark_name, benchmark) AS benchmark_name,"
-                    " risk_level, fund_manager_name, inception_date"
-                    " FROM mf.current_fund_facts WHERE amfi_scheme_code = ANY(%(codes)s::int[])",
-                    {"codes": sorted(set(facts_source.values()))},
-                ).fetchall()
+                for r in _batch_current_facts(conn, list(facts_source.values()), family_only=True)
             }
 
     funds: list[dict[str, Any]] = []
