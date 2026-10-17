@@ -89,8 +89,10 @@ def _fetch(
         # connect once to one pinned numeric address with original-host TLS.
         addresses = sorted(
             {record[4][0] for record in records},
-            key=lambda address: (ipaddress.ip_address(address).version,
-                                 ipaddress.ip_address(address).packed),
+            key=lambda address: (
+                ipaddress.ip_address(address).version,
+                ipaddress.ip_address(address).packed,
+            ),
         )
         if not addresses or any(not ipaddress.ip_address(a).is_global for a in addresses):
             raise ValueError("non-public official-source DNS answer")

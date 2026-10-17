@@ -29,7 +29,7 @@ identities remain preserved. NAV ingestion/audit schedules were not paused.
 
 ## Narrow corrections
 
-The shared downloader checks **every** DNS answer, then prefers numeric IPv4
+Both the shared and ABSL whole-book downloaders check **every** DNS answer, then prefer numeric IPv4
 before numeric IPv6. It still makes one connection to one approved numeric
 address, preserving original-host SNI and certificate verification. There is no
 address rotation, retry, proxy, cookie, credential, challenge bypass or source
