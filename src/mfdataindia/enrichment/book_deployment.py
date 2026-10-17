@@ -30,6 +30,22 @@ def bound(manifest, environment, purpose):
     return value
 
 
+def core_reference(conn, code):
+    """Only transported scalar aliases, using the actual API's sibling fallback.
+
+    Full original rows and the entire prior projection remain independently
+    hashed by the inspect operation. Unused legacy raw metadata is not a core
+    comparison input and must not inflate logs or downstream command arguments.
+    """
+    from mfdataindia.api import queries
+
+    facts = queries.fund_detail(conn, code)["facts"] or {}
+    aliases = {
+        a for group in book_sources.current_policy()["supported_fields"].values() for a in group
+    }
+    return {alias: facts.get(alias) for alias in sorted(aliases)}
+
+
 def execute(manifest, environment, operation, *, root=Path("/app")):
     if operation not in ("install", "activate", "recover", "recover-source", "inspect"):
         raise ValueError("unsupported book owner operation")
@@ -50,8 +66,6 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
             if operation == "install":
                 result = book_store.install(conn, root)
             else:
-                from mfdataindia.api import queries
-
                 result = {
                     "read_only": True,
                     "source_rows_changed": 0,
@@ -74,7 +88,7 @@ def execute(manifest, environment, operation, *, root=Path("/app")):
                         str(code): {
                             "book": book_store.fund(conn, code),
                             "current": current.get(conn, code),
-                            "core_facts": queries.fund_detail(conn, code)["facts"],
+                            "core_facts": core_reference(conn, code),
                         }
                         for code in manifest.cohort
                     },

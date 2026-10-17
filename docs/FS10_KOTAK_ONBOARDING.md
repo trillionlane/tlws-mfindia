@@ -75,3 +75,13 @@ coverage are fabricated.
    and original objects. Never pause/change NAV or audit schedules.
 
 Only then record accepted DEV coverage and move to the separate FS-11 UTI PR.
+
+## Bounded operator references
+
+The actual FS-09 pre-activation run exposed an OS command-size limit when unused
+legacy core-detail metadata was embedded in a certification request. The
+owner inspector now returns only the supported fact aliases consumed by the
+core comparison, using the real API query and its sibling fallback. Missing
+facts remain explicit nulls. Full original-table and entire prior-projection
+row seals remain unchanged; no data, comparison field or database grant is
+removed. The transport retry and failed attempt remain separately recorded.
