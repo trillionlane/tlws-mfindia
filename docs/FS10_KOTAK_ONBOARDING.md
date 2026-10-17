@@ -3,6 +3,11 @@
 Approved with FS-08 through FS-11 on 2026-10-17. This is an implementation
 record, not a DEV acceptance certificate. Backend/data only; no UI or PROD.
 
+The subsequent [actual DEV acceptance](evidence/FS10_DEV_ACCEPTANCE_2026-10-17.md)
+records the fresh successful full preservation chain, real scheduled execution,
+partial available-period coverage and running-core target-value checks. Earlier
+failed attempts remain separately retained and are not acceptance evidence.
+
 ## Finite result
 
 Onboard one additional source task in the existing private monthly-facts
