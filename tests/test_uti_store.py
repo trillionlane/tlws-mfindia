@@ -264,6 +264,44 @@ def test_two_english_months_separate_TER_no_pending_leak_recovery_and_preservati
             for o in batch["observations"]
         )
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        from mfdataindia.enrichment.book_certification import new_supplemental_oracles
+
+        supplemental = {
+            "sources": {uti_book.KEY: {"batch_ids": run["batch_ids"]}},
+            "supplemental_oracles": [
+                {
+                    "code": code,
+                    "batch_id": batch["batch_id"],
+                    "as_of": batch["disclosure_as_of"],
+                    "value": "1.68",
+                }
+                for batch in inputs[0]
+                for code in (100669, 100668, 100822, 100823)
+            ],
+        }
+        checked = new_supplemental_oracles(conn, supplemental)
+        assert checked["supplemental_originals_checked"] == 4
+        assert checked["supplemental_samples_checked"] == 8
+        for defect in ("missing_older", "missing_passive", "missing_current_IDCW", "wrong_value"):
+            bad = deepcopy(supplemental)
+            if defect == "missing_older":
+                bad["supplemental_oracles"] = [
+                    o for o in bad["supplemental_oracles"] if o["as_of"] == "2026-09-30"
+                ]
+            elif defect == "missing_passive":
+                bad["supplemental_oracles"] = [
+                    o for o in bad["supplemental_oracles"] if o["code"] in (100669, 100668)
+                ]
+            elif defect == "missing_current_IDCW":
+                bad["supplemental_oracles"] = [
+                    o
+                    for o in bad["supplemental_oracles"]
+                    if o["as_of"] != "2026-09-30" or o["code"] in (100669, 100822)
+                ]
+            else:
+                bad["supplemental_oracles"][0]["value"] = "0.99"
+            with pytest.raises(ValueError):
+                new_supplemental_oracles(conn, bad)
         assert dict(current.configuration(conn)) == prior
         assert current.get(conn, 100669)["fields"]["aum"]["value"] != "22495.18"
         assert book_preservation.capture(conn, 3) == preserved

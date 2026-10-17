@@ -41,7 +41,9 @@ UTI's month-end **TER is not BER**. Preserve it as
 `GET /api/enrichment/v9/funds/{code}/facts` response, with its percent unit,
 Regular-plan scope, disclosure date, actual raw token/anchor and `expense_basis:
 TER`. It is not projected onto `base_expense_ratio`, and no BER-to-TER conversion
-is performed. Core BER remains unavailable unless separately evidenced. Coverage
+is performed. No UTI-sourced BER override is published; any preserved legacy
+BER is not newly validated by this sprint. Consumers must use source/provenance
+metadata rather than interpreting TER as evidence for that legacy field. Coverage
 counts this supplemental field separately from the five existing scalar fields.
 
 Every observation remains `needs_verification`; source validation creates no
@@ -61,6 +63,9 @@ human review decision. Adjusted IDCW analytics remain disabled.
    and Passive originals, current Growth and IDCW samples, TER-as-TER, and no
    invented BER. Retain an independent prior-SBI BER oracle to satisfy the
    existing all-five-field certificate without weakening it for UTI.
+   The version-4 certificate additionally requires independent supplemental TER
+   references for every actual book/period and current Growth/IDCW samples.
+   Matching API/database output without these references cannot pass.
 5. Activate the existing projection, certify metadata and actual core reads,
    then perform actual prior graph/source/traffic recovery, replay and
    reactivation. No timeout relaxation or unapproved source correction.
