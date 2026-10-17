@@ -8,7 +8,10 @@ record, not a DEV acceptance certificate. Backend/data only; no UI or PROD.
 Onboard one additional source task in the existing private monthly-facts
 process. Preserve registry versions 1/2, all prior parser policies and their
 hashes, original scheme/NAV/facts tables, every earlier evidence row and prior
-AMC projections. Registry v3 and policy v6 add Kotak only. Projection v3 uses
+AMC projections. Registry v3 and revised policy v7 add Kotak only. The earlier
+registered but unaccepted policy-v6 candidate is retained byte-for-byte; policy
+numbers are allocated independently of source-wave counts and are never reused.
+Projection v3 uses
 the exact v2 SQL, not a new data model.
 
 The current source is a whole-AMC PDF reached through Kotak's actual public
