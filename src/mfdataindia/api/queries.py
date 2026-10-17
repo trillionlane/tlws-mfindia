@@ -1309,15 +1309,9 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
                f.scheme_category, f.isin_primary, f.isin_growth_or_div_payout,
                f.isin_div_reinvest, f.in_scope, f.is_defunct,
                a.amfi_amc_name,
-               ff.aum, ff.expense_ratio, ff.base_expense_ratio, ff.return_5year,
-               ff.sharpe_ratio, ff.beta, ff.risk_level, ff.fund_manager_name,
-               ff.benchmark,
-               COALESCE(ff.benchmark_name, ff.benchmark) AS benchmark_name,
-               ff.inception_date,
                lt.nav AS latest_nav, lt.nav_date AS latest_nav_date
         FROM mf.funds f
         JOIN mf.amcs a ON a.amc_id = f.amc_id
-        LEFT JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = f.amfi_scheme_code
         LEFT JOIN LATERAL (
             SELECT n.nav, n.nav_date FROM mf.nav_history n
             WHERE n.amfi_scheme_code = f.amfi_scheme_code
@@ -1330,7 +1324,36 @@ def funds_batch(conn, ids: list[str]) -> dict[str, Any]:
         {"codes": codes, "isins": isins},
     ).fetchall()
 
-    by_code = {r["amfi_scheme_code"]: r for r in rows}
+    # Resolve identifiers before reading the layered facts facade. Joining it
+    # to the OR-filtered fund lookup lets PostgreSQL evaluate every fund's
+    # facts before discarding unrelated rows. An explicit code predicate keeps
+    # that work bounded by the requested cohort (also for ISIN-only requests).
+    # The API's repeatable-read transaction keeps both reads on one snapshot.
+    own_facts = {}
+    if rows:
+        own_facts = {
+            r["amfi_scheme_code"]: r
+            for r in conn.execute(
+                """
+                SELECT amfi_scheme_code, aum, expense_ratio, base_expense_ratio,
+                       return_5year, sharpe_ratio, beta, risk_level,
+                       fund_manager_name, benchmark,
+                       COALESCE(benchmark_name, benchmark) AS benchmark_name,
+                       inception_date
+                FROM mf.current_fund_facts
+                WHERE amfi_scheme_code = ANY(%(codes)s::int[])
+                """,
+                {"codes": sorted({r["amfi_scheme_code"] for r in rows})},
+            ).fetchall()
+        }
+    by_code = {
+        r["amfi_scheme_code"]: {
+            **r,
+            **{k: own_facts.get(r["amfi_scheme_code"], {}).get(k)
+               for k in (*_BATCH_FACTS_KEYS, "benchmark")},
+        }
+        for r in rows
+    }
     by_isin: dict[str, int] = {}
     for r in rows:
         for col in ("isin_growth_or_div_payout", "isin_div_reinvest"):
