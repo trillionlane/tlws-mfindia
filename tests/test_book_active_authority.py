@@ -102,6 +102,7 @@ def test_staged_future_source_and_registry_replay_cannot_leak_into_active_policy
     if same_registry_new_parser:
         specification["parser_engine_hash"] = "f" * 64
     staged["source_specifications"][key] = specification
+    staged["source_specification_hashes"][key] = fingerprint(specification)
     if not same_registry_new_parser:
         staged["registry"]["sources"].append({**staged["registry"]["sources"][0], "key": key})
         staged["registry"]["version"] = 2

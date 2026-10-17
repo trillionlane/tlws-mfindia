@@ -11,7 +11,7 @@ WITH active_authority AS MATERIALIZED (
     WHERE active_config.generation=(SELECT max(generation) FROM mf_live_facts.configuration)
 ), registered_specs AS MATERIALIZED (
     SELECT source.key AS source_key,source.value->'preserved_projection_codes' AS preserved_codes,
-        encode(sha256(convert_to(mf_review.canonical_json(source.value),'UTF8')),'hex') AS specification_hash
+        authority.document->'source_specification_hashes'->>source.key AS specification_hash
     FROM active_authority authority
     CROSS JOIN LATERAL jsonb_each(authority.document->'source_specifications') source
 )
