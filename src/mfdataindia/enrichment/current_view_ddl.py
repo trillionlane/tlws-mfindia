@@ -12,6 +12,17 @@ def replay_current_values(conn, root: Path, *, policy_hash: str, expected_defini
     ).fetchone()
     if not who["direct"] or who["actor"] not in ("postgres", "mfdata_admin"):
         raise ValueError("direct current-view owner required")
+    if "selected_field_once." in expected_definition:
+        from mfdataindia.enrichment import book_core_projection
+
+        if policy_hash not in [
+            fingerprint(book_sources.current_policy(version))
+            for version in book_sources.REGISTRIES
+            if version >= 2
+        ]:
+            raise ValueError("single-pass graph requires a recognized book policy")
+        book_core_projection.replay_values(conn, root, expected_definition)
+        return
     if policy_hash == fingerprint(current_facts.policy()):
         filename, pin, marker = (
             current.MIGRATION,
