@@ -86,11 +86,15 @@ facts remain explicit nulls. Full original-table and entire prior-projection
 row seals remain unchanged; no data, comparison field or database grant is
 removed. The transport retry and failed attempt remain separately recorded.
 
-The separate FS-09 core-read-cost hotfixes (#86 and #87) are rollout prerequisites.
-Its single-pass scalar expansion and equivalent predicate-friendly facade are
+The separate FS-09 core-read-cost hotfixes (#86, #87 and #88) are rollout prerequisites.
+Their single-pass scalar expansion and equivalent predicate-friendly facade are
 also used by v3; the dated field-selection policy and v2 field-versions SQL
 remain unchanged. The bounded batch lookup resolves identifiers before querying
 facts; it must not evaluate every fund's facts for a small requested cohort.
+The final scalar-bounded lateral facts and sibling reads must remain intact:
+the array-only predicate was still slow with the expanded SBI overlay. Resolve
+identifiers first and retain the fixed projection, bound identifiers and
+anti-flattening boundary without changing eligibility or response semantics.
 The exact-image rehearsal must check the actual core HTTP
 detail/batch paths as well as metadata, then all 19 core routes. Increasing
 client timeouts is not an acceptance substitute.
