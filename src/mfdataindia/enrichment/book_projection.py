@@ -15,7 +15,7 @@ from mfdataindia.enrichment.monthly_projection import ORDER, owner, seal_configu
 from mfdataindia.review.policy import fingerprint
 
 PROJECTION = "amc_book_current_projection.sql.inc"
-PROJECTION_SHA256 = "ec4a31083cae05db702afafa071e17846024abada590772fa5a157cacfdcfdd3"
+PROJECTION_SHA256 = "b6d98a57b40dbbcda400b26adf87218b697b8a00aaa3f013a52b3853bcb9aa82"
 
 
 def transition(conn, body):

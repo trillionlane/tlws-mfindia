@@ -2,11 +2,14 @@
 
 from copy import deepcopy
 from datetime import datetime, timezone
+from decimal import Decimal
 import hashlib
 import json
 from pathlib import Path
+from uuid import uuid4
 
 import psycopg
+from psycopg import sql
 from psycopg.rows import dict_row
 import pytest
 
@@ -70,6 +73,16 @@ def test_registry_cannot_be_overridden_and_retains_frozen_two_sources(tmp_path):
         book_sources.source("caller-amc")
     with pytest.raises(ValueError):
         book_sources.registry(version=True)
+
+
+def test_compiled_authority_seals_each_exact_specification_hash():
+    config = book_sources.configuration()
+    assert config["source_specification_hashes"] == {
+        key: fingerprint(value) for key, value in config["source_specifications"].items()
+    }
+    assert "mf_review.canonical_json" not in (
+        ROOT / "sql/optional/amc_book_current_projection.sql.inc"
+    ).read_text()
 
 
 def test_discovery_requires_two_distinct_nonfuture_editions_and_dates():
@@ -214,6 +227,89 @@ def publish(dsn, identities, inputs, suffix="fixture"):
         return book_runtime.publish(
             conn, KEY, multi_facts.JOB + "-" + suffix, NOW, identities, *inputs
         )
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("role", ROLES[1:])
+def test_active_facts_and_core_view_need_no_private_hash_function_execute(
+    verified_db, monkeypatch, role
+):
+    from fastapi.testclient import TestClient
+    from mfdataindia.review.app import create_review_app
+    from test_verified_review_auth import assertion, trust
+
+    identities, inputs, _ = prepared(verified_db, monkeypatch)
+    publish(verified_db, identities, inputs)
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        book_projection.activate(
+            conn,
+            ROOT,
+            [
+                {
+                    "code": 100001,
+                    "batch_id": inputs[0][0]["batch_id"],
+                    "as_of": "2026-09-30",
+                    "values": {"aum": "12345.67"},
+                }
+            ],
+            expected_configuration_hash=fingerprint(dict(current.configuration(conn))),
+        )
+        assert not conn.execute(
+            "SELECT has_function_privilege(%s,'mf_review.canonical_json(jsonb)','EXECUTE') AS allowed",
+            (role,),
+        ).fetchone()["allowed"]
+    private, verifier = trust()
+    headers = {"Authorization": "Bearer " + assertion(private, scope=["review:read"])}
+    with TestClient(
+        # These two real handlers do not require unrelated calculator/portfolio
+        # fixture schemas. The full 52-route profile has a separate contract gate.
+        create_review_app(
+            runtime_dsn(verified_db, role), verifier=verifier, current_facts=True, amc_books=True
+        )
+    ) as client:
+        for route in (
+            "/api/enrichment/v9/funds/100001/facts",
+            "/api/enrichment/v3/funds/100001/facts",
+        ):
+            response = client.get(route, headers=headers)
+            assert response.status_code == 200, (route, response.status_code, response.text)
+            assert response.headers["cache-control"] == "no-store"
+            assert client.get(route).status_code == 401
+        assert response.json()["fields"]["aum"]["value"] == "12345.67"
+    # The core API is a separate principal: SELECT on the core view only,
+    # not the private review reader's deliberately narrower source grants.
+    core_role = "book_core_fixture_" + uuid4().hex[:12]
+    with psycopg.connect(verified_db) as conn:
+        conn.execute(
+            sql.SQL("CREATE ROLE {} LOGIN PASSWORD 'verified-local-fixture-only'").format(
+                sql.Identifier(core_role)
+            )
+        )
+        conn.execute(sql.SQL("GRANT USAGE ON SCHEMA mf TO {}").format(sql.Identifier(core_role)))
+        conn.execute(
+            sql.SQL("GRANT SELECT ON mf.current_fund_facts TO {}").format(sql.Identifier(core_role))
+        )
+    try:
+        with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+            assert not conn.execute(
+                "SELECT has_function_privilege(%s,'mf_review.canonical_json(jsonb)','EXECUTE') AS allowed",
+                (core_role,),
+            ).fetchone()["allowed"]
+        with psycopg.connect(runtime_dsn(verified_db, core_role), row_factory=dict_row) as conn:
+            assert conn.execute(
+                "SELECT aum FROM mf.current_fund_facts WHERE amfi_scheme_code=100001"
+            ).fetchone()["aum"] == Decimal("12345.67")
+    finally:
+        with psycopg.connect(verified_db) as conn:
+            conn.execute(
+                sql.SQL("REVOKE SELECT ON mf.current_fund_facts FROM {}").format(
+                    sql.Identifier(core_role)
+                )
+            )
+            conn.execute(
+                sql.SQL("REVOKE USAGE ON SCHEMA mf FROM {}").format(sql.Identifier(core_role))
+            )
+            conn.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(core_role)))
 
 
 @pytest.mark.postgres

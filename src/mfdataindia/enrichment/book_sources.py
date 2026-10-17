@@ -78,12 +78,17 @@ def specification(key, *, version=None):
 
 def configuration(version=None):
     document = registry(version)
+    specifications = {
+        s["key"]: specification(s["key"], version=document["version"]) for s in document["sources"]
+    }
     return {
         "registry": document,
         "registry_hash": fingerprint(document),
-        "source_specifications": {
-            s["key"]: specification(s["key"], version=document["version"])
-            for s in document["sources"]
+        "source_specifications": specifications,
+        # The owner seals this entire configuration. Readers must not need
+        # EXECUTE on the private canonical_json helper to select current facts.
+        "source_specification_hashes": {
+            key: fingerprint(value) for key, value in specifications.items()
         },
     }
 

@@ -85,6 +85,11 @@ policy binds the complete compiled configuration hash (including parser policy
 and engine hashes), so reusing a registry hash with a different parser cannot
 activate new interpretation implicitly. Historical registry files and their
 versioned adapters remain frozen for recognition and recovery.
+The owner-sealed compiled configuration also stores each specification hash.
+Read-side views select those sealed hashes without calling the private
+`mf_review.canonical_json` helper. Reader/admin HTTP paths and the existing
+core facts view must work while helper EXECUTE remains denied; do not broaden
+runtime permissions to make a read succeed.
 Thus installing/staging another source cannot publish it as current before
 its own owner-approved activation; restoring an earlier active policy excludes
 later sources without deleting their retained historical evidence. Wider
