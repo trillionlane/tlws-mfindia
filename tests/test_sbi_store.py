@@ -28,6 +28,12 @@ from test_verified_review_store import verified_db as verified_db
 from test_sbi_book import ACTIVE, XML, catalogue
 
 
+@pytest.fixture(autouse=True)
+def frozen_sbi_authority(monkeypatch):
+    """Historical SBI proofs remain on their actual two-version authority."""
+    monkeypatch.setattr(book_sources, "REGISTRIES", {k: v for k, v in book_sources.REGISTRIES.items() if k <= 2})
+
+
 def accepted_fs08(dsn, monkeypatch):
     identities, inputs, _ = prepared(dsn, monkeypatch)
     publish(dsn, identities, inputs)

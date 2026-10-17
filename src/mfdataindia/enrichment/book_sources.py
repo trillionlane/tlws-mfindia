@@ -5,11 +5,11 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book
+from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book
 from mfdataindia.enrichment.evidence import public_url
 from mfdataindia.review.policy import fingerprint
 
-CURRENT_VERSION = 2
+CURRENT_VERSION = 3
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -18,6 +18,10 @@ REGISTRIES = {
     2: (
         "official-book-sources-v2.json",
         "9ee1d4c2c569ea8f78552d133244342e111ff58f1c1b7bb46784f8f1b6d00cf2",
+    ),
+    3: (
+        "official-book-sources-v3.json",
+        "9453e96cff8c94a7ac1b7bc8851246c71ccd9b63b10dcded06d7ae78e5c77727",
     ),
 }
 
@@ -46,6 +50,33 @@ def registry(version=None, root=None):
     ):
         raise ValueError("registered source task/cohort authority differs")
     for source in document["sources"]:
+        if source["key"] == kotak_book.KEY:
+            if (
+                version < 3
+                or source["adapter"] != "kotak-monthly-book-v1"
+                or source["amc"] != kotak_book.AMC
+                or source["catalogue_api"] != kotak_book.CATALOGUE
+                or source["directory_url"] != kotak_book.DIRECTORY
+                or source["book_prefix"] != kotak_book.BOOK_PREFIX
+                or source["maximum_identity_families"] != 200
+                or source["identity_workers"] != 4
+                or source["maximum_total_original_bytes"] != 83886080
+                or source["archive_prefix"] != "official-monthly-facts/kotak-expanded/"
+                or source["plan"] != "REGULAR"
+                or source["in_scope"] is not True
+                or source["period_count"] != 2
+                or source["expected_recent_period_count"] != 2
+                or source["minimum_current_detail_pages"] != 20
+                or source["maximum_current_variants"] != 1024
+                or source["preserved_projection_codes"] != [101763, 103173, 103174]
+                or source["reviewed_historical"]["url"] != kotak_book.HISTORICAL
+                or source["reviewed_historical"]["sha256"] != kotak_book.HISTORICAL_PDF_SHA256
+                or source["reviewed_historical"]["actual_reporting_period"] != "2026-07-31"
+                or source["reviewed_historical"]["discovery_original_sha256"]
+                != "cd412f92d887b8220559d911003b4a104eac9506ff92beaf81266a7d18364980"
+            ):
+                raise ValueError("bounded reviewed Kotak authority differs")
+            continue
         if source["key"] == sbi_book.KEY:
             if (
                 version < 2
@@ -92,7 +123,11 @@ def source(key, *, version=None):
 
 def specification(key, *, version=None):
     item = deepcopy(source(key, version=version))
-    parser = sbi_book if item["adapter"] == "sbi-full-book-v1" else absl_expansion
+    parser = {
+        "sbi-full-book-v1": sbi_book,
+        "absl-full-book-v1": absl_expansion,
+        "kotak-monthly-book-v1": kotak_book,
+    }[item["adapter"]]
     item["parser_policy"] = parser.policy()
     item["parser_policy_hash"] = fingerprint(item["parser_policy"])
     item["parser_engine_hash"] = hashlib.sha256(Path(parser.__file__).read_bytes()).hexdigest()
@@ -114,6 +149,34 @@ def specification(key, *, version=None):
         item["decoder_engine_hash"] = hashlib.sha256(
             Path(amc_book_pdf.__file__).read_bytes()
             + Path(amc_book_pdf.__file__).with_name("_amc_book_pdf_worker.py").read_bytes()
+        ).hexdigest()
+    if parser is kotak_book:
+        from mfdataindia.enrichment import (
+            amfi_summary_identity,
+            kotak_acquisition,
+            kotak_batch,
+            kotak_runtime,
+            layout_book_archive,
+            layout_book_http,
+            layout_book_pdf,
+        )
+
+        item["evidence_engine_hashes"] = {
+            module.__name__.rsplit(".", 1)[-1]: hashlib.sha256(
+                Path(module.__file__).read_bytes()
+            ).hexdigest()
+            for module in (
+                amfi_summary_identity,
+                kotak_acquisition,
+                kotak_batch,
+                kotak_runtime,
+                layout_book_archive,
+                layout_book_http,
+            )
+        }
+        item["decoder_engine_hash"] = hashlib.sha256(
+            Path(layout_book_pdf.__file__).read_bytes()
+            + Path(layout_book_pdf.__file__).with_name("_layout_book_pdf_worker.py").read_bytes()
         ).hexdigest()
     return item
 

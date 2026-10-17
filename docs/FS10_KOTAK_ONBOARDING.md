@@ -1,0 +1,77 @@
+# FS-10 — Kotak monthly official-facts expansion
+
+Approved with FS-08 through FS-11 on 2026-10-17. This is an implementation
+record, not a DEV acceptance certificate. Backend/data only; no UI or PROD.
+
+## Finite result
+
+Onboard one additional source task in the existing private monthly-facts
+process. Preserve registry versions 1/2, all prior parser policies and their
+hashes, original scheme/NAV/facts tables, every earlier evidence row and prior
+AMC projections. Registry v3 and policy v6 add Kotak only. Projection v3 uses
+the exact v2 SQL, not a new data model.
+
+The current source is a whole-AMC PDF reached through Kotak's actual public
+monthly forms API. Its 32 MiB bounded layout decoder is separate from the
+frozen older decoders. The previous available disclosure is a reviewed,
+single-fund Nifty 50 one-pager; its **actual July date** is retained despite
+its August URL. The missing expected August period remains an explicit gap.
+Two available reporting dates do not mean two consecutive full-AMC books.
+
+## Evidence and identity
+
+- Retain the exact forms catalogue, directory, returned AMFI document index,
+  XML identity originals, and both PDF originals. PDF/XML archives are
+  content-addressed, create-only and generation/hash checked. A redirect or
+  challenge is a source failure, not permission to bypass controls.
+- The AMFI directory identifies candidate families, not scheme identity or
+  the coverage denominator. The denominator is the complete retained current
+  in-scope Kotak population, including unsupported/ambiguous variants as gaps.
+- A usable fact needs exact code, checksum-valid ISIN, explicit plan/option,
+  and a unique source-authored monthly heading or former name. Never repair
+  conflicting issuer XML using database guesses or scheme-name similarity.
+- Preserve every parsed code claim, including unpaired/unsupported Direct
+  claims, for cross-family conflict detection. Daily/weekly/monthly/default
+  IDCW and payout/reinvestment are not cross-joined. Missing frequency can
+  pair only one unique labelled plan/option code with one unique ISIN.
+  SQL checks the pairing basis and retained parent-index/original edges.
+
+## Supported fields and honest omissions
+
+The supported core fields remain benchmark, complete manager block, Regular
+BER, closing AUM and explicit scheme risk. AUM is not AAUM. BER is not TER.
+Fund risk is not benchmark risk or a riskometer legend. Reporting dates come
+from explicit source text, never edition/filename/URL/creation metadata.
+
+The layout text can merge adjacent portfolio columns. A benchmark must be a
+complete labelled block, match an immutable reviewed TRI-label policy and
+survive SQL validation; contamination and partial/unsupported names remain
+unavailable. Explicit Tier 1 can be selected without substituting Tier 2.
+This is not an economic benchmark or index-price data feed.
+
+Source context dates and field-effective dates remain distinct. Old values
+are not erased when a later field is missing. New official facts can replace
+stale current projections through the existing reversible overlay; original
+records are never updated. Publications remain `needs_verification`; no human
+verification events, adjusted IDCW analytics or whole-factsheet semantic
+coverage are fabricated.
+
+## Acceptance gates
+
+1. Full exact-head CI, implementer self-review and normal merge.
+2. Fresh backup and exact-image restored-clone rehearsal with actual sources,
+   independent visually reviewed canaries, complete prior-row/projection seals,
+   private read tests and recovery/replay/reactivation.
+3. Stage and certify the new image against the accepted old authority before
+   installing the sequential schema/source upgrade. Restricted identities and
+   private invoker boundaries must remain unchanged.
+4. Run all five source tasks in one actual execution, validate real immutable
+   archive generations, source receipts and full population/gap accounting.
+5. Certify private extension and all 19 core reads, activate, demonstrate real
+   recovery and replay, then reactivate. Observe a genuine Scheduler execution
+   and restore the normal daily 09:00 Asia/Kolkata schedule.
+6. Take an after-backup and require complete original-data, every prior-layer
+   row and whole previous-AMC projection preservation. Keep failed attempts
+   and original objects. Never pause/change NAV or audit schedules.
+
+Only then record accepted DEV coverage and move to the separate FS-11 UTI PR.

@@ -23,7 +23,7 @@ def install(conn, root):
         target = book_sources.CURRENT_VERSION
         if old_version == target:
             return {"status": "ALREADY_INSTALLED", "source_rows_changed": 0}
-        if old_version != target - 1 or target != 2:
+        if old_version != target - 1 or target not in book_store.MIGRATIONS:
             raise ValueError("one reviewed sequential source upgrade required")
         graph = dict(current.configuration(conn))
         if graph["policy_hash"] != fingerprint(

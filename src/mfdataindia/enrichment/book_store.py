@@ -21,6 +21,10 @@ MIGRATIONS = {
         "039_sbi_book_evidence.sql",
         "64618433ce87e5b81f3ebbe072576803c63d2a6ca58643551d602053a76b05b7",
     ),
+    3: (
+        "040_kotak_book_evidence.sql",
+        "c29b0bbcd0b45c9452c31fe65502adfceb7aeba53e9bc9720596731682835bcd",
+    ),
 }
 TABLES = {"configuration", "sources", "batches", "runs", "transitions"}
 APPEND = {"sources", "batches", "runs"}
