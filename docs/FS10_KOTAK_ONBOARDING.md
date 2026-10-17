@@ -86,9 +86,22 @@ facts remain explicit nulls. Full original-table and entire prior-projection
 row seals remain unchanged; no data, comparison field or database grant is
 removed. The transport retry and failed attempt remain separately recorded.
 
-The separate FS-09 core-read-cost hotfix (#86) is a rollout prerequisite.
+The separate FS-09 core-read-cost hotfixes (#86 and #87) are rollout prerequisites.
 Its single-pass scalar expansion and equivalent predicate-friendly facade are
 also used by v3; the dated field-selection policy and v2 field-versions SQL
-remain unchanged. The exact-image rehearsal must check the actual core HTTP
+remain unchanged. The bounded batch lookup resolves identifiers before querying
+facts; it must not evaluate every fund's facts for a small requested cohort.
+The exact-image rehearsal must check the actual core HTTP
 detail/batch paths as well as metadata, then all 19 core routes. Increasing
 client timeouts is not an acceptance substitute.
+
+## Read-only available-period preview, not DEV acceptance
+
+The 2026-10-17 retained-original preview covered the complete 205-variant local
+cohort: 41 usable September observations and two July observations. September's
+164 gaps comprise 116 missing exact bridges, 14 identity conflicts, seven
+unavailable-field results, 24 missing/ambiguous headings and three unsupported
+identities. The July source is the Nifty 50 one-pager, not a whole-AMC book;
+August is still explicitly missing. No source or matching policy was weakened
+to turn those gaps into usable or human-verified data. These are preview counts,
+not final-image source publication, live certification or all-AMC completeness.
