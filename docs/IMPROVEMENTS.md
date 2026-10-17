@@ -5,6 +5,24 @@ Version-controlled backlog of planned improvements. Each item states the
 `RESEARCH.md` holds the source research; `README.md` documents what ships
 today. This file is the forward-looking "next" list.
 
+## Source operations follow-up — Kotak discovery (2026-10-17)
+
+Before 2026-11-01 UTC, revalidate ordinary live catalogue discovery from DEV.
+The reviewed known-document authority is a bounded October use of the exact
+September catalogue/PDF originals, not an automatically renewable discovery
+feed. Catalogue requests currently redirect to an anti-bot challenge; do not
+follow, solve or bypass it, rotate egress to evade it, or silently extend the
+window/pins. Use ordinary official distribution channels and separately review
+any new source authority/evidence. Preserve every original and earlier policy.
+
+Until live discovery is established, keep `latest_catalogue_discovery_available:
+false`, the use-window metadata and missing-month gaps visible to consumers.
+Expiry or unsuccessful refresh must retain prior accepted observations and
+record failure, never synthesize freshness or erase facts. A future authority
+change requires its own tests, exact-image source/canary certification and
+preservation/recovery gates. This roadmap entry is not an extra schedule,
+permission expansion or a claim that the current source rollout is accepted.
+
 ## Additive product enhancement roadmap (decision, 2026-10-13)
 
 **Status: implementation started for the initial backend bundle; remaining work
