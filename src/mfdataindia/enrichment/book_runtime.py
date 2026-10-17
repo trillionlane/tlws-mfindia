@@ -63,12 +63,21 @@ def retain_source(conn, key, original):
         "SELECT source_url,media_type,byte_length,encode(sha256(content),'hex') AS checksum FROM mf_book_facts.sources WHERE source_key=%s AND content_hash=%s",
         (key, digest),
     ).fetchone()
-    if row != {"source_url": url, "media_type": media, "byte_length": len(raw), "checksum": digest}:
+    expected = {"source_url": url, "media_type": media, "byte_length": len(raw), "checksum": digest}
+    if key == "sbi-expanded":
+        # BEFORE INSERT has independently checked this acquired alias URL and
+        # its retained parent index/catalogue even when ON CONFLICT skips the
+        # content-addressed row. Preserve its FIRST source_url; all actual URL
+        # edges remain sealed in v2 batch document_refs, never an UPDATE.
+        expected["source_url"] = row["source_url"]
+    if row != expected:
         raise ValueError("retained whole-AMC original replay differs")
     return digest
 
 
-def publish(conn, key, execution, observed, identities, batches, originals, archives):
+def publish(
+    conn, key, execution, observed, identities, batches, originals, archives, *, availability=None
+):
     verify_runtime(conn, "generator")
     book_store.verify_acl(conn)
     acquire_nav_data_operation_lock(conn)
@@ -82,7 +91,10 @@ def publish(conn, key, execution, observed, identities, batches, originals, arch
     catalog_hashes = []
     for original in originals:
         digest = retain_source(conn, key, original)
-        if original["media_type"] != "application/pdf":
+        if (
+            original["media_type"] in ("text/html", "application/json")
+            and digest not in catalog_hashes
+        ):
             catalog_hashes.append(digest)
     for batch in batches:
         if batch["population_hash"] != fingerprint(identities):
@@ -127,6 +139,7 @@ def publish(conn, key, execution, observed, identities, batches, originals, arch
             "all_amc_data_complete": False,
             "verification_status": "needs_verification",
             "adjusted_idcw_analytics_enabled": False,
+            **({"availability": availability} if availability is not None else {}),
         },
     )
 
@@ -231,7 +244,11 @@ def execute(dsn, execution, *, task_index):
     if task_index < 2:
         return multi_runtime.execute(dsn, execution, task_index=task_index)
     source = registry["sources"][task_index - 2]
-    result = {"absl-full-book-v1": absl}[source["adapter"]](dsn, execution)
+    from mfdataindia.enrichment import sbi_runtime
+
+    result = {"absl-full-book-v1": absl, "sbi-full-book-v1": sbi_runtime.run}[source["adapter"]](
+        dsn, execution
+    )
     return {
         "format": "official-amc-book-task-v1",
         "execution_id": execution,

@@ -707,6 +707,7 @@ name = "mfdataindia"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "defusedxml" },
     { name = "fastapi" },
     { name = "psycopg", extra = ["binary"] },
     { name = "psycopg-pool" },
@@ -731,6 +732,7 @@ export = [
 
 [package.metadata]
 requires-dist = [
+    { name = "defusedxml", specifier = "==0.7.1" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.7" },

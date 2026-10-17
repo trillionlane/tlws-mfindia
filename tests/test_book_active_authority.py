@@ -25,7 +25,7 @@ from test_verified_review_store import verified_db as verified_db
 
 
 def test_book_policy_parent_is_the_retained_registered_v3_graph():
-    assert book_sources.current_policy()["previous_policy_hash"] == fingerprint(
+    assert book_sources.current_policy(1)["previous_policy_hash"] == fingerprint(
         multi_facts.current_policy()
     )
 

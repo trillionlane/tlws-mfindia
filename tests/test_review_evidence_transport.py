@@ -97,13 +97,17 @@ def test_complete_single_bounded_stream_and_unambiguous_inner_json_required(kind
         transport.decode_evidence(doc)
 
 
-def test_encoder_rejects_oversized_or_incompressible_evidence():
-    for value in (
-        "x" * (transport.MAX_RAW_BYTES + 1),
-        "".join(hashlib.sha256(str(i).encode()).hexdigest() for i in range(5000)),
-    ):
-        with pytest.raises(ValueError, match="bound"):
-            transport.render_evidence(seal_evidence(manifest(), "inspect", {"large": value}))
+def test_encoder_rejects_oversized_raw_or_exhausted_chunk_budget(monkeypatch):
+    with pytest.raises(ValueError, match="bound"):
+        transport.render_evidence(
+            seal_evidence(manifest(), "inspect", {"large": "x" * (transport.MAX_RAW_BYTES + 1)})
+        )
+    # The single-entry limit is now a framing boundary, not data loss. Keep an
+    # independent finite total-parts guard and exercise its rejection branch.
+    monkeypatch.setattr(transport, "MAX_CHUNKS", 2)
+    value = "".join(hashlib.sha256(str(i).encode()).hexdigest() for i in range(5000))
+    with pytest.raises(ValueError, match="bound"):
+        transport.render_evidence(seal_evidence(manifest(), "inspect", {"large": value}))
 
 
 def test_zero_or_duplicate_certificates_never_pass():
@@ -222,3 +226,157 @@ def test_actual_execution_verifier_keeps_runtime_checks_before_log_decode(drift)
     else:
         actual, doc = boundary.inspect_execution(*args)
         assert actual == observed and doc == certificate() and boundary.logs_read == 1
+
+
+@pytest.mark.parametrize(
+    "mode", ["delayed", "absent", "duplicate", "malformed", "drift_after_wait", "api_failure"]
+)
+def test_execution_delivery_wait_is_bounded_and_only_absence_is_retryable(monkeypatch, mode):
+    waits = []
+    monkeypatch.setattr("mfdataindia.review.rollout_cloud.time.sleep", waits.append)
+
+    class Boundary(Cloud):
+        reads = 0
+        metadata_reads = 0
+
+        def command(self, *args, **kwargs):
+            if args[:2] == ("logging", "read"):
+                self.reads += 1
+                if mode == "api_failure":
+                    raise RuntimeError("fixture API unavailable")
+                if mode == "duplicate":
+                    return [{"jsonPayload": envelope()}, {"jsonPayload": envelope()}]
+                if mode == "malformed":
+                    return [{"jsonPayload": {"format": "mfdata-review-evidence-transport-v1"}}]
+                if mode == "delayed" and self.reads == 3:
+                    return [{"jsonPayload": envelope()}]
+                return []
+            assert args[:4] == ("run", "jobs", "executions", "describe")
+            self.metadata_reads += 1
+            value = execution()
+            if mode == "drift_after_wait" and self.metadata_reads == 2:
+                value["spec"]["template"]["spec"]["serviceAccountName"] = "privileged"
+            return value
+
+    boundary = Boundary()
+    arguments = (
+        manifest(),
+        "fixture-execution",
+        "fixture-reader",
+        ["fixture.py"],
+        {"DEPLOYMENT_GIT_SHA": manifest().git_sha},
+        [],
+    )
+    if mode == "delayed":
+        _, doc = boundary.inspect_execution(*arguments)
+        assert doc == certificate() and boundary.reads == boundary.metadata_reads == 3
+        assert waits == [5, 5]
+    else:
+        with pytest.raises((ValueError, RuntimeError)):
+            boundary.inspect_execution(*arguments)
+        if mode == "absent":
+            assert boundary.reads == boundary.metadata_reads == 6 and waits == [5] * 5
+        elif mode == "drift_after_wait":
+            assert boundary.reads == 1 and boundary.metadata_reads == 2 and waits == [5]
+        else:
+            assert boundary.reads == boundary.metadata_reads == 1 and waits == []
+
+
+def chunked_certificate():
+    # Realistic repeated SHA inventories exceed zlib's 32KiB dictionary/log
+    # entry boundary even when their raw certificate is only a few hundred KiB.
+    rows = [hashlib.sha256(str(i).encode()).hexdigest() for i in range(1000)]
+    return seal_evidence(manifest(), "inspect", {"inventory": rows * 3})
+
+
+def chunk_logs():
+    return [
+        {"jsonPayload": json.loads(line)}
+        for line in transport.render_evidence(chunked_certificate()).splitlines()
+    ]
+
+
+def test_large_inventory_roundtrip_requires_every_bounded_chunk_and_original_seal():
+    certificate = chunked_certificate()
+    rendered = transport.render_evidence(certificate)
+    lines = rendered.splitlines()
+    assert len(lines) > 1 and len(lines) <= transport.MAX_CHUNKS
+    assert all(len(line.encode()) < transport.MAX_LOG_BYTES for line in lines)
+    assert rendered == transport.render_evidence(certificate)
+    logs = [{"jsonPayload": json.loads(line)} for line in reversed(lines)]
+    actual = transport.execution_evidence(logs)
+    assert actual == certificate
+    assert verify_evidence(manifest(), "inspect", actual) == certificate["evidence"]
+    assert transport.execution_evidence([{"textPayload": line} for line in lines]) == certificate
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "missing",
+        "duplicate",
+        "mixed_legacy",
+        "header_drift",
+        "bad_body",
+        "wrong_hash",
+        "bool_index",
+        "count_overflow",
+        "truncated_body",
+    ],
+)
+def test_chunk_subsets_duplicates_tampering_and_mixed_certificates_never_pass(defect):
+    logs = chunk_logs()
+    if defect == "missing":
+        logs.pop()
+    elif defect == "duplicate":
+        logs.append(deepcopy(logs[0]))
+    elif defect == "mixed_legacy":
+        logs.append({"jsonPayload": seal_evidence(manifest(), "inspect", {"unrelated": True})})
+    elif defect == "header_drift":
+        logs[0]["jsonPayload"]["raw_sha256"] = "0" * 64
+    elif defect == "bad_body":
+        logs[0]["jsonPayload"]["body"] = "!" * len(logs[0]["jsonPayload"]["body"])
+    elif defect == "wrong_hash":
+        for log in logs:
+            log["jsonPayload"]["raw_sha256"] = "0" * 64
+    elif defect == "bool_index":
+        logs[0]["jsonPayload"]["index"] = False
+    elif defect == "count_overflow":
+        logs[0]["jsonPayload"]["count"] = transport.MAX_CHUNKS + 1
+    else:
+        logs[0]["jsonPayload"]["body"] = logs[0]["jsonPayload"]["body"][:-1]
+    with pytest.raises(ValueError):
+        transport.execution_evidence(logs)
+    if defect == "missing":
+        with pytest.raises(transport.ExecutionEvidenceNotDelivered):
+            transport.execution_evidence(logs)
+
+
+def test_partial_delivery_repeats_exact_execution_guards_without_retrying_any_write(monkeypatch):
+    waits = []
+    monkeypatch.setattr("mfdataindia.review.rollout_cloud.time.sleep", waits.append)
+    logs = chunk_logs()
+
+    class Boundary(Cloud):
+        reads = 0
+        metadata_reads = 0
+
+        def command(self, *args, **kwargs):
+            if args[:2] == ("logging", "read"):
+                self.reads += 1
+                return logs[:-1] if self.reads == 1 else logs
+            assert args[:4] == ("run", "jobs", "executions", "describe")
+            self.metadata_reads += 1
+            return execution()
+
+    boundary = Boundary()
+    _, doc = boundary.inspect_execution(
+        manifest(),
+        "fixture-execution",
+        "fixture-reader",
+        ["fixture.py"],
+        {"DEPLOYMENT_GIT_SHA": manifest().git_sha},
+        [],
+    )
+    assert doc == chunked_certificate() and boundary.reads == boundary.metadata_reads == 2
+    assert waits == [5]
