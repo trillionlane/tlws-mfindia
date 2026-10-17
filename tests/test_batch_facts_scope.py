@@ -28,10 +28,11 @@ class _Rows:
 
 
 class _Connection:
-    def __init__(self, funds, facts):
+    def __init__(self, funds, facts, *, expected_codes=None):
         self.funds = funds
         self.facts = facts
         self.calls = []
+        self.expected_codes = expected_codes
 
     def execute(self, query, params):
         self.calls.append((query, params))
@@ -41,8 +42,11 @@ class _Connection:
             return _Rows(self.funds)
         assert len(self.calls) == 2
         assert "FROM mf.current_fund_facts" in query
-        assert "WHERE amfi_scheme_code = ANY(%(codes)s::int[])" in query
-        assert params == {"codes": sorted({r["amfi_scheme_code"] for r in self.funds})}
+        assert "unnest(%(codes)s::int[]) AS requested(code)" in query
+        assert "CROSS JOIN LATERAL" in query
+        assert "WHERE amfi_scheme_code = requested.code OFFSET 0" in query
+        codes = self.expected_codes if self.expected_codes is not None else sorted({r["amfi_scheme_code"] for r in self.funds})
+        assert params == {"codes": codes}
         return _Rows(self.facts)
 
 
@@ -90,3 +94,54 @@ def test_no_matches_never_evaluates_the_facts_graph(ids):
     assert len(conn.calls) == 1
     assert result == {"requested": len(set(ids)), "found": 0,
                       "not_found": list(dict.fromkeys(ids)), "funds": []}
+
+
+def test_only_resolved_codes_are_evaluated_for_shared_historical_isin():
+    # Keep the existing first-match resolution; unrelated candidate rows must
+    # not enlarge the facts work beyond the resolved request cohort.
+    conn = _Connection([_fund(20, "SHARED"), _fund(30, "SHARED")],
+                       [{"amfi_scheme_code": 20, "aum": Decimal("1")}],
+                       expected_codes=[20])
+    result = queries.funds_batch(conn, ["SHARED"])
+    assert result["found"] == 1
+    assert result["funds"][0]["amfi_scheme_code"] == 20
+    assert result["funds"][0]["matched_by"] == ["SHARED"]
+    assert len(conn.calls) == 2
+
+
+def test_fifty_resolved_funds_still_use_one_facts_statement():
+    conn = _Connection([_fund(code, f"INF{code}") for code in range(1, 51)],
+                       [{"amfi_scheme_code": code, "aum": Decimal(code)} for code in range(1, 51)])
+    result = queries.funds_batch(conn, [str(code) for code in range(50, 0, -1)])
+    assert result["found"] == 50
+    assert [f["amfi_scheme_code"] for f in result["funds"]] == list(range(50, 0, -1))
+    assert len(conn.calls) == 2
+
+
+@pytest.mark.parametrize("family_only", [False, True])
+def test_empty_scalar_cohort_never_queries_the_view(family_only):
+    class Forbidden:
+        def execute(self, *_args):
+            raise AssertionError("empty facts cohort must not execute SQL")
+    assert queries._batch_current_facts(Forbidden(), [], family_only=family_only) == []
+
+
+def test_family_projection_is_scalar_scoped_and_excludes_performance():
+    class Capture:
+        def execute(self, query, params):
+            assert "CROSS JOIN LATERAL" in query
+            assert "WHERE amfi_scheme_code = requested.code OFFSET 0" in query
+            assert params == {"codes": [10, 20]}
+            for key in ("return_5year", "sharpe_ratio", "beta"):
+                assert key not in query
+            assert "COALESCE(benchmark_name, benchmark) AS benchmark_name" in query
+            return _Rows([])
+    assert queries._batch_current_facts(Capture(), [20, 10, 20], family_only=True) == []
+
+
+def test_sibling_selection_cannot_flatten_into_a_global_facts_join():
+    query = queries._BATCH_SIBLING_SOURCE_SQL
+    assert "JOIN LATERAL" in query
+    assert "WHERE amfi_scheme_code = v2.amfi_scheme_code OFFSET 0" in query
+    assert "PARTITION BY v1.amfi_scheme_code" in query
+    assert "f.periodicity IS NOT DISTINCT FROM f1.periodicity" in query
