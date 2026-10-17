@@ -16,11 +16,15 @@ separate [failed-attempt recovery record](evidence/FS10_CATALOGUE_DISCOVERY_RECO
 remains retained. This implementation is not permission to push or roll out UTI
 before actual Kotak DEV acceptance.
 
+The immutable-policy follow-up #92 retains the already-registered failed v6
+candidate byte-for-byte and allocates Kotak policy v7 separately from registry
+v3. UTI extends that accepted policy chain with policy v8, not a reused v7.
 Current deterministic pins after that inheritance:
 
 - Source-v3 configuration: `addd97f4c2acbf7a66b72ca2c0ffa61b7bae5242f69c36c8b8ed7f2bbb3eec7f`.
 - Source-v4 configuration: `6fb6c0c804a1dac20e4e2c4aa25f3cd107ce7c58517164409ae2da52e97869d4`.
-- Policy-v7 hash: `38be4edfda0fedfe2156c203b685e06b7e15589bf1c88b752d5e095b5c9786b7`.
+- Prior Kotak policy-v7 hash: `4e9edd71a73c781603653164de24227b73f09fa2c369d8cf8b7ad68dd59c6fe3`.
+- UTI policy-v8 hash: `2b1d478498a72a267ecd4719300a5456db52fa0764b2a446e9ee75b545839e5a`.
 - Migration 041: `ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702`.
 
 Use the production UTI catalogue and its exact **English Active and Passive**

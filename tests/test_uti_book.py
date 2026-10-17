@@ -8,6 +8,23 @@ import pytest
 from mfdataindia.enrichment import uti_book as book
 
 
+def test_uti_policy_extends_revised_kotak_without_reusing_registered_versions():
+    from mfdataindia.enrichment import book_sources
+    from mfdataindia.review.policy import fingerprint
+
+    document = book_sources.current_policy(4)
+    assert document["version"] == 8 and document["source_registry_version"] == 4
+    assert document["previous_policy_hash"] == (
+        "4e9edd71a73c781603653164de24227b73f09fa2c369d8cf8b7ad68dd59c6fe3"
+    )
+    assert fingerprint(document) == (
+        "2b1d478498a72a267ecd4719300a5456db52fa0764b2a446e9ee75b545839e5a"
+    )
+    documents = book_sources.current_policies()
+    assert [item["version"] for item in documents] == [4, 5, 6, 7, 8]
+    assert len({(item["id"], item["version"]) for item in documents}) == len(documents)
+
+
 def extraction(
     *,
     as_of="30th September, 2026",
