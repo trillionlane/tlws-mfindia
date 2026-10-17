@@ -64,6 +64,7 @@ def run(
     spec = book_sources.specification(kotak_book.KEY)
     started = time.monotonic()
     phase, originals, archives, availability = "scope", [], [], []
+    archived_pdf_hashes = set()
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
         book_store.verify_acl(conn)
@@ -84,13 +85,23 @@ def run(
             raise TimeoutError("Kotak bounded source task deadline")
 
     def kept(original):
+        nonlocal phase
         deadline()
         if any(o["source_url"] == original["source_url"] for o in originals):
             raise ValueError("one original per acquired URL required")
         originals.append(original)
         if sum(len(o["content"]) for o in originals) > spec["maximum_total_original_bytes"]:
             raise ValueError("Kotak aggregate original byte bound exceeded")
-        return hashlib.sha256(original["content"]).hexdigest()
+        checksum = hashlib.sha256(original["content"]).hexdigest()
+        if original["media_type"] == "application/pdf" and checksum not in archived_pdf_hashes:
+            previous_phase, phase = phase, "archive"
+            with requests.Session() as session:
+                session.trust_env = False
+                archives.append(archive(session, original["content"], media_type="application/pdf"))
+            archived_pdf_hashes.add(checksum)
+            deadline()
+            phase = previous_phase
+        return checksum
 
     try:
         phase = "catalogues"
@@ -221,7 +232,7 @@ def run(
             if issue:
                 availability.append(issue)
         phase = "archive"
-        seen = set()
+        seen = set(archived_pdf_hashes)
         with requests.Session() as session:
             session.trust_env = False
             for original in originals:

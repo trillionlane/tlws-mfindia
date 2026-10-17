@@ -56,6 +56,13 @@ records are never updated. Publications remain `needs_verification`; no human
 verification events, adjusted IDCW analytics or whole-factsheet semantic
 coverage are fabricated.
 
+Downloaded PDF originals are create-only archived and generation/SHA-verified
+before decoding. Later parsing, identity discovery or deadline failures retain
+those already archived books in the failed run's evidence, without publishing
+facts. An archive failure stops processing without an ambiguous upload retry.
+Content hashes prevent double archival in the later XML/originals phase. This
+ordering change adds no permissions, source correction or timeout allowance.
+
 ## Acceptance gates
 
 1. Full exact-head CI, implementer self-review and normal merge.
