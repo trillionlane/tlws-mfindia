@@ -1,0 +1,24 @@
+{
+  "id": "official-source-operations-inventory",
+  "version": 1,
+  "purpose": "read-only operational triage, not source admission or financial analytics",
+  "maximum_sources": 16,
+  "maximum_periods_per_source": 2,
+  "maximum_variants_per_period": 1024,
+  "source_check_overdue_after_seconds": 108000,
+  "expected_periods": "two preceding UTC calendar month ends; missing is not a missed regulatory deadline",
+  "gap_population": "one primary gap per retained variant and reporting period; field gaps counted separately",
+  "reason_classes": {
+    "issuer_code_isin_bridge_missing": "exact_identity_evidence_required",
+    "issuer_variant_identity_conflict": "identity_conflict_review",
+    "issuer_family_identity_conflict": "identity_conflict_review",
+    "monthly_heading_missing_or_ambiguous": "layout_or_source_heading_review",
+    "monthly_fields_unavailable": "field_evidence_review",
+    "unsupported_current_identity": "unsupported_identity_review"
+  },
+  "unknown_reason": "unclassified_requires_review",
+  "automatic_resolution_permitted": false,
+  "source_rows_changed": 0,
+  "human_events_created": 0,
+  "adjusted_idcw_analytics_enabled": false
+}
