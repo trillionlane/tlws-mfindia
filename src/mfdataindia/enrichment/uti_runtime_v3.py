@@ -261,6 +261,7 @@ def run(
                     "observed_at": observed.isoformat(),
                     "status": "failed",
                     "phase": phase,
+                    **safe_database_diagnostic(error),
                     "error_type": type(error).__name__
                     if type(error).__name__
                     in (

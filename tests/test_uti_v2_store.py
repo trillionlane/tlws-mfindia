@@ -1,6 +1,7 @@
 """Disposable database proofs only; synthetic titles are NOT issuer evidence."""
 
 from copy import deepcopy
+from datetime import timedelta
 import hashlib
 import json
 
@@ -77,6 +78,9 @@ def prepare_v4(dsn, monkeypatch, *, canonical=False):
         baseline = dict(current.configuration(conn))
         original = source_state(conn)
         inventory = book_store.capture(conn)
+    # Actual successive acquisitions have distinct observation times. Do not
+    # let a synthetic same-time run-id hash tie choose the predecessor receipt.
+    monkeypatch.setattr(old, "NOW", old.NOW + timedelta(seconds=1))
     versions = {v: book_sources.registry(v) for v in (1, 2, 3, 4)}
     filename = "official-book-sources-v5-canonical.json"
     version5 = json.loads((ROOT / "config" / filename).read_text())
