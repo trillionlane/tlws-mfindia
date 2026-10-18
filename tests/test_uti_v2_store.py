@@ -240,8 +240,10 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
         )
         assert source_state(conn) == original
         after = book_store.capture(conn)
-        for table, rows in inventory.items():
-            assert all(after[table].get(k) == v for k, v in rows.items())
+        for table in ("configuration", "sources", "batches", "runs", "transitions"):
+            assert all(after[table].get(k) == v for k, v in inventory[table].items())
+        assert inventory["original_byte_integrity_checked"] is True
+        assert after["original_byte_integrity_checked"] is True
         samples = {
             "sources": {uti_book.KEY: {"batch_ids": run["batch_ids"]}},
             "reviewed": old.references(inputs[0][0]),
