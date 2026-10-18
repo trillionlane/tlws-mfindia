@@ -116,6 +116,16 @@ deterministic mathematical policy and approved analytics layer.
 
 ## FS-08–FS-11 additive book coverage
 
+All four named expansions are now DEV accepted. The
+[2026-10-18 actual closeout](evidence/FS11_DEV_ACCEPTANCE_2026-10-18.md) records
+the final six-task timer run, current denominators/periods/gaps, private/core
+certification, actual recovery, preservation and extra real core-values witness.
+Installed source v4 / policy v8 is graph generation 25 at closeout; NAV dataset
+27 is a separate revision axis. Source/review SHA
+`1d1311cbe17e32493a47a6ab7a4fcd6eb7fdefb3` is not the protected core's serving
+SHA. This dated acceptance does not certify every later refresh, every field,
+all AMCs or consumer UI behavior.
+
 The pilot above stays frozen. The separate book process adds ABSL, SBI, Kotak
 and UTI source coverage sequentially, without turning the pilot into an
 all-AMC or all-field completeness claim. Treat each source as deployed only

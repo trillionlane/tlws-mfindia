@@ -113,7 +113,18 @@ monthly source/snapshot metadata, current selection and projection configuration
 SQL independent of the report implementation checks every database AMC and
 retained/in-scope/defunct population during private HTTP certification.
 
-## DEV acceptance still required after merge
+## FS-08–FS-11 DEV closeout
+
+The four named expansions are now DEV accepted, including FS-11B's complete
+fresh-backup/actual-source-clone/manual/timer/recovery/private/core/preservation
+chain and extra real core-values witness on 2026-10-18. See the
+[closeout and exact coverage table](evidence/FS11_DEV_ACCEPTANCE_2026-10-18.md).
+This closes these four finite rollout sprints only. Remaining EXP cohorts and
+field-depth work are not complete; UTI 80/208 usable per available month is not
+a platform-wide coverage percentage. Source observations remain
+`needs_verification`; TER is not BER and adjusted IDCW remains disabled.
+
+## Per-sprint DEV acceptance remains mandatory after merge
 
 FS-08–FS-11 were approved on 2026-10-17, in this order and as separate PRs.
 The whole-AMC batch boundary, explicit per-period gaps, additive private v9
