@@ -272,15 +272,14 @@ def switch(conn, *, activate: bool):
 
 
 def get(conn, code):
+    from mfdataindia.enrichment.current_graph_read import fields
+
     identity = evidence.identity(conn, code)
     verify_acl(conn)
     current_policy = policy_document(conn)
     rows = {
         r["field"]: r
-        for r in conn.execute(
-            "SELECT h.field,h.as_of,h.distinct_values,h.usable,h.sources AS latest_sources,s.as_of AS selected_as_of,s.value,s.sources FROM mf_live_facts.field_heads h LEFT JOIN mf_live_facts.selected_fields s USING(code,field) WHERE h.code=%s ORDER BY h.field",
-            (code,),
-        ).fetchall()
+        for r in fields(conn, code)
     }
     result = {}
     prior_identity = (

@@ -3,6 +3,7 @@
 from psycopg import sql
 
 from mfdataindia.enrichment import book_sources, current_facts_store as current
+from mfdataindia.enrichment.current_graph_read import graph
 from mfdataindia.review.policy import fingerprint
 
 
@@ -59,27 +60,36 @@ def capture(conn, previous_version):
     ]
     if not 1 <= len(codes) <= 4096:
         raise ValueError("complete bounded historical AMC population required")
-    hashes = {}
-    for relation, code_column, order in (
-        ("mf_live_facts.field_versions", "code", "code,field,as_of"),
-        ("mf_live_facts.selected_fields", "code", "code,field"),
-        ("mf_live_facts.current_values", "code", "code"),
-        ("mf.current_fund_facts", "amfi_scheme_code", "amfi_scheme_code"),
-    ):
-        rows = conn.execute(
+    relations = (
+        ("mf_live_facts.field_versions", "field_versions", "code,field,as_of"),
+        ("mf_live_facts.selected_fields", "selected_fields", "code,field"),
+        ("mf_live_facts.current_values", "current_values", "code"),
+        ("mf.current_fund_facts", "resolved", "amfi_scheme_code"),
+    )
+    sections = []
+    for index, (relation, local, order) in enumerate(relations):
+        condition = sql.SQL(" WHERE amfi_scheme_code=ANY(%s)") if local == "resolved" else sql.SQL("")
+        sections.append(
             sql.SQL(
-                "SELECT encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS sha256 FROM {} t WHERE {}=ANY(%s) ORDER BY "
+                "SELECT {} AS section,row_number() OVER (ORDER BY {}) AS ordinal,"
+                "encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS sha256 "
+                "FROM {} t{}"
             ).format(
-                sql.Identifier(
-                    *(
-                        core_read_relation if relation == "mf.current_fund_facts" else relation
-                    ).split(".")
-                ),
-                sql.Identifier(code_column),
+                sql.Literal(index), sql.SQL(order), sql.Identifier(local), condition,
             )
-            + sql.SQL(order),
-            (codes,),
-        ).fetchall()
+        )
+    # The paired core-facade validation above is still mandatory. Reuse the
+    # exact sealed resolved definition, not an independently reconstructed row.
+    assert core_read_relation == "mf_live_facts.resolved"
+    all_rows = conn.execute(
+        graph(conn, codes, complete=True)
+        + sql.SQL(" UNION ALL ").join(sections)
+        + sql.SQL(" ORDER BY section,ordinal"),
+        (codes, codes),
+    ).fetchall()
+    hashes = {}
+    for index, (relation, _, _) in enumerate(relations):
+        rows = [{"sha256": row["sha256"]} for row in all_rows if row["section"] == index]
         hashes[relation] = {"rows": len(rows), "sha256": fingerprint(rows)}
     return {
         "format": "official-prior-amc-projection-v1",
