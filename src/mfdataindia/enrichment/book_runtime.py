@@ -244,7 +244,7 @@ def execute(dsn, execution, *, task_index):
     if task_index < 2:
         return multi_runtime.execute(dsn, execution, task_index=task_index)
     source = registry["sources"][task_index - 2]
-    from mfdataindia.enrichment import sbi_runtime, kotak_runtime, uti_runtime, uti_runtime_v2
+    from mfdataindia.enrichment import sbi_runtime, kotak_runtime, uti_runtime, uti_runtime_v2, uti_runtime_v3
 
     result = {
         "absl-full-book-v1": absl,
@@ -252,6 +252,7 @@ def execute(dsn, execution, *, task_index):
         "kotak-monthly-book-v1": kotak_runtime.run,
         "uti-english-monthly-book-v1": uti_runtime.run,
         "uti-english-monthly-book-v2": uti_runtime_v2.run,
+        "uti-english-monthly-book-v3": uti_runtime_v3.run,
     }[source["adapter"]](dsn, execution)
     return {
         "format": "official-amc-book-task-v1",

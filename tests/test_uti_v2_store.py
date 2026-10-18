@@ -1,6 +1,7 @@
 """Disposable database proofs only; synthetic titles are NOT issuer evidence."""
 
 from copy import deepcopy
+from datetime import timedelta
 import hashlib
 import json
 
@@ -29,7 +30,7 @@ from test_verified_review_api import runtime_dsn
 from test_verified_review_store import ROLES, source_state, verified_db as verified_db
 
 
-def prepare_v4(dsn, monkeypatch):
+def prepare_v4(dsn, monkeypatch, *, canonical=False):
     registries = book_sources.REGISTRIES
     old.accepted_kotak(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
@@ -77,10 +78,14 @@ def prepare_v4(dsn, monkeypatch):
         baseline = dict(current.configuration(conn))
         original = source_state(conn)
         inventory = book_store.capture(conn)
+    # Actual successive acquisitions have distinct observation times. Do not
+    # let a synthetic same-time run-id hash tie choose the predecessor receipt.
+    monkeypatch.setattr(old, "NOW", old.NOW + timedelta(seconds=1))
     versions = {v: book_sources.registry(v) for v in (1, 2, 3, 4)}
-    version5 = json.loads((ROOT / "config/official-book-sources-v5.json").read_text())
+    filename = "official-book-sources-v5-canonical.json"
+    version5 = json.loads((ROOT / "config" / filename).read_text())
     version5["sources"] = deepcopy(versions[4]["sources"])
-    version5["sources"][-1]["adapter"] = "uti-english-monthly-book-v2"
+    version5["sources"][-1]["adapter"] = "uti-english-monthly-book-v3" if canonical else "uti-english-monthly-book-v2"
     version5["authority_transition"]["previous_registry_hash"] = fingerprint(versions[4])
     version5["authority_transition"]["previous_specification_hash"] = fingerprint(
         book_sources.specification(uti_book.KEY, version=4)
@@ -102,7 +107,7 @@ def prepare_v4(dsn, monkeypatch):
     return identities, calls, baseline, prior, original, inventory
 
 
-def inputs_v2(identities, calls, *, drop_old_aum=False):
+def inputs_v2(identities, calls, *, drop_old_aum=False, canonical=False):
     originals = deepcopy(calls[0][0][3])
     directory = next(o for o in originals if o["role"] == "directory")
     directory["content"] = json.dumps(
@@ -161,6 +166,9 @@ def inputs_v2(identities, calls, *, drop_old_aum=False):
                     "font_points": 16,
                 }
                 page["physical_geometry"] = {"page_width": 594, "page_height": 792}
+                if canonical:
+                    page["physical_title"].update(x=15.624, y=756.5192, font_points=18.0)
+                    page["physical_geometry"] = {"page_width": 594.0, "page_height": 792.0}
                 extracted["pages"].append(page)
                 if drop_old_aum:
                     old_page = extracted["pages"][1]
@@ -176,8 +184,10 @@ def inputs_v2(identities, calls, *, drop_old_aum=False):
             extracted["extraction_hash"] = fingerprint(
                 {k: v for k, v in extracted.items() if k != "extraction_hash"}
             )
+        from mfdataindia.enrichment import uti_batch_v3
+        compiler = uti_batch_v3 if canonical else uti_batch_v2
         batches.append(
-            uti_batch_v2.compile_batch(
+            compiler.compile_batch(
                 identities,
                 monthly,
                 bridges,
@@ -203,11 +213,12 @@ def inputs_v2(identities, calls, *, drop_old_aum=False):
 
 
 @pytest.mark.postgres
+@pytest.mark.parametrize("canonical", [False, True], ids=["retained-integer-v2", "real-fractional-v3"])
 def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
-    verified_db, monkeypatch
+    verified_db, monkeypatch, canonical
 ):
-    identities, calls, baseline, prior, original, inventory = prepare_v4(verified_db, monkeypatch)
-    inputs = inputs_v2(identities, calls)
+    identities, calls, baseline, prior, original, inventory = prepare_v4(verified_db, monkeypatch, canonical=canonical)
+    inputs = inputs_v2(identities, calls, canonical=canonical)
     run = old.publish(verified_db, identities, inputs, execution="v2-good")
     assert (
         old.publish(verified_db, identities, inputs, execution="v2-good")["run_id"] == run["run_id"]
@@ -223,6 +234,11 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
                 o["result"]["detail_header_evidence"]["method"] == "unique_original_physical_title"
                 for o in fresh
             )
+            if canonical:
+                for observation in fresh:
+                    header = observation["result"]["detail_header_evidence"]
+                    assert header["x"] == "15.624" and header["y"] == "756.5192"
+                    assert header["font_points"] == "18.0" and header["page_width"] == "594.0"
         assert book_preservation.capture(conn, 4) == prior
         activated = book_projection.activate(
             conn,

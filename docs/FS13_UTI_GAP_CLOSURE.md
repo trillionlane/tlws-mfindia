@@ -26,7 +26,9 @@ not prove a closable scheme. Identity conflicts and missing bridges remain gaps.
 - Keep all registry1–4, migration1–4, accepted parser/decoder/runtime and policy
   bytes intact. Source registry5 is a **method revision**, not a fifth AMC:
   four registered book sources, six scheduled tasks, no duplicate UTI task.
-- Store source policy9 and the UTI parser/decoder v2 fingerprints. Reuse the
+- Store source policy10 and the UTI parser v3 / frozen decoder v2 fingerprints.
+  Policy9 and its original registry/migration/modules remain retained as an
+  **unaccepted** candidate, not a serving or certified source authority. Reuse the
   frozen v1 identity-conflict, decimal, field/date, TER/BER and risk functions.
   No field calculation, risk inference or source/date exception is changed.
 - Preserve every v1 detail detection. Additional detection requires a unique
@@ -105,3 +107,39 @@ that one known predecessor's representation while retaining every identity,
 raw financial field and original-header assertion. Internal source-oracle
 validation still uses the complete new reader. Candidate/active certification
 must never strip metadata; later recovery to source5 already supports it.
+
+## Restored-clone failure and canonical-artifact repair — 18 October 2026
+
+PR97 merged as `c3e1c3764eede2719155bbbdfeb64159bffdf343`; exact-head and main
+CI and strict image provenance passed. This was **not** actual DEV acceptance.
+The fresh A rollout completed its genuine 12:30 NAV / 12:40 audit reconciliation
+(dataset29), fresh backup, all38 prior-layer seals and all four original-query
+equivalence checks over all3220 retained codes in its isolated restored clone.
+It then failed source publication before any live schema/source/traffic stage.
+The accepted source4/policy8/private/core runtimes remain unchanged. Retain A,
+its backup, originals and failure evidence; never reuse it as a new rollout.
+
+An independent no-secret/no-CloudSQL PostgreSQL18.6 diagnostic reproduced the
+cause: actual retained PDF-header coordinates such as `15.624`, `756.5192` and
+`18.0` are JSON numbers, but the frozen global ledger canonicalizer rejects
+noninteger JSON numeric artifacts with SQLSTATE `P0001`. Integer synthetic
+fixtures missed this representation boundary. No query/resource/source failure
+or financial-rule defect is inferred from this publication failure.
+
+The repair adds a versioned header-artifact encoder using exact plain decimal
+**strings** for the same frozen decoder measurements. It does not round them,
+change the global canonicalizer, allow floating-point financial artifacts or
+change title detection, identity, dates, AUM, TER/BER or risk rules. A new pinned
+registry5 configuration and SQL043 validate the exact nine-key evidence shape,
+bounded decimal-string grammar and the unchanged physical region. Policy10
+explicitly supersedes unaccepted policy9; archived policy9 retains its original
+hash `073eeaa85f714d817dc8debc86177f796bd9083f3b14a5bcc4b3f07cb2352f81`.
+The exact old v5 registry, SQL042 and v2 modules remain immutable for diagnosis.
+EXP-01 must allocate policy11 / SQL044 after ledger-conflict checks, not reuse
+the repaired source's policy10 / SQL043 slots.
+
+The repair requires complete new exact-head/main CI, review, normal merge and
+strict image provenance, followed by a wholly fresh B backup/clone and all
+original gates. Its next bounded start window is18:45–19:00UTC on18 October,
+after genuine18:30 NAV /18:40 audit terminal application evidence and a fresh
+current-dataset/source4 baseline. Never weaken the guard to start late.
