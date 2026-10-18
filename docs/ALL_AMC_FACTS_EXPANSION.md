@@ -21,6 +21,8 @@ their own versioned deterministic policies and do not belong in source parsers.
 | FS-09 | SBI integrated onboarding | Source/identity/layout oracles, immutable originals, bounded cohorts, dated current publication, real scheduling and recovery. |
 | FS-10 | Kotak integrated onboarding | Same gates, separately verified units, dates and variant applicability. |
 | FS-11 | UTI integrated onboarding | Same gates; missing/ambiguous evidence remains visible. |
+| FS-12 | Source reliability and read-only actionable gap inventory | Exact last-attempt/success, per-variant versus field gaps, authority expiry, population drift and ordinary source-probe evidence; no inferred source-health/coverage pass. |
+| FS-13 | Evidence-backed gap closure in the current four AMCs | A finite selected gap family, exact official references, new immutable parser/policy versions and complete preservation/recovery/source/API gates. |
 | EXP-01 onward | Named remaining AMC cohorts | Exact memberships in the checked-in register; normally no more than four AMCs per cohort. Split complex layouts into finite sub-sprints before implementation; never declare a whole cohort complete because one AMC works. |
 | Field-depth sprints | Additional useful facts and remaining section parsers | Existing five current fields are a starting point, not a ceiling. Inventory all fund-related sections; extracted values have units/scope/lineage or explicit unavailability. Top-ten holdings are not full portfolios. |
 | Final closeout | Whole-universe reconciliation and consumer handover | Actual coverage denominators, no silent omissions, recurring acquisition, all private contracts, recovery and preservation certified; unresolved exceptions are not labelled complete. |
@@ -31,6 +33,11 @@ deterministically by directory-name order into cohorts of at most four. Source
 complexity is **not assessed** by that grouping. Resolve legacy/HTTP/missing
 listings and inspect real layouts before committing to an onboarding batch.
 The six missing links stay assigned and visible, not removed to improve coverage.
+
+The next three approved deliveries are **FS-12 → FS-13 → a source-ready EXP-01
+cohort**. Their [finite acceptance plan](FS12_EXP01_DELIVERY_PLAN.md) distinguishes
+the read-only operational export from actual evidence-backed source publication.
+FS-12 is in implementation; its successors are not yet accepted or published.
 
 ## FS-06 original evidence and denominator
 

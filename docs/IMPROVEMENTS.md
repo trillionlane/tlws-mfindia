@@ -5,6 +5,17 @@ Version-controlled backlog of planned improvements. Each item states the
 `RESEARCH.md` holds the source research; `README.md` documents what ships
 today. This file is the forward-looking "next" list.
 
+## Current next-three-sprint execution (approved 2026-10-18)
+
+FS-08–FS-11 actual DEV closeout is recorded in
+[the final acceptance/handover](evidence/FS11_DEV_ACCEPTANCE_2026-10-18.md).
+Proceed **FS-12 source reliability/gap inventory → FS-13 evidence-backed gap
+closure → next source-ready EXP-01 cohort**, each as a separate reviewed PR and
+bounded actual DEV acceptance. See the [finite plan](FS12_EXP01_DELIVERY_PLAN.md).
+Do not restart completed calculator/calendar/rolling foundations merely because
+older high-level rows below still say planned; the later MF-E execution records
+and exact acceptance evidence identify the implemented bounded scope.
+
 ## Source operations follow-up — Kotak discovery (2026-10-17)
 
 Before 2026-11-01 UTC, revalidate ordinary live catalogue discovery from DEV.
