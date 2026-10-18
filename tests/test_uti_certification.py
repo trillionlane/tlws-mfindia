@@ -9,6 +9,12 @@ from mfdataindia.enrichment.book_certification import expectation
 from test_sbi_certification import fixture as old_fixture, bound
 
 
+@pytest.fixture(autouse=True)
+def frozen_uti_v1_authority(monkeypatch):
+    """Keep these v4/v1 historical certificates distinct from method revision5."""
+    monkeypatch.setattr(book_sources, "CURRENT_VERSION", 4)
+
+
 def fixture():
     manifest, doc = old_fixture()
     manifest.cohort = [

@@ -47,6 +47,10 @@ def sealed_core_read_relation(conn):
 def capture(conn, previous_version):
     if type(previous_version) is not int or previous_version not in book_sources.REGISTRIES:
         raise ValueError("reviewed historical book authority required")
+    if book_sources.CURRENT_VERSION >= 5 and previous_version == book_sources.CURRENT_VERSION - 1:
+        from mfdataindia.enrichment import book_preservation_v2
+
+        return book_preservation_v2.capture(conn, previous_version)
     core_read_relation = sealed_core_read_relation(conn)
     registry = book_sources.registry(previous_version)
     names = sorted({s["amc"] for s in registry["sources"]})
