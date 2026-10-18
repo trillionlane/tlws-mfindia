@@ -30,8 +30,8 @@ MIGRATIONS = {
         "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702",
     ),
     5: (
-        "042_uti_physical_title_evidence.sql",
-        "97482ba0be7e2f422cce4bf1389e60f73f9601f8ad91d181ecc727b2dc1887ef",
+        "043_uti_canonical_title_evidence.sql",
+        "6da1cd6e1cb9b84ab98e1b4d7045e1895134424dd8d036b45137b0b42e662276",
     ),
 }
 TABLES = {"configuration", "sources", "batches", "runs", "transitions"}

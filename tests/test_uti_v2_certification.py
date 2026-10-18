@@ -20,7 +20,7 @@ def test_v5_method_revision_envelope_does_not_change_AMC_or_task_count():
     manifest, doc = fixture()
     assert book_certification.expectation(manifest, bound(manifest, doc)) == doc
     assert book_sources.registry()["version"] == 5
-    assert book_sources.current_policy()["version"] == 9
+    assert book_sources.current_policy()["version"] == 10
     assert len(book_sources.registry()["sources"]) == 4
     assert book_sources.registry()["maximum_sources_per_execution"] == 6
     assert book_sources.registry()["authority_transition"]["source_count_changed"] is False

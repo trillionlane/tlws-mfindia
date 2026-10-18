@@ -75,7 +75,7 @@ def test_old_policies_engines_and_all_resource_bounds_stay_frozen():
     assert fingerprint(book_sources.current_policy(4)) == "2b1d478498a72a267ecd4719300a5456db52fa0764b2a446e9ee75b545839e5a"
 
 
-def real_fixture():
+def real_fixture(*, fractional=False):
     from pypdf import PdfWriter
     from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 
@@ -85,7 +85,8 @@ def real_fixture():
                              NameObject("/BaseFont"): NameObject("/Helvetica")})
     value[NameObject("/Resources")] = DictionaryObject({NameObject("/Font"): DictionaryObject({NameObject("/F1"): writer._add_object(font)})})
     commands = []
-    for text, x, y, size in [(TITLE, 15, 756, 16), ("Category", 452, 765, 8), ("Sectoral", 452, 746, 8),
+    title_geometry = (15.624, 756.5192, 18.0) if fractional else (15, 756, 16)
+    for text, x, y, size in [(TITLE, *title_geometry), ("Category", 452, 765, 8), ("Sectoral", 452, 746, 8),
                             ("Portfolio as on 30th September, 2026", 220, 708, 8),
                             ("Benchmark Index", 19, 650, 8), ("Nifty Financial Services TRI", 19, 635, 8),
                             ("Fund Manager", 19, 620, 8), ("Regular : 2.38", 19, 200, 8)]:
