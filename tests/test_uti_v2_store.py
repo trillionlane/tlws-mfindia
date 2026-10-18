@@ -33,6 +33,7 @@ def prepare_v4(dsn, monkeypatch):
     registries = book_sources.REGISTRIES
     old.accepted_kotak(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         amc = conn.execute(
             "SELECT amc_id FROM mf.amcs WHERE amfi_amc_name=%s", (uti_book.AMC,)
         ).fetchone()["amc_id"]
@@ -65,6 +66,7 @@ def prepare_v4(dsn, monkeypatch):
         inputs = old.fixtures(identities)
     old.publish(dsn, identities, inputs)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         book_projection.activate(
             conn,
             ROOT,
@@ -91,6 +93,7 @@ def prepare_v4(dsn, monkeypatch):
         lambda version=None, root=None: deepcopy(versions[5 if version is None else version]),
     )
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         prior = book_preservation.capture(conn, 4)
         book_upgrade.install(conn, ROOT)
         # Installed5 must NOT select5 before activation; the actual policy is4.
@@ -209,6 +212,7 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
         old.publish(verified_db, identities, inputs, execution="v2-good")["run_id"] == run["run_id"]
     )
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         for code in (102397, 102398):
             history = book_store.fund(conn, code)["observations"]
             assert len(history) == 4  # Both periods of both authorities retained.
@@ -275,6 +279,7 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
             with pytest.raises(ValueError):
                 book_certification.new_source_oracles(conn, bad)
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         assert (
             book_projection.recover(conn, ROOT, activated["transition_id"])["status"] == "RECOVERED"
         )
@@ -286,6 +291,7 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
         book_upgrade.install(conn, ROOT)
     old.publish(verified_db, identities, inputs, execution="v2-reactivate")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         book_projection.activate(
             conn,
             ROOT,
@@ -302,6 +308,7 @@ def test_lost_old_supported_values_abort_activation_transaction(verified_db, mon
     inputs = inputs_v2(identities, calls, drop_old_aum=True)
     old.publish(verified_db, identities, inputs, execution="v2-loss")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         inventory = book_store.capture(conn)
         with pytest.raises(ValueError, match="previously supported"):
             book_projection.activate(
