@@ -30,6 +30,7 @@ from test_verified_review_store import ROLES, source_state, verified_db as verif
 
 
 def prepare_v4(dsn, monkeypatch):
+    registries = book_sources.REGISTRIES
     old.accepted_kotak(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         amc = conn.execute(
@@ -82,6 +83,7 @@ def prepare_v4(dsn, monkeypatch):
         book_sources.specification(uti_book.KEY, version=4)
     )
     versions[5] = version5
+    monkeypatch.setattr(book_sources, "REGISTRIES", registries)
     monkeypatch.setattr(book_sources, "CURRENT_VERSION", 5)
     monkeypatch.setattr(
         book_sources,
