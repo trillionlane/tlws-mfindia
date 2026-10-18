@@ -66,7 +66,8 @@ def prepare_v4(dsn, monkeypatch):
         inputs = old.fixtures(identities)
     old.publish(dsn, identities, inputs)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
-        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        # Publication is a short READ COMMITTED owner transaction. Only the
+        # separate source-installation/preservation snapshot uses REPEATABLE READ.
         book_projection.activate(
             conn,
             ROOT,
@@ -212,7 +213,6 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
         old.publish(verified_db, identities, inputs, execution="v2-good")["run_id"] == run["run_id"]
     )
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
-        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         for code in (102397, 102398):
             history = book_store.fund(conn, code)["observations"]
             assert len(history) == 4  # Both periods of both authorities retained.
@@ -279,7 +279,6 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
             with pytest.raises(ValueError):
                 book_certification.new_source_oracles(conn, bad)
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
-        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         assert (
             book_projection.recover(conn, ROOT, activated["transition_id"])["status"] == "RECOVERED"
         )
@@ -288,10 +287,11 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
             == "ALREADY_RECOVERED"
         )
         book_preservation_v2.compare(prior, book_preservation.capture(conn, 4))
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         book_upgrade.install(conn, ROOT)
     old.publish(verified_db, identities, inputs, execution="v2-reactivate")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
-        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         book_projection.activate(
             conn,
             ROOT,
@@ -308,7 +308,6 @@ def test_lost_old_supported_values_abort_activation_transaction(verified_db, mon
     inputs = inputs_v2(identities, calls, drop_old_aum=True)
     old.publish(verified_db, identities, inputs, execution="v2-loss")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
-        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
         inventory = book_store.capture(conn)
         with pytest.raises(ValueError, match="previously supported"):
             book_projection.activate(
