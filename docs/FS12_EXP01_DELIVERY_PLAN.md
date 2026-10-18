@@ -75,9 +75,10 @@ evidence is unavailable, retain that blocker rather than claiming gap closure.
 
 ## EXP-01 — Next source-ready AMC cohort
 
-Allocation update after the FS-13 actual restored-clone failure: the canonical
-header-artifact repair reserves policy10 / SQL043. EXP-01 must instead allocate
-fresh policy11 / SQL044, after confirming the actual ledger has no conflicting
+Allocation update after both FS-13 actual restored-clone failures: the canonical
+header-artifact attempt retained policy10 / SQL043; the complete original AUM-row
+repair reserves policy11 / SQL044. EXP-01 must instead allocate
+fresh policy12 / SQL045, after confirming the actual ledger has no conflicting
 candidate. It still starts only after actual repaired FS-13 DEV acceptance.
 
 Select exact membership after ordinary official discovery, document-layout and

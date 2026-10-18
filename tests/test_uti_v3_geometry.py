@@ -51,13 +51,15 @@ def test_exact_keys_and_no_global_or_financial_rule_change():
         codec.encode({**header(), "extra": "not admitted"})
     assert codec.policy()["global_canonicalizer_changed"] is False
     assert codec.policy()["financial_values_changed"] is False
-    assert book_sources.current_policy()["version"] == 10
+    assert book_sources.current_policy()["version"] == 11
+    archived10 = json.loads((Path(__file__).resolve().parents[1] / "config/unaccepted/official-current-facts-policy-v10.json").read_text())
+    assert fingerprint(archived10) == "c7b58aaca5294958ed94db2d6cfd313ad4200fcdfb1502b293c63fcea33120c4"
     archived = json.loads((Path(__file__).resolve().parents[1] / "config/unaccepted/official-current-facts-policy-v9.json").read_text())
     assert fingerprint(archived) == "073eeaa85f714d817dc8debc86177f796bd9083f3b14a5bcc4b3f07cb2352f81"
     assert fingerprint(book_sources.current_policy(4)) == "2b1d478498a72a267ecd4719300a5456db52fa0764b2a446e9ee75b545839e5a"
     transition = book_sources.current_policy()["source_authority_transition"]
     assert transition["source_count_changed"] is False
-    assert transition["financial_field_rules_changed"] is False
+    assert transition["financial_field_rules_changed"] is True
 
 
 def test_database_diagnostics_are_allowlisted_never_arbitrary_body():
