@@ -1,5 +1,17 @@
 # FS-11: UTI English monthly source coverage
 
+## Actual DEV acceptance
+
+Accepted 2026-10-18 under source/review SHA
+`1d1311cbe17e32493a47a6ab7a4fcd6eb7fdefb3`. Fresh FS-11B completed all sixteen
+gates with exit zero, then the extra actual core-values witness passed seven
+samples / fourteen real responses. See the
+[sealed acceptance and backend handover](evidence/FS11_DEV_ACCEPTANCE_2026-10-18.md)
+for images, actual manual/timer runs, recovery, preservation and reporting counts.
+Each actual UTI month has 80 usable variants of 208 with 128 explicit gaps.
+This is partial DEV source coverage, not whole-AMC/all-fields completeness or
+human verification. The preview below remains historical preview, not acceptance.
+
 ## Publication boundary
 
 Add UTI to the existing private, versioned book process, after acceptance of
