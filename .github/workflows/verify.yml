@@ -76,6 +76,9 @@ jobs:
           uv run python scripts/export_multi_amc_openapi.py --check
           uv run python scripts/export_amc_book_openapi.py --check
 
+      - name: Verify UTI method-upgrade PostgreSQL boundaries first
+        run: uv run pytest -q tests/test_uti_v2_store.py -m postgres
+
       - name: Test against PostgreSQL 18
         run: uv run pytest tests/ -q
 
