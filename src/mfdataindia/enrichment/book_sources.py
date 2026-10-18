@@ -5,15 +5,15 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book, uti_book
+from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book, uti_book, uti_book_v2
 from mfdataindia.enrichment.evidence import public_url
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.enrichment import _registered_book_policy_v6
 
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
-POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8}
+POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 9}
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -30,6 +30,10 @@ REGISTRIES = {
     4: (
         "official-book-sources-v4.json",
         "acb158e5258646e278b9aa1ecea6219bd8b3d987afa088a6bd8d308334c2a482",
+    ),
+    5: (
+        "official-book-sources-v5.json",
+        "b56453826b713f285e96b7f5e8d1767a00755738b64695c484bb2eeea53f7301",
     ),
 }
 
@@ -61,7 +65,7 @@ def registry(version=None, root=None):
         if source["key"] == uti_book.KEY:
             if (
                 version < 4
-                or source["adapter"] != "uti-english-monthly-book-v1"
+                or source["adapter"] != ("uti-english-monthly-book-v2" if version >= 5 else "uti-english-monthly-book-v1")
                 or source["amc"] != uti_book.AMC
                 or source["catalogue_api"] != uti_book.CATALOGUE
                 or source["catalogue_landing"] != "https://www.utimf.com/downloads/fund-watch"
@@ -143,7 +147,22 @@ def registry(version=None, root=None):
             raise ValueError("bounded whole-AMC adapter scope differs")
         for original in source["identity_documents"]:
             public_url(original["url"], {"nsearchives.nseindia.com"})
-    if version > 1 and document["sources"][:-1] != registry(version - 1, root)["sources"]:
+    if version == 5:
+        prior = registry(4, root)
+        expected = deepcopy(prior["sources"])
+        expected[-1]["adapter"] = "uti-english-monthly-book-v2"
+        transition = document.get("authority_transition", {})
+        if (document["sources"] != expected
+                or transition.get("mode") != "source_method_revision"
+                or transition.get("source_key") != uti_book.KEY
+                or transition.get("previous_source_version") != 4
+                or transition.get("previous_registry_hash") != fingerprint(prior)
+                or transition.get("previous_specification_hash") != fingerprint(specification(uti_book.KEY, version=4))
+                or transition.get("source_count_changed") is not False
+                or transition.get("financial_field_rules_changed") is not False
+                or transition.get("source_rows_changed") != 0):
+            raise ValueError("exact bounded source-method revision required; no cohort replacement")
+    elif version > 1 and document["sources"][:-1] != registry(version - 1, root)["sources"]:
         raise ValueError("historical registered source changed")
     return document
 
@@ -162,6 +181,7 @@ def specification(key, *, version=None):
         "absl-full-book-v1": absl_expansion,
         "kotak-monthly-book-v1": kotak_book,
         "uti-english-monthly-book-v1": uti_book,
+        "uti-english-monthly-book-v2": uti_book_v2,
     }[item["adapter"]]
     item["parser_policy"] = parser.policy()
     item["parser_policy_hash"] = fingerprint(item["parser_policy"])
@@ -242,6 +262,21 @@ def specification(key, *, version=None):
             )
         }
         item["decoder_engine_hash"] = uti_book_pdf.engine_hash()
+    if parser is uti_book_v2:
+        from mfdataindia.enrichment import (
+            amfi_summary_identity, layout_book_archive, layout_book_http, monthly_facts,
+            uti_acquisition, uti_batch_v2, uti_book_pdf_v2, uti_runtime_v2,
+        )
+
+        item["evidence_engine_hashes"] = {
+            module.__name__.rsplit(".", 1)[-1]: hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
+            for module in (amfi_summary_identity, layout_book_archive, layout_book_http, uti_acquisition, uti_batch_v2, uti_runtime_v2)
+        }
+        item["retained_field_engine_hashes"] = {
+            module.__name__.rsplit(".", 1)[-1]: hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
+            for module in (uti_book, monthly_facts, absl_expansion)
+        }
+        item["decoder_engine_hash"] = uti_book_pdf_v2.engine_hash()
     return item
 
 
@@ -287,6 +322,8 @@ def current_policy(version=None):
         result["source_registry_version"] = document["version"]
     if document["version"] == 3:
         result["supersedes_unaccepted_policy_hash"] = _registered_book_policy_v6.POLICY_HASH
+    if document["version"] == 5:
+        result["source_authority_transition"] = document["authority_transition"]
     return result
 
 

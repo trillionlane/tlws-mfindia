@@ -37,7 +37,10 @@ The six missing links stay assigned and visible, not removed to improve coverage
 The next three approved deliveries are **FS-12 → FS-13 → a source-ready EXP-01
 cohort**. Their [finite acceptance plan](FS12_EXP01_DELIVERY_PLAN.md) distinguishes
 the read-only operational export from actual evidence-backed source publication.
-FS-12 is in implementation; its successors are not yet accepted or published.
+FS-12 is [actually DEV accepted](evidence/FS12_DEV_ACCEPTANCE_2026-10-18.md).
+FS-13 is in [bounded UTI method-revision implementation](FS13_UTI_GAP_CLOSURE.md);
+it and EXP-01 are not yet accepted or published. Preserve the four-source v9
+contract; any fifth AMC requires an explicitly additive full-coverage profile.
 
 ## FS-06 original evidence and denominator
 

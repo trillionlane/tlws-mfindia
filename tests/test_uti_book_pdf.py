@@ -81,7 +81,7 @@ def test_real_isolated_workers_accept_explicit_empty_content_stream():
     assert result["pages"][0]["text"] == ""
     assert result["pages"][0]["physical_left_text"] is None
     assert result["policy_hash"] == fingerprint(uti_book_pdf.policy())
-    assert result["engine_hash"] == book_sources.specification(uti_book.KEY)["decoder_engine_hash"]
+    assert result["engine_hash"] == book_sources.specification(uti_book.KEY, version=4)["decoder_engine_hash"]
     assert result["whole_document_semantic_coverage"] is False
 
 

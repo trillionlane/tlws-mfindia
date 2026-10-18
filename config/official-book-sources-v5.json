@@ -1,0 +1,144 @@
+{
+  "format": "official-amc-book-source-registry-v1",
+  "version": 5,
+  "job": "tlws-mf-official-facts-refresh-dev",
+  "retained_source_registry_hash": "4c017bec9ca515f7eb1b0022a03cae9491f4d9a08bd0c1f2dc1044b2a607a275",
+  "maximum_sources_per_execution": 6,
+  "sources": [
+    {
+      "key": "absl-expanded",
+      "adapter": "absl-full-book-v1",
+      "amc": "Aditya Birla Sun Life Mutual Fund",
+      "plan": "REGULAR",
+      "in_scope": true,
+      "maximum_current_variants": 1024,
+      "period_count": 2,
+      "minimum_detail_pages": 50,
+      "catalogue_landing": "https://mutualfund.adityabirlacapital.com/forms-and-downloads/factsheets",
+      "catalogue_api_pattern": "^https://mutualfund\\.adityabirlacapital\\.com/api/sitecore/CalculatorPage/GetMonthlyFactsheetsByYear\\?datasourceId=%7B[0-9A-Fa-f-]{36}%7D&year=20[0-9]{2}$",
+      "minimum_catalogue_originals": 2,
+      "book_prefix": "https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/factsheets/",
+      "identity_documents": [
+        {
+          "url": "https://nsearchives.nseindia.com/trading_security/mf/pdf/Aditya_06042026165307_SchemeSummaryDocument.pdf",
+          "sha256": "f7be45a4810528c384eddbbd3538c1e78839bcbd32e5c9b97c587da00015d26f",
+          "maximum_bytes": 8388608,
+          "use": "Issuer-authored code/ISIN identity bridge only, not current field/date evidence or exchange market data"
+        }
+      ],
+      "archive_prefix": "official-monthly-facts/absl-expanded/",
+      "preserved_projection_codes": [
+        101763,
+        103173,
+        103174
+      ],
+      "publication_status": "needs_verification"
+    },
+    {
+      "key": "sbi-expanded",
+      "adapter": "sbi-full-book-v1",
+      "amc": "SBI Mutual Fund",
+      "plan": "REGULAR",
+      "in_scope": true,
+      "maximum_current_variants": 1024,
+      "period_count": 2,
+      "minimum_detail_pages_per_book": 10,
+      "catalogue_landing": "https://www.sbimf.com/factsheets",
+      "catalogue_api": "https://www.sbimf.com/ajaxcall/CMS/GetRecentFactSheets",
+      "directory_url": "https://www.amfiindia.com/api/populate-scheme?MF_ID=22",
+      "maximum_identity_families": 200,
+      "identity_workers": 4,
+      "maximum_total_original_bytes": 83886080,
+      "book_prefix": "https://www.sbimf.com/docs/default-source/scheme-factsheets/",
+      "archive_prefix": "official-monthly-facts/sbi-expanded/",
+      "preserved_projection_codes": [
+        101763,
+        103173,
+        103174
+      ],
+      "publication_status": "needs_verification",
+      "identity_documents": [],
+      "minimum_catalogue_originals": 2
+    },
+    {
+      "key": "kotak-expanded",
+      "adapter": "kotak-monthly-book-v1",
+      "amc": "Kotak Mahindra Mutual Fund",
+      "plan": "REGULAR",
+      "in_scope": true,
+      "maximum_current_variants": 1024,
+      "period_count": 2,
+      "expected_recent_period_count": 2,
+      "minimum_current_detail_pages": 20,
+      "catalogue_api": "https://www.kotakmf.com/api/kotakapi/forms/user/getsubheaderList/219",
+      "directory_url": "https://www.amfiindia.com/api/populate-scheme?MF_ID=17",
+      "maximum_identity_families": 200,
+      "identity_workers": 4,
+      "maximum_total_original_bytes": 83886080,
+      "book_prefix": "https://vatseelabs-s3.kotakmf.com/FormsDownloads/Factsheet/",
+      "archive_prefix": "official-monthly-facts/kotak-expanded/",
+      "preserved_projection_codes": [
+        101763,
+        103173,
+        103174
+      ],
+      "publication_status": "needs_verification",
+      "identity_documents": [],
+      "minimum_catalogue_originals": 2,
+      "reviewed_historical": {
+        "url": "https://www.kotakmf.com/factsheet/August_2026/kotak/Download_pdf/Kotak%20Nifty%2050%20Index%20Fund_Factsheet%20One%20Pager.pdf",
+        "sha256": "b4a25f9b425c2d23380a1cbe7baacad4c2aa8da5300a8fd97111cf35ecec5126",
+        "actual_reporting_period": "2026-07-31",
+        "linked_from": "https://www.kotakmf.com/factsheet/August_2026/kotak/NIFTY-50-INDEX.html",
+        "discovery_original_sha256": "cd412f92d887b8220559d911003b4a104eac9506ff92beaf81266a7d18364980",
+        "discovery_observation_date": "2026-10-17",
+        "scope": "One fund only; not whole-AMC August coverage; actual July date is authoritative"
+      }
+    },
+    {
+      "key": "uti-expanded",
+      "adapter": "uti-english-monthly-book-v2",
+      "amc": "UTI Mutual Fund",
+      "plan": "REGULAR",
+      "in_scope": true,
+      "maximum_current_variants": 1024,
+      "period_count": 2,
+      "minimum_detail_pages": {
+        "active": 20,
+        "passive": 15
+      },
+      "catalogue_api": "https://www.utimf.com/api/get-fact-sheet",
+      "catalogue_landing": "https://www.utimf.com/downloads/fund-watch",
+      "directory_url": "https://www.amfiindia.com/api/populate-scheme?MF_ID=28",
+      "maximum_identity_families": 200,
+      "identity_workers": 4,
+      "maximum_total_original_bytes": 83886080,
+      "book_prefix": "https://d3ce1o48hc5oli.cloudfront.net/",
+      "archive_prefix": "official-monthly-facts/uti-expanded/",
+      "preserved_projection_codes": [
+        101763,
+        103173,
+        103174
+      ],
+      "publication_status": "needs_verification",
+      "identity_documents": [],
+      "minimum_catalogue_originals": 2,
+      "language": "English",
+      "supplemental_fields": [
+        "reported_total_expense_ratio"
+      ],
+      "expense_basis": "TER_separate_not_BER"
+    }
+  ],
+  "authority_transition": {
+    "mode": "source_method_revision",
+    "source_key": "uti-expanded",
+    "previous_source_version": 4,
+    "previous_registry_hash": "787001f97fb3ac150707409456b44fc42c5388e74c3a4ea9dc6a27ee54741007",
+    "previous_specification_hash": "714229336fae7f568b7831ae22b7cdb5a44431bf19b79fa1b985ed2b9a925f52",
+    "source_count_changed": false,
+    "financial_field_rules_changed": false,
+    "source_rows_changed": 0,
+    "preservation": "originals and all old observations immutable; previously supported UTI values preserved; untouched AMC financial semantics unchanged and source provenance append-only"
+  }
+}

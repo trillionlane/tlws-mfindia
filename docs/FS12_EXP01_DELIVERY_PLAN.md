@@ -89,7 +89,17 @@ FS-13 before declaring each named AMC accepted.
 
 ## Status
 
-Planning/implementation of FS-12 is in progress. FS-13 and EXP-01 have not started;
-membership, gap family and actual evidence must be recorded before publication.
+FS-12 is **actually DEV accepted**, with all actual executions, whole-population
+reconciliation and runtime-preservation evidence in
+[the acceptance record](evidence/FS12_DEV_ACCEPTANCE_2026-10-18.md). It made zero
+data writes and did not change the serving source/review or protected core SHA.
+
+FS-13 is in implementation: the finite UTI Transportation heading-gap family
+and whole-cohort preservation rules are grounded in
+[the scoped implementation plan](FS13_UTI_GAP_CLOSURE.md). A code/test pass or
+merge is not actual-source acceptance. Source5/policy9 is a method revision of
+the same four AMCs/six tasks, not a new AMC. EXP-01 remains source-readiness
+research, not a selected/admitted cohort. Broader coverage needs an additive
+contract rather than silently changing frozen v9's four-source maximum.
 The accepted source/review SHA and protected core SHA remain distinct. Keep normal
 NAV/audit and daily source windows clear during controlled rollouts.

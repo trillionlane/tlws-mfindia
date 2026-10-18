@@ -29,6 +29,10 @@ MIGRATIONS = {
         "041_uti_book_evidence.sql",
         "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702",
     ),
+    5: (
+        "042_uti_physical_title_evidence.sql",
+        "97482ba0be7e2f422cce4bf1389e60f73f9601f8ad91d181ecc727b2dc1887ef",
+    ),
 }
 TABLES = {"configuration", "sources", "batches", "runs", "transitions"}
 APPEND = {"sources", "batches", "runs"}
@@ -385,7 +389,16 @@ def fund(conn, code):
     verify_acl(conn, principal=evidence.ROLES[1])
     identity = evidence.identity(conn, code)
     rows = conn.execute(
-        """SELECT b.batch_id,b.disclosure_as_of,x.value AS observation FROM mf_book_facts.batches b
+        """WITH installed AS MATERIALIZED (
+          SELECT document FROM mf_book_facts.configuration ORDER BY generation DESC LIMIT 1
+        ), latest AS MATERIALIZED (
+          SELECT DISTINCT ON(source_key) source_key,document->'batch_ids' AS batch_ids
+          FROM mf_book_facts.runs WHERE status<>'failed' ORDER BY source_key,observed_at DESC,run_id DESC
+        ) SELECT b.batch_id,b.disclosure_as_of,b.source_key,b.document->>'specification_hash' AS specification_hash,
+          b.document->>'specification_hash'=installed.document->'source_specification_hashes'->>b.source_key AS matches_installed_specification,
+          COALESCE(latest.batch_ids ? b.batch_id,false) AS in_latest_successful_run,
+          x.value AS observation FROM mf_book_facts.batches b CROSS JOIN installed
+        LEFT JOIN latest ON latest.source_key=b.source_key
         CROSS JOIN LATERAL jsonb_array_elements(b.document->'observations') x
         WHERE (x.value->'identity'->>'code')::integer=%s AND EXISTS(SELECT 1 FROM mf_book_facts.runs r WHERE r.status<>'failed' AND r.document->'batch_ids' ? b.batch_id)
         ORDER BY b.disclosure_as_of DESC,b.batch_id LIMIT 20""",
@@ -398,6 +411,10 @@ def fund(conn, code):
             {
                 "batch_id": r["batch_id"],
                 "disclosure_as_of": r["disclosure_as_of"].isoformat(),
+                "source_key": r["source_key"],
+                "specification_hash": r["specification_hash"],
+                "matches_installed_specification": r["matches_installed_specification"],
+                "in_latest_successful_run": r["in_latest_successful_run"],
                 "current_identity_matches": r["observation"]["identity"] == identity,
                 **r["observation"],
             }

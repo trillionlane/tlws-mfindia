@@ -68,7 +68,10 @@ def accepted_kotak(dsn, monkeypatch):
     version4["sources"][:3] = deepcopy(versions[3]["sources"])
     version4["sources"][3]["minimum_detail_pages"] = {"active": 1, "passive": 1}
     versions[4] = version4
-    monkeypatch.setattr(book_sources, "REGISTRIES", registries)
+    # This fixture certifies only historical authority4. Enumerating future
+    # registries would ask its deliberately bounded registry stub for unknown
+    # policies while constructing/recovering the accepted historical graph.
+    monkeypatch.setattr(book_sources, "REGISTRIES", {v: registries[v] for v in versions})
     monkeypatch.setattr(book_sources, "CURRENT_VERSION", 4)
     monkeypatch.setattr(
         book_sources,

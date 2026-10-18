@@ -55,7 +55,7 @@ def expectation(manifest, environment):
         prior = doc["prior_projection"]
         if (
             not isinstance(prior, dict)
-            or prior.get("format") != "official-prior-amc-projection-v1"
+            or prior.get("format") != ("official-prior-amc-projection-v2" if version >= 5 else "official-prior-amc-projection-v1")
             or prior.get("previous_source_version") != version - 1
             or prior.get("source_rows_changed") != 0
             or not isinstance(prior.get("codes"), list)
@@ -64,6 +64,15 @@ def expectation(manifest, environment):
             or prior["codes"] != sorted(set(prior["codes"]))
         ):
             raise ValueError("complete previous-AMC projection certificate required")
+        if version >= 5:
+            from mfdataindia.enrichment import book_preservation_v2
+
+            book_preservation_v2.validate(prior)
+            revised = book_preservation_v2.revised_keys(version)
+            untouched = sorted(s["key"] for s in book_sources.registry(version - 1)["sources"] if s["key"] not in revised)
+            if (prior["target_source_version"] != version or prior["revised_source_keys"] != sorted(revised)
+                    or prior["untouched_source_keys"] != untouched):
+                raise ValueError("entire declared prior AMC preservation scope required")
     codes = {r["code"] for r in doc["reviewed"]}
     if not codes <= set(manifest.cohort) or set(doc["prior_core_values"]) != set(map(str, codes)):
         raise ValueError("exact reference and prior core sample cohort required")
@@ -229,6 +238,10 @@ def new_source_oracles(conn, expected):
         return {"new_source_original_oracles": 0}
     old = {s["key"] for s in book_sources.registry(version - 1)["sources"]}
     added = {s["key"] for s in book_sources.registry(version)["sources"]} - old
+    if version >= 5:
+        from mfdataindia.enrichment import book_preservation_v2
+
+        added |= set(book_preservation_v2.revised_keys(version))
     batches, needed, latest = {}, {}, {}
     for key in sorted(added):
         for batch_id in expected["sources"][key]["batch_ids"]:
@@ -284,6 +297,20 @@ def new_source_oracles(conn, expected):
         "new_source_original_oracles": len(expected["original_oracles"]),
         "new_source_original_documents": sum(map(len, needed.values())),
     }
+
+
+def wire_fund(facts, *, recovery):
+    """Only source5 -> exact accepted source4 recovery lacks additive metadata.
+
+    Internal identity/source-oracle checks still use the complete new reader.
+    This models the known predecessor's wire representation, never a data or
+    financial-policy downgrade, and never relaxes an active/candidate check.
+    Later recoveries to source5 already include these fields.
+    """
+    if recovery and book_sources.CURRENT_VERSION == 5:
+        metadata = {"source_key", "specification_hash", "matches_installed_specification", "in_latest_successful_run"}
+        return {**facts, "observations": [{k: v for k, v in row.items() if k not in metadata} for row in facts["observations"]]}
+    return facts
 
 
 def certify(manifest, environment, *, active=False, recovery=False):
@@ -346,12 +373,15 @@ def certify(manifest, environment, *, active=False, recovery=False):
             else book_sources.current_policy(book_sources.CURRENT_VERSION - 1)
         ) or not current.projection_state(conn):
             raise ValueError("accepted prior active graph not retained/restored")
-        if (
-            book_sources.CURRENT_VERSION > 1
-            and book_preservation.capture(conn, book_sources.CURRENT_VERSION - 1)
-            != expected["prior_projection"]
-        ):
-            raise ValueError("prior whole-AMC facts/provenance changed")
+        preservation_checked = {}
+        if book_sources.CURRENT_VERSION > 1:
+            actual_preservation = book_preservation.capture(conn, book_sources.CURRENT_VERSION - 1)
+            if book_sources.CURRENT_VERSION >= 5:
+                from mfdataindia.enrichment import book_preservation_v2
+
+                preservation_checked = book_preservation_v2.compare(expected["prior_projection"], actual_preservation)
+            elif actual_preservation != expected["prior_projection"]:
+                raise ValueError("prior whole-AMC facts/provenance changed")
         config = book_store.installed_configuration(conn)["document"]
         cases = [
             (
@@ -367,7 +397,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
                 - {r["code"] for r in expected["reviewed"]}
             ):
                 cases.append(
-                    (f"/api/enrichment/v9/funds/{code}/facts", book_store.fund(conn, code))
+                    (f"/api/enrichment/v9/funds/{code}/facts", wire_fund(book_store.fund(conn, code), recovery=recovery))
                 )
         for sample in expected["reviewed"]:
             code = sample["code"]
@@ -384,7 +414,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
                 )
             ):
                 raise ValueError("retained fields disagree with independent original reference")
-            cases.append((f"/api/enrichment/v9/funds/{code}/facts", facts))
+            cases.append((f"/api/enrichment/v9/funds/{code}/facts", wire_fund(facts, recovery=recovery)))
             if not recovery or book_sources.CURRENT_VERSION > 1:
                 cases.append((f"/api/enrichment/v3/funds/{code}/facts", current.get(conn, code)))
             if active:
@@ -482,6 +512,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
             "exact_execution_id": expected["execution_id"],
             "sources": expected["sources"],
             "independent_original_source_references_checked": True,
+            **({"prior_projection_preservation": preservation_checked} if preservation_checked else {}),
             **original_oracles,
             **supplemental_oracles,
             "source_rows_changed": 0,

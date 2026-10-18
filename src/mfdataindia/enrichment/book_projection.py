@@ -13,6 +13,7 @@ from mfdataindia.enrichment import (
 from mfdataindia.enrichment.current_view_ddl import replay_current_values
 from mfdataindia.enrichment.monthly_projection import ORDER, owner, seal_configuration
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
 PROJECTION = "amc_book_current_projection.sql.inc"
 PROJECTION_SHA256 = "b6d98a57b40dbbcda400b26adf87218b697b8a00aaa3f013a52b3853bcb9aa82"
@@ -28,6 +29,10 @@ PROJECTIONS = {
         "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376",
     ),
     4: (
+        "amc_book_current_projection_v2.sql.inc",
+        "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376",
+    ),
+    5: (
         "amc_book_current_projection_v2.sql.inc",
         "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376",
     ),
@@ -94,6 +99,8 @@ def check(conn, reviewed):
 def activate(conn, root, reviewed, *, expected_configuration_hash):
     with conn.transaction():
         owner(conn)
+        if book_sources.CURRENT_VERSION >= 5:
+            acquire_nav_data_operation_lock(conn)
         book_store.verify_acl(conn, principal="mfdata_verified_reader")
         version = book_store.installed_configuration(conn)["document"]["registry"]["version"]
         if version != book_sources.CURRENT_VERSION:
@@ -121,6 +128,14 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
         if hashlib.sha256(raw.encode()).hexdigest() != projection_hash:
             raise ValueError("book projection differs from reviewed pin")
         source_upgrade = None
+        target_preservation = {}
+        if version >= 5:
+            from mfdataindia.enrichment import book_preservation_v2
+
+            target_preservation = {
+                key: book_preservation_v2.capture_target(conn, key)
+                for key in book_preservation_v2.revised_keys(version)
+            }
         if version > 1:
             from mfdataindia.enrichment import book_upgrade
 
@@ -136,6 +151,7 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
                 "prior_core_definition": current.view_definition(conn, "mf.current_fund_facts"),
                 "to_generation": prior["generation"] + 1,
                 **({"source_upgrade_intent": source_upgrade} if source_upgrade else {}),
+                **({"target_value_preservation": target_preservation} if target_preservation else {}),
             },
         )
         conn.execute(raw)
@@ -155,11 +171,18 @@ def activate(conn, root, reviewed, *, expected_configuration_hash):
         )
         current.verify_acl(conn)
         check(conn, reviewed)
+        target_checked = {}
+        if target_preservation:
+            target_checked = {
+                key: book_preservation_v2.compare_target(before, book_preservation_v2.capture_target(conn, key))
+                for key, before in target_preservation.items()
+            }
         return {
             "status": "ACTIVATED",
             "transition_id": intent["transition_id"],
             "generation": intent["to_generation"],
             "source_rows_changed": 0,
+            **({"target_value_preservation": target_checked} if target_checked else {}),
         }
 
 
