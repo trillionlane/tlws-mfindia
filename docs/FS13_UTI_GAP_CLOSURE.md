@@ -26,11 +26,12 @@ not prove a closable scheme. Identity conflicts and missing bridges remain gaps.
 - Keep all registry1–4, migration1–4, accepted parser/decoder/runtime and policy
   bytes intact. Source registry5 is a **method revision**, not a fifth AMC:
   four registered book sources, six scheduled tasks, no duplicate UTI task.
-- Store source policy10 and the UTI parser v3 / frozen decoder v2 fingerprints.
-  Policy9 and its original registry/migration/modules remain retained as an
+- Store source policy11 and the UTI parser v4 / additive decoder v3 fingerprints.
+  Policy9, policy10 and their original registry/migration/modules remain retained as
   **unaccepted** candidate, not a serving or certified source authority. Reuse the
   frozen v1 identity-conflict, decimal, field/date, TER/BER and risk functions.
-  No field calculation, risk inference or source/date exception is changed.
+  The only new field admission is complete physical Closing-AUM row evidence;
+  old accepted values, date/identity/TER/risk rules and frozen columns are unchanged.
 - Preserve every v1 detail detection. Additional detection requires a unique
   original unrotated UTI title in the upper-left physical header region and the
   same complete physical field column. Never repair `FUNDSectoral` by guessing
@@ -62,7 +63,7 @@ Use a separately versioned, explicitly scoped preservation certificate:
    selected value/date **and every previously accepted source-period field**,
    and compare all previously supported month-end reported TER values
    independently. No accepted value may become a gap or change under this
-   header-only method revision. Only properly source-qualified additions may
+   additive method revision. Only properly source-qualified additions may
    fill previous gaps. Report exact before/after variant/field counts.
 3. Continue the full whole-original and every-prior-layer immutable-row seals,
    fresh backup/restore, exact restricted-role/SQL-body checks and original-query
@@ -135,11 +136,64 @@ bounded decimal-string grammar and the unchanged physical region. Policy10
 explicitly supersedes unaccepted policy9; archived policy9 retains its original
 hash `073eeaa85f714d817dc8debc86177f796bd9083f3b14a5bcc4b3f07cb2352f81`.
 The exact old v5 registry, SQL042 and v2 modules remain immutable for diagnosis.
-EXP-01 must allocate policy11 / SQL044 after ledger-conflict checks, not reuse
-the repaired source's policy10 / SQL043 slots.
+The later complete-AUM-row repair below supersedes these provisional slots.
 
 The repair requires complete new exact-head/main CI, review, normal merge and
 strict image provenance, followed by a wholly fresh B backup/clone and all
 original gates. Its next bounded start window is18:45–19:00UTC on18 October,
 after genuine18:30 NAV /18:40 audit terminal application evidence and a fresh
 current-dataset/source4 baseline. Never weaken the guard to start late.
+
+## Restored-clone raw-field oracle failure and complete-row repair
+
+PR98 merged as `4d9e045b65350e09e55ffc8b6161cb83aa3b7462`. Both whole CI runs,
+image-only preparation and strict provenance passed, not actual DEV acceptance.
+B launched once at18:46UTC, reconciled genuine18:30 NAV /18:40 audit and actual
+dataset30, completed its wholly fresh backup and every prior-layer seal. Its
+isolated restored clone passed all four original queries for all3220 retained
+codes, upgraded208 UTI current variants and successfully published actual-source
+batches with67 archived originals. Header canonicalization therefore worked.
+
+The independent raw-field oracle then correctly rejected unavailable Transport
+AUM. Execution `mf-book-clone-dev-uti-gap-261018b-5clfc` failed at19:06:45UTC;
+the original coordinator exited1 before any live source/schema/traffic stage.
+Read-only post-failure reconciliation confirmed the accepted private/source and
+protected core/NAV/audit runtime unchanged and exact temporary backup-read IAM
+binding removed. Retain A and B, both backups and every failure; never rerun them
+or reuse either backup for a new rollout. No source or oracle exception is waived.
+
+Independently viewed official September page30 and August page29 show Closing
+AUM4094.35 and4341.42 INRcrore, distinct from AAUM4207.67 and4361.19. In both,
+the amount baseline is about1.07 points above the label; the frozen0.75-point
+line grouping therefore separates them. August's original `Closing AUM :` is a
+single span, whereas September has separate label and colon spans. The expected
+source values are correct and remain unchanged; missing AUM is not accepted.
+
+An independent, versioned complete-row predicate requires a unique original
+Closing-AUM label in the already validated same-fund left field region, colon,
+INR glyph, positive bounded amount and explicit Crore unit, all in exact physical
+left-to-right order. Every original span must be within one quarter of the
+label's font em. Four original spans with a combined label/colon, or five with
+separate spans, are accepted; no synthetic split or nearest-number fallback.
+Duplicates, extra text/numbers, crossing rows, missing currency/unit, wrong dates
+or identity and ambiguous evidence remain unavailable. Original unrotated span
+coordinates are encoded as exact decimal strings without rounding. The existing
+global canonicalizer and frozen decoder/financial functions are unchanged.
+
+The new parser adds this evidence only when AUM was previously unavailable; it
+never replaces a prior accepted value. SQL044 checks the complete evidence shape,
+seal, source/page binding, grammar, coordinate order/region/baseline predicates,
+currency/unit and exact raw/selected amount agreement. It preserves the full
+historical source1–3 trigger tail byte-for-byte. The same source5 method revision
+still has four AMCs and six bounded tasks. Policy11 supersedes unaccepted10;
+the exact policy10/configuration/SQL043 and v3 modules remain archived/frozen.
+
+A restricted read-only actual DEV policy-ledger probe confirmed source4/policy8
+active and only policy versions1–8 installed before allocating policy11/SQL044.
+EXP-01 must instead allocate fresh policy12/SQL045 after its own conflict check.
+It still starts only after actual repaired FS-13 acceptance. The candidate needs
+whole exact-head PG18/audit/both-build/all-smoke CI, explicit implementer review,
+normal merge/identical tree, whole main CI and immutable image-only provenance.
+Only then may a fresh, separately bounded attempt take a new backup, restored
+actual-source clone and every original rollout gate. Old windows cannot be reused
+or weakened. No code merge, offline PDF test or synthetic fixture is acceptance.

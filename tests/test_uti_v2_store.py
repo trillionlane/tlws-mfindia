@@ -30,7 +30,7 @@ from test_verified_review_api import runtime_dsn
 from test_verified_review_store import ROLES, source_state, verified_db as verified_db
 
 
-def prepare_v4(dsn, monkeypatch, *, canonical=False):
+def prepare_v4(dsn, monkeypatch, *, canonical=False, aum_rows=False):
     registries = book_sources.REGISTRIES
     old.accepted_kotak(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
@@ -82,10 +82,10 @@ def prepare_v4(dsn, monkeypatch, *, canonical=False):
     # let a synthetic same-time run-id hash tie choose the predecessor receipt.
     monkeypatch.setattr(old, "NOW", old.NOW + timedelta(seconds=1))
     versions = {v: book_sources.registry(v) for v in (1, 2, 3, 4)}
-    filename = "official-book-sources-v5-canonical.json"
+    filename = "official-book-sources-v5-aum-row.json" if aum_rows else "official-book-sources-v5-canonical.json"
     version5 = json.loads((ROOT / "config" / filename).read_text())
     version5["sources"] = deepcopy(versions[4]["sources"])
-    version5["sources"][-1]["adapter"] = "uti-english-monthly-book-v3" if canonical else "uti-english-monthly-book-v2"
+    version5["sources"][-1]["adapter"] = "uti-english-monthly-book-v4" if aum_rows else ("uti-english-monthly-book-v3" if canonical else "uti-english-monthly-book-v2")
     version5["authority_transition"]["previous_registry_hash"] = fingerprint(versions[4])
     version5["authority_transition"]["previous_specification_hash"] = fingerprint(
         book_sources.specification(uti_book.KEY, version=4)
@@ -107,7 +107,7 @@ def prepare_v4(dsn, monkeypatch, *, canonical=False):
     return identities, calls, baseline, prior, original, inventory
 
 
-def inputs_v2(identities, calls, *, drop_old_aum=False, canonical=False):
+def inputs_v2(identities, calls, *, drop_old_aum=False, canonical=False, aum_rows=False):
     originals = deepcopy(calls[0][0][3])
     directory = next(o for o in originals if o["role"] == "directory")
     directory["content"] = json.dumps(
@@ -169,6 +169,20 @@ def inputs_v2(identities, calls, *, drop_old_aum=False, canonical=False):
                 if canonical:
                     page["physical_title"].update(x=15.624, y=756.5192, font_points=18.0)
                     page["physical_geometry"] = {"page_width": 594.0, "page_height": 792.0}
+                if aum_rows:
+                    from mfdataindia.enrichment import uti_aum_row
+                    from test_uti_aum_row import GEOMETRY, spans
+                    page["physical_geometry"] = GEOMETRY
+                    raw_amount = "4,094.35" if kwargs["as_of"] == "2026-09-30" else "4,341.42"
+                    page["physical_left_text"] = page["physical_left_text"].replace(
+                        "Closing AUM : ` Crore22,495.18", raw_amount + "\nClosing AUM : ` Crore")
+                    original_spans = spans()
+                    original_spans[5] = (*original_spans[5][:3], raw_amount)
+                    if kwargs["as_of"] == "2026-08-31":
+                        original_spans[2] = (*original_spans[2][:3], "Closing AUM :")
+                        del original_spans[3]
+                    page["physical_aum_row"] = uti_aum_row.select(original_spans, GEOMETRY)
+                    page["physical_left_hash"] = hashlib.sha256(page["physical_left_text"].encode()).hexdigest()
                 extracted["pages"].append(page)
                 if drop_old_aum:
                     old_page = extracted["pages"][1]
@@ -178,14 +192,16 @@ def inputs_v2(identities, calls, *, drop_old_aum=False, canonical=False):
                     old_page["physical_left_hash"] = hashlib.sha256(
                         old_page["physical_left_text"].encode()
                     ).hexdigest()
-            extracted["policy_hash"] = fingerprint(uti_book_pdf_v2.policy())
-            extracted["engine_hash"] = uti_book_pdf_v2.engine_hash()
+            from mfdataindia.enrichment import uti_book_pdf_v3
+            decoder = uti_book_pdf_v3 if aum_rows else uti_book_pdf_v2
+            extracted["policy_hash"] = fingerprint(decoder.policy())
+            extracted["engine_hash"] = decoder.engine_hash()
             extracted["document_pages"] = len(extracted["pages"])
             extracted["extraction_hash"] = fingerprint(
                 {k: v for k, v in extracted.items() if k != "extraction_hash"}
             )
-        from mfdataindia.enrichment import uti_batch_v3
-        compiler = uti_batch_v3 if canonical else uti_batch_v2
+        from mfdataindia.enrichment import uti_batch_v3, uti_batch_v4
+        compiler = uti_batch_v4 if aum_rows else (uti_batch_v3 if canonical else uti_batch_v2)
         batches.append(
             compiler.compile_batch(
                 identities,
@@ -213,12 +229,12 @@ def inputs_v2(identities, calls, *, drop_old_aum=False, canonical=False):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize("canonical", [False, True], ids=["retained-integer-v2", "real-fractional-v3"])
+@pytest.mark.parametrize("canonical", [False, True, "aum"], ids=["retained-integer-v2", "real-fractional-v3", "complete-original-AUM-row-v4"])
 def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
     verified_db, monkeypatch, canonical
 ):
-    identities, calls, baseline, prior, original, inventory = prepare_v4(verified_db, monkeypatch, canonical=canonical)
-    inputs = inputs_v2(identities, calls, canonical=canonical)
+    identities, calls, baseline, prior, original, inventory = prepare_v4(verified_db, monkeypatch, canonical=canonical, aum_rows=canonical == "aum")
+    inputs = inputs_v2(identities, calls, canonical=canonical, aum_rows=canonical == "aum")
     run = old.publish(verified_db, identities, inputs, execution="v2-good")
     assert (
         old.publish(verified_db, identities, inputs, execution="v2-good")["run_id"] == run["run_id"]
@@ -239,6 +255,12 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
                     header = observation["result"]["detail_header_evidence"]
                     assert header["x"] == "15.624" and header["y"] == "756.5192"
                     assert header["font_points"] == "18.0" and header["page_width"] == "594.0"
+            if canonical == "aum":
+                for observation in fresh:
+                    expected_aum = {"2026-09-30": "4094.35", "2026-08-31": "4341.42"}[observation["disclosure_as_of"]]
+                    assert observation["result"]["fields"]["aum"]["value"] == expected_aum
+                    proof = observation["result"]["detail_aum_row_evidence"]
+                    assert proof["row_hash"] == fingerprint(proof["row"])
         assert book_preservation.capture(conn, 4) == prior
         activated = book_projection.activate(
             conn,

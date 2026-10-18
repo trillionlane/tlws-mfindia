@@ -1,0 +1,67 @@
+{
+  "aum": "explicit INR_crore and fund scope only; unknown units never overwrite the last usable current value",
+  "book_source_configuration_hash": "25bbe7c6349c849b168d14ec017c749550399d9185804f465a506dd1985e44e2",
+  "book_source_registry_hash": "3d8e4174d65b797ea2f052317f1a94185ecba5a76be36ccad130f9e73975036e",
+  "book_v2_same_date_selection": {
+    "accepted_values": "canonical distinct accepted values only; one selects, multiple conflict, none unavailable",
+    "incomplete_evidence": "retain accepted same-date value and every unavailable assertion as provenance; never invent a value",
+    "legacy_book_v1": "unchanged historical selection and conflict behavior"
+  },
+  "core_cast": "only source values that round-trip through the existing target column type without changed numeric value are eligible for the core projection",
+  "exclusions": [
+    "source table DML",
+    "canonical analytics replacement",
+    "IDCW total-return eligibility",
+    "fund-to-plan inception inference",
+    "UI"
+  ],
+  "freshness": "per-field disclosure date remains explicit; source refresh receipts are separate from NAV dataset version and immutable snapshot status",
+  "id": "current-official-fund-facts",
+  "identity": "exact current code/AMC/name/plan/option/ISIN set; no cross-variant borrowing",
+  "legacy_inputs": "only the initial legacy snapshot IDs sealed by the owner in an approved projection transition; later provisional v1 inserts are not automatic core publication",
+  "monthly_source_policy_hash": "813c1649be01699cb1d4d205bb5d0b844faa72a08c487be333e0793212cd0f0b",
+  "multi_source_policy_hash": "fa58dafab3b42ea9e2e437e1c0cf621ef4f4b1e5df23c723145db31af7b2dd2b",
+  "numeric_display": "trim insignificant decimal zeros for BER/AUM current display only; original tokens retained; no rounding, percent conversion, TER inference or NAV replacement",
+  "previous_policy_hash": "2b1d478498a72a267ecd4719300a5456db52fa0764b2a446e9ee75b545839e5a",
+  "publication_boundary": "only complete receipted fund/period batches; frozen pilot excluded from replacement; unavailable fields never erase prior usable values",
+  "recovery": "restore the captured previous configuration and exact prior core view in a short transaction; append recovery history, retain every source/snapshot/configuration",
+  "risk": "explicit Current Month scheme risk only; accepted published category, never benchmark risk or gauge legend",
+  "scope": "retained v3 assertion graph plus approved exact-identity whole-AMC book observations",
+  "selection": "latest unambiguous usable disclosure date per field; never fetch-time ordering; missing/unusable/conflicting later assertions retain the last usable dated value with explicit metadata",
+  "source_authority_transition": {
+    "financial_field_rules_changed": false,
+    "header_geometry_representation": "exact plain decimal strings; frozen decoder measurements and financial rules unchanged",
+    "mode": "source_method_revision",
+    "preservation": "originals and all old observations immutable; previously supported UTI values preserved; untouched AMC financial semantics unchanged and source provenance append-only",
+    "previous_registry_hash": "787001f97fb3ac150707409456b44fc42c5388e74c3a4ea9dc6a27ee54741007",
+    "previous_source_version": 4,
+    "previous_specification_hash": "714229336fae7f568b7831ae22b7cdb5a44431bf19b79fa1b985ed2b9a925f52",
+    "source_count_changed": false,
+    "source_key": "uti-expanded",
+    "source_rows_changed": 0,
+    "supersedes_unaccepted_policy_hash": "073eeaa85f714d817dc8debc86177f796bd9083f3b14a5bcc4b3f07cb2352f81",
+    "supersedes_unaccepted_source_configuration_hash": "ea090e2c7c147f47c26f2ad8b284e7c153e39429ede5264be1f95e928c369a31"
+  },
+  "source_registry_version": 5,
+  "supersedes_unaccepted_policy_hash": "073eeaa85f714d817dc8debc86177f796bd9083f3b14a5bcc4b3f07cb2352f81",
+  "supported_fields": {
+    "aum": [
+      "aum"
+    ],
+    "base_expense_ratio": [
+      "base_expense_ratio"
+    ],
+    "benchmark_name": [
+      "benchmark_name",
+      "benchmark"
+    ],
+    "fund_managers": [
+      "fund_manager_name"
+    ],
+    "risk_level": [
+      "risk_level"
+    ]
+  },
+  "verification": "publication is independent of human verification; new source dependencies require review revalidation, never blanket human verification",
+  "version": 10
+}
