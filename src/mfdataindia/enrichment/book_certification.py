@@ -299,6 +299,20 @@ def new_source_oracles(conn, expected):
     }
 
 
+def wire_fund(facts, *, recovery):
+    """Only source5 -> exact accepted source4 recovery lacks additive metadata.
+
+    Internal identity/source-oracle checks still use the complete new reader.
+    This models the known predecessor's wire representation, never a data or
+    financial-policy downgrade, and never relaxes an active/candidate check.
+    Later recoveries to source5 already include these fields.
+    """
+    if recovery and book_sources.CURRENT_VERSION == 5:
+        metadata = {"source_key", "specification_hash", "matches_installed_specification", "in_latest_successful_run"}
+        return {**facts, "observations": [{k: v for k, v in row.items() if k not in metadata} for row in facts["observations"]]}
+    return facts
+
+
 def certify(manifest, environment, *, active=False, recovery=False):
     if active and recovery:
         raise ValueError("recovery cannot claim active book projection")
@@ -383,7 +397,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
                 - {r["code"] for r in expected["reviewed"]}
             ):
                 cases.append(
-                    (f"/api/enrichment/v9/funds/{code}/facts", book_store.fund(conn, code))
+                    (f"/api/enrichment/v9/funds/{code}/facts", wire_fund(book_store.fund(conn, code), recovery=recovery))
                 )
         for sample in expected["reviewed"]:
             code = sample["code"]
@@ -400,7 +414,7 @@ def certify(manifest, environment, *, active=False, recovery=False):
                 )
             ):
                 raise ValueError("retained fields disagree with independent original reference")
-            cases.append((f"/api/enrichment/v9/funds/{code}/facts", facts))
+            cases.append((f"/api/enrichment/v9/funds/{code}/facts", wire_fund(facts, recovery=recovery)))
             if not recovery or book_sources.CURRENT_VERSION > 1:
                 cases.append((f"/api/enrichment/v3/funds/{code}/facts", current.get(conn, code)))
             if active:

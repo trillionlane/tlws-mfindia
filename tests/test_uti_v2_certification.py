@@ -70,3 +70,47 @@ def test_revision_has_no_added_AMC_but_still_requires_actual_original_queries():
     }
     with pytest.raises(RuntimeError, match="actual UTI original"):
         book_certification.new_source_oracles(Connection(), deepcopy(expected))
+
+
+@pytest.mark.parametrize(
+    "version,recovery,strip",
+    [(5, False, False), (5, True, True), (6, True, False), (4, True, False)],
+)
+def test_exact_predecessor_wire_shape_not_generic_metadata_downgrade(
+    monkeypatch, version, recovery, strip
+):
+    monkeypatch.setattr(book_sources, "CURRENT_VERSION", version)
+    facts = {
+        "identity": {"code": 102398},
+        "verification_status": "needs_verification",
+        "observations": [
+            {
+                "batch_id": "a" * 64,
+                "current_identity_matches": True,
+                "result": {
+                    "fields": {"aum": {"value": "4094.35"}},
+                    "detail_header_evidence": {"text": "ORIGINAL TITLE"},
+                },
+                "source_key": "uti-expanded",
+                "specification_hash": "b" * 64,
+                "matches_installed_specification": False,
+                "in_latest_successful_run": True,
+            }
+        ],
+    }
+    before = deepcopy(facts)
+    wire = book_certification.wire_fund(facts, recovery=recovery)
+    assert facts == before
+    if strip:
+        old = deepcopy(facts)
+        for key in (
+            "source_key",
+            "specification_hash",
+            "matches_installed_specification",
+            "in_latest_successful_run",
+        ):
+            old["observations"][0].pop(key)
+        assert wire == old
+        assert wire["observations"][0]["result"] == facts["observations"][0]["result"]
+    else:
+        assert wire == facts

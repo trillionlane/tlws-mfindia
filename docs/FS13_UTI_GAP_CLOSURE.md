@@ -98,3 +98,10 @@ the batch belongs to the latest successful source run. Equal-period old/new
 observations remain retained and distinguishable; these flags do not assert
 active publication or human verification. The existing bounded history is not
 an exhaustive export. No frozen v9 schema or protected core contract changes.
+
+Actual recovery promotes the exact accepted source4 image, whose wire history
+predates those additive metadata fields. Source5 recovery certification models
+that one known predecessor's representation while retaining every identity,
+raw financial field and original-header assertion. Internal source-oracle
+validation still uses the complete new reader. Candidate/active certification
+must never strip metadata; later recovery to source5 already supports it.
