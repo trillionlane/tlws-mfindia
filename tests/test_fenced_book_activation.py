@@ -144,19 +144,23 @@ def test_snapshot_preview_atomic_fence_concurrency_and_recovery(verified_db, mon
         "DELETE FROM public.fence_fixture WHERE value=3",
         "TRUNCATE public.fence_fixture",
     ):
-        with connect() as reader:
-            reader.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
-            roots = (*fence.ROOTS, "public.fence_fixture")
-            with monkeypatch.context() as scoped:
-                scoped.setattr(fence, "ROOTS", roots)
+        roots = (*fence.ROOTS, "public.fence_fixture")
+        with monkeypatch.context() as scoped:
+            scoped.setattr(fence, "ROOTS", roots)
+            with connect() as reader:
+                reader.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
                 before = fence.capture(reader)
-                with connect() as writer:
-                    writer.execute(mutation)
-                with connect() as verifier:
-                    from mfdataindia.enrichment.monthly_projection import owner
-                    owner(verifier)
-                    with pytest.raises(ValueError, match="changed after preparation"):
-                        fence.lock_and_verify(verifier, before)
+            # Real preparation also closes its read snapshot before publication.
+            # TRUNCATE needs ACCESS EXCLUSIVE and must not wait for this test's
+            # own still-open reader; that would test a fixture deadlock instead.
+            with connect() as writer:
+                writer.execute("SET LOCAL lock_timeout='5s'")
+                writer.execute(mutation)
+            with connect() as verifier:
+                from mfdataindia.enrichment.monthly_projection import owner
+                owner(verifier)
+                with pytest.raises(ValueError, match="changed after preparation"):
+                    fence.lock_and_verify(verifier, before)
 
     # A stale actual fund input is rejected before any transition/config append,
     # even when the caller bypasses the advisory operation lock.
