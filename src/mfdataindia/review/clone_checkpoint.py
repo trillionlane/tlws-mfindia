@@ -369,12 +369,23 @@ def logical_metadata(conn):
             JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace
             WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
             ORDER BY n.nspname,c.relname,k.conname""",
+        "sequences": """SELECT schemaname,sequencename,sequenceowner,data_type::text,
+            start_value,min_value,max_value,increment_by,cycle,cache_size,last_value
+            FROM pg_sequences WHERE schemaname NOT LIKE 'pg_%'
+              AND schemaname<>'information_schema' ORDER BY schemaname,sequencename""",
     }
     result = {key: conn.execute(query).fetchall() for key, query in queries.items()}
     from mfdataindia.review.preservation import canonical_constraint
     from mfdataindia.review.policy import fingerprint
+    from psycopg import sql
 
     for row in result["constraints"]:
         row["definition"] = fingerprint(canonical_constraint(row["definition"]))
+    for row in result["sequences"]:
+        row["state"] = conn.execute(
+            sql.SQL("SELECT last_value,is_called FROM {}.{}").format(
+                sql.Identifier(row["schemaname"]), sql.Identifier(row["sequencename"])
+            )
+        ).fetchone()
     json_bytes(result)
     return result

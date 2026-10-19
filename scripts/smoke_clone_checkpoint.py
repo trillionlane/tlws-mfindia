@@ -104,6 +104,8 @@ def main():
         try:
             with connect() as conn:
                 conn.execute("CREATE SCHEMA checkpoint_fixture")
+                conn.execute("CREATE SEQUENCE checkpoint_fixture.review_events START WITH 7")
+                conn.execute("SELECT nextval('checkpoint_fixture.review_events')")
                 conn.execute(
                     "CREATE TABLE checkpoint_fixture.values(id integer PRIMARY KEY,"
                     "amount numeric(50,28) NOT NULL,raw bytea,note text,days date[],j jsonb,"

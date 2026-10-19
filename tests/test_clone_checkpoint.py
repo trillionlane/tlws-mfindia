@@ -359,6 +359,7 @@ def test_metadata_requires_independent_readonly_snapshot_and_captures_complete_c
         "settings",
         "indexes",
         "constraints",
+        "sequences",
     }
     assert all(query.lstrip().startswith("SELECT") for query in conn.queries)
     assert not any("LIMIT" in query for query in conn.queries)
