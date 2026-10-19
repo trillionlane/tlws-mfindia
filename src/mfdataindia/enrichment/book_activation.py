@@ -33,7 +33,10 @@ def substitute_configuration(definition):
     pattern = re.compile(r"(?<![\w.])mf_live_facts\.configuration(?![\w.])")
     count = 0
     for index in range(0, len(pieces), 2):
-        pieces[index], changed = pattern.subn("activation_configuration", pieces[index])
+        # Preserve the relation's exposed name. pg_get_viewdef qualifies the
+        # unaliased max-generation column as configuration.generation; changing
+        # only FROM to a different name leaves that qualifier unresolved.
+        pieces[index], changed = pattern.subn("configuration", pieces[index])
         count += changed
     # The pinned v2 graph reads the active row AND max(generation). Both must
     # use the candidate relation; leaving the latter live would hide all rows.
@@ -58,7 +61,7 @@ class Preview:
                 or any(type(c) is not int or not 0 < c <= 2147483647 for c in codes)
                 or codes != sorted(set(codes))):
             raise ValueError("whole ordered candidate population required")
-        ctes = [sql.SQL("activation_configuration AS MATERIALIZED (SELECT {}::integer AS generation,{}::text AS policy_hash)").format(
+        ctes = [sql.SQL("configuration AS MATERIALIZED (SELECT {}::integer AS generation,{}::text AS policy_hash)").format(
             sql.Literal(self.prior["generation"] + 1), sql.Literal(fingerprint(self.policy))),
             sql.SQL("field_versions AS MATERIALIZED (SELECT * FROM ({}) candidate_versions WHERE code=ANY(%s))").format(sql.SQL(self.version_body))]
         for name in ORDER[1:] if complete else ORDER[1:3]:

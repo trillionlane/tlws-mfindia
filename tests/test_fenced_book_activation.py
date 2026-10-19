@@ -21,12 +21,65 @@ from test_verified_review_store import source_state, verified_db as verified_db
 def test_configuration_substitution_respects_literals_and_quoted_identifiers():
     definition = "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM mf_live_facts.configuration c WHERE generation=(SELECT max(generation) FROM mf_live_facts.configuration);"
     assert activation.substitute_configuration(definition) == (
-        "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM activation_configuration c WHERE generation=(SELECT max(generation) FROM activation_configuration)")
+        "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM configuration c WHERE generation=(SELECT max(generation) FROM configuration)")
     for invalid in ("SELECT 1", "SELECT * FROM mf_live_facts.configuration",
                     "SELECT * FROM mf_live_facts.configuration c,mf_live_facts.configuration d,mf_live_facts.configuration e",
                     "SELECT * FROM other.mf_live_facts.configuration", "SELECT * FROM mf_live_facts.configuration_extra"):
         with pytest.raises(ValueError, match="two active-authority"):
             activation.substitute_configuration(invalid)
+
+
+def test_deparsed_implicit_configuration_qualifier_is_preserved():
+    definition = """SELECT active_config.policy_hash
+        FROM mf_live_facts.configuration active_config
+        WHERE active_config.generation = ((SELECT max(configuration.generation) AS max
+            FROM mf_live_facts.configuration));"""
+    rewritten = activation.substitute_configuration(definition)
+    assert "max(configuration.generation)" in rewritten
+    assert "FROM configuration active_config" in rewritten
+    assert "FROM configuration)" in rewritten
+    assert activation.configuration_references(rewritten) == 0
+
+
+@pytest.mark.postgres
+def test_real_deparser_round_trip_preserves_alias_and_uses_only_candidate_configuration(verified_db):
+    # Disposable synthetic relations, not source coverage or installed DEV DDL.
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("CREATE SCHEMA mf_live_facts")
+        conn.execute("CREATE TABLE mf_live_facts.configuration(generation integer,policy_hash text)")
+        conn.execute("INSERT INTO mf_live_facts.configuration VALUES(1,'old-policy'),(2,'live-policy')")
+        conn.execute("""CREATE VIEW public.activation_alias_original AS
+            SELECT 1 AS code,active_config.policy_hash FROM mf_live_facts.configuration active_config
+            WHERE active_config.generation=(SELECT max(generation) FROM mf_live_facts.configuration)""")
+        definition = current.view_definition(conn, "public.activation_alias_original")
+        assert "max(configuration.generation)" in definition
+        original = conn.execute("SELECT * FROM public.activation_alias_original").fetchall()
+        assert original == [{"code": 1, "policy_hash": "live-policy"}]
+        for generation, policy in ((3, "candidate-policy"), (0, "lower-generation-candidate")):
+            result = conn.execute(sql.SQL("""WITH configuration AS MATERIALIZED (
+                SELECT {}::integer AS generation,{}::text AS policy_hash) {}""").format(
+                    sql.Literal(generation), sql.Literal(policy),
+                    sql.SQL(activation.substitute_configuration(definition)))).fetchall()
+            # Both active-row AND max-generation must read the single candidate
+            # row, even when its generation is lower than the real live maximum.
+            assert result == [{"code": 1, "policy_hash": policy}]
+        # Exercise the real graph builder too, not only a hand-built CTE prefix.
+        policy = {"synthetic_round_trip": "not_a_financial_policy"}
+        preview = activation.Preview({"generation": 2, "view_definitions": {
+            "field_versions": definition,
+            "field_heads": "SELECT * FROM mf_live_facts.field_versions",
+            "selected_fields": "SELECT * FROM mf_live_facts.field_versions",
+            "current_values": "SELECT * FROM mf_live_facts.selected_fields",
+            "resolved": "SELECT * FROM mf_live_facts.current_values",
+        }}, policy)
+        result = conn.execute(preview.graph(conn, [1], complete=True)
+            + sql.SQL("SELECT code,policy_hash FROM resolved"), ([1],)).fetchall()
+        assert result == [{"code": 1, "policy_hash": fingerprint(policy)}]
+        assert conn.execute("SELECT * FROM public.activation_alias_original").fetchall() == original
+        assert conn.execute("SELECT generation,policy_hash FROM mf_live_facts.configuration ORDER BY generation").fetchall() == [
+            {"generation": 1, "policy_hash": "old-policy"},
+            {"generation": 2, "policy_hash": "live-policy"},
+        ]
 
 
 @pytest.mark.parametrize("codes", [[], [True], [-1], [1, 1], [2, 1], ["1"], [2147483648], list(range(4098))])

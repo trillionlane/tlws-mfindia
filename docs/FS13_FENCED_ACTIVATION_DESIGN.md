@@ -97,3 +97,26 @@ preparation and strict immutable provenance precede a wholly fresh safe-window
 rollout. A–D backups and failure evidence remain untouched. Merge and image
 preparation do not establish serving state or acceptance. EXP01 starts only after
 actual FS13 acceptance, additional core witness and reviewed Git closeout.
+
+## PostgreSQL deparser regression repair
+
+Exact-head Verify39239640731 at `4aeca66` failed six focused cases at the same
+candidate query, while five focused cases passed. The full remainder and image
+gates therefore did not run; this is not passing CI or rollout evidence.
+
+PostgreSQL's `pg_get_viewdef()` qualifies the unaliased latest-generation column
+as `configuration.generation`. The initial preview renamed its FROM relation to
+`activation_configuration` but left that qualifier unresolved. Preserve the
+original exposed name by naming the statement-local candidate CTE
+`configuration`. Both fully qualified live relation references are still
+substituted; existing explicit aliases, implicit column qualifiers, quoted text
+and every policy expression remain unchanged. No general SQL parser or broad
+column-name substitution is introduced.
+
+Add an exact pure deparsed-query regression and a real PostgreSQL
+create-view/get-viewdef/preview round trip in a disposable database. The latter
+must return only the candidate row for both higher and lower candidate
+generations and leave the live rows/results unchanged. Retain all existing
+complete-population, concurrency, preservation, atomicity and recovery tests.
+Require whole CI again on the repaired exact head; no source request, backup,
+live DDL, installed view, migration, data, policy or resource-limit change.
