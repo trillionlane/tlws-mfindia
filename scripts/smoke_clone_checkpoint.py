@@ -185,3 +185,9 @@ def hashlib_file(path):
 
 if __name__ == "__main__":
     main()
+    from smoke_clone_checkpoint_v2 import main as three_stage_smoke
+
+    three_stage_smoke()
+    from smoke_clone_http import main as http_startup_smoke
+
+    http_startup_smoke()
