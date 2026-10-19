@@ -18,6 +18,7 @@ FOCUSED_FILES = frozenset({
     "tests/test_uti_v3_store.py",
     "tests/test_uti_v4_store.py",
     "tests/test_selected_value_preservation.py",
+    "tests/test_fenced_book_activation.py",
 })
 
 

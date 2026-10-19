@@ -44,9 +44,9 @@ def transition(conn, body):
     return book_store.append_exact(conn, "transitions", "transition_id", doc, {})
 
 
-def check(conn, reviewed):
+def check(conn, reviewed, *, preview=None):
     version = book_store.installed_configuration(conn)["document"]["registry"]["version"]
-    if current.policy_document(conn) != book_sources.current_policy(
+    if (current.policy_document(conn) if preview is None else preview.policy) != book_sources.current_policy(
         version
     ) or not current.projection_state(conn):
         raise ValueError("registered book projection required")
@@ -82,7 +82,7 @@ def check(conn, reviewed):
                     raise ValueError(
                         "original source disagrees with independent raw-token reference"
                     )
-        doc = current.get(conn, sample["code"])
+        doc = current.get(conn, sample["code"]) if preview is None else {"fields": preview.fields(conn, sample["code"])}
         for field, value in sample["values"].items():
             actual = doc["fields"].get(field)
             if (
@@ -97,6 +97,10 @@ def check(conn, reviewed):
 
 
 def activate(conn, root, reviewed, *, expected_configuration_hash):
+    if book_sources.CURRENT_VERSION >= 5:
+        from mfdataindia.enrichment import book_activation
+
+        return book_activation.activate(conn, root, reviewed, expected_configuration_hash=expected_configuration_hash)
     with conn.transaction():
         owner(conn)
         if book_sources.CURRENT_VERSION >= 5:

@@ -262,6 +262,7 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
                     proof = observation["result"]["detail_aum_row_evidence"]
                     assert proof["row_hash"] == fingerprint(proof["row"])
         assert book_preservation.capture(conn, 4) == prior
+        conn.commit()  # Finish the read snapshot before standalone fenced publication.
         activated = book_projection.activate(
             conn,
             ROOT,
@@ -332,11 +333,13 @@ def test_method_upgrade_full_preservation_source_oracles_replay_and_recovery(
         book_upgrade.install(conn, ROOT)
     old.publish(verified_db, identities, inputs, execution="v2-reactivate")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        expected = fingerprint(dict(current.configuration(conn)))
+        conn.commit()
         book_projection.activate(
             conn,
             ROOT,
             old.references(inputs[0][0]),
-            expected_configuration_hash=fingerprint(dict(current.configuration(conn))),
+            expected_configuration_hash=expected,
         )
         book_preservation_v2.compare(prior, book_preservation.capture(conn, 4))
         assert source_state(conn) == original
@@ -349,6 +352,7 @@ def test_lost_old_supported_values_abort_activation_transaction(verified_db, mon
     old.publish(verified_db, identities, inputs, execution="v2-loss")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
         inventory = book_store.capture(conn)
+        conn.commit()
         with pytest.raises(ValueError, match="previously supported"):
             book_projection.activate(
                 conn, ROOT, [s for s in old.references(inputs[0][0]) if s["code"] == 102398],
