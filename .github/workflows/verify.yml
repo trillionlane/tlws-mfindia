@@ -77,10 +77,10 @@ jobs:
           uv run python scripts/export_amc_book_openapi.py --check
 
       - name: Verify UTI method-upgrade PostgreSQL boundaries first
-        run: uv run pytest -q tests/test_uti_v2_store.py tests/test_uti_v3_store.py tests/test_uti_v4_store.py tests/test_selected_value_preservation.py -m postgres
+        run: uv run python scripts/run_ci_tests.py focused --evidence "$RUNNER_TEMP/mfdata-tests-${{ github.run_id }}-${{ github.run_attempt }}.json"
 
-      - name: Test against PostgreSQL 18
-        run: uv run pytest tests/ -q
+      - name: Complete full test collection against PostgreSQL 18
+        run: uv run python scripts/run_ci_tests.py remainder --evidence "$RUNNER_TEMP/mfdata-tests-${{ github.run_id }}-${{ github.run_attempt }}.json"
 
       - name: Verify read-only facts process tools
         run: |

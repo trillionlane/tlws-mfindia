@@ -92,3 +92,19 @@ a failed backup or counts as restored-clone/runtime acceptance.
 FS13 and EXP01 remain incomplete until actual DEV evidence is accepted.
 Observations remain `needs_verification`; TER is not BER; adjusted IDCW analytics
 remain disabled. This is neither all-AMC nor all-field completeness.
+
+## CI execution reconciliation
+
+Verify 39191486067 at `666b246` passed the focused nine PostgreSQL cases and
+the whole suite (2,143 passed, one existing skip), but hit the unchanged
+30-minute job limit before all image smokes finished. It is not a passing gate
+and cannot authorize merge. The focused cases previously ran twice.
+
+CI now collects the entire suite in both phases, runs the focused PostgreSQL
+boundary cases first and then only the exact complement. The second phase
+requires successful first-phase evidence and identical full and focused test
+IDs. Duplicate IDs, missing evidence, collection/marker drift or empty partitions
+fail closed. No tests are removed, marked skipped, sampled or run concurrently;
+all remaining tests retain their collection order. The same runner, PostgreSQL
+18 service, 30-minute bound, audits, both builds and every image smoke remain.
+Partition regressions verify exhaustive/disjoint execution and negative cases.
