@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Test, audit, and build
+  tests:
+    name: PostgreSQL tests, contracts, and audit
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -103,6 +103,25 @@ jobs:
 
       - name: Scan tracked files for credential material
         run: ./scripts/scan_tracked_secrets.sh
+
+  verify:
+    name: Test, audit, and build
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check uv==0.11.3
+          uv sync --frozen --all-extras
 
       - name: Build production image
         run: docker build --build-arg VCS_REF=${{ github.sha }} --tag tlws-mf-data:${{ github.sha }} .
@@ -330,6 +349,7 @@ jobs:
           docker build --build-arg VCS_REF="${{ github.sha }}" --file Dockerfile.review-tools --tag "$tools_image" .
           docker run --rm --entrypoint pg_dump "$tools_image" --version | grep -F 'PostgreSQL) 18.'
           docker run --rm --entrypoint python "$tools_image" -c 'from mfdataindia.review.regional_backup import NativePg18; from pathlib import Path; assert Path("/app/scripts/backup_verified_review_dev.py").is_file()'
+          docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_clone_checkpoint.py
 
       - name: Verify dormant complete-AMC book profile and bounded decoder
         run: |
