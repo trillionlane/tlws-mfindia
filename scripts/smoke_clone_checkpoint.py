@@ -144,14 +144,27 @@ def main():
                 raise ValueError("synthetic checkpoint bytes changed")
             native(["pg_restore", "--exit-on-error", "--dbname=" + DATABASE, str(dump)])
             cp.require_restored_seals(original, seals())
+
+            def must_reject():
+                try:
+                    cp.require_restored_seals(original, seals())
+                except ValueError:
+                    return
+                raise ValueError("native checkpoint authority/value drift was admitted")
+
+            with connect() as conn:
+                conn.execute("GRANT UPDATE ON checkpoint_fixture.values TO checkpoint_reader")
+            must_reject()
+            with connect() as conn:
+                conn.execute("REVOKE UPDATE ON checkpoint_fixture.values FROM checkpoint_reader")
+                conn.execute("ALTER ROLE checkpoint_reader INHERIT")
+            must_reject()
+            with connect() as conn:
+                conn.execute("ALTER ROLE checkpoint_reader NOINHERIT")
+            cp.require_restored_seals(original, seals())
             with connect() as conn:
                 conn.execute("UPDATE checkpoint_fixture.values SET amount=amount+1 WHERE id=1")
-            try:
-                cp.require_restored_seals(original, seals())
-            except ValueError:
-                pass
-            else:
-                raise ValueError("native numeric corruption escaped checkpoint proof")
+            must_reject()
         finally:
             if active is not None:
                 native(["pg_ctl", "--pgdata=" + str(active), "--mode=fast", "--wait", "stop"])

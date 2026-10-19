@@ -313,22 +313,27 @@ def logical_metadata(conn):
             grantor::regrole::text AS grantor,admin_option,inherit_option,set_option
             FROM pg_auth_members ORDER BY role,member,grantor""",
         "database": """SELECT datname,pg_get_userbyid(datdba) AS owner,encoding,
-            datcollate,datctype,datlocprovider,datlocale,datallowconn,datconnlimit,datacl::text
+            datcollate,datctype,datlocprovider,datlocale,datallowconn,datconnlimit,
+            CASE WHEN datacl IS NULL THEN NULL ELSE ARRAY(SELECT x::text FROM unnest(datacl) x ORDER BY x::text) END AS acl
             FROM pg_database WHERE datname=current_database()""",
         "defaults": """SELECT defaclrole::regrole::text AS role,
             CASE WHEN defaclnamespace=0 THEN '' ELSE defaclnamespace::regnamespace::text END AS schema,
-            defaclobjtype,defaclacl::text FROM pg_default_acl ORDER BY role,schema,defaclobjtype""",
-        "schemas": """SELECT nspname,pg_get_userbyid(nspowner) AS owner,nspacl::text
+            defaclobjtype,ARRAY(SELECT x::text FROM unnest(defaclacl) x ORDER BY x::text) AS acl
+            FROM pg_default_acl ORDER BY role,schema,defaclobjtype""",
+        "schemas": """SELECT nspname,pg_get_userbyid(nspowner) AS owner,
+            CASE WHEN nspacl IS NULL THEN NULL ELSE ARRAY(SELECT x::text FROM unnest(nspacl) x ORDER BY x::text) END AS acl
             FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname<>'information_schema'
             ORDER BY nspname""",
         "relations": """SELECT n.nspname,c.relname,c.relkind,pg_get_userbyid(c.relowner) AS owner,
-            c.relacl::text,c.reloptions,c.relrowsecurity,c.relforcerowsecurity
+            CASE WHEN c.relacl IS NULL THEN NULL ELSE ARRAY(SELECT x::text FROM unnest(c.relacl) x ORDER BY x::text) END AS acl,
+            c.reloptions,c.relrowsecurity,c.relforcerowsecurity
             FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
             WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
             ORDER BY n.nspname,c.relname""",
         "columns": """SELECT n.nspname,c.relname,a.attname,a.attnum,
             format_type(a.atttypid,a.atttypmod) AS type,a.attnotnull,a.attgenerated,a.attidentity,
-            a.attacl::text,pg_get_expr(d.adbin,d.adrelid) AS default_expression
+            CASE WHEN a.attacl IS NULL THEN NULL ELSE ARRAY(SELECT x::text FROM unnest(a.attacl) x ORDER BY x::text) END AS acl,
+            pg_get_expr(d.adbin,d.adrelid) AS default_expression
             FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid
             JOIN pg_namespace n ON n.oid=c.relnamespace
             LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
@@ -339,7 +344,8 @@ def logical_metadata(conn):
             WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
               AND c.relkind IN('v','m') ORDER BY n.nspname,c.relname""",
         "functions": """SELECT n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) AS args,
-            pg_get_userbyid(p.proowner) AS owner,p.proacl::text,p.proconfig,
+            pg_get_userbyid(p.proowner) AS owner,
+            CASE WHEN p.proacl IS NULL THEN NULL ELSE ARRAY(SELECT x::text FROM unnest(p.proacl) x ORDER BY x::text) END AS acl,p.proconfig,
             pg_get_functiondef(p.oid) AS definition FROM pg_proc p
             JOIN pg_namespace n ON n.oid=p.pronamespace
             WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
