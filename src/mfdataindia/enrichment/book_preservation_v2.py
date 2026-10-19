@@ -58,6 +58,48 @@ def _rows(conn, codes, *, selected_only=False):
     return conn.execute(query, (codes,) if selected_only else (codes, codes)).fetchall()
 
 
+def _selected_value_rows(conn, codes):
+    """Hash the complete selected value row, without building unused sources.
+
+    The target-cell certificate never consumed source_hashes. Its hash is still
+    exactly to_jsonb(selected_row)-'sources', built from the same six columns of
+    the installed, ACL-checked view. Naming columns lets PostgreSQL discard the
+    unused provenance aggregates; selection itself stays in the sealed view.
+    Full four-relation/source-multiset evidence continues to use _rows unchanged.
+    """
+    from mfdataindia.enrichment.book_preservation import sealed_core_read_relation
+
+    if (not isinstance(codes, list) or not 1 <= len(codes) <= 4096
+            or any(type(code) is not int or not 0 < code <= 2147483647 for code in codes)
+            or codes != sorted(set(codes))):
+        raise ValueError("complete ordered target population required; no truncation")
+    sealed_core_read_relation(conn)
+    names = ["field_versions", "field_heads", "selected_fields"]
+    contexts = conn.execute(
+        "SELECT relname,relowner,reloptions FROM pg_class "
+        "WHERE relnamespace='mf_live_facts'::regnamespace AND relkind='v' AND relname=ANY(%s)",
+        (names,),
+    ).fetchall()
+    if ({row["relname"] for row in contexts} != set(names)
+            or len({row["relowner"] for row in contexts}) != 1
+            or any(row["reloptions"] for row in contexts)):
+        raise ValueError("sealed selected-value execution contexts differ")
+    columns = conn.execute(
+        "SELECT attname FROM pg_attribute WHERE attrelid='mf_live_facts.selected_fields'::regclass "
+        "AND attnum>0 AND NOT attisdropped ORDER BY attnum"
+    ).fetchall()
+    if [row["attname"] for row in columns] != [
+        "code", "field", "as_of", "value", "distinct_values", "usable", "sources"
+    ]:
+        raise ValueError("complete sealed selected-value column signature required")
+    return conn.execute("""SELECT t.code,t.field,
+        encode(sha256(convert_to(jsonb_build_object(
+            'code',t.code,'field',t.field,'as_of',t.as_of,'value',t.value,
+            'distinct_values',t.distinct_values,'usable',t.usable)::text,'UTF8')),'hex') AS payload_hash
+        FROM mf_live_facts.selected_fields t WHERE t.code=ANY(%s)
+        ORDER BY t.code,t.field,payload_hash""", (codes,)).fetchall()
+
+
 def capture_target(conn, key, *, codes=None):
     """Current supported cells and source-certified TER under the ACTIVE policy."""
     prior = book_sources.registry(book_sources.CURRENT_VERSION - 1)
@@ -65,7 +107,7 @@ def capture_target(conn, key, *, codes=None):
     if source is None:
         raise ValueError("revised source must be an existing exact AMC")
     codes = codes or _codes(conn, [source["amc"]])
-    selected = _rows(conn, codes, selected_only=True)
+    selected = _selected_value_rows(conn, codes)
     cells = {str(row["code"]) + "|" + row["field"]: row["payload_hash"] for row in selected}
     if len(cells) != len(selected):
         raise ValueError("unique selected target field required")
