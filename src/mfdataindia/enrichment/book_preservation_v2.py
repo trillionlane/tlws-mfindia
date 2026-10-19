@@ -29,7 +29,7 @@ def _codes(conn, names, protected=()):
     return codes
 
 
-def _rows(conn, codes, *, selected_only=False):
+def _rows(conn, codes, *, selected_only=False, preview=None):
     from mfdataindia.enrichment.book_preservation import sealed_core_read_relation
 
     sealed_core_read_relation(conn)
@@ -53,12 +53,13 @@ def _rows(conn, codes, *, selected_only=False):
         ).format(sql.Literal(section), sql.Identifier(code),
                  sql.SQL("t.field") if sources else sql.SQL("NULL::text"),
                  payload, members, sql.Identifier(local), condition))
-    query = graph(conn, codes, complete=not selected_only) + sql.SQL(" UNION ALL ").join(queries)
+    prefix = graph(conn, codes, complete=not selected_only) if preview is None else preview.graph(conn, codes, complete=not selected_only)
+    query = prefix + sql.SQL(" UNION ALL ").join(queries)
     query += sql.SQL(" ORDER BY section,code,field,payload_hash")
     return conn.execute(query, (codes,) if selected_only else (codes, codes)).fetchall()
 
 
-def _selected_value_rows(conn, codes):
+def _selected_value_rows(conn, codes, *, preview=None):
     """Hash the complete selected value row, without building unused sources.
 
     The target-cell certificate never consumed source_hashes. Its hash is still
@@ -92,26 +93,30 @@ def _selected_value_rows(conn, codes):
         "code", "field", "as_of", "value", "distinct_values", "usable", "sources"
     ]:
         raise ValueError("complete sealed selected-value column signature required")
-    return conn.execute("""SELECT t.code,t.field,
+    query = """SELECT t.code,t.field,
         encode(sha256(convert_to(jsonb_build_object(
             'code',t.code,'field',t.field,'as_of',t.as_of,'value',t.value,
             'distinct_values',t.distinct_values,'usable',t.usable)::text,'UTF8')),'hex') AS payload_hash
         FROM mf_live_facts.selected_fields t WHERE t.code=ANY(%s)
-        ORDER BY t.code,t.field,payload_hash""", (codes,)).fetchall()
+        ORDER BY t.code,t.field,payload_hash"""
+    if preview is not None:
+        query = preview.graph(conn, codes) + sql.SQL(query.replace("mf_live_facts.selected_fields", "selected_fields"))
+        return conn.execute(query, (codes, codes)).fetchall()
+    return conn.execute(query, (codes,)).fetchall()
 
 
-def capture_target(conn, key, *, codes=None):
+def capture_target(conn, key, *, codes=None, preview=None):
     """Current supported cells and source-certified TER under the ACTIVE policy."""
     prior = book_sources.registry(book_sources.CURRENT_VERSION - 1)
     source = next((s for s in prior["sources"] if s["key"] == key), None)
     if source is None:
         raise ValueError("revised source must be an existing exact AMC")
     codes = codes or _codes(conn, [source["amc"]])
-    selected = _selected_value_rows(conn, codes)
+    selected = _selected_value_rows(conn, codes, preview=preview)
     cells = {str(row["code"]) + "|" + row["field"]: row["payload_hash"] for row in selected}
     if len(cells) != len(selected):
         raise ValueError("unique selected target field required")
-    policy = current.policy_document(conn)
+    policy = current.policy_document(conn) if preview is None else preview.policy
     active = conn.execute(
         "SELECT document FROM mf_book_facts.configuration WHERE configuration_hash=%s ORDER BY generation DESC LIMIT 1",
         (policy.get("book_source_configuration_hash"),),
@@ -207,7 +212,7 @@ def revised_keys(target_version):
     return [descriptor["source_key"]] if descriptor.get("mode") == "source_method_revision" else []
 
 
-def capture(conn, previous_version):
+def capture(conn, previous_version, *, preview=None):
     target = previous_version + 1
     if target != book_sources.CURRENT_VERSION or target < 5:
         raise ValueError("exact current preservation transition required")
@@ -217,7 +222,7 @@ def capture(conn, previous_version):
     protected = sorted({code for s in prior["sources"] for code in s["preserved_projection_codes"]})
     untouched_codes = _codes(conn, [s["amc"] for s in untouched], protected)
     all_codes = _codes(conn, [s["amc"] for s in prior["sources"]], protected)
-    rows = _rows(conn, untouched_codes)
+    rows = _rows(conn, untouched_codes, preview=preview)
     members = {section: defaultdict(list) for section in SECTIONS[:2]}
     hashes, payload_hashes = {}, {}
     for section in SECTIONS:
@@ -232,7 +237,7 @@ def capture(conn, previous_version):
             "untouched_source_keys": sorted(s["key"] for s in untouched), "revised_source_keys": sorted(revised),
             "hashes": hashes, "payload_hashes": payload_hashes,
             "source_members": {section: {key: sorted(value) for key, value in sorted(found.items())} for section, found in members.items()},
-            "revised": {key: capture_target(conn, key) for key in revised}, "source_rows_changed": 0}
+            "revised": {key: capture_target(conn, key, preview=preview) for key in revised}, "source_rows_changed": 0}
     return {**body, "sha256": fingerprint(body)}
 
 

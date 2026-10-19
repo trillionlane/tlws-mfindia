@@ -135,10 +135,12 @@ def test_complete_selected_value_hashes_match_before_after_activation_and_recove
     reader_witnesses()
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
         assert book_preservation.capture(conn, 4) == prior
+        conn.commit()
         activated = book_projection.activate(conn, ROOT, old.references(inputs[0][0]),
                                              expected_configuration_hash=fingerprint(baseline))
-        assert conn.execute("SHOW statement_timeout").fetchone()["statement_timeout"] == "5s"
-        assert conn.execute("SHOW transaction_timeout").fetchone()["transaction_timeout"] == "15s"
+        # The bounded writer transaction is now already committed. Its LOCAL
+        # limits are asserted inside publication by the protocol regression.
+        assert conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
         engine.compare(prior, book_preservation.capture(conn, 4))
     reader_witnesses()
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
