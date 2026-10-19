@@ -1,0 +1,40 @@
+{
+  "format": "fs13-three-stage-operator-local-review-v1",
+  "root": "/Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX",
+  "review": "IMPLEMENTER self-review only, NOT independent approval",
+  "authority": "Direct humanApproved for third boundedjob+secondsealedcheckpoint",
+  "code_hashes": [
+    "f1a29956b87ee578f559e547da9824bf830ec6161ddff4aaba7462856bfdca0b  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/archive_checks.py",
+    "bf472da72e8414f2332030dea8141042f1609d6273f7fc92d13f6e8726327ca8  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/build_reference.py",
+    "72dce83e352f61b59977bdd1412117face5465a172536c2e5e5adc0284c9a73e  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/checkpoint_worker.py",
+    "473296c04f7b98f34ea6404da2f9e9aa33686497484aaa81d643def445004787  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/clone_timing.py",
+    "ab2e926759e4fcf2fefd0a3d5952c6e53aac3896356cfbf85f91a0a99496c78c  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/closeout.py",
+    "e51243795445c71a0c5b7ef4f1268f34b9fadca683154a5ce2646b4217ecc790  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/compatible_http.py",
+    "94b46321e0bd21a38a895b7936d7fd286102bc196f7ebef901c1732cf814c607  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/coordinator.py",
+    "067176382c9e76ee985fb3ab9564f8fb65f63aefc5c77ade3c58803302553b23  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/fenced_recovery.py",
+    "c33f3b3c45665a6db0e20e5c67f3603eb9e993a30bbeaa44362e65007a4e6f87  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/image_clone.py",
+    "28e3cb61884abdb07b17132495847f3c5fb00210ceb56eb72173c10570cf725c  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/lossless_transport.py",
+    "196545e3179761eb1726ad5324027b9d2a5dd499ec728798fb5f4256d56b8bd2  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/normal_cycle.py",
+    "23598d5746aaa3007c315ac10e2bf3ec23e21d9bf6fb8c197ad075f496de55a4  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/normal_source.py",
+    "644264e016e23f5561e2372b87160687ec1d58b1661df42eeccaee4fa51e883a  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/operate.py",
+    "d0897c2ca83c5086a2751b91a43bbb01ec46d9f9ee31804eaa5a654860cfd12d  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/scheduler.py",
+    "bbcc275fc1468cf8b1b967c949f6004909d07d725e14493fc23bf1f931b2077a  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/source_rehearsal.py",
+    "ee4fae4f20fe81b9723198f4b0803cddbf17b611a89d7b0617369b528de04f68  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/test_dump_snapshot_lifecycle.py",
+    "86e757966045cd41923fbb43edb53eeaefe354e60e819146459a6d5bfd7dc56d  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/test_three_stage_controller.py",
+    "355f48448e99e320ab65daee74bd65970001db416efadd0c062facaaa29e93cb  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/test_three_stage_worker.py",
+    "a8419a36dd9b406d823c2dc60a994f31a4e7691c9cbf479b4e7ef36e76c701db  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/source_reference.json"
+  ],
+  "local_tests": {
+    "historical_F_unchanged": 287,
+    "new_G_generation_controller": 25,
+    "repository_non_postgres": 1947,
+    "repository_postgres_not_run_locally": 382,
+    "new_and_retained_transport_harness_chain_ci_sequence": 145,
+    "local_native_http_fixture": "passed; synthetic, noPG/source/cloud",
+    "snapshot_lifecycle": "Generated final snapshot AST exercises success/original-query mismatch/dump timeout; source capture occurs once inside same RR snapshot, dump starts after export before ORIGINAL scans, finishes before snapshot closes, always reaped on failure, no upload on incomplete proof."
+  },
+  "guards": "G runtime UNEXECUTED; no manifest/intent/backup/clone/generatedworker/source/schema/traffic/schedule. Future01:00-01:15UTC20Oct exactseconds gate, no ready/late waiver. Allnewsource code inheadCI before use. All16helperhashes context-bound including operator+archivechecks.",
+  "snapshot": "Checkpoint2 dump starts in SAME final RRREADONLY snapshot as second ORIGINALquery and preservation proof, overlaps only read-only work inside SAME900s2CPU4Gi job. Upload only AFTER all proofs and dump success; failure always reaps scratch dump. Originalquerytext/calls unchanged; existing source baseline preservation format usescurrent_facts_baseline=True and exactactualviewdefinitions remain independentlyboundbycurrent+completecatalogueseals.",
+  "transport": "All5temporaryprefixexpirybindings tracked beforegrant; creators removed/verified before nextphase; finalreceipt published ONLY after actual5-bindingabsence ANDcomplete3-stagechain admission; no retryor overwrite/delete.",
+  "readiness": "Merged/images not deployment/acceptance. Actualnewimagewholecohort/independentPDF/fencedrecovery/private/core/timer/preservation/all16gates+originalcoordinatorEXIT0+sealed22 stillmandatory; FS12frozen; EXP01waits."
+}
