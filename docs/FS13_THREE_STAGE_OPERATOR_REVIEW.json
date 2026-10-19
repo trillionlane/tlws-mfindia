@@ -19,17 +19,19 @@
     "644264e016e23f5561e2372b87160687ec1d58b1661df42eeccaee4fa51e883a  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/operate.py",
     "d0897c2ca83c5086a2751b91a43bbb01ec46d9f9ee31804eaa5a654860cfd12d  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/scheduler.py",
     "bbcc275fc1468cf8b1b967c949f6004909d07d725e14493fc23bf1f931b2077a  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/source_rehearsal.py",
+    "ee4fae4f20fe81b9723198f4b0803cddbf17b611a89d7b0617369b528de04f68  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/test_dump_snapshot_lifecycle.py",
     "86e757966045cd41923fbb43edb53eeaefe354e60e819146459a6d5bfd7dc56d  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/test_three_stage_controller.py",
     "355f48448e99e320ab65daee74bd65970001db416efadd0c062facaaa29e93cb  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/test_three_stage_worker.py",
     "a8419a36dd9b406d823c2dc60a994f31a4e7691c9cbf479b4e7ef36e76c701db  /Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX/source_reference.json"
   ],
   "local_tests": {
     "historical_F_unchanged": 287,
-    "new_G_generation_controller": 22,
+    "new_G_generation_controller": 25,
     "repository_non_postgres": 1947,
     "repository_postgres_not_run_locally": 382,
     "new_and_retained_transport_harness_chain_ci_sequence": 145,
-    "local_native_http_fixture": "passed; synthetic, noPG/source/cloud"
+    "local_native_http_fixture": "passed; synthetic, noPG/source/cloud",
+    "snapshot_lifecycle": "Generated final snapshot AST exercises success/original-query mismatch/dump timeout; source capture occurs once inside same RR snapshot, dump starts after export before ORIGINAL scans, finishes before snapshot closes, always reaped on failure, no upload on incomplete proof."
   },
   "guards": "G runtime UNEXECUTED; no manifest/intent/backup/clone/generatedworker/source/schema/traffic/schedule. Future01:00-01:15UTC20Oct exactseconds gate, no ready/late waiver. Allnewsource code inheadCI before use. All16helperhashes context-bound including operator+archivechecks.",
   "snapshot": "Checkpoint2 dump starts in SAME final RRREADONLY snapshot as second ORIGINALquery and preservation proof, overlaps only read-only work inside SAME900s2CPU4Gi job. Upload only AFTER all proofs and dump success; failure always reaps scratch dump. Originalquerytext/calls unchanged; existing source baseline preservation format usescurrent_facts_baseline=True and exactactualviewdefinitions remain independentlyboundbycurrent+completecatalogueseals.",
