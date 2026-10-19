@@ -19,12 +19,13 @@ from test_verified_review_store import source_state, verified_db as verified_db
 
 
 def test_configuration_substitution_respects_literals_and_quoted_identifiers():
-    definition = "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM mf_live_facts.configuration c;"
+    definition = "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM mf_live_facts.configuration c WHERE generation=(SELECT max(generation) FROM mf_live_facts.configuration);"
     assert activation.substitute_configuration(definition) == (
-        "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM activation_configuration c")
-    for invalid in ("SELECT 1", "SELECT * FROM mf_live_facts.configuration c,mf_live_facts.configuration d",
+        "SELECT 'mf_live_facts.configuration',\"mf_live_facts.configuration\" FROM activation_configuration c WHERE generation=(SELECT max(generation) FROM activation_configuration)")
+    for invalid in ("SELECT 1", "SELECT * FROM mf_live_facts.configuration",
+                    "SELECT * FROM mf_live_facts.configuration c,mf_live_facts.configuration d,mf_live_facts.configuration e",
                     "SELECT * FROM other.mf_live_facts.configuration", "SELECT * FROM mf_live_facts.configuration_extra"):
-        with pytest.raises(ValueError, match="single active-authority"):
+        with pytest.raises(ValueError, match="two active-authority"):
             activation.substitute_configuration(invalid)
 
 
@@ -70,6 +71,7 @@ def test_request_binds_projection_and_reviewed_references():
     refs[0]["value"] = "changed"
     assert request != activation._request(ROOT, refs, "a" * 64)
     assert request != activation._request(ROOT, refs, "b" * 64)
+    assert set(request["implementation_hashes"]) == {"book_activation", "activation_fence", "book_preservation_v2"}
 
 
 def test_open_caller_transaction_is_rejected_without_implicit_commit_or_rollback():
@@ -78,6 +80,12 @@ def test_open_caller_transaction_is_rejected_without_implicit_commit_or_rollback
     conn = SimpleNamespace(info=SimpleNamespace(transaction_status=psycopg.pq.TransactionStatus.INTRANS))
     with pytest.raises(ValueError, match="idle connection"):
         activation.activate(conn, ROOT, [], expected_configuration_hash="a" * 64)
+
+
+def test_indirect_configuration_reads_and_literals_are_distinguished():
+    assert activation.configuration_references("SELECT * FROM mf_live_facts.configuration") == 1
+    assert activation.configuration_references("SELECT 'mf_live_facts.configuration'") == 0
+    assert activation.configuration_references('SELECT "mf_live_facts.configuration"') == 0
 
 
 def original_rows(conn, codes):
@@ -260,6 +268,22 @@ def test_dependency_metadata_and_lock_fence_without_protocol_fixture(verified_db
         row = conn.execute("SELECT 'public.fenced_input'::regclass::oid::bigint AS oid").fetchone()
         relation = {**row, "schema": "public", "name": "fenced_input", "kind": "r"}
         before = fence.row_versions(conn, [relation])
+    # An existing transaction remains caller-owned, including its uncommitted
+    # writes. The entry point neither commits nor rolls it back implicitly.
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("INSERT INTO public.fenced_input VALUES(9)")
+        with pytest.raises(ValueError, match="idle connection"):
+            book_projection.activate(conn, ROOT, [], expected_configuration_hash="a" * 64)
+        assert conn.execute("SELECT count(*) AS n FROM public.fenced_input WHERE value=9").fetchone()["n"] == 1
+        conn.rollback()
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        assert conn.execute("SELECT count(*) AS n FROM public.fenced_input WHERE value=9").fetchone()["n"] == 0
+    from test_verified_review_api import runtime_dsn
+    from test_verified_review_store import ROLES
+    for role in ROLES:
+        with psycopg.connect(runtime_dsn(verified_db, role), row_factory=dict_row) as conn:
+            with pytest.raises(ValueError, match="owner required"):
+                book_projection.activate(conn, ROOT, [], expected_configuration_hash="a" * 64)
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
         conn.execute(sql.SQL("UPDATE {} SET value=value").format(sql.Identifier("public", "fenced_input")))
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:

@@ -5,6 +5,8 @@ eligible. No externally supplied certificate bypasses the preparation step.
 """
 
 import hashlib
+import re
+from pathlib import Path
 
 import psycopg
 from psycopg import sql
@@ -21,17 +23,22 @@ from mfdataindia.enrichment.monthly_projection import owner, seal_configuration
 from mfdataindia.review.policy import fingerprint
 
 
+def configuration_references(definition):
+    pattern = re.compile(r"(?<![\w.])mf_live_facts\.configuration(?![\w.])")
+    return sum(len(pattern.findall(piece)) for piece in QUOTED.split(definition)[::2])
+
+
 def substitute_configuration(definition):
     pieces = QUOTED.split(definition.rstrip().removesuffix(";"))
-    import re
-
     pattern = re.compile(r"(?<![\w.])mf_live_facts\.configuration(?![\w.])")
     count = 0
     for index in range(0, len(pieces), 2):
         pieces[index], changed = pattern.subn("activation_configuration", pieces[index])
         count += changed
-    if count != 1:
-        raise ValueError("exact single active-authority dependency required")
+    # The pinned v2 graph reads the active row AND max(generation). Both must
+    # use the candidate relation; leaving the latter live would hide all rows.
+    if count != 2:
+        raise ValueError("exact two active-authority dependencies required")
     return "".join(pieces)
 
 
@@ -43,8 +50,7 @@ class Preview:
         self.policy = policy
         self.version_body = substitute_configuration(prior["view_definitions"]["field_versions"])
         for name in ORDER[1:]:
-            if any("mf_live_facts.configuration" in piece
-                   for piece in QUOTED.split(prior["view_definitions"][name])[::2]):
+            if configuration_references(prior["view_definitions"][name]):
                 raise ValueError("unhandled active-authority dependency")
 
     def graph(self, conn, codes, *, complete=False):
@@ -80,11 +86,16 @@ def _request(root, reviewed, expected):
     if hashlib.sha256((root / "sql/optional" / projection[0]).read_bytes()).hexdigest() != projection[1]:
         raise ValueError("book projection differs from reviewed pin")
     book_core_projection.source(root)
+    implementation = {"book_activation": Path(__file__),
+                      "activation_fence": Path(activation_fence.__file__),
+                      "book_preservation_v2": Path(preservation.__file__)}
     return {"format": "official-book-fenced-activation-v1", "prior_hash": expected,
             "reviewed_hash": fingerprint(reviewed), "source_version": version,
             "source_hash": fingerprint(book_sources.configuration(version)),
             "policy_hash": fingerprint(book_sources.current_policy(version)),
-            "projection": list(projection), "core_projection_hash": book_core_projection.SHA256}
+            "projection": list(projection), "core_projection_hash": book_core_projection.SHA256,
+            "implementation_hashes": {name: hashlib.sha256(path.read_bytes()).hexdigest()
+                                      for name, path in implementation.items()}}
 
 
 def _prepare(conn, root, reviewed, expected):
@@ -111,6 +122,9 @@ def _prepare(conn, root, reviewed, expected):
         if not current.projection_state(reader):
             raise ValueError("accepted active graph required")
         fence = activation_fence.capture(reader)
+        if any(r["kind"] == "v" and (r["schema"], r["name"]) != ("mf_live_facts", "field_versions")
+               and configuration_references(r["definition"]) for r in fence["relations"]):
+            raise ValueError("unhandled indirect active-authority dependency")
         if prior["policy_hash"] == request["policy_hash"]:
             book_projection.check(reader, reviewed)
             return {"request": request, "prior": prior, "fence": fence, "already_active": True}
