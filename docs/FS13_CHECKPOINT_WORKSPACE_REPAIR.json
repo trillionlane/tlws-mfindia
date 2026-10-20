@@ -1,0 +1,21 @@
+{
+  "format": "mfdata-finite-checkpoint-workspace-repair-design-v1",
+  "written_before_implementation": true,
+  "actual_H_failure": "FileExistsError checkpoint-state.json at clone_checkpoint_v2.py217/generatedworker343/07:37:12.824208Z; old import and next export share a local state pathname. Dump cloud upload occurred before local collision. H failed isolated/no live changes; retained and never rerun/reuse.",
+  "design": [
+    "Helper-owned final dump uses a fresh 0700 rehearsal-export child directory created once, without exist_ok, before pg_dump. Imported dump/state remain byte-identical in the incoming directory.",
+    "Generated operator and mandatory nativePG18 smoke execute identical DUMP_START and DUMP_EXPORT byte strings. The new candidate generator is local-only, not a runtime root or launch authority.",
+    "Versioned v2 export checks regular bounded local dump/directory, lossless state/seals and worst-case complete envelope size before publication, and reserves the create-only local state pathname with xb before the first remote upload. Known collision/oversize/symlink errors cause zero upload calls. On later transport error retain partial artifacts and never retry/overwrite/unlink.",
+    "NativePG18 smoke must perform actual export/import/export/import via bounded synthetic create-only transport, three distinct clusters, exact generation/size/SHA/MD5/context/predecessor bindings, same RR READONLY snapshot, old RW guard rejection/concurrent-write exclusion/tamper rejection, and verify input bytes unchanged.",
+    "All original four financial queries/whole-cohort proofs, immutable metadata algorithm, exact state/certificate keys, IDLE and fenced activation/recovery semantics, original source/reference modules, all52privatepaths19core and IAM cleanup remain unchanged."
+  ],
+  "unchanged_bounds": "Exactly3jobs2checkpoints/each900s2CPU4Gi/owner5sstatement5slock15stransaction/300s420s only independentRRREADONLY/dump240s/startup131072args; no added resources, proofs or query waiver.",
+  "test_plan": [
+    "Preserve existing tests, add real H failure regression and full corrected lifecycle with input hashes.",
+    "Fail closed before upload on existing/broken-symlink state, symlink dump/root, oversized state/invalid values, missing dump, existing output dir/symlink; retain partial bytes on upload failure.",
+    "Mandatory full exacthead PG18 focused+exactcomplement/contracts/audit/credential/builds/ALLsmokes, actual mainCI separately; synthetic native fixtures never live coverage."
+  ],
+  "frozen_failures": "A-H roots/originals/backups/checkpoints/failures untouched. Incomplete H dump generation1792481831752473 retained, never admitted/reused/deleted.",
+  "runtime_authority": "NO new runtime root/window or provider operations this local repair wake. No sourceHTTP/backup/clone/IAM/schema/source/traffic/schedule mutation. Fresh operator/readiness and actual normal-cycle gates required later.",
+  "review": "IMPLEMENTER design; NOT independent approval."
+}

@@ -1,0 +1,62 @@
+{
+  "format": "mfdata-checkpoint-workspace-implementer-review-v1",
+  "review_label": "IMPLEMENTER SELF-REVIEW, NOT independent approval",
+  "base": "fe04c476531f8806399000feff75dd0e0d700551",
+  "design": "FS13_CHECKPOINT_WORKSPACE_REPAIR.json writtenbeforecode; externaldesign precedingthiswake also retained",
+  "cause": "Hstage2sameinput/outputlocalstatefilename; dump-firstuploadbeforexb collision. Reproducedbeforeimplementation with actualunmodifiedtransport; no livechange.",
+  "changes": "Fresh0700rehearsal-exportchild chosenbyexactsharedDUMP_START; exactsharedDUMP_EXPORT consumes same checkpoint_output. Versionedv2export preflightscompleteworst-caseJSONsize+localdump/directory and reservesstatexb BEFOREfirstupload. Importedfilebytespreserved. NativePG18 nowrealexport/import/export/import transport withgen/size/SHA/MD5/predecessorcontext/complete-state checks over3clusters andsameRRREADONLYsnapshot, unchangedoldRW/tamper/concurrencycontrols.",
+  "changed_file_sha256": {
+    "src/mfdataindia/review/clone_checkpoint_v2.py": "942a3db8c710727edfe50069444443eaf11e94e5babedb8f2102d7a9e58327fb",
+    "src/mfdataindia/review/clone_final_snapshot.py": "58f0b76f72d1a105cedd67e434c25210315de50bc389709a1c1958433af45194",
+    "scripts/smoke_clone_checkpoint_v2.py": "d1041fbc1aa312b93e9fcf895f542320db14f8c8f81d83fab5e41270d4610074",
+    "tests/test_clone_checkpoint_v2.py": "1b8124b92e4e5f951d2c192dca4268f4bf0609ca51b01f39b62d2ab7c8c45c82",
+    "tests/test_clone_final_snapshot.py": "a7adf79ec9f2c500811683ebb1c1e7ff042e39f9f37e815e449faab724729a24",
+    "tests/test_clone_checkpoint_workspace.py": "9d79f0e232ae5e96700b076f812af4c9e45a590ce52f6c445f637bf83f6e39e1"
+  },
+  "candidate": {
+    "root": "/Users/deviojha/projects/codex/artifacts/mf-fs13-checkpoint-workspace-repair-20261020-aF2KIR",
+    "file": "checkpoint_worker.py",
+    "sha256": "a6697af4ff4b1b8df28b580b4f02343caa1a1b6d9063bdac892fa579d175ea8e",
+    "not_runtime": true,
+    "no_coordinator_manifest_or_window": true,
+    "shared_start_export_exact": true,
+    "all3programs_compiled_in_memory": true,
+    "argument_bytes": [
+      53983,
+      68293,
+      63581
+    ],
+    "bound": 131072,
+    "metadata": "Synthetic H-shaped fixturemetadataonly; neverfailedbackuprestore/sourceHTTP/cloud/secret/state/dumpcopy. Notactualcoverage."
+  },
+  "validation": {
+    "local_whole_nonPG": {
+      "passed": 1972,
+      "postgres_deselected": 382,
+      "seconds": 52.51,
+      "exit": 0
+    },
+    "local_collection": 2354,
+    "focused_checkpoint_tests": {
+      "passed": 138,
+      "seconds": 0.93,
+      "exit": 0
+    },
+    "all_original_H_operator_safety": {
+      "passed": 277,
+      "seconds": 1.66,
+      "exit": 0,
+      "files_unchanged": true
+    },
+    "all21contracts": "PASS",
+    "Ruff": "PASS",
+    "diff": "PASS",
+    "credentials": "PASS tracked after stage, no high-confidence credential markers",
+    "nativePG18": "NOT runlocally/noPGstarted/noDocker. WholeexactheadCI mandatory with existingnativePG18smoke; syntheticonly, notDEV.",
+    "expected_CI": "2354fullcollection/12focused+2342remainder, expected2353PASS1existingemptyDBskip ONLYifactualCIprovesinventory; no omittedtest/newskip."
+  },
+  "failure_injection": "KnownHsame-dircollision =>zero remoteuploads; preexisting/broken-symlinkstate/dumpsymlink/rootlink/missingdump/oversizedstate/invalidseals/nonfinitevalues failclosedbeforeupload; partialpost1/post2 failures retainlocalpartial/no retry. Existingremote412 control retainedusingfreshlocalduplicateoutput.",
+  "frozen_controls": "Frozenv1/fulllogicalmetadataalgorithm/require_restored_seals/chain/fencedactivation/source/math/policy/config/migrations andCIworkflow/limits unchanged; all33Hhelper/test/referencehashesindependentlymatch; failedA-H/backups/checkpoints/orphansretained. FourORIGINALfinancialqueriesandall52privatepaths19core preserved in whole generatedprograms.",
+  "safety": "No newruntime root/window/backup/clone/IAM/schema/source/traffic/schedule/GCPresource/sourceHTTP mutation. Operationalmaincleanfe04unchanged. No newjobs/resources/SQL/startup/timeoutlimits/waivers. AutoDeployfalse verified.",
+  "review_findings": "Caughttestinsertionindent/scopeerroratRuff beforeCI, correctedfixtureplacement only. Readonlyverificationinitiallylookedforbook_activation.py inreviewdirectory; correctedenrichmentpath, finalhashcheckPASS. No productionresourceorproofwaiver."
+}
