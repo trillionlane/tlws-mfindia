@@ -136,7 +136,9 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
     monkeypatch.setattr(certification, "Path", lambda value: {
         "/trust/config.json": trust_file, "/signer/key.pem": signer_file}[value])
     private_app = create_amc_books_app(reader, verifier=verifier)
-    core_app = create_app(reader)
+    # The separately owned core facade has its own existing fixture principal.
+    # Do not grant private verified_reader access to unrelated core relations.
+    core_app = create_app(verified_db)
     metadata_app = FastAPI()
     metadata_app.add_api_route("/_fixture_metadata", lambda: PlainTextResponse("synthetic-iam-only"))
 

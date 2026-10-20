@@ -16,6 +16,12 @@
     "native_composition": "Whole PostgreSQL18 CI executes full certifier integration at exact same head as both final-image60/64chunk process-startup smokes. Together they prove complete shared code path and actual aggregate native image startup; neither is actual DEV/source acceptance.",
     "not_authorized": "No local PostgreSQL/Docker, production repair, altered resource/time/query limits or failed-attempt reuse. Future deployment remains conditional on complete reviewed Git/CI/images/fresh operator/readiness."
   },
+  "fail_fast_partition_amendment_design_before_code": {
+    "reason": "User asked to reduce gaps/delays. The new full native certifier case should reject bad fixture/entry integration before the long remainder, not after it. Preserve every original gate and test ID.",
+    "only_runner_change": "Add tests/test_certification_input_native.py to existing FOCUSED_FILES. Existing partition algorithm, full collection, unique IDs, fresh first-success evidence, exact identical inventory and mandatory disjoint exhaustive complement remain unchanged. No test duplicate/rerun, skip, omitted original case, extra job, increased resource/time or gate variable.",
+    "proof": "Add a unit case proving all original focused IDs/order and all original remainder IDs retained; only the native marked test moves early. CI must prove actual final full inventory and both partitions, never assumed12or13 counts.",
+    "fixture_principal_review": "Native core API uses existing disposable core fixture principal, separately from private verified_reader. Keep private reader restrictions and all production grants unchanged; never grant private reader the unrelated core facade just to pass a test."
+  },
   "implementation": {
     "module": "src/mfdataindia/review/certification_input_transport.py",
     "selected_input_only": "Exact original UTF8 AMC_BOOK_CERTIFICATION bytes; unchanged AMC_BOOK_CERTIFICATION_HASH. No environment-wide compression or secret encoding.",
@@ -67,7 +73,7 @@
     "provider_free": "Full synthetic valid 3220-code high-entropy and 4096-code compressible maps; all five labels/flags; unchanged certifier expectation; exact generated worker entry and stdout seal; malformed/missing/extra/duplicate/swapped chunks; strict UTF8/JSON/base64; bounded zlib bombs/trailing/concatenated streams; context/inner hash; environment/argv/full-request budgets; full immutable input verification; no environment mutation; incomplete financial reference rejected before dispatch.",
     "max_population_warning": "A structurally valid 4096-code high-entropy map exceeds 64 chunks and is explicitly tested to FAIL CLOSED, unchanged and without sampling. Code-count eligibility is not a universal transport-size guarantee. No cap raised.",
     "native_smoke_added": "Synthetic 60- and 64-chunk Linux exec/child-after-decode smoke in BOTH final APP/TOOLS CI images. Measures SC_ARG_MAX and retains reserve/margin. Not run locally; no Docker or native PG18 claim.",
-    "CI_preservation": "Every original CI step body/order remains byte-identical to the frozen inventory. One additive mandatory smoke step in the existing image job; no new job or timeout/resource changes. Partitioned full PG collection runner unchanged.",
+    "CI_preservation": "Every original CI step body/order remains byte-identical to the frozen inventory. One additive mandatory smoke step in the existing image job; no new job or timeout/resource changes. Partition algorithm unchanged; new native PG file added to existing fail-fast allowlist, retaining every original focused ID and the exact full complement.",
     "still_required": "Actual final-image Linux smoke results PLUS full successful native PG18/private-HTTP integration through this shared worker/decoder and unchanged full certifier, not decoder-only mocks. Whole exact-head CI, audit/builds/all previous native three-cluster and HTTP smokes, reviewed merge/identical tree/main CI/new image provenance twice; future fresh operator/readiness and all runtime gates. No READY claim from local tests."
   },
   "retained_development_failures": [

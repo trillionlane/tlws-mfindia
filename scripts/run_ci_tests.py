@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 FOCUSED_FILES = frozenset({
+    "tests/test_certification_input_native.py",
     "tests/test_uti_v2_store.py",
     "tests/test_uti_v3_store.py",
     "tests/test_uti_v4_store.py",
