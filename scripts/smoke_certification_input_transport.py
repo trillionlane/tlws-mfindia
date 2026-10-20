@@ -63,7 +63,13 @@ def main():
         actual_count = json.loads(submitted[t.HEADER])["count"]
         if actual_count != chunks:
             raise ValueError("native synthetic chunk-size fixture differs")
-        argv = [sys.executable, __file__, "--child"]
+        # Physically exercise aggregate env + a conservative near-limit argv,
+        # not just a tiny launcher. The deployed certification wrapper is much
+        # smaller; no original argv/resource/stack bound is raised here.
+        launcher = ("import runpy,sys;sys.argv=['synthetic','--child'];"
+                    f"runpy.run_path({__file__!r},run_name='__main__')\n#")
+        launcher += "p" * (131000 - len(launcher.encode()))
+        argv = [sys.executable, "-c", launcher]
         budget = t.submission_budget(submitted, argv)
         if budget["startup_required_bytes"] > arg_max:
             raise ValueError("native aggregate exec headroom insufficient")
