@@ -102,7 +102,7 @@ def test_certificate_cannot_cross_phase_or_previous_execution():
 
 def test_frozen_catalogue_algorithm_is_retained_without_dropping_any_query():
     assert inspect.getsource(cp.logical_metadata).replace(
-        "[0-9]{6}g", "[0-9]{6}f"
+        "(?:[0-9]{6}g|261020h)", "[0-9]{6}f"
     ) == inspect.getsource(old.logical_metadata)
     assert inspect.getsource(cp.require_restored_seals) == inspect.getsource(
         old.require_restored_seals
@@ -113,3 +113,19 @@ def test_old_context_remains_rejected_by_new_version_and_accepted_by_old():
     old.validate_context(old_context())
     with pytest.raises(ValueError):
         cp.validate_context(old_context())
+
+
+@pytest.mark.parametrize("phase", ["acquire", "rehearsal"])
+def test_fresh_H_requires_own_exact_backup_and_stage_prefix(phase):
+    bound = context(phase)
+    bound["checkpoint_prefix"] = bound["checkpoint_prefix"].replace("261020g", "261020h")
+    with pytest.raises(ValueError):
+        cp.validate_context(bound)  # Cannot reuse failed G backup.
+    bound["backup"]["uri"] = bound["backup"]["uri"].replace("261020g", "261020h")
+    assert cp.validate_context(bound) == bound
+    bound["checkpoint_prefix"] = bound["checkpoint_prefix"].replace("261020h", "261020i")
+    with pytest.raises(ValueError):
+        cp.validate_context(bound)  # No open-ended future attempt authority.
+    bound["checkpoint_prefix"] = bound["checkpoint_prefix"].replace("261020i", "261021h")
+    with pytest.raises(ValueError):
+        cp.validate_context(bound)  # H target is this exact date only.

@@ -1,0 +1,33 @@
+{
+  "format": "fs13-final-checkpoint-readonly-repair-design-v1",
+  "authority": "Existing finite THREE bounded disposable clone jobs and TWO sealed checkpoints; no added job/resource/time/proof waiver.",
+  "written_before_fresh_H_helpers": true,
+  "failed_G": {
+    "root": "/Users/deviojha/projects/codex/artifacts/mf-fs13g-dev-20261020-2baWFX",
+    "coordinator_session": 64762,
+    "exit_code": 1,
+    "failed_execution": "mf-book-clone-dev-uti-gap-261020g-rehearse-2n87n",
+    "terminal": "2026-10-20T01:36:20.634257Z",
+    "reason": "NonZeroExitCode",
+    "error": "ValueError: checkpoint metadata requires RR READONLY",
+    "location": "clone_checkpoint_v2.py:322, generated worker:326",
+    "cause": "Frozen source connect(snapshot=True) sets RR but NOT READ ONLY, because other original snapshot=True blocks perform local install probes. The final checkpoint builder reused it and did not explicitly establish READ ONLY before export. Native smoke used an independently coded RR READONLY setup and therefore missed the generated-operator boundary.",
+    "safe_state": "Original coordinator EXIT1, no live stages. All5 IAMbindings independently absent; prior private traffic/IAM, source job config and protected core/NAV/audit unchanged. Keep every failed root/backup/checkpoint; NEVER rerun/reuse G."
+  },
+  "repair": {
+    "scope": "Only new helper-owned final clone proof snapshot: SET TRANSACTION READ ONLY before pg_export_snapshot and every original query/proof/catalogue seal. No caller commit/rollback. Preserve frozen source/reference and cp metadata guard/queries byte-for-byte except explicit new H local-target allowlist.",
+    "testing": "Generated final snapshot AST invokes REAL cp.logical_metadata with setting-aware fake DB; remove ONLY new final mode statement to reproduce exact former G error; fixed path success, mismatch and dump-timeout cleanup. Native PG18 smoke must reproduce RR-readwrite guard rejection, then execute the SAME explicit final-mode setup before same-snapshot export/full seals/two restores/tamper checks.",
+    "review": "IMPLEMENTER self-review only, NOT independent approval"
+  },
+  "fresh_H": {
+    "root": "/Users/deviojha/projects/codex/artifacts/mf-fs13h-dev-20261020-oUfvjk",
+    "rollout": "dev-uti-gap-261020h",
+    "backup_before": "dev-uti-gap-pre-261020h",
+    "backup_after": "dev-uti-gap-post-261020h",
+    "scratch": "mfdata_fs13_final_image_261020h",
+    "planned_start_window": "2026-10-20 07:00<=UTC<07:15, only AFTER genuine03:30source/06:30NAV/06:40audit terminal+runtime+structuredapps+currentDB/all4 source4policy8 populations and full Git/CI/images readiness. No early runtime, no assumed dataset.",
+    "next_normal_windows": "12:30NAV/12:40audit and next03:30source remain untouched; no scheduler modifications.",
+    "no_runtime_or_copied_state": true
+  },
+  "acceptance": "ALL16original gates+THREE distinct immutable successful clone executions+TWO exact sealed logical restores+all5 temporary grants absent+actual fenced IDs/proofs+original coordinatorEXIT0+verifiedsealed22; then extra7sample14realcore and reviewedGitcloseout, ONLYthenEXP01. No omitted/sampled queries, no resource/timeout changes. G has no sealed rehearsal/validation/acceptance; linear execution progress is not proof."
+}
