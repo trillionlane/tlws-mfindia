@@ -197,25 +197,33 @@ def export_checkpoint(session, token, directory: Path, context, state, logical_s
         raise ValueError("complete continuation state and logical restore seals required")
     json_bytes(state)
     json_bytes(logical_seals)
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError("helper-owned checkpoint export directory required")
     dump = directory / "checkpoint.dump"
     if dump.is_symlink() or not dump.is_file() or not 0 < dump.stat().st_size <= MAX_DUMP:
         raise ValueError("bounded actual local checkpoint dump required")
-    uploaded = upload_create_only(
-        session, token, context["checkpoint_prefix"] + "snapshot.dump", dump
-    )
-    validate_object(uploaded, prefix, "snapshot.dump", MAX_DUMP)
+    # Validate the complete envelope BEFORE any upload, using the longest
+    # allowed generation. Actual validated object metadata cannot be larger.
     envelope = {
         "context": context,
-        "dump": uploaded,
+        "dump": {"uri": prefix + "snapshot.dump", "generation": "9" * 31,
+                 "size": dump.stat().st_size, "sha256": "0" * 64,
+                 "md5": "AAAAAAAAAAAAAAAAAAAAAA=="},
         "state": state,
         "logical_seals": logical_seals,
     }
-    raw = json_bytes(envelope)
-    if len(raw) > MAX_STATE:
+    if len(json_bytes(envelope)) > MAX_STATE:
         raise ValueError("bounded complete checkpoint state required; no truncation")
     state_path = directory / "checkpoint-state.json"
+    # Reserve xb before the first upload: H's known local collision must not
+    # publish an orphan dump. A partial failure remains non-retryable evidence.
     with state_path.open("xb") as handle:
-        handle.write(raw)
+        uploaded = upload_create_only(
+            session, token, context["checkpoint_prefix"] + "snapshot.dump", dump
+        )
+        validate_object(uploaded, prefix, "snapshot.dump", MAX_DUMP)
+        envelope["dump"] = uploaded
+        handle.write(json_bytes(envelope))
     state_object = upload_create_only(
         session, token, context["checkpoint_prefix"] + "state.json", state_path
     )

@@ -5,21 +5,86 @@ Run only inside the already-built review-tools CI image as its non-root user.
 Three local clusters and two consistent snapshot handoffs, not live acceptance.
 """
 
+import base64
+import hashlib
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import textwrap
 import time
+from urllib.parse import unquote
 
 import psycopg
 from psycopg.rows import dict_row
 
 from mfdataindia.review import clone_checkpoint_v2 as cp
-from mfdataindia.review.clone_final_snapshot import DUMP_START
+from mfdataindia.review.clone_final_snapshot import DUMP_START, DUMP_EXPORT
 
 
 DATABASE = "mfdata_fs13_final_image_261020h"
+
+
+class FixtureResponse:
+    """Synthetic transport only; no network client or external calls."""
+    status_code = 200
+
+    def __init__(self, raw=b"", document=None):
+        self.raw, self.document = raw, document
+
+    def json(self):
+        return self.document
+
+    def iter_content(self, size):
+        for offset in range(0, len(self.raw), size):
+            yield self.raw[offset:offset + size]
+
+    def close(self):
+        pass
+
+
+class FixtureTransport:
+    """Exercise real cp export/import code, preserving all generation/MD5 checks."""
+    def __init__(self):
+        self.objects = {}
+        self.posts = 0
+        self.gets = 0
+
+    def post(self, url, **kwargs):
+        assert url == "https://storage.googleapis.com/upload/storage/v1/b/" + cp.BUCKET + "/o"
+        assert kwargs["timeout"] == 180 and kwargs["allow_redirects"] is False
+        assert kwargs["params"]["ifGenerationMatch"] == "0"
+        name = kwargs["params"]["name"]
+        if name in self.objects:
+            raise ValueError("synthetic duplicate create-only upload")
+        raw = kwargs["data"].read()
+        md5 = base64.b64encode(hashlib.md5(raw, usedforsecurity=False).digest()).decode()
+        assert kwargs["headers"]["Content-MD5"] == md5
+        self.posts += 1
+        generation = str(self.posts)
+        self.objects[name] = (raw, generation)
+        return FixtureResponse(document={"bucket": cp.BUCKET, "name": name,
+            "generation": generation, "size": str(len(raw)), "md5Hash": md5})
+
+    def get(self, url, **kwargs):
+        assert url.startswith("https://storage.googleapis.com/storage/v1/b/" + cp.BUCKET + "/o/")
+        assert kwargs["timeout"] == 180 and kwargs["allow_redirects"] is False
+        raw, generation = self.objects[unquote(url.split("/o/", 1)[1])]
+        assert kwargs["params"] == {"alt": "media", "generation": generation}
+        self.gets += 1
+        return FixtureResponse(raw=raw)
+
+
+def fixture_context():
+    return {"format": "mfdata-disposable-clone-checkpoint-v2", "manifest_sha256": "a" * 64,
+        "backup": {"uri": "gs://" + cp.BUCKET + "/verified-review-rollouts/dev-uti-gap-pre-261020h/snapshot.dump",
+                   "generation": "1", "size": 1, "sha256": "b" * 64, "md5": "AAAAAAAAAAAAAAAAAAAAAA=="},
+        "app_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:" + "c" * 64,
+        "tools_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:" + "d" * 64,
+        "git_sha": "e" * 40, "helper_hashes": {"checkpoint_worker.py": "f" * 64},
+        "reference_sha256": "1" * 64,
+        "checkpoint_prefix": "verified-review-rollouts/dev-uti-gap-261020h-acquire-checkpoint/",
+        "phase": "acquire", "previous_checkpoint_sha256": None, "previous_execution_sha256": None}
 
 
 def main():
@@ -140,26 +205,45 @@ def main():
                     "SELECT id,amount,'not-a-source-number'::text AS note "
                     "FROM checkpoint_fixture.values"
                 )
-            original = seals()
-            dump = root / "snapshot.dump"
-            native(["pg_dump", "--format=custom", "--file=" + str(dump)])
+            first_output = root / "first-checkpoint"
+            first_output.mkdir()
+            dump = first_output / "checkpoint.dump"
+            with connect() as first_proof:
+                first_proof.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
+                first_proof.execute("SET LOCAL TimeZone='UTC'")
+                original = snapshot_seals(first_proof)
+                first_snapshot = first_proof.execute("SELECT pg_export_snapshot() AS snapshot").fetchone()["snapshot"]
+                native(["pg_dump", "--format=custom", "--snapshot=" + first_snapshot, "--file=" + str(dump)])
             sha = hashlib_file(dump)
+            transport = FixtureTransport()
+            first_context = fixture_context()
+            state = {"original_values_and_metadata": original, "fixture_only": True}
+            first_certificate = cp.export_checkpoint(transport, "synthetic-only", first_output,
+                                                     first_context, state, original)
             native(["pg_ctl", "--pgdata=" + str(data), "--mode=fast", "--wait", "stop"])
             active = None
             data = init("phase2")
             active = data
-            if hashlib_file(dump) != sha:
+            incoming = root / "phase2-input"
+            incoming.mkdir()
+            imported = cp.import_checkpoint(transport, "synthetic-only", incoming,
+                                             first_context, first_certificate)
+            if imported["state"] != state or imported["logical_seals"] != original:
+                raise ValueError("first complete transport state changed")
+            input_hashes = {name: hashlib_file(incoming / name)
+                            for name in ("checkpoint.dump", "checkpoint-state.json")}
+            if input_hashes["checkpoint.dump"] != sha:
                 raise ValueError("synthetic checkpoint bytes changed")
-            native(["pg_restore", "--exit-on-error", "--dbname=" + DATABASE, str(dump)])
+            native(["pg_restore", "--exit-on-error", "--dbname=" + DATABASE, str(incoming / "checkpoint.dump")])
             cp.require_restored_seals(original, seals())
             # A second independent snapshot/dump/cluster, not reused physical IDs.
             with connect() as conn:
                 conn.execute(
                     "INSERT INTO checkpoint_fixture.values VALUES(3,1,NULL,'phase2',ARRAY[]::date[],'{}')"
                 )
-            second_root = root / "second-checkpoint"
-            second_root.mkdir()
-            second_dump = second_root / "checkpoint.dump"
+            # H imported artifacts REALLY exist in this input workspace. The
+            # exact shared setup must choose a different output for both files.
+            second_root = incoming
             # Reproduce actual G: frozen source snapshot=True established RR
             # but deliberately allowed local install probes. The real metadata
             # guard MUST reject that mode, not silently seal a writable proof.
@@ -181,6 +265,7 @@ def main():
                          "CLONE_ROOT": second_root, "pg_env": pg_env}
                 exec(compile(textwrap.dedent(DUMP_START), "<owned-checkpoint-prefix>", "exec"), owned)
                 child = owned["dump_child"]
+                second_dump = owned["checkpoint_output"] / "checkpoint.dump"
                 try:
                     second_seals = snapshot_seals(proof)
                     # Synthetic concurrent write must NOT enter the checkpoint.
@@ -197,13 +282,34 @@ def main():
                         child.terminate()
                         child.communicate(timeout=15)
             second_sha = hashlib_file(second_dump)
+            second_context = {**first_context, "phase": "rehearsal",
+                "checkpoint_prefix": first_context["checkpoint_prefix"].replace("-acquire-", "-rehearsal-"),
+                "previous_checkpoint_sha256": cp.digest(first_certificate), "previous_execution_sha256": "2" * 64}
+            # Same export bytes as the generated operator, not a separate
+            # smoke-only implementation that can mask its destination drift.
+            owned.update({"cp": cp, "session": transport,
+                          "identity": FixtureResponse(document={"access_token": "synthetic-only"}),
+                          "NEXT_CHECKPOINT_CONTEXT": second_context, "checkpoint_state": state,
+                          "checkpoint_logical": second_seals})
+            exec(compile(textwrap.dedent(DUMP_EXPORT), "<owned-checkpoint-export>", "exec"), owned)
+            second_certificate = owned["checkpoint"]
+            if input_hashes != {name: hashlib_file(incoming / name) for name in input_hashes}:
+                raise ValueError("incoming checkpoint bytes were overwritten")
             native(["pg_ctl", "--pgdata=" + str(data), "--mode=fast", "--wait", "stop"])
             active = None
             data = init("phase3")
             active = data
-            if hashlib_file(second_dump) != second_sha:
+            third_input = root / "phase3-input"
+            third_input.mkdir()
+            final = cp.import_checkpoint(transport, "synthetic-only", third_input,
+                                         second_context, second_certificate)
+            if final["state"] != state or final["logical_seals"] != second_seals:
+                raise ValueError("second complete transport state changed")
+            if hashlib_file(third_input / "checkpoint.dump") != second_sha:
                 raise ValueError("second checkpoint immutable bytes changed")
-            native(["pg_restore", "--exit-on-error", "--dbname=" + DATABASE, str(second_dump)])
+            if transport.posts != 4 or transport.gets != 4:
+                raise ValueError("two complete create-only transport handoffs required")
+            native(["pg_restore", "--exit-on-error", "--dbname=" + DATABASE, str(third_input / "checkpoint.dump")])
             cp.require_restored_seals(second_seals, seals())
             if seals()["all_original_values"][:2] != original["all_original_values"]:
                 raise ValueError("original rows changed during second handoff")
@@ -239,8 +345,6 @@ def main():
 
 
 def hashlib_file(path):
-    import hashlib
-
     sha = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(65536), b""):

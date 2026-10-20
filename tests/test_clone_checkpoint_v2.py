@@ -37,8 +37,13 @@ def test_create_only_roundtrip_both_independent_handoffs(tmp_path, phase):
     observed = cp.import_checkpoint(storage, "fixture", target, bound, cert)
     assert observed["state"] == state and observed["logical_seals"] == seals
     assert [c[0] for c in storage.calls] == ["post", "post", "get", "get"]
+    # Retain the original remote generation-0 duplicate-upload control, using
+    # fresh local output so it is not intercepted by the new local collision gate.
+    duplicate = tmp_path / "duplicate-export"
+    duplicate.mkdir()
+    (duplicate / "checkpoint.dump").write_bytes(b"native-fixture-not-live")
     with pytest.raises(RuntimeError, match="create-only private archive upload failed"):
-        cp.export_checkpoint(storage, "fixture", source, bound, state, seals)
+        cp.export_checkpoint(storage, "fixture", duplicate, bound, state, seals)
 
 
 @pytest.mark.parametrize(
