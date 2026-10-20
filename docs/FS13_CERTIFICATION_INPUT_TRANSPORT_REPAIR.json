@@ -1,0 +1,82 @@
+{
+  "format": "fs13-certification-input-transport-implementation-v1",
+  "status": "LOCAL IMPLEMENTATION; NOT ROLLOUT READY OR DEV ACCEPTANCE",
+  "authorization": "Direct user: K what are you waiting for? Implementation and tests now; no failed-attempt rerun or deployment.",
+  "design_before_code": {
+    "path": "/Users/deviojha/projects/codex/artifacts/FS13_CERTIFICATION_INPUT_TRANSPORT_PLAN_20261020_1455.json",
+    "sha256": "1fc6fe9b222a2340670a289f1e37406dfcaa8255509f450bfc2b9f1cb6fb55e8",
+    "review": "IMPLEMENTER SELF-REVIEW ONLY; NOT independent approval"
+  },
+  "base": "8ef611c1d61d478793109dcef149aa9a131ef99a",
+  "branch": "codex/fs13-certification-input-transport",
+  "native_integration_design_before_fixture_code": {
+    "authorization": "User subsequently explicitly requested merging and deployment; all original safety gates still apply.",
+    "scope": "Add a PostgreSQL-marked Linux CI integration using existing disposable v4-to-v5 synthetic source fixtures, real production stores, real PostgreSQL and loopback HTTP serving the actual private and core API apps. Execute generated shared worker, unchanged full certifier, real assertion signing/verification, complete original SQL/preservation checks and original stdout seal.",
+    "fixture_boundaries": "Only transport endpoint routing is local: exact synthetic CloudSQL DSN maps to disposable reader DSN, exact fixed provider origins/metadata map to allowlisted loopback listeners, and fixed trust/signer paths map to newly generated synthetic fixture files. No certifier, financial reader, expectation, scope, ACL, HTTP check or evidence renderer is mocked. No external source/cloud/provider requests. Synthetic same-execution receipts are appended through production validators over existing synthetic batches; no failed-I data or receipts are fixtures.",
+    "native_composition": "Whole PostgreSQL18 CI executes full certifier integration at exact same head as both final-image60/64chunk process-startup smokes. Together they prove complete shared code path and actual aggregate native image startup; neither is actual DEV/source acceptance.",
+    "not_authorized": "No local PostgreSQL/Docker, production repair, altered resource/time/query limits or failed-attempt reuse. Future deployment remains conditional on complete reviewed Git/CI/images/fresh operator/readiness."
+  },
+  "implementation": {
+    "module": "src/mfdataindia/review/certification_input_transport.py",
+    "selected_input_only": "Exact original UTF8 AMC_BOOK_CERTIFICATION bytes; unchanged AMC_BOOK_CERTIFICATION_HASH. No environment-wide compression or secret encoding.",
+    "codec": "zlib9, strict canonical base64, exact numeric chunk-name set, strict duplicate-free JSON",
+    "context": "Immutable-worker literal manifest seal, exact phase and source execution ID; exact raw/encoded lengths and SHA256 plus original certification fingerprint",
+    "bounds": {
+      "raw_bytes": 8388608,
+      "encoded_bytes": 1536000,
+      "chunk_bytes": 24000,
+      "maximum_chunks": 64,
+      "descriptor_bytes": 4096,
+      "submitted_plain_environment_bytes_including_names_equals_and_NUL": 1572864,
+      "each_value_bytes": 32768,
+      "total_argv_bytes_including_NUL": 131072,
+      "conservative_complete_serialized_request_bytes": 2097152,
+      "platform_secret_image_environment_reserve": 131072,
+      "unspent_startup_safety_margin": 131072
+    },
+    "runtime_environment": "Decoder separately bounds submitted plain environment plus fixed platform/secret reserve; it does not mistake injected secret/platform entries for the operator plain-entry set. Native smoke physically supplies reserve entries and separately requires the unspent margin and pointer headroom below measured SC_ARG_MAX. No stack/resource increase.",
+    "logical_mapping": "Reconstructed bytes exist only in a NEW in-memory mapping. os.environ is unchanged; no raw large value in argv, child environment, files or logs.",
+    "pure_operator_seam": "prepare_submission returns complete bounded env/argv/budget, with original expectation before dispatch. preflight_request covers the whole caller-supplied request. require_execution_inputs compares ALL immutable env records including caller-pinned secret references and exact argv, rejecting duplicate/extra/missing records. Original full image/identity/network/resources/volume verifier remains mandatory.",
+    "worker": "Shared worker_program calls certify_from_environment then unchanged stdout render_evidence. Additive CLI provided; original CLI, bound(), expectation(), certify(), stdout transport and all financial/source/policy/SQL code unchanged.",
+    "no_fallback": "No raw mode, truncation, subset, digest-only preservation, retries, cloud calls, added resources, IAM or fourth clone job. Oversize rejects before intent/dispatch."
+  },
+  "all_later_operator_input_inventory": {
+    "certification": ["08-candidate", "11-active", "13-recovery", "15-restored", "18-scheduled-http"],
+    "flags": "candidate false/false; active true/false; recovery false/true; restored true/false; scheduled true/false",
+    "owner_operations": "Inherited operation() supplies only manifest/base env plus optional AMC_BOOK_OPERATION: activate carries reviewed reference + exact prior configuration hash; recovery/replay carries exact activation_id; inspect/install have no body. Full prior projection is NOT an owner-operation input. No owner operation is converted to chunk mode.",
+    "core": "09-candidate-core and 19-final-core use manifest/base env only; no whole prior-reference input.",
+    "probes_and_cleanup": "Programs contain exact bounded intent/source/graph selectors; retained operator enforces its stricter <65536 hex argument bound. Full layer/DB/original seals are output evidence, not reintroduced as giant input env. All source/helper/SQL/proof/time limits unchanged.",
+    "scheduler": "18-scheduled-http freshly rebuilds the scheduled reference and changes the exact execution_id. Fresh complete reference must be re-encoded/re-budgeted, never reused from candidate sizing.",
+    "remaining_integration_gate": "A future fresh reviewed operator must adopt the seam at ALL five call sites and preflight complete late-bound operation/probe/certification requests before dispatch. Historical failed I operator is intentionally untouched. No future root/window allocated."
+  },
+  "actual_failed_payload_local_regression": {
+    "classification": "READ-ONLY historical input roundtrip IN MEMORY, not new runtime evidence or source acceptance",
+    "raw_bytes": 2028941,
+    "raw_sha256": "ebe97963f7c3f53e1d54c007202ec402265768d1fe2a86ccef2bc5bf27b6c4ce",
+    "encoded_bytes": 1428484,
+    "chunks": 60,
+    "whole_prior_codes": 3220,
+    "all_five_phase_contexts": "exact bytes/hash/logical mapping and unchanged expectation PASS",
+    "maximum_submitted_plain_env_bytes_across_five": 1432505,
+    "maximum_argv_bytes_across_five": 1175,
+    "maximum_startup_required_bytes_including_reserve_and_margin": 1695824,
+    "input_preserved": true,
+    "no_private_payload_fixture_committed": true
+  },
+  "test_scope": {
+    "provider_free": "Full synthetic valid 3220-code high-entropy and 4096-code compressible maps; all five labels/flags; unchanged certifier expectation; exact generated worker entry and stdout seal; malformed/missing/extra/duplicate/swapped chunks; strict UTF8/JSON/base64; bounded zlib bombs/trailing/concatenated streams; context/inner hash; environment/argv/full-request budgets; full immutable input verification; no environment mutation; incomplete financial reference rejected before dispatch.",
+    "max_population_warning": "A structurally valid 4096-code high-entropy map exceeds 64 chunks and is explicitly tested to FAIL CLOSED, unchanged and without sampling. Code-count eligibility is not a universal transport-size guarantee. No cap raised.",
+    "native_smoke_added": "Synthetic 60- and 64-chunk Linux exec/child-after-decode smoke in BOTH final APP/TOOLS CI images. Measures SC_ARG_MAX and retains reserve/margin. Not run locally; no Docker or native PG18 claim.",
+    "CI_preservation": "Every original CI step body/order remains byte-identical to the frozen inventory. One additive mandatory smoke step in the existing image job; no new job or timeout/resource changes. Partitioned full PG collection runner unchanged.",
+    "still_required": "Actual final-image Linux smoke results PLUS full successful native PG18/private-HTTP integration through this shared worker/decoder and unchanged full certifier, not decoder-only mocks. Whole exact-head CI, audit/builds/all previous native three-cluster and HTTP smokes, reviewed merge/identical tree/main CI/new image provenance twice; future fresh operator/readiness and all runtime gates. No READY claim from local tests."
+  },
+  "retained_development_failures": [
+    "Initial new tests reused historical synthetic-not-DEV manifest seal; strict digest guard correctly rejected it. Fixed TEST FIXTURE to a real synthetic Manifest, not production guard.",
+    "Initial universal-fit assumption for high-entropy 4096 map failed encoded cap. Retained as explicit negative; added separate valid compressible max-code positive. No limits or evidence relaxed.",
+    "Pytest reserved parameter name request caused collection error; renamed test parameter only.",
+    "Initial CI smoke placement edited frozen original step bodies, caught by full regression. Restored originals exactly and moved smoke to a strictly additive step; frozen original inventory unchanged.",
+    "Broad ruff check . found three pre-existing archived aggregator lint errors. Archived files untouched; actual CI scope ruff check src scripts tests passes."
+  ],
+  "preservation": "All35 failed-I reviewed files/READY unchanged; operational main clean8ef; old development branch preserved. No GCP/NSE calls, runtime launch, source/schema/traffic/schedule/IAM writes, root/window allocation or automation changes. A-I retained; I remains failed/recovered, not accepted. Current cloud state not re-probed in this implementation turn.",
+  "milestone_order": "Actual FS13 acceptance + extra actual core + reviewed Git handover, then prioritized NSE01 TLAM transaction-reference APIs, then EXP01. No historical/analytics dependency added to TLAM."
+}

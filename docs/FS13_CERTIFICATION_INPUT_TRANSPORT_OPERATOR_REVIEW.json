@@ -1,0 +1,24 @@
+{
+  "format": "fs13-certification-input-transport-implementer-review-v1",
+  "review_type": "IMPLEMENTER SELF-REVIEW ONLY; NOT independent approval",
+  "status": "Local review before PR; native integration and whole exact-head CI must succeed before merge/deployment",
+  "authorization": "Direct user explicitly requested proceeding with merging and deployment. This preserves all normal CI, exact-head merge, provenance and fresh controlled-runtime gates; no rerun/reuse of failed I.",
+  "design_before_code": "FS13_CERTIFICATION_INPUT_TRANSPORT_REPAIR.json records the earlier approved transport plan plus native fixture design before fixture code",
+  "review_findings": [
+    "The full original certification document is transported losslessly and all original validation functions are unchanged. No financial/source/policy/view/SQL/limits changes.",
+    "All5 exact worker phase contexts and active/recovery flags are fixed; no generic unbound input fallback.",
+    "Encoder validates exact raw fingerprint and complete unchanged expectation before future dispatch; worker independently decodes and calls unchanged complete certifier.",
+    "Decoder rejects incomplete, duplicate, extra, altered or mixed chunks, wrong context, malformed base64/UTF8/JSON, bombs/trailing/concatenated streams and oversized input. No projection sampling or cap increase.",
+    "No reconstructed large value reaches os.environ, argv, child environment or logs; no secret/environment-wide encoding.",
+    "Full submitted plain-env/argv/serialized-request budgets and exact immutable ALLenv/secretref checks are exposed as pure operator seams, not automatic dispatch or broad profile replacements.",
+    "Existing CI bodies/order/partition runner/frozen inventory remain unchanged. One mandatory additive native-input smoke step in the existing image job, with no new job, resource or timeout changes.",
+    "The new PostgreSQL-marked integration runs the generated shared worker and unchanged complete certifier with real disposable PostgreSQL and actual private/core HTTP apps. Only synthetic endpoint/path routing is adapted. Production financial readers, ACLs, scope, authentication/assertion, HTTP checks and evidence seals are not mocked.",
+    "Native fixture references and same-execution receipts are synthetic mechanics, not independently reviewed issuer references or actual provider/DEV receipts. Production deployment still requires all original real source/archive/financial/recovery/timer/preservation gates.",
+    "Both final CI images must prove60/64chunk aggregate Linux exec, reserved startup overhead and unspent margin. This is not inferred from local/macOS tests or per-entry limits.",
+    "All35 failed-I helper/test/reference hashes and READY remain unchanged. No failed root/state/receipt/backup/checkpoint copied into a new runtime. Operational main remains8ef until verified merge/main CI.",
+    "No native PG18 or Docker run locally. No merge, deployment or acceptance is claimed by this review."
+  ],
+  "local_evidence_before_native_fixture": "2106nonPG PASS;319retainedoperator PASS;101newtransport cases;all21contracts/lint/credential/audit/diff PASS. Subsequent native fixture is collected but must actually pass PostgreSQL18 CI.",
+  "required_after_review": "Whole exact-head CI including native PostgreSQL integration and both final-image startup smokes; exact-head implementer completion review; normal matching-head squash; identical tree; whole main CI/genericSKIP; new immutable image preparation and strict provenance twice. Then reviewed fresh operator integration/all5 call sites/complete budgets/exact target/window/all original runtime gates. No stale8ef serving claim.",
+  "no_waivers": "No source-time/resource/query/proof relaxation, fourth clone job, broad IAM, generic deployment, gate variables, raw correction/deletion, identity/model replacement or PRODUCTION work."
+}

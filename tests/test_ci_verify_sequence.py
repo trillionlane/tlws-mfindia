@@ -31,7 +31,12 @@ def test_every_original_step_body_and_order_is_preserved():
     expected = json.loads((ROOT / "tests/fixtures/ci_verify_step_inventory.json").read_text())
     first, second = inventory(tests), inventory(images)
     assert second[:3] == expected[:3]  # Only fresh-runner setup repeats.
-    assert first + second[3:] == expected
+    addition = "- name: Verify bounded certification input native exec in both images"
+    # Preserve all frozen original bodies/order byte-for-byte. The sole new
+    # mandatory step is additive, after every original gate, in the same job.
+    assert second[-1]["label"] == addition
+    assert first + second[3:-1] == expected
+    assert sum(s["label"] == addition for s in first + second) == 1
     assert len(expected) == 40
 
 
@@ -58,3 +63,14 @@ def test_both_full_pg_partitions_and_native_restore_smoke_remain_mandatory():
     assert "docker build --build-arg" in images
     assert "--file Dockerfile.review-tools" in images
     assert "/app/scripts/smoke_clone_checkpoint.py" in images
+
+
+def test_new_transport_smoke_executes_both_final_images_without_resource_flags():
+    _, _, images = jobs()
+    addition = images.split("      - name: Verify bounded certification input native exec in both images\n")[1]
+    assert addition.count("/app/scripts/smoke_certification_input_transport.py") == 2
+    assert '"$image" /app/scripts/smoke_certification_input_transport.py' in addition
+    assert '"$tools_image" /app/scripts/smoke_certification_input_transport.py' in addition
+    assert '"$image" /app/scripts/certify_amc_books_transport_dev.py --help' in addition
+    for forbidden in ("--privileged", "--ulimit", "--memory", "--cpus", "|| true", "continue-on-error"):
+        assert forbidden not in addition
