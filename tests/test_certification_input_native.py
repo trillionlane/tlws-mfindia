@@ -111,7 +111,7 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
     # the source/book baseline; never bypass any API startup verification.
     foundations(verified_db)
     install_historical(verified_db)
-    identities, calls, _, prior, _, _ = prepare_v4(verified_db, monkeypatch, aum_rows=True)
+    identities, calls, baseline, prior, _, _ = prepare_v4(verified_db, monkeypatch, aum_rows=True)
     # Source-store fixtures intentionally omit independent prior API layers.
     # The full real API needs all of them; use actual guarded installers, not
     # mocked ACL/startup checks or a reduced route factory.
@@ -212,9 +212,11 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
         for phase in ("08-candidate", "11-active", "15-restored", "18-scheduled-http"):
             if phase == "11-active":
                 with connect(verified_db, row_factory=dict_row) as conn:
-                    from mfdataindia.enrichment import current_facts_store as current
+                    # Keep the caller IDLE. The fixture already captured this
+                    # exact prior configuration before source installation;
+                    # do not open an implicit lookup transaction here.
                     book_projection.activate(conn, ROOT, doc["reviewed"],
-                        expected_configuration_hash=fingerprint(dict(current.configuration(conn))))
+                        expected_configuration_hash=fingerprint(baseline))
             submitted, _, _ = transport.prepare_submission(manifest, env, phase=phase, execution_id=EXECUTION)
             original_env = deepcopy(submitted)
             # Generated production entry, not a replacement certifier or decoder mock.
