@@ -9,14 +9,17 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import textwrap
+import time
 
 import psycopg
 from psycopg.rows import dict_row
 
 from mfdataindia.review import clone_checkpoint_v2 as cp
+from mfdataindia.review.clone_final_snapshot import DUMP_START
 
 
-DATABASE = "mfdata_fs13_final_image_261020g"
+DATABASE = "mfdata_fs13_final_image_261020h"
 
 
 def main():
@@ -154,26 +157,32 @@ def main():
                 conn.execute(
                     "INSERT INTO checkpoint_fixture.values VALUES(3,1,NULL,'phase2',ARRAY[]::date[],'{}')"
                 )
-            second_dump = root / "second-snapshot.dump"
-            with connect() as proof:
-                proof.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY")
-                proof.execute("SET LOCAL TimeZone='UTC'")
-                second_seals = snapshot_seals(proof)
-                snapshot = proof.execute("SELECT pg_export_snapshot() AS snapshot").fetchone()[
-                    "snapshot"
-                ]
-                child = subprocess.Popen(
-                    [
-                        "pg_dump",
-                        "--format=custom",
-                        "--snapshot=" + snapshot,
-                        "--file=" + str(second_dump),
-                    ],
-                    env=pg_env,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+            second_root = root / "second-checkpoint"
+            second_root.mkdir()
+            second_dump = second_root / "checkpoint.dump"
+            # Reproduce actual G: frozen source snapshot=True established RR
+            # but deliberately allowed local install probes. The real metadata
+            # guard MUST reject that mode, not silently seal a writable proof.
+            with connect() as formerly_writable:
+                formerly_writable.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
                 try:
+                    cp.logical_metadata(formerly_writable)
+                except ValueError as error:
+                    if str(error) != "checkpoint metadata requires RR READONLY":
+                        raise
+                else:
+                    raise ValueError("read-write repeatable-read checkpoint was admitted")
+            with connect() as proof:
+                proof.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+                proof.execute("SET LOCAL TimeZone='UTC'")
+                # Execute the EXACT prefix used by the generated H operator,
+                # not an independently coded setup that could mask drift.
+                owned = {"conn": proof, "time": time, "subprocess": subprocess,
+                         "CLONE_ROOT": second_root, "pg_env": pg_env}
+                exec(compile(textwrap.dedent(DUMP_START), "<owned-checkpoint-prefix>", "exec"), owned)
+                child = owned["dump_child"]
+                try:
+                    second_seals = snapshot_seals(proof)
                     # Synthetic concurrent write must NOT enter the checkpoint.
                     with connect() as writer:
                         writer.execute(
