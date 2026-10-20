@@ -24,9 +24,11 @@ import requests
 import uvicorn
 
 from mfdataindia.api.app import create_app
+from mfdataindia.analytics import overlap_operations
 from mfdataindia.enrichment import (
     book_certification as certification, book_deployment, book_preservation,
     book_projection, book_sources, book_store, multi_store, refresh_store,
+    portfolio_operations, distribution_operations, idcw_operations,
 )
 from mfdataindia.enrichment.current_facts_certification import CORE_ORIGIN
 from mfdataindia.review.app import create_amc_books_app
@@ -110,6 +112,14 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
     foundations(verified_db)
     install_historical(verified_db)
     identities, calls, _, prior, _, _ = prepare_v4(verified_db, monkeypatch, aum_rows=True)
+    # Source-store fixtures intentionally omit independent prior API layers.
+    # The full real API needs all of them; use actual guarded installers, not
+    # mocked ACL/startup checks or a reduced route factory.
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        for installer in (portfolio_operations, overlap_operations,
+                          distribution_operations, idcw_operations):
+            assert installer.install(conn, ROOT)["source_rows_changed"] == 0
     inputs = inputs_v2(identities, calls, aum_rows=True)
     old.publish(verified_db, identities, inputs, execution="native-transport-v5")
     with psycopg.connect(verified_db, row_factory=dict_row) as conn:
