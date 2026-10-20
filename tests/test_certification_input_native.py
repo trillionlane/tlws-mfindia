@@ -34,6 +34,7 @@ from mfdataindia.review import certification_input_transport as transport
 from mfdataindia.review.evidence_transport import execution_evidence
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.rollout import CONNECTION, verify_evidence
+from mfdataindia.store.locks import acquire_nav_data_operation_lock
 from test_uti_v2_store import prepare_v4, inputs_v2, old, ROOT
 from test_verified_review_api import runtime_dsn
 from test_verified_review_auth import trust
@@ -46,6 +47,7 @@ METADATA_HOST = "metadata.google.internal"
 
 def same_execution_fixture(conn):
     """Synthetic receipts, appended by real validators; never real-run evidence."""
+    acquire_nav_data_operation_lock(conn)
     books = {}
     for key in sorted(s["key"] for s in book_sources.registry()["sources"]):
         doc = conn.execute(
@@ -53,13 +55,15 @@ def same_execution_fixture(conn):
             "ORDER BY observed_at DESC,run_id DESC LIMIT 1", (key,),
         ).fetchone()["document"]
         body = {k: v for k, v in doc.items() if k != "run_id"}
-        body.update(execution_id=EXECUTION, observed_at=(old.NOW + timedelta(seconds=3)).isoformat())
+        body.update(execution_id=EXECUTION, observed_at=(old.NOW + timedelta(seconds=3)).isoformat(),
+                    status="unchanged")
         books[key] = book_store.append_run(conn, body)
     for schema, store in (("mf_fact_refresh", refresh_store), ("mf_multi_facts", multi_store)):
         doc = conn.execute("SELECT document FROM " + schema + ".runs WHERE status<>'failed' "
                            "ORDER BY observed_at DESC,run_id DESC LIMIT 1").fetchone()["document"]
         body = {k: v for k, v in doc.items() if k != "run_id"}
-        body.update(execution_id=EXECUTION, observed_at=(old.NOW + timedelta(seconds=3)).isoformat())
+        body.update(execution_id=EXECUTION, observed_at=(old.NOW + timedelta(seconds=3)).isoformat(),
+                    status="unchanged")
         store.append_run(conn, body)
     return books
 
