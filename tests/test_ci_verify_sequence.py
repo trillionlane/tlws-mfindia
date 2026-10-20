@@ -1,4 +1,4 @@
-"""Sequential CI retains every original check and fixed per-job limits."""
+"""Parallel jobs retain every original check, inner order and per-job limits."""
 
 import hashlib
 import json
@@ -40,10 +40,11 @@ def test_every_original_step_body_and_order_is_preserved():
     assert len(expected) == 40
 
 
-def test_required_final_gate_is_sequential_and_has_no_service_or_live_dsn():
+def test_independent_existing_jobs_keep_both_mandatory_and_have_no_live_dsn():
     text, tests, images = jobs()
     assert "    name: Test, audit, and build\n" in images
-    assert "    needs: tests\n" in images
+    assert "needs:" not in images and "needs:" not in tests
+    assert re.findall(r"^  ([a-z_]+):\n", text.split("jobs:\n", 1)[1], re.M) == ["tests", "verify"]
     assert "    services:\n" in tests and "image: postgres:18.6-alpine" in tests
     assert "MF_TEST_DSN:" in tests
     assert "services:" not in images and "MF_TEST_DSN:" not in images
