@@ -40,6 +40,7 @@ from test_verified_review_api import runtime_dsn
 from test_verified_review_auth import trust
 from test_verified_review_rollout import manifest as fixture_manifest
 from test_verified_review_store import ROLES, source_state, verified_db as verified_db
+from test_historical_store_api import foundations, install as install_historical
 
 EXECUTION = "tlws-mf-official-facts-refresh-dev-transport-native"
 METADATA_HOST = "metadata.google.internal"
@@ -103,6 +104,11 @@ def references(conn, batches, books, prior):
 def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_http(
     verified_db, monkeypatch, tmp_path, capsys
 ):
+    # The full 52-path API starts every retained profile, unlike the narrower
+    # book-store fixture. Install its real prior foundations before capturing
+    # the source/book baseline; never bypass any API startup verification.
+    foundations(verified_db)
+    install_historical(verified_db)
     identities, calls, _, prior, _, _ = prepare_v4(verified_db, monkeypatch, aum_rows=True)
     inputs = inputs_v2(identities, calls, aum_rows=True)
     old.publish(verified_db, identities, inputs, execution="native-transport-v5")
