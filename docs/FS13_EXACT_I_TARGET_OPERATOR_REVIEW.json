@@ -1,0 +1,50 @@
+{
+  "format": "mfdata-exact-I-target-implementer-review-v1",
+  "review_label": "IMPLEMENTER SELF-REVIEW ONLY; NOT independentapproval",
+  "base": "b8871949006f32594b100d1c46fe357979a6ed4c",
+  "branch": "codex/fs13-exact-i-target",
+  "design_before_code": "Externalfresh-target-I-design-20261020.json SHA354069039d22a9f53776071e28d7b668bbc8093d521fa86c7776b8a8039daef4 actualcreated09:42:50.472983Z, priorproposaltests/review retained. Copiedbyteexactasdocs/FS13_EXACT_I_TARGET_DESIGN.json beforeimplementation.",
+  "changes": "ONLYtwo exactliteral261020i additions toexistingv2prefix/localDBregex anderrorlabel; keepG/H unchanged. Native3cluster fulltransport smoke re-pinned ONLY3H->I DB/backup/prefix literals; source normalizesto priorreviewedSHA d1041fbc... exactly. No profile/workflow/time/query/resource change.",
+  "tests": "New32actualtargetcases derivedfromcompletedlocalproposal directlycallproductionmodule; rejectwrongdate/letter/failedbackup/phase/predecessor/nonlocalhost/RW, preservehistoricalH/Gpositives. ExistingHfutureboundaryprobe I->stillunapprovedJ; no removed/skiptest. Cataloguefunctionsbyte-exactafterexactliteralnormalization; requiresame15categories/16SELECTs. Fullsynthetic2handoffexport/import/export/import preservesimportedbytes/freshoutput/context/state/generation0+MD5; changedparentrejected.",
+  "changed_file_sha256": {
+    "src/mfdataindia/review/clone_checkpoint_v2.py": "c98854bb2afc8fcceca518b31696bfc658af34916502fe6daf67ccc7ede66916",
+    "scripts/smoke_clone_checkpoint_v2.py": "be67f53d3e296e7636d7fd692bcd06f1c2a8e5f512b48f5185d3b7983df1a06c",
+    "tests/test_clone_checkpoint_v2.py": "8195c748d97b22abeb4242f0c198f457d05fff46866de7d72142e5bd4cf560b6",
+    "tests/test_clone_checkpoint_i_target.py": "40da8a0f1e75acbf12d369f9082bf482e546309dc81683d82d9b67d40baf25f8",
+    "docs/FS13_EXACT_I_TARGET_DESIGN.json": "354069039d22a9f53776071e28d7b668bbc8093d521fa86c7776b8a8039daef4"
+  },
+  "validation": {
+    "focused": {
+      "passed": 170,
+      "seconds": 1.06,
+      "exit": 0
+    },
+    "whole_nonPG": {
+      "passed": 2004,
+      "postgres_deselected": 382,
+      "seconds": 51.92,
+      "session": 29341,
+      "exit": 0
+    },
+    "collection": 2386,
+    "all_original_H": {
+      "passed": 277,
+      "seconds": 1.49,
+      "session": 6426,
+      "exit": 0,
+      "all33_hashes_unchanged": true
+    },
+    "all21contracts": "PASS91698EXIT0",
+    "Ruff": "PASS",
+    "diff": "PASS",
+    "credentials": "PASS stagedtracked scan beforecommit; no high-confidencecredentialmarkers",
+    "nativePG18": "Notrunlocally/noDocker/noPG18started. MandatorywholeexactheadactualimageCI. All2354originalcollectioncasesretained plus32new =>2386. Expected2385PASS1existingemptyDBskip ONLYifCIprovesbothidenticalcollectionIDs/12focused+2374complement."
+  },
+  "frozen": "v1checkpoint/threeexecutionchain/require_restored_seals/sharedDUMP_START+DUMP_EXPORT/restored-view replay/fencedactivation/source/reference/metadataSQL/all4wholefinancialqueries/52privatepaths19core/5IAM/16gates/limits unchanged",
+  "retained_local_invocation_failures": [
+    "Firstcontractloop passedPythonnewlineescapes literally throughshell; localSyntaxErrorbeforeanycontract. Correctedargvquotingonly; all21actualchecksPASS.",
+    "FirsthistoricalHoperatorinvocation lackedrepo tests PYTHONPATH; collectionModuleNotFoundError beforeexecution. CorrectedonlyPYTHONPATH addingrepo tests withhistoricalPR101template;277PASS. No source/test/gateedit."
+  ],
+  "scope": "No newruntime root/window/operator/manifest/backup/clone/IAM/schema/source/traffic/schedule/sourceHTTPwork. Opsmaincleanb887unchanged/D335oldbranchpreserved. ProspectiveI13:00UTC NOTallocated/READY; ownfreshoperator/finalGitCI/images/currentnormalcycle/actualclone/live16gates requiredlater. PR105imagesnotnewtarget-servingimages.",
+  "risk": "ActualIacceptance/full3stagebudgetUNPROVED; Hacquire866.147744s close900; stage3neverran. No limitsincrease/proofwaiver/4thjob. Allfutureactual3distinctimmutableSUCCESS/originalEXIT0+sealed22/extraactualcore/reviewedGit THENEXP01mandatory."
+}

@@ -1,0 +1,124 @@
+{
+  "format": "mfdata-prospective-exact-target-design-v1",
+  "written_before_any_target_implementation": true,
+  "recorded_utc": "2026-10-20T09:44:00Z",
+  "status": "LOCAL PROPOSAL ONLY; NOT runtime allocation, window authority, rolloutREADY or DEVacceptance",
+  "base": {
+    "git": "b8871949006f32594b100d1c46fe357979a6ed4c",
+    "tree": "abf81b30a669457476eb47724d89d5cef0aa2d9e",
+    "PR105": "MERGED/wholehead+mainCI/imagesstrictprovenanceTWICE complete, neverrepeat"
+  },
+  "proposed": {
+    "attempt": "i",
+    "date": "2026-10-20",
+    "rollout": "dev-uti-gap-261020i",
+    "pre_backup": "dev-uti-gap-pre-261020i",
+    "post_backup": "dev-uti-gap-post-261020i",
+    "scratch_database": "mfdata_fs13_final_image_261020i",
+    "acquire_prefix": "verified-review-rollouts/dev-uti-gap-261020i-acquire-checkpoint/",
+    "rehearsal_prefix": "verified-review-rollouts/dev-uti-gap-261020i-rehearsal-checkpoint/",
+    "new_root": null,
+    "start_utc": "2026-10-20T13:00:00Z",
+    "end_utc_exclusive": "2026-10-20T13:15:00Z",
+    "window_status": "PROPOSAL ONLY; do not schedule/allocate/launch from this design. Later reviewedreadiness must bind exactfutureguard and normalcycle. Ifnotready bywindow, no late bypass.",
+    "ordinary_source": "2026-10-20T03:30:00Z",
+    "nav": "2026-10-20T12:30:00Z",
+    "audit": "2026-10-20T12:40:00Z",
+    "next_normal_windows_clear": [
+      "2026-10-20T18:30:00Z NAV",
+      "2026-10-20T18:40:00Z audit",
+      "2026-10-21T03:30:00Z source"
+    ]
+  },
+  "findings": [
+    "Currentclone_checkpoint_v2.validate_context prefix andlogical_metadata DB guards accepthistoricalG/exactH only; currentIrejection isexpected, not a newruntimefailure. Add ONLY exactliteral261020i alongsideunchangedhistoricalalternatives; no [a-z] orfuturedatewildcard.",
+    "Context alreadyderivesexact pre-backup prefix from rollout/phase andstrict generation/size/SHA/MD5; keepalgorithm, keys, bounds and predecessorchain unchanged. Parentrequire_chain bindscontextmanifest/Git/images/3distinctexecutioncerts/fullproofs/all5IAMabsence.",
+    "No restored_facts.py change: existinglocalhost/port-range/exactcallerDB/hash/directowner/RR checks alreadycoverprospectiveI; frozenSQL/current-valuesreplay only, never broaden or replaceviews.",
+    "Newoperator image_clone.py must bind exactIlocalDB and pre-backup URI. operate.py must bind exactIrollout/actor/pre+post. checkpoint_worker uses genericmanifestcontext but must be newfreshfileintegrating reviewedPR105 DUMP_START+DUMP_EXPORT, neverfailedHsameoutputexport.",
+    "normal_cycle.py must require genuine12:30NAV/12:40auditOct20 and actualcurrentDB/all4acceptedpopulations; normal_source remains exact03:30Oct20/fullacceptedtask+network/sixzero-raw-changeapps/fourbooks. Do notassumedataset36/next37 or manuallystartalterpausenormaljobs.",
+    "Coordinator newstartguard mustbe exact13:00<=UTC<13:15Oct20 ifandonlyif laterreadinessallocatesit; healthyoriginalcontinuesafterwindow. Distinctintent/process/jobqueriesbeforeeverydispatch; noindividualphase launch.",
+    "All16newruntimehelperhashes plusallreviewedtests/reference explicitlyrecomputedbeforelaunch; source_rehearsal andsource_reference mustbe byteexactfrozen. No oldmanifest/receipt/state/dump/backup/secret copied. Parentinitwritesfreshmanifestonlyonceafternewstart."
+  ],
+  "future_Git_diff_allowlist": [
+    "src/mfdataindia/review/clone_checkpoint_v2.py: ONLY two exacttargetguard literal additions/errorlabel, logical_metadata SQLbody unchanged",
+    "tests/test_clone_checkpoint_v2.py: retainallpriorpositive+negativecases; Hfutureletterrejection moves from newexplicitI to stillunapprovedJ, newIownbackup/date/phase/predecessor tests; metadata sourceequality test onlynormalizes additionalexactliteral",
+    "scripts/smoke_clone_checkpoint_v2.py: pinactualnativefulltransportlifecycletoprospectiveI DB/context/backup, retainHpositiveregressionseparately; no nativePG18Dockerlocalrun",
+    "newtests/docs for exactIguard/readiness/hashreview only"
+  ],
+  "unchanged": {
+    "clone_jobs": 3,
+    "checkpoints": 2,
+    "seconds_per_job": 900,
+    "cpu": "2",
+    "memory": "4Gi",
+    "task_count": 1,
+    "max_retries": 0,
+    "identity": "known GEN",
+    "secrets": 0,
+    "statement_seconds": 5,
+    "lock_seconds": 5,
+    "transaction_seconds": 15,
+    "independent_RR_statement_seconds": 300,
+    "independent_RR_transaction_seconds": 420,
+    "dump_seconds": 240,
+    "native_argument_bytes_exclusive": 131072,
+    "checkpoint_keys": [
+      16,
+      17
+    ],
+    "private_paths": 52,
+    "core_templates": 19,
+    "financial_relations": 4,
+    "financial_population": "ENTIRE actualcohort, no hardcoded3220/sampling",
+    "temporary_bindings": 5,
+    "temporary_grants": "backupViewer30m/checkpoint1Creator30m+Viewer60m/checkpoint2Creator30m+Viewer60m; exactprefix+expiry/allabsentbeforefinalreceipt",
+    "source_policy_math_view_migration_changes": false
+  },
+  "all_required_gates": [
+    "genuineordinarysource+NAVaudit Scheduler/fulltasks/apps/runtime/currentDB/all4populations BEFOREfreshbackup",
+    "whollyfreshbackup/everyoriginal+priorlayerseal",
+    "actualfinalimage actualUTIsource+4originalqueriesENTIREcohort/rawcanonical4PDF2periodGrowthIDCWTER stage1",
+    "checkpoint1 customdump fromsameRRREADONLYsnapshot strict16keys/createonlygen0MD5/exactgenerationbytesSHA/context",
+    "newstage2restorecheckpoint1/fullsource-layer-current-book-review-cataloguesealsequality BEFOREfreshfence",
+    "all4originalqueriesENTIREcohort afteractivation ANDrealrecovery/replay/reactivation, originalbaselineunchanged",
+    "checkpoint2 samefinalRRREADONLYsnapshot dumpoverlapsreadonlyonly/freshrehearsal-export/noinputoverwrite/17keys/no repeatedsourceHTTP",
+    "newstage3restorecheckpoint2/fullsealsequality/bothpredecessors/sourceproofhashbeforeHTTP",
+    "oldnewcoreSQLfull equivalence/all52privatepaths/all19core+independenttargets/latency/no-store/anonymousdenial/mutationrejection/fullpreservation",
+    "threeactualdistinctimmutableSUCCESSexecs/program/image/env/network/profile/outerremoteequality/all5temporaryIAMactuallyabsent THENfinalcloneadmission",
+    "restrictedprivatecompatibilitystage/install",
+    "sixexactlive-sourceexecutions+EVERYoriginalarchivebytesgenerationSHAMD5",
+    "independent4UTIPDFtwoactualmonthsGrowthIDCWTER/currentprivatecoreactivation",
+    "actualknownpriorfencedrecovery/replay/reactivation IDs/proofs",
+    "genuineScheduler6tasktimer/restorednormaldailyschedule",
+    "finalcore/afterbackup/wholeoriginal+alllayers+wholepriorAMCs+oldUTIselected-datedprimary-TER/humanreviewpreservation",
+    "ORIGINALcoordinatorEXIT0 ANDverifiedsealed22 ALLgates, file/appPASSinsufficient",
+    "extra7independent14actualdetail+batchcorewitness THENrevieweddocs-onlyGitcloseout",
+    "ONLYTHEN fullEXP01approvedsource6policy12SQL045/privatev10/7task/recovery/timer/preservation/extracore/reviewedGit"
+  ],
+  "test_plan": [
+    "Beforeproductiontargetcodewrite, runcurrentIcontext/DBguardrejection; compile proposedtwo-literal-onlymodule INMEMORY andtestownIcontexts accepted vswrongdate/letter/backup/phase/predecessor rejected.",
+    "Inmemorycandidateactualtransport export/import/export/import with syntheticStorage andfreshhelper-owned output; preserveincomingbytes, fullstate/metadata/predecessor/hashbindings/generation0+MD5/no redirects/retries; no DB/nativePG/providerrequests.",
+    "Compare candidateI logical_metadata SELECT inventory byte-for-byte withcurrentH snapshot, exact15categories andRRREADONLY/hostportDBfailclosed. Candidateisproposalnotdeployedproduction.",
+    "FutureGitretainsall2354originalcollectioncases/newtargetcases/full21contracts/audit/credentials/production+PG18restore+toolsbuilds/ALLnativefulltransport andcoldHTTPsmokes; actualwholeexacthead andmain mandatory, normalmatchheadmerge/identicaltree/autofalse/genericSKIP/newimagesstrictTWICE after anytargetcodechange.",
+    "Futurefreshoperator mustretainall277providerfreecases plusnewexacttarget/startwindow/normalcycle/context/hash/stateworkspace/cleanupfailurecases, all3programsinmemoryunderargbound atACTUALfinalpins/maxmetadata. No localPG18claim."
+  ],
+  "before_new_root_or_window": [
+    "Completeandreviewlocalproposal/tests; frozenfailedH16helpers+33reviewedfiles unchanged.",
+    "Implementonlynarrowtargetcode in newbranch fromcleanverifiedb887, preserveexistingbranches/userwork; labelimplementerselfreviewNOTindependentapproval; completefullGitCI/mainCI/images asabove.",
+    "LaterseparateLOCALreadiness allocateswhollyfreshoperatorroot onlyaftertestedexacttargetcode exists; reviewprospectivewindow againstrealUTC/normaljobcalendar, bindpinshashes/testsevidence/noexistingintentprocessjobs.",
+    "Do notlabelrolloutREADY/schedulelaunch untilallprelaunchgates genuinely complete; actualgenuinenormalcycle andfreshbackup remainoriginalcoordinatorprerequisites."
+  ],
+  "no_actions_this_design": [
+    "no newruntime root/window/coordinator/manifest/dispatch",
+    "no cloud/sourceHTTP/backup/clone/IAM/schema/source/traffic/schedule mutation",
+    "no editsfailedA-Hroots/operationalmain/frozenFS12helper",
+    "no CI/imagecontroller reruns forcompletedPR105",
+    "no omittedproof/expandedlimits/extraresources orjobs/source-math-policy-model-installedview/migration changes"
+  ],
+  "review_label": "IMPLEMENTER design review ONLY; NOT independentapproval",
+  "frozen": {
+    "source_rehearsal_sha256": "bbcc275fc1468cf8b1b967c949f6004909d07d725e14493fc23bf1f931b2077a",
+    "source_reference_sha256": "a8419a36dd9b406d823c2dc60a994f31a4e7691c9cbf479b4e7ef36e76c701db",
+    "candidate_generator_sha256": "a6697af4ff4b1b8df28b580b4f02343caa1a1b6d9063bdac892fa579d175ea8e"
+  }
+}
