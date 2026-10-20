@@ -97,10 +97,10 @@ def validate_context(context):
     if not re.fullmatch("[0-9a-f]{40}", context["git_sha"]):
         raise ValueError("exact merged Git SHA required")
     if not re.fullmatch(
-        r"verified-review-rollouts/dev-uti-gap-(?:[0-9]{6}g|261020h|261020i)-(acquire|rehearsal)-checkpoint/",
+        r"verified-review-rollouts/dev-uti-gap-(?:[0-9]{6}g|261020h|261020i|261020j)-(acquire|rehearsal)-checkpoint/",
         context["checkpoint_prefix"],
     ):
-        raise ValueError("fresh approved G/H/I stage-specific private checkpoint prefix required")
+        raise ValueError("fresh approved G/H/I/J stage-specific private checkpoint prefix required")
     phase = context["phase"]
     if phase not in ("acquire", "rehearsal") or not context["checkpoint_prefix"].endswith(
         "-" + phase + "-checkpoint/"
@@ -319,7 +319,7 @@ def logical_metadata(conn):
     if (
         conn.info.host != "127.0.0.1"
         or conn.info.port != 55540
-        or not re.fullmatch("mfdata_fs13_final_image_(?:[0-9]{6}g|261020h|261020i)", conn.info.dbname)
+        or not re.fullmatch("mfdata_fs13_final_image_(?:[0-9]{6}g|261020h|261020i|261020j)", conn.info.dbname)
     ):
         raise ValueError("fresh approved local checkpoint database only; never live")
     settings = conn.execute(
