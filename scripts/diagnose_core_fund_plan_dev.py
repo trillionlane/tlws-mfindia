@@ -119,6 +119,7 @@ def diagnose(conn):
     conn.execute("SET LOCAL transaction_timeout='15s'")
     before = checked_context(conn)
     verify_runtime(conn, "api")
+    current.verify_acl(conn)
     configuration = dict(current.configuration(conn))
     if configuration["policy_hash"] != fingerprint(book_sources.current_policy(4)):
         raise ValueError("accepted recovered source4 policy required; no state restoration")
@@ -160,6 +161,7 @@ def diagnose(conn):
         "complete_configuration_hash": fingerprint(configuration),
         "policy_hash": configuration["policy_hash"],
         "sealed_active_projection": projection,
+        "current_facts_acl_verified_before_planning": True,
         "plans": plans,
         "original_own_facts_rows": len(own_rows),
         "original_own_facts_typed_diagnostic_hash": own_facts_hash(own),

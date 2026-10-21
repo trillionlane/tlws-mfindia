@@ -68,6 +68,7 @@ def verified(monkeypatch):
     # worker context/identity/transport checks; all calls still inspected.
     calls = []
     monkeypatch.setattr(worker, "verify_runtime", lambda conn, purpose: calls.append(purpose))
+    monkeypatch.setattr(worker.current, "verify_acl", lambda conn: calls.append("current_acl"))
     cfg = {"generation": 29, "policy_hash": worker.fingerprint(worker.book_sources.current_policy(4))}
     monkeypatch.setattr(worker.current, "configuration", lambda conn: dict(cfg))
     monkeypatch.setattr(worker.current, "capture", lambda conn: {
@@ -92,7 +93,7 @@ def test_unchanged_original_queries_exact_real_code_no_rewrite():
 def test_full_plans_no_sibling_execution_and_one_own_select(verified, own, eligible):
     conn = Connection(own=own)
     result = worker.diagnose(conn)
-    assert verified[0] == ["api"]
+    assert verified[0] == ["api", "current_acl"]
     assert [sql for sql, _ in conn.calls[:4]] == [
         "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY",
         "SET LOCAL statement_timeout='5s'", "SET LOCAL lock_timeout='5s'",
@@ -114,6 +115,7 @@ def test_full_plans_no_sibling_execution_and_one_own_select(verified, own, eligi
     assert result["historical_K_plan_or_core_role_proved"] is False
     assert result["performance_acceptance"] is False
     assert result["rollout_acceptance"] is False
+    assert result["current_facts_acl_verified_before_planning"] is True
 
 
 @pytest.mark.parametrize("field,value", [
@@ -225,6 +227,25 @@ def test_projection_rechecked_after_queries(verified, monkeypatch):
         worker.diagnose(Connection())
 
 
+def test_current_acl_verification_precedes_every_diagnostic_sql(verified):
+    class Ordered(Connection):
+        def execute(self, statement, params=None):
+            if statement.startswith("EXPLAIN") or statement == worker.queries._FACTS_SELECT:
+                assert verified[0] == ["api", "current_acl"]
+            return super().execute(statement, params)
+    worker.diagnose(Ordered())
+
+
+def test_current_acl_failure_stops_before_any_diagnostic_sql(verified, monkeypatch):
+    def bad_acl(conn):
+        raise ValueError("current-facts grants escape read-only role boundary")
+    monkeypatch.setattr(worker.current, "verify_acl", bad_acl)
+    conn = Connection()
+    with pytest.raises(ValueError, match="grants escape"):
+        worker.diagnose(conn)
+    assert not any(q.startswith("EXPLAIN") or q == worker.queries._FACTS_SELECT for q, _ in conn.calls)
+
+
 def binding_fixture():
     manifest = SimpleNamespace(rollout_id=worker.DIAGNOSTIC_ID, cohort=[154117],
                                canary_code=154117, git_sha="a" * 40, image="fixture-image")
@@ -285,3 +306,10 @@ def test_real_pg_configured_inactive_and_drifted_views_fail_before_any_plan(veri
                      + baseline + ") original WHERE false")
         with pytest.raises(ValueError, match="projection drift"):
             worker.sealed_projection(Guarded(conn))
+        # Restore only this disposable fixture's baseline, then give the
+        # restricted reader an unexpected optional-schema write capability.
+        # Generic verify_runtime does not cover these optional-schema grants.
+        conn.execute("CREATE OR REPLACE VIEW mf.current_fund_facts AS " + baseline)
+        conn.execute("GRANT UPDATE ON mf_live_facts.configuration TO mfdata_verified_reader")
+        with pytest.raises(ValueError, match="grants escape"):
+            worker.current.verify_acl(Guarded(conn))

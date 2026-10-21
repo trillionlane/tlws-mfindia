@@ -2,9 +2,17 @@
   "format": "mf-sprint-review-disposition-v1",
   "reviewer_thread": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
   "reviewed_head": "5ddde451d06e965edd331a5fb05f9a718c38f848",
+  "second_reviewed_head": "2c4c73940e1ed7c259c82a53a9462679062c6db6",
+  "second_review_verdict": "FIRST_THREE_RESOLVED_ONE_NEW_P2_CURRENT_FACTS_ACL",
   "original_verdict": "CHANGES_REQUIRED_NO_GO",
   "current_status": "CORRECTIONS_IMPLEMENTED_REVIEW_AND_NATIVE_CI_PENDING_NOT_APPROVED",
   "findings": [
+    {
+      "priority": "P2",
+      "finding": "Generic runtime identity and current.capture do not check complete optional mf_live_facts ACL, functions or immutable-configuration trigger.",
+      "disposition": "Invoke existing current.verify_acl immediately after generic verify_runtime, before configuration admission, EXPLAIN or own-facts SELECT. Keep unchanged5s/5s/15s bounds and stop on failure.",
+      "regressions": "Provider-free ordering and ACL-failure-before-SQL tests. Existing new native PG guard case also restores its disposable baseline, grants unexpected UPDATE on mf_live_facts.configuration to reader and requires current.verify_acl failure before any diagnostic SQL. Native execution remains CI-only/pending."
+    },
     {
       "priority": "P1",
       "finding": "Old4157 image cannot contain newly authored diagnostic worker; no runnable code/provenance path.",
@@ -26,7 +34,7 @@
       "regressions": "Contract/source matrix requirement retained in five-sprint plan and existing detailed NSE scope; no guessed Step Up file code or API request."
     }
   ],
-  "local_validation_so_far": "41 focused nonPG cases PASS0.84s; 1 new native PG case deselected locally. Stable full prepush26 checks PASS65.653s:2246nonPG PASS384PGdeselected50.73s/all21contracts/lint/credential scan/diff/no known audited-dependency vulnerabilities. Private unpublished mfdataindia0.1.0 explicitly NOT audited. Complete collection2630; native PostgreSQL/image CI still mandatory, no native/image success assumed.",
+  "local_validation_so_far": "After second-review ACL correction:43 focused nonPG cases PASS0.86s; 1 new native PG guard case deselected locally. Stable full prepush26 checks PASS64.329s:2248nonPG PASS384PGdeselected49.34s/all21contracts/lint/credential scan/diff/no known audited-dependency vulnerabilities. Private unpublished mfdataindia0.1.0 explicitly NOT audited. Complete collection2632; native PostgreSQL/image CI still mandatory, no native/image success assumed.",
   "not_merge_or_runtime_authority": true,
   "no_data_IAM_runtime_or_schedule_mutation": true
 }
