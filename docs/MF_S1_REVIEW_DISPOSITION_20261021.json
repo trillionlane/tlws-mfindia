@@ -1,0 +1,42 @@
+{
+  "format": "mf-sprint-review-disposition-v1",
+  "reviewer_thread": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "reviewed_head": "5ddde451d06e965edd331a5fb05f9a718c38f848",
+  "second_reviewed_head": "2c4c73940e1ed7c259c82a53a9462679062c6db6",
+  "second_review_verdict": "FIRST_THREE_RESOLVED_ONE_NEW_P2_CURRENT_FACTS_ACL",
+  "original_verdict": "CHANGES_REQUIRED_NO_GO",
+  "current_status": "ALL_FOUR_CORRECTIONS_REVIEWED_CLEAR_AT08491C8; SECURITY_MAIN_INTEGRATION_REQUIRES_FRESH_EXACT_HEAD_REVIEW_AND_NATIVE_CI",
+  "prior_final_review": "08491c871656019857aabc72870ed5d040d705df NO_REMAINING_P1_P2; raw report SHA2569ad06a720910ad60f999748051f7986982e27742baa137f6ff93309d082ae33a retained. This is not approval of the new integrated head.",
+  "integration": "See MF_S1_SECURITY_MAIN_INTEGRATION_20261021.json. Worker bytes and limits unchanged; exact6.21.1 dormant security repair admitted from independent main CI. Whole integrated head and new named review pending.",
+  "findings": [
+    {
+      "priority": "P2",
+      "finding": "Generic runtime identity and current.capture do not check complete optional mf_live_facts ACL, functions or immutable-configuration trigger.",
+      "disposition": "Invoke existing current.verify_acl immediately after generic verify_runtime, before configuration admission, EXPLAIN or own-facts SELECT. Keep unchanged5s/5s/15s bounds and stop on failure.",
+      "regressions": "Provider-free ordering and ACL-failure-before-SQL tests. Existing new native PG guard case also restores its disposable baseline, grants unexpected UPDATE on mf_live_facts.configuration to reader and requires current.verify_acl failure before any diagnostic SQL. Native execution remains CI-only/pending."
+    },
+    {
+      "priority": "P1",
+      "finding": "Old4157 image cannot contain newly authored diagnostic worker; no runnable code/provenance path.",
+      "disposition": "Removed obsolete hard-coded image/Git pins. Worker requires fresh exact diagnostic identity/cohort, actual packaged program SHA equality with controller-pinned CORE_PLAN_PROGRAM_SHA256 and manifest Git==DEPLOYMENT_GIT_SHA before database connection. Evidence includes recomputed packaged program hash and manifest image/Git. Design now requires a NEW reviewed/merged-main immutable image, external OCI manifest/config byte verification and exact deployed/immutable input seal. No inline injection or old-image exception.",
+      "regressions": "Provider-free positive/negative identity, target, program hash and deployment Git cases; additive mandatory CI image smoke executes packaged --help, verifies actual worker bytes against host reviewed SHA and rejects wrong Git/program inputs. Existing image OCI-revision/user check and ALL earlier steps remain mandatory.",
+      "limitations": "Unit tests/image smoke are not actual provider image provenance. Build and verify final immutable DEV image only after exact-head re-review, whole CI, normal merge and independent main CI. Separate create-once controller remains unimplemented/unreviewed; NO cloud job may execute from this PR alone."
+    },
+    {
+      "priority": "P1",
+      "finding": "Stored configuration hash does not prove active sealed core projection.",
+      "disposition": "Before any EXPLAIN/own-facts SELECT, require current.capture to seal installed view definitions and confirm projection_state TRUE; baseline/inactive and drifted views fail closed. Recheck full capture and active core-view hash after reads and record them in evidence.",
+      "regressions": "Provider-free inactive/missing/drifted/recheck cases stop before plans as applicable. Added native PostgreSQL case against real installed historical synthetic projection: configured inactive baseline and drifted core view both reject the common facade guard before any query plan or own-facts read. This is a guard regression, not live source4 acceptance; native execution still pending CI.",
+      "limitations": "Current recovered source4/policy8 restricted-reader plan is still not historical active-K/core-role plan, measured root cause or performance acceptance. No state restoration, SET ROLE or wider query limit."
+    },
+    {
+      "priority": "P2",
+      "finding": "NSE report family matrix says five while listing six plus unresolved Step Up.",
+      "disposition": "Consistently enumerate SCH/SIP/STP/SWP/NAV/SET and separately identify Step Up as seventh potential operation, code/layout/support unverified; require supported/unsupported/unresolved accounting for every item.",
+      "regressions": "Contract/source matrix requirement retained in five-sprint plan and existing detailed NSE scope; no guessed Step Up file code or API request."
+    }
+  ],
+  "local_validation_so_far": "After second-review ACL correction:43 focused nonPG cases PASS0.86s; 1 new native PG guard case deselected locally. Stable full prepush26 checks PASS64.329s:2248nonPG PASS384PGdeselected49.34s/all21contracts/lint/credential scan/diff/no known audited-dependency vulnerabilities. Private unpublished mfdataindia0.1.0 explicitly NOT audited. Complete collection2632; native PostgreSQL/image CI still mandatory, no native/image success assumed.",
+  "not_merge_or_runtime_authority": true,
+  "no_data_IAM_runtime_or_schedule_mutation": true
+}

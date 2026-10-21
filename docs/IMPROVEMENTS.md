@@ -5,16 +5,199 @@ Version-controlled backlog of planned improvements. Each item states the
 `RESEARCH.md` holds the source research; `README.md` documents what ships
 today. This file is the forward-looking "next" list.
 
-## Current next-three-sprint execution (approved 2026-10-18)
+## Current delivery sequence (five-sprint process approved 2026-10-21)
 
 FS-08–FS-11 actual DEV closeout is recorded in
 [the final acceptance/handover](evidence/FS11_DEV_ACCEPTANCE_2026-10-18.md).
-Proceed **FS-12 source reliability/gap inventory → FS-13 evidence-backed gap
-closure → next source-ready EXP-01 cohort**, each as a separate reviewed PR and
-bounded actual DEV acceptance. See the [finite plan](FS12_EXP01_DELIVERY_PLAN.md).
+The user explicitly prioritized TLAM transaction-reference APIs on 2026-10-20.
+Proceed **completed/frozen FS-12 → FS-13 actual acceptance, extra actual core
+witness and reviewed Git handover → NSE-01 TLAM fund/transaction-reference APIs
+→ next source-ready EXP-01 cohort**, each with separate review and bounded actual
+DEV acceptance. This priority decision supersedes the direct FS-13 → EXP-01
+ordering in the older [finite plan](FS12_EXP01_DELIVERY_PLAN.md); it does not
+remove EXP-01 scope or weaken any current FS-13 gate. No NSE runtime/API operation
+is authorized by this planning update. The [five-sprint delivery plan](MF_NEXT_FIVE_SPRINTS_20261021.json)
+orders core diagnosis/repair, actual FS-13 closeout, NSE-01 contracts, NSE-01
+delivery, then EXP-01. Each slice must be pushed to the named reviewer thread,
+comments resolved at the exact head, whole CI admitted and normally merged;
+only scoped actual DEV acceptance unlocks the successor. Failed K is terminal:
+original EXIT1 at final core154117 ReadTimeout, known prior recovered; no
+acceptance or K retry. The diagnostic job is approved, but no new rollout
+identity/window, NSE credential grant/provider operation or PROD action is
+created by the plan.
 Do not restart completed calculator/calendar/rolling foundations merely because
 older high-level rows below still say planned; the later MF-E execution records
 and exact acceptance evidence identify the implemented bounded scope.
+
+## NSE-01 — NSE scheme masters and transaction mapping for TLAM
+
+**Added 2026-10-20 at the user's request. Priority: high, to unblock TLAM
+transaction-integration testing; explicitly moved ahead of EXP-01 on 2026-10-20.
+Status: next-five-sprint contract/delivery planning; not
+implemented, downloaded, scheduled, deployed or accepted.**
+
+### Outcome and ownership
+
+An authenticated tlws-mf connector obtains NSE reference masters and maintains
+separate NSE-owned snapshots/tables and exact fund-variant mappings. A partner
+can discover a fund and read its current details through tlws-mf; when that exact variant is selected
+for a transaction, TLAM receives the NSE scheme identity and applicable
+transaction constraints through a versioned private contract. TLAM retains
+investor authorization, order creation, NSE order submission and reconciliation.
+The connector must not place orders or expose NSE credentials to consumers.
+
+TLAM's first deliverable is a **current transaction catalogue**, not a historical
+analytics/research feed. Charts, historical returns, rolling calculations,
+recommendations and portfolio analytics are out of this initial consumer scope.
+Retain all existing histories, source files and evidence internally; excluding
+history from the first TLAM contract does not authorize deleting it. Missing
+analytics, BER/AUM or research depth must not automatically exclude a variant
+whose independently verified transaction facilities are available. Conversely,
+good research coverage never proves transaction eligibility.
+
+This is an additional NSE execution/reference layer, not a replacement for
+AMFI/AMC records, histories, calculated outputs or current source authority.
+The newly requested collector location is tlws-mf; older extraction notes that
+kept Scheme Master collection initially inside TLAM do not decide the new
+ownership. Reconcile existing TLAM mappings and collection before establishing
+one authoritative collector; do not copy/migrate tables or credentials blindly.
+
+### Finite delivery
+
+- Reconcile the existing supplied contract for the authenticated NSE
+  **production master-download endpoint** before implementation:
+  `POST https://www.nseinvest.com/nsemfdesk/api/v2/reports/MASTER_DOWNLOAD`.
+  This recorded endpoint is not a claim of a verified current API or successful
+  connection. No UAT or public-page scraping. Allow only the reviewed reference-download
+  operations, never order/registration/payment endpoints.
+- Cover `SCH`, `SIP`, `STP`, `SWP`, `NAV` and `SET` as separate file types.
+  Freeze contracts against the supplied API Details v1.9.8, including common
+  authentication and returned positional layouts; reconcile the older Web File
+  Structure and actual download before accepting a parser, including the
+  recorded headerless NAV layout. The user's Scheme Master Report image also
+  shows **Step Up Scheme Master**: inventory it explicitly and verify its own
+  download operation, layout and relationship to SIP. Do not invent a file-type
+  code or assume SIP alone supplies Step Up rules; unresolved coverage remains
+  an explicit gap and cannot be labelled supported.
+- Inspect the existing TLAM credential arrangement without exposing secrets.
+  Select narrowly scoped runtime access, ownership and rotation explicitly;
+  adding this milestone does not authorize copying secret values or broad IAM.
+  The user reports no IP-whitelisting requirement for the existing NSE user;
+  verify actual tlws-mf egress connectivity rather than adding an assumed gate
+  or claiming successful connectivity from documentation alone.
+- Retain immutable dated original files with fetch metadata, byte hashes and
+  parser/schema versions. Distinguish file/date/header changes from business-row
+  changes using an explicit deterministic semantic comparison. Record successful
+  unchanged runs too. No API error JSON, empty/truncated or malformed download
+  may replace the last accepted snapshot; expose failed/stale state honestly.
+- In separate NSE tables, stage and validate additions, changes and removals;
+  atomically select a complete accepted snapshot, retain history and make
+  rollback/replay deterministic. Removed or disabled facilities must not remain
+  transaction-eligible merely because an older mapping exists.
+- Map the exact canonical fund **variant**, ISIN, NSE scheme code and disclosed
+  plan/option/mode applicability. Preserve one-to-many relationships where
+  warranted; reject ambiguous identities rather than matching by name alone.
+  Never merge identities or rewrite AMFI/AMC source records.
+- Return NSE identifiers, purchase/redemption/switch availability, modes,
+  minimums/maximums/multiples, cutoffs, SIP/STP/SWP rules and settlement context
+  with source date, snapshot version, freshness and explicit unavailability.
+  TLAM must revalidate appropriate current constraints when submitting an order;
+  a daily master is not a guarantee that NSE will accept a transaction.
+- Add a daily after-market-hours **Asia/Kolkata** refresh only after checking
+  NSE publication timing and conflicts with existing jobs. Exact time remains
+  a design decision, not an active cron. Bound requests and failures, prevent
+  overlapping/duplicate runs and reconcile missed refreshes without blind retries.
+
+### TLAM-first private API contract (design, not implemented)
+
+Reconcile existing routes and OpenAPI before selecting endpoint names; extend
+compatible seams rather than creating a second catalogue/collector by default.
+The consumer contract needs four bounded capabilities:
+
+| Capability | Required current data and behavior |
+| --- | --- |
+| Fund search/list | Bounded snapshot-pinned pagination and filters; canonical fund/variant IDs, AMC, verified scheme/category labels, plan and option, active/disabled status. Keep Regular/Direct and Growth/IDCW variants distinct. |
+| Exact variant details | Source-qualified fund details, AMFI code and ISIN where verified, exact NSE scheme/facility mappings and applicability. Current NAV/date may be included when available, but is not a promised execution price. Preserve one-to-many mappings rather than collapsing by name or ISIN alone. |
+| Transaction facilities/rules | Purchase, redemption and switch; supported SIP/STP/SWP and separately verified Step Up. Return applicable amount/unit limits, multiples, modes, frequencies, dates, instalment rules, cutoffs and settlement context only where the source establishes them. Clearly distinguish source-available fields from outstanding contract questions. |
+| Selected-variant batch/revalidation | Bounded private lookup for the selected variants and requested facility/mode, with snapshot/version, source as-of, freshness, expiry policy and stable reason codes. No order placement or investor authorization. |
+
+Separate mapping, facility eligibility and freshness states. Report eligible,
+ineligible, unknown, stale, ambiguous or unmapped with reasons; unknown is never
+an affirmative permission. No guessed minimums, cutoffs, currency, plan/option
+or fallback NSE code. Define required fields per facility/mode and fail closed
+when those fields or the necessary current reference are unavailable. Across
+catalogue/detail/rules reads bind compatible source versions, or return an
+explicit version conflict requiring a refresh; do not mix partial snapshots.
+Use version/ETag semantics and bounded batch reads, not per-row NSE requests
+on every TLAM page. Define the freshness/expiry policy during contract review.
+
+TLAM remains responsible for investor access, KYC, holdings, bank/mandate and
+other client-specific checks, order/registration/payment writes, NSE submission
+and reconciliation. A data-reference check is neither investor authorization
+nor final NSE order acceptance. Recheck applicable current rules at the
+transaction boundary; don't introduce an unreviewed new NSE call per order.
+
+Read-only local inventory on 2026-10-20 found existing TLAM seams in
+`src/server/mfd/fund-catalogue.ts`,
+`src/server/client-portal/fund-catalogue.ts`,
+`src/server/mfd/catalogue-eligibility.ts` and
+`src/server/provider-commands/nse-private-read-contract.ts` (in the TLAM repo).
+The current client catalogue explicitly requests `RESEARCH_READY`, and partner
+assignment eligibility also includes that tier. Design a separate, explicit
+transaction-reference eligibility contract without weakening existing research,
+recommendation or assignment policies. The inspected private read executor is
+restricted to `UCC_DETAIL`; it does not establish that master download is already
+implemented or authorized. These are source-code observations, not deployed
+runtime certification. Inventory current provider consumption, mappings and
+fund-resolution paths before choosing any migration or adapter.
+
+### Finite implementation slices and exit evidence
+
+1. **Consumer/source contract:** reconcile existing TLAM fund APIs, ownership,
+   secure credential boundary and all six documented file types (`SCH`, `SIP`,
+   `STP`, `SWP`, `NAV`, `SET`). List pictured Step Up separately as a seventh
+   potential operation with unverified code/layout/support; account for every
+   item as supported, unsupported or unresolved. Produce a field/facility matrix,
+   required-field rules and explicit
+   missing evidence. No credentials in docs or speculative parser layouts.
+2. **Reference acquisition and mapping:** reviewed parser/auth fixtures, separate
+   immutable originals and staged snapshots, exact variant mapping, complete
+   row accounting and changed/unchanged/removal/error cases. Preserve existing
+   records; prove atomic publication and deterministic recovery on a clone.
+3. **Private current-fund/rules APIs:** versioned bounded list/detail/rules/batch
+   contracts, least-privilege consumer access, stale/ambiguous/unmapped and
+   cross-snapshot rejection tests. History and analytics are not dependencies.
+4. **TLAM no-order integration:** select exact variants and prepare transaction
+   choices using source-backed facilities; contract-test all supported flows,
+   error reasons and unavailable Step Up coverage without submitting an order.
+5. **Controlled DEV acceptance and handover:** separately scoped bounded actual
+   reference reads, original-byte/mapping/rule witnesses, preservation/replay,
+   private consumer smokes and genuine refresh/failure evidence. Review and
+   close out before resuming EXP-01. Production application rollout, credentials
+   or IAM changes, and real-money transaction tests remain separate gates.
+
+### Acceptance and proposed window
+
+Require request/auth and parser contract tests; actual bounded production-API
+**reference reads only**; original-file/schema/row accounting; independent exact
+mapping and transaction-rule checks; changed/unchanged/error/removal fixtures;
+separate-table preservation, atomic publication/recovery/replay; private API
+authentication and TLAM consumer tests; and a real scheduled refresh with clear
+freshness/failure evidence. Test TLAM mapping/eligibility without an order first.
+Any real NSE transaction testing or production application rollout requires its
+own explicit scope and approval; production API reference reads do not authorize
+real-money orders or a production release of tlws-mf.
+
+Earliest sensible design/inventory window: **after actual FS-13 acceptance,
+extra core witness and reviewed Git handover**. The user has now explicitly
+selected **NSE-01 before EXP-01**, not after it. All-AMC expansion and complete
+historical/analytics coverage are not dependencies for this current catalogue.
+The active continuation must retain this ordering, but finish the pending NAV
+cycle/schedule transition and all FS-13 acceptance gates first. This update is
+planning only: no NSE API calls, credentials/IAM changes, deployment or orders.
+Establish a credible implementation estimate after the consumer/source contract
+inventory; do not promise a finish date from green synthetic tests or FS-13
+readiness alone. Preserve the full subsequent EXP-01 scope and its own gates.
 
 ## Source operations follow-up — Kotak discovery (2026-10-17)
 
