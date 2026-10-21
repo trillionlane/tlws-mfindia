@@ -1,0 +1,12 @@
+{
+  "format": "core-plan-controller-preparation-status-v1",
+  "scope": "Preparation ONLY, no runtime authority or diagnostic acceptance",
+  "worker_base": "08491c871656019857aabc72870ed5d040d705df",
+  "provider_free_focused": "49PASS0.64s/lintPASS/diffcheckPASS",
+  "earlier_full_local": "2296nonPGPASS384PGdeselected54.44s/all21contractsPASS/lintPASS; audit FAILED pypdf6.20.1 CVE-2026-113786; NOT fullPASS. Later change moves result publication AFTER final protected verification and adds fullprojectIAM regression, covered by final49focusedcases.",
+  "security_blocker": "PR109 whole headCI39666256261 terminalFAIL at newly published pypdf vulnerability despite native tests PASS. Separate uncommitted6.21.1 candidate catches retained missing-content rejection regression; neither auditwaiver nor assertion weakening permitted. Controller branch still uses unchanged worker-base lock and is NOT merge/deploy ready.",
+  "future_delivery": "Push exact controller preparation commit for named review. No PR/main reconciliation/merge/images/create/run until dependency-preservation repair, exact-head named reviews/fullCI/mainCI and exact newly reviewed finalimage readiness. No K retry or old image inline injection.",
+  "no_cloud_runtime_root_approval_manifest_intent_job_execution_allocated": true,
+  "no_IAM_schedule_service_data_source_mutation": true,
+  "reviewer_thread": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f"
+}
