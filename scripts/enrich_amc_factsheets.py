@@ -34,6 +34,7 @@ from mfdataindia.ingest.amc_factsheets import (  # noqa: E402
 from mfdataindia.load.amc_factsheets_to_store import load_factsheets  # noqa: E402
 from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn  # noqa: E402
 from mfdataindia.store.postgres import PostgresStore  # noqa: E402
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority  # noqa: E402
 
 
 def _candidates(store: PostgresStore) -> dict[str, int]:
@@ -70,6 +71,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true",
                     help="compute and report what would be filled; write nothing")
     args = ap.parse_args()
+    require_source_authority()
 
     try:
         dsn = resolve_dsn(args.dsn, purpose="AMC factsheet enrichment")

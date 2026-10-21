@@ -85,12 +85,13 @@ def test_real_isolated_workers_accept_explicit_empty_content_stream():
     assert result["whole_document_semantic_coverage"] is False
 
 
-def test_missing_content_stream_still_fails_closed_without_source_repair():
+def test_versioned_security_decoder_rejects_missing_content_stream():
     from pypdf import PdfWriter
+    from mfdataindia.enrichment import uti_book_pdf_v4
 
     writer = PdfWriter()
     writer.add_blank_page(width=200, height=200)
     output = io.BytesIO()
     writer.write(output)
     with pytest.raises(ValueError, match="layout book decoder failed"):
-        uti_book_pdf.extract(output.getvalue())
+        uti_book_pdf_v4.extract(output.getvalue())

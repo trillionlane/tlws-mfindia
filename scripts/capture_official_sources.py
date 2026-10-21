@@ -11,6 +11,7 @@ from mfdataindia.enrichment.source_capture import (
     capture_document, capture_history, discover_absl, extract_document,
 )
 from mfdataindia.ingest.amfi_client import AmfiClient
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 
 
 if __name__ == "__main__":
@@ -40,6 +41,8 @@ if __name__ == "__main__":
     extraction.add_argument("--page-start", type=int, default=1)
     extraction.add_argument("--page-end", type=int, default=None)
     args = parser.parse_args()
+    if args.kind != "history":
+        require_source_authority()
     if args.kind == "history":
         if (
             args.from_date > args.to_date

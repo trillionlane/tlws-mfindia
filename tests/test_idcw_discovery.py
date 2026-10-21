@@ -230,7 +230,7 @@ def test_lineage_and_report_hash_include_exact_sources_request_and_code(monkeypa
     assert value["engine_code_hash"] == engine.code_hash()
 
 
-def test_cli_is_offline_does_not_overwrite_or_publish_and_rejects_links(monkeypatch, tmp_path):
+def test_archived_offline_file_mechanics_never_overwrite_or_publish_and_reject_links(monkeypatch, tmp_path):
     import importlib.util
     script = Path(__file__).resolve().parents[1] / "scripts/discover_idcw_evidence.py"
     spec = importlib.util.spec_from_file_location("idcw_discovery_cli", script)
@@ -242,13 +242,13 @@ def test_cli_is_offline_does_not_overwrite_or_publish_and_rejects_links(monkeypa
         (tmp_path / (role + ".pdf")).write_bytes(pdf(role))
     monkeypatch.setattr(cli, "discover", lambda req, sources: {"state": "blocked"})
     output = tmp_path / "report.json"
-    assert cli.run(manifest, tmp_path, output) == 2
+    assert cli._archived_offline_report(manifest, tmp_path, output) == 2
     assert json.loads(output.read_bytes()) == {"state": "blocked"}
     assert output.stat().st_mode & 0o777 == 0o600
     with pytest.raises(FileExistsError):
-        cli.run(manifest, tmp_path, output)
+        cli._archived_offline_report(manifest, tmp_path, output)
     (tmp_path / "history.pdf").unlink()
     (tmp_path / "history.pdf").symlink_to(tmp_path / "notice.pdf")
     with pytest.raises(ValueError, match="no links"):
-        cli.run(manifest, tmp_path, tmp_path / "must-not-exist.json")
+        cli._archived_offline_report(manifest, tmp_path, tmp_path / "must-not-exist.json")
     assert not (tmp_path / "must-not-exist.json").exists()

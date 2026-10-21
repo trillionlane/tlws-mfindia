@@ -5,11 +5,14 @@ import argparse
 import json
 import os
 from pathlib import Path
-from mfdataindia.enrichment import multi_runtime
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 from refresh_official_facts_dev import validate as validate_pilot_runtime
 
 
 def run(environment, root):
+    require_source_authority()
+    from mfdataindia.enrichment import multi_runtime
+
     # Retain the existing single-task, pinned CloudSQL/role/SHA/job checks.
     dsn = validate_pilot_runtime(environment, root, task_count=2)
     return multi_runtime.execute(
