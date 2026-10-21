@@ -6,6 +6,7 @@ Failed or ambiguous create/run requests are NEVER retried.
 """
 
 import hashlib
+from copy import deepcopy
 from datetime import datetime
 import os
 from pathlib import Path
@@ -114,11 +115,57 @@ def validate_task(actual, expected):
         raise ValueError("all environment values and exact secret references required")
 
 
+INFO_ANNOTATIONS = {"run.googleapis.com/client-name", "run.googleapis.com/client-version"}
+
+
+def informational_annotations(annotations):
+    values = {k: v for k, v in annotations.items() if k in INFO_ANNOTATIONS}
+    if any(not isinstance(v, str) or not re.fullmatch(r"[A-Za-z0-9_.:/-]{1,128}", v) for v in values.values()):
+        raise ValueError("invalid informational client provenance")
+    return values
+
+
+def provider_labels(labels, *, parent=None):
+    wanted = {"cloud.googleapis.com/location": REGION}
+    optional = {"run.googleapis.com/satisfiesPzs", "client.knative.dev/nonce"}
+    if parent is not None:
+        wanted.update({"run.googleapis.com/job": NAME,
+                       "run.googleapis.com/jobUid": parent["identity"]["uid"],
+                       "run.googleapis.com/jobGeneration": "1"})
+        optional.add("run.googleapis.com/jobResourceVersion")
+    else:
+        optional.add("run.googleapis.com/lastUpdatedTime")
+    if set(labels) - set(wanted) - optional or any(labels.get(k) != v for k, v in wanted.items()):
+        raise ValueError("exact location and immutable parent labels required")
+    for key, value in labels.items():
+        if key in wanted:
+            continue
+        if key.endswith("/satisfiesPzs"):
+            valid = value in ("true", "false")
+            if parent and key in parent["labels"]:
+                valid = valid and value == parent["labels"][key]
+        elif key.endswith("/nonce"):
+            valid = isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value)
+            if parent and key in parent["template_labels"]:
+                valid = valid and value == parent["template_labels"][key]
+        elif key.endswith("/lastUpdatedTime"):
+            valid = isinstance(value, str) and re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z", value)
+            if valid:
+                datetime.fromisoformat(value.replace("Z", "+00:00"))
+        else:
+            # Provider jobResourceVersion is opaque, not an execution override.
+            # Retain it in the original immutable Execution identity, then bind
+            # every subsequent inventory/poll to that exact original value.
+            valid = isinstance(value, str) and 0 < len(value) <= 256 and value.isprintable()
+        if not valid:
+            raise ValueError("invalid provider-generated informational label")
+
+
 def resource_identity(document, *, namespace, name, kind, prepared=None, parent=None):
     """Reject unapproved metadata capabilities, retain stable provider identity.
 
-    ObjectMeta ownerReferences is documented as unsupported by Cloud Run;
-    execution parent proof uses the provider job/jobUid/jobGeneration labels.
+    ObjectMeta docs say ownerReferences is unsupported, but actual v1 metadata
+    emits it. If present it must agree with the mandatory parent UID labels.
     """
     if (set(document) - {"apiVersion", "kind", "metadata", "spec", "status"}
             or document.get("apiVersion") != "run.googleapis.com/v1"
@@ -127,6 +174,8 @@ def resource_identity(document, *, namespace, name, kind, prepared=None, parent=
     metadata = document["metadata"]
     allowed = {"name", "namespace", "uid", "creationTimestamp", "generation",
                "resourceVersion", "selfLink", "labels", "annotations"}
+    if kind == "Execution":
+        allowed.add("ownerReferences")
     if (set(metadata) - allowed or metadata.get("name") != name
             or metadata.get("namespace") not in (namespace, PROJECT)
             or not re.fullmatch(r"[a-z0-9][a-z0-9-]{15,127}", metadata.get("uid", ""))
@@ -137,9 +186,14 @@ def resource_identity(document, *, namespace, name, kind, prepared=None, parent=
     if not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z", created):
         raise ValueError("provider UTC creation timestamp required")
     datetime.fromisoformat(created.replace("Z", "+00:00"))
+    if "selfLink" in metadata:
+        plural = "jobs" if kind == "Job" else "executions"
+        if metadata["selfLink"] != f"/apis/run.googleapis.com/v1/namespaces/{metadata['namespace']}/{plural}/{name}":
+            raise ValueError("resource selfLink differs from sealed identity")
     annotations = metadata.get("annotations", {})
     generated = {"run.googleapis.com/creator", "run.googleapis.com/lastModifier",
-                 "run.googleapis.com/operation-id"}
+                 "run.googleapis.com/operation-id"} | INFO_ANNOTATIONS
+    informational_annotations(annotations)
     expected = prepared["annotations"] if kind == "Execution" else {}
     if (set(annotations) - generated - set(expected)
             or any(annotations.get(k) != v for k, v in expected.items())
@@ -151,14 +205,20 @@ def resource_identity(document, *, namespace, name, kind, prepared=None, parent=
     if operation is not None and not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", operation):
         raise ValueError("unexpected provider operation identity")
     labels = metadata.get("labels", {})
-    wanted = {"cloud.googleapis.com/location": REGION}
+    provider_labels(labels, parent=parent if kind == "Execution" else None)
+    identity = {k: metadata[k] for k in ("name", "namespace", "uid", "creationTimestamp", "generation")}
     if kind == "Execution":
-        wanted.update({"run.googleapis.com/job": NAME,
-                       "run.googleapis.com/jobUid": parent["identity"]["uid"],
-                       "run.googleapis.com/jobGeneration": "1"})
-    if labels != wanted:
-        raise ValueError("exact location and immutable parent labels required")
-    return {k: metadata[k] for k in ("name", "namespace", "uid", "creationTimestamp", "generation")}
+        owners = metadata.get("ownerReferences", [])
+        expected_owner = {"apiVersion": "serving.knative.dev/v1", "kind": "Job", "name": NAME,
+                          "uid": parent["identity"]["uid"], "controller": True, "blockOwnerDeletion": True}
+        if (owners not in ([], [expected_owner])
+                or any(type(owner.get(k)) is not bool for owner in owners
+                       for k in ("controller", "blockOwnerDeletion"))):
+            raise ValueError("provider ownerReference differs from sealed parent UID")
+        if informational_annotations(annotations) != parent["template_provider_annotations"]:
+            raise ValueError("execution client provenance differs from sealed template")
+        identity.update({"labels": labels, "annotations": annotations, "ownerReferences": owners})
+    return deepcopy(identity)
 
 
 def deployed(job, prepared, *, namespace):
@@ -168,7 +228,9 @@ def deployed(job, prepared, *, namespace):
     if str(job["metadata"]["generation"]) != "1":
         raise ValueError("new exact first-generation diagnostic job required")
     template = job["spec"]["template"]
-    if set(template) != {"metadata", "spec"} or set(template["metadata"]) != {"annotations"}:
+    if (set(template) != {"metadata", "spec"}
+            or set(template["metadata"]) - {"annotations", "labels"}
+            or "annotations" not in template["metadata"]):
         raise ValueError("whole approved execution template metadata required")
     spec = template["spec"]
     if (set(spec) != {"taskCount", "parallelism", "template"}
@@ -176,17 +238,23 @@ def deployed(job, prepared, *, namespace):
             or set(spec["template"]) != {"spec"}):
         raise ValueError("exact one task and parallelism required")
     annotations = template["metadata"]["annotations"]
+    client = informational_annotations(annotations)
+    labels = template["metadata"].get("labels", {})
+    if (set(labels) - {"client.knative.dev/nonce"}
+            or any(not isinstance(v, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", v) for v in labels.values())):
+        raise ValueError("unapproved template label")
     verify_network(annotations)
-    if annotations != prepared["annotations"]:
+    if annotations != {**prepared["annotations"], **client}:
         raise ValueError("WHOLE exact approved annotations required; no extra capabilities")
     task = spec["template"]["spec"]
     validate_task(task, prepared["task"])
-    return {"task": task, "task_hash": fingerprint(task),
+    return deepcopy({"task": task, "task_hash": fingerprint(task),
             "network": annotations, "whole_spec": spec, "whole_job_spec": job["spec"],
+            "template_labels": labels, "template_provider_annotations": client,
             "identity": identity, "labels": job["metadata"]["labels"],
             "provider_annotations": {k: v for k, v in job["metadata"]["annotations"].items()
                                      if k != "run.googleapis.com/operation-id"},
-            "before_execute": True}
+            "before_execute": True})
 
 
 def immutable_execution(execution, prepared, seal, *, namespace, identity=None):
@@ -366,6 +434,10 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
     try:
         claim(root / "inventory-before-result.json", execution_inventory(
             backend, prepared, seal, namespace=namespace, execution=execution_id))
+        final_protected = backend.protected()
+        claim(root / "protected-final.json", final_protected)
+        if final_protected != before:
+            raise ValueError("protected drift during final inventory; no result")
     except Exception as error:
         claim(root / "failure.json", {"error_type": type(error).__name__, "acceptance": False})
         raise

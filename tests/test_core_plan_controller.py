@@ -233,6 +233,7 @@ def test_run_one_create_one_execute_full_preexecute_seal_and_global_duplicate_gu
     assert records[tmp_path / "execute-intent.json"]["body"] == {}
     assert records[tmp_path / "protected-before.json"] == records[tmp_path / "protected-after.json"]
     assert list(records).index(tmp_path / "result.json") > list(records).index(tmp_path / "protected-after.json")
+    assert list(records)[-2:] == [tmp_path / "protected-final.json", tmp_path / "result.json"]
     with pytest.raises(FileExistsError):
         core.run(a, b, claim=claim)
     assert b.events == ["preflight", "create", "execute"]
@@ -477,3 +478,112 @@ def test_preflight_binds_fresh_project_number_before_any_image_or_write(monkeypa
         assert "OCI_read" not in events
     assert not backend.created and not backend.executed
     backend.session.close()
+
+
+def realistic_backend(a):
+    """Synthetic identities with metadata keys observed on an existing v1 GET.
+
+    Not reused source/failed-attempt state, and not new diagnostic acceptance.
+    """
+    b = FakeBackend(a)
+    job, execution = b.job, b.execution
+    client = {"run.googleapis.com/client-name": "gcloud",
+              "run.googleapis.com/client-version": "580.0.0"}
+    def realistic_job():
+        j = job()
+        j["metadata"]["annotations"].update(client)
+        j["metadata"]["labels"].update({"run.googleapis.com/satisfiesPzs": "true",
+            "run.googleapis.com/lastUpdatedTime": "2026-10-21T20:00:00Z"})
+        j["metadata"]["selfLink"] = f"/apis/run.googleapis.com/v1/namespaces/{NAMESPACE}/jobs/{core.NAME}"
+        j["spec"]["template"]["metadata"]["annotations"].update(client)
+        j["spec"]["template"]["metadata"]["labels"] = {"client.knative.dev/nonce": "SYNTHETIC_nonce"}
+        return j
+    def realistic_execution(name):
+        e = execution(name)
+        e["metadata"]["annotations"].update(client)
+        e["metadata"]["labels"].update({"client.knative.dev/nonce": "SYNTHETIC_nonce",
+            "run.googleapis.com/satisfiesPzs": "true", "run.googleapis.com/jobResourceVersion": "SYNTHETIC_opaque_v1"})
+        e["metadata"]["selfLink"] = f"/apis/run.googleapis.com/v1/namespaces/{NAMESPACE}/executions/{name}"
+        e["metadata"]["ownerReferences"] = [{"apiVersion": "serving.knative.dev/v1",
+            "kind": "Job", "name": core.NAME, "uid": JOB_UID,
+            "controller": True, "blockOwnerDeletion": True}]
+        return e
+    b.job, b.execution = realistic_job, realistic_execution
+    return b
+
+
+def test_provider_shaped_informational_metadata_is_sealed_without_extra_capabilities(tmp_path):
+    a = approval().model_copy(update={"root": str(tmp_path)})
+    (tmp_path / "approval.json").write_text("{}")
+    b = realistic_backend(a)
+    records, provider_reads = {}, []
+    original = b.protected
+    def protected():
+        provider_reads.append("protected")
+        return original()
+    b.protected = protected
+    original_inventory = b.executions
+    def inventory():
+        provider_reads.append("inventory")
+        return original_inventory()
+    b.executions = inventory
+    def claim(p, v):
+        if p.name == "result.json":
+            assert provider_reads[-1] == "protected"
+            assert records[tmp_path / "protected-final.json"] == {"protected": True}
+        records[p] = deepcopy(v)
+    core.run(a, b, claim=claim)
+    assert b.events == ["preflight", "create", "execute"]
+    assert records[tmp_path / "deployed-before-execute.json"]["template_labels"] == {"client.knative.dev/nonce": "SYNTHETIC_nonce"}
+    assert list(records)[-2:] == [tmp_path / "protected-final.json", tmp_path / "result.json"]
+
+
+@pytest.mark.parametrize("defect", ["owner_uid", "owner_kind", "owner_bool", "client", "nonce",
+                                    "job_version", "extra_label", "capability", "self_link"])
+def test_realistic_metadata_still_rejects_identity_provenance_and_capability_drift(defect):
+    b = realistic_backend(approval())
+    seal = core.deployed(b.job(), b.value, namespace=NAMESPACE)
+    e = b.execute()
+    identity = core.immutable_execution(e, b.value, seal, namespace=NAMESPACE)
+    if defect.startswith("owner"):
+        key, value = {"owner_uid": ("uid", "other"), "owner_kind": ("kind", "Service"),
+                      "owner_bool": ("controller", 1)}[defect]
+        e["metadata"]["ownerReferences"][0][key] = value
+    elif defect == "client":
+        e["metadata"]["annotations"]["run.googleapis.com/client-version"] = "other"
+    elif defect == "nonce":
+        e["metadata"]["labels"]["client.knative.dev/nonce"] = "other"
+    elif defect == "job_version":
+        e["metadata"]["labels"]["run.googleapis.com/jobResourceVersion"] = "different_opaque"
+    elif defect == "extra_label":
+        e["metadata"]["labels"]["unexpected"] = "unreviewed"
+    elif defect == "self_link":
+        e["metadata"]["selfLink"] = "/other-resource"
+    else:
+        e["metadata"]["annotations"]["run.googleapis.com/binary-authorization-breakglass"] = "unapproved"
+    with pytest.raises(ValueError):
+        core.immutable_execution(e, b.value, seal, namespace=NAMESPACE, identity=identity)
+
+
+def test_protected_drift_during_final_inventory_denies_result(tmp_path):
+    a = approval().model_copy(update={"root": str(tmp_path)})
+    (tmp_path / "approval.json").write_text("{}")
+    b = FakeBackend(a)
+    original = b.executions
+    reads, drifted = 0, False
+    def inventory():
+        nonlocal reads, drifted
+        reads += 1
+        if reads == 4:  # The last pre-result inventory, AFTER protected-after.
+            drifted = True
+        return original()
+    b.executions = inventory
+    b.protected = lambda: {"protected": not drifted}
+    records = {}
+    with pytest.raises(ValueError, match="protected drift during final inventory"):
+        core.run(a, b, claim=lambda p, v: records.setdefault(p, deepcopy(v)))
+    assert records[tmp_path / "protected-after.json"] == {"protected": True}
+    assert records[tmp_path / "protected-final.json"] == {"protected": False}
+    assert tmp_path / "result.json" not in records
+    assert records[tmp_path / "failure.json"]["acceptance"] is False
+    assert b.events.count("execute") == 1

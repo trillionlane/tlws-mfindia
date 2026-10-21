@@ -1,0 +1,10 @@
+{
+  "format": "core-plan-controller-final-gate-design-v1",
+  "design_before_correction": true,
+  "reviewed_head": "156dc9337044a383b2846157c76d16542a21c8b4",
+  "review": "Prior P1/P2 resolved, NEW P2: inventory provider reads after protected-after may introduce protected drift before result publication.",
+  "correction": "Perform final sole execution inventory, THEN new create-only protected-final.json and exact approved-before equality, THEN publish result.json with NO intervening provider calls. Failure retains type-only metadata, no result/retry.",
+  "provider_shape_observation": "Read-only GET of existing immutable source execution9sq2s (NOT rerun/source call/DB probe/diagnostic proof) shows provider actually emits ownerReferences, jobResourceVersion, satisfiesPzs, client nonce and gcloud provenance annotations despite ObjectMeta docs marking ownerReferences unsupported. Do not claim diagnostics operational from synthetic absence. No new job/resource/root/approval allocated.",
+  "metadata_compatibility": "Explicit provider-informational metadata allowlist, never broad arbitrary annotations: optional ownerReference if emitted MUST be exact singleton with kindJob/name/UID/controller/blockOwnerDeletion binding; labels jobUid/jobGeneration mandatory, optional jobResourceVersion opaque bounded value bound to original Execution metadata; optional nonce and satisfiesPzs validated and retained. Optional client-name/version are bounded informational fields, sealed on Job and bound to Execution. All workload capability annotations STILL exact reviewed keys+values/no extra VPC/breakglass/secrets/encryption. Raw metadata retained; metadata from other current resources is shape evidence ONLY, never copied as diagnostic runtime evidence.",
+  "tests": "Final-inventory injected protected drift denies result; result follows protected-final with no provider reads. Provider-realistic metadata fixture accepted only with exact sealed identities; ownerUID/client/nonce/jobversion/extraannotation negatives fail. Full tests/review/mainCI/image/readiness gates remain unchanged."
+}
