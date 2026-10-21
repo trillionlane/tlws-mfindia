@@ -1,0 +1,16 @@
+{
+  "format": "core-plan-diagnostic-design-v1",
+  "design_precedes_worker_code": true,
+  "human_authority": "Approved on2026-10-21 for ONE new restricted read-only diagnostic job; not a K retry or fix approval from static speculation.",
+  "purpose": "Investigate154117 original own-facts and sibling paths without executing the expensive sibling join.",
+  "query_file_sha256": "c2043667ab261be1ae02eb9e5f32658c142e325739487582a555530f0e3f691e",
+  "query_file_identical_at": ["2f173e4abc4b05e2c4c20c69d96029c29646373d", "4157feee278e59cfcb35f2256d7f6853cde83367"],
+  "SQL": "Only fixed unchanged own-facts, single sibling and batch sibling queries; exact code154117/codes[154117]. Non-executing EXPLAIN(FORMAT JSON), never ANALYZE; at most one bounded original own-facts SELECT.",
+  "bounds": {"statement_seconds": 5, "lock_seconds": 5, "transaction_seconds": 15, "task_seconds": 600, "CPU": 1, "memory": "1Gi", "tasks": 1, "parallelism": 1, "maxRetries": 0},
+  "context": "Direct mfdata_verified_reader, RR READ ONLY, pinned existing DEV reader DSN secret reference, exact current accepted source4/policy8; record generation/configuration and database snapshot. Verify runtime privilege boundary; no SET ROLE.",
+  "transport": "Seal lossless full plan evidence against fresh diagnostic-only Manifest/Git/image/program/query hashes, not a failed runtime manifest. Evidence may be chunked by existing render_evidence; never truncate plans or increase caps.",
+  "cloud_controller": "Separate reviewed create-only intent/controller and protected-state comparison required before creating one new job; no arbitrary SQL/CLI knobs, old job reuse, secret retrieval, IAM grant, existing service/job/schedule mutation or automatic retry. Whole deployed task/env/secretrefs/volumes/network must match sealed request before sole execute; terminal immutable template and fresh remote evidence must match afterwards.",
+  "limitations": "Recovered source4/policy8 reader plans are current-state diagnostic evidence only, not historical K active-state/core-role execution proof or final performance acceptance. No EXPLAIN ANALYZE, HTTP replay, cache warming, source requests, data writes, repair, higher timeout or sample replacement.",
+  "stop": "Ambiguous identity/state/profile/budget, drift, timeout, missing permissions or failure: preserve metadata and stop, never retry or weaken a guard.",
+  "review": "Named reviewer must inspect pushed exact head and worker/controller/tests before cloud dispatch. Whole head/main CI and exact-image provenance remain mandatory for any later code deployment."
+}

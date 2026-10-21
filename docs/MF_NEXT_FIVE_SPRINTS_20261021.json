@@ -1,0 +1,134 @@
+{
+  "format": "mfdata-five-sprint-delivery-v1",
+  "decision_date_UTC": "2026-10-21",
+  "status": "PROPOSED_FOR_NAMED_REVIEW_NOT_ACCEPTANCE",
+  "human_direction": "Plan the next five sprints, implement and push each, request review from the named reviewer, resolve comments, then normal merge and scoped DEV deployment before proceeding to its successor.",
+  "reviewer_thread": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "baseline": {
+    "main": "4157feee278e59cfcb35f2256d7f6853cde83367",
+    "FS12": "ACTUALLY_ACCEPTED_FROZEN_DO_NOT_REPEAT",
+    "FS13": "FAILED_K_EXIT1_FINAL_CORE_154117_ReadTimeout_NOT_ACCEPTED",
+    "known_prior": "Recovered by original cleanup; last full safe-state observation17:43UTC, not a claim of fresh current database state.",
+    "failure_checkpoint_sha256": "c0c2f502c274f73cd9f659e3da2db37d180c64fb31007e0e115c123daf414d20",
+    "core_serving_authority": "2f173e4abc4b05e2c4c20c69d96029c29646373d; distinct from source/private application main4157.",
+    "prior_NSE_plan": "Local branch codex/nse-master-connector-milestone, commit9b9d6c79dbfb5c2b73baeb2b32c5fe56b796915e; preserved here through IMPROVEMENTS.md, not silently replaced.",
+    "completed_foundations": "Do not restart implemented calculator/calendar/rolling/policy/review foundations; reconcile exact accepted scope before adding anything."
+  },
+  "selection_rationale": [
+    "Core detail latency is the measured immediate blocker, not NAV ingestion: actual154117 request took38.929seconds, db38.924seconds versus0.041ms pool wait.",
+    "Finish one fully accepted FS13 chain before successor publication; K progress is not acceptance and cannot be restarted.",
+    "TLAM current transaction reference is explicitly higher priority than EXP01 and does not depend on all-AMC research coverage.",
+    "Split NSE contract reconciliation from implementation because positional layouts, Step Up and credential boundaries are unresolved.",
+    "Reserve expansion for a source-ready bounded cohort, not alphabetical or presumed available AMC selection."
+  ],
+  "delivery_protocol": [
+    "One bounded PR per independently reviewable slice within a sprint; design before code and evidence-backed scope, no speculative fix from a static lead.",
+    "Preserve unrelated work and old attempts; use an isolated branch/worktree, focused plus complete validation, full native PostgreSQL18 and both-image CI with all original contracts/security/audit/smokes.",
+    "Push the exact candidate head, send that SHA/PR/diff/test evidence and limitations to the named reviewer, retrieve actual review comments and retain a disposition for every finding.",
+    "Resolve findings, retest and request re-review at every changed head. Reviewer silence, stale-head review, implementer self-review or a partial green check is not approval.",
+    "Only after satisfactory exact-head review and whole CI: normal matching-head squash merge without admin/bypass; verify parent and identical reviewed tree, then independently admit whole main CI.",
+    "Deployment is scoped separately from merge: exact images/provenance, existing gate settings, least privilege, fresh current preflight and bounded approved runtime authority. Never deploy a planning/docs-only PR.",
+    "Require actual immutable execution/input/profile/certificate evidence, complete preservation, cleanup, original EXIT0 and the sprint's closeout witnesses. Deploying an image or seeing application PASS is not acceptance.",
+    "Only an accepted predecessor unlocks dependent runtime work. On failure retain the exact attempt, recover known prior through the prearmed reviewed protocol and stop retries; diagnose before proposing a wholly fresh attempt."
+  ],
+  "sprints": [
+    {
+      "id": "S1_CORE_LATENCY",
+      "title": "Diagnose and repair the real unassessed fund-detail read",
+      "depends_on": [],
+      "implementation": [
+        "First implement a bounded diagnostic worker for unchanged original queries at exact154117 using the existing restricted reader. One newly authorized create-only diagnostic job, one execution; no old job/root/manifest reuse.",
+        "Use non-executing EXPLAIN, not ANALYZE, and at most one original own-facts SELECT. Record complete plans, exact SQL/file/input hashes, current policy/configuration, effective identity and settings.",
+        "The single sibling-facts join is a hypothesis, not confirmed root cause. A recovered source4/policy8 restricted-reader plan is not the historical active-K core-role plan.",
+        "Only after evidence establishes the specific bottleneck, propose the minimal read-path change. Preserve every identity/AMC/plan/option/periodicity/category check, canonical ordering, family-safe borrowing, NULL/zero semantics and every response.",
+        "Add independent result-equality and SQL-scope regressions, including missing/unusable facts, no sibling, identity collisions, Direct/Regular, Growth/IDCW and benchmark-only facts; preserve real unassessed signals:null."
+      ],
+      "acceptance": [
+        "Diagnostic exact job/task/role/input/profile/seal/terminal evidence and no protected existing-resource/data/IAM/schedule changes; no timeout extension or blind retry.",
+        "If a code repair is justified: named exact-head review, whole head/main CI, exact immutable image and separate private core API-only DEV acceptance across all19 routes and real nullable-quality controls, unchanged30s HTTP bounds and original sub5s detail/batch value controls.",
+        "Do not replace154117 merely to pass, claim a static guard is measured performance, weaken financial proofs or promote generic main as all-core serving authority."
+      ],
+      "runtime_boundary": "The one read-only diagnostic job is directly approved. Any repair needs reviewed evidence first; core API-only deployment must not change source/private data profiles or schedules. K remains terminal and immutable."
+    },
+    {
+      "id": "S2_FS13_CLOSEOUT",
+      "title": "Wholly fresh FS13 acceptance and reviewed handover",
+      "depends_on": ["S1_CORE_LATENCY"],
+      "implementation": [
+        "After proven core repair/readiness, allocate a new exact identity and fresh operator only after Git/full CI/images twice; no failed A-K reuse, no old backup/checkpoint/receipt/secret reuse.",
+        "Choose and bind an exact bounded new-start window only after readiness and explicit applicable authority. No old J/K window, implied wildcard or late start. Healthy original continues beyond its start window.",
+        "One complete coordinator only, wholly fresh current read-only normal-cycle proof before backup, all16 original gates and all whole-population/full-byte proofs; no independent manual phases."
+      ],
+      "acceptance": [
+        "Exactly3 distinct successful secret-free900s2CPU4Gi1task/parallelism1/maxRetries0 clones and TWO complete private checkpoint restores, all4 ORIGINAL financial queries over ENTIRE retained cohort, full52 private/19 core and independent detail/batch controls.",
+        "Whole original data, all38 prior layers, whole prior AMC and old UTI primary/period/TER preserved; restricted install, source6 exact structured task receipts0-5 and EVERY original archive actual generation/size/FULLbytes/SHA256/MD5, independent4 UTI PDFs/two actual periods/Growth/IDCW/TER.",
+        "Fenced actual LIVE activation, known-prior recovery, replay and reactivation with complete RR/dependency/ctid-xmin/preservation proofs, genuine6-task Scheduler invocation, restored normal daily schedule, final core, after-backup and final whole state/layers.",
+        "All5 ACTUAL temporary IAM bindings absent, original EXIT0 and independently checked sealed22; then extra actual core witness7 independent14 detail/batch responses/no-store/sub5s/anonymous denial/noDBsecret/protected core authority unchanged.",
+        "Evidence handover with actual periods/denominators/usable-gap-field counts, serving/source SHAs and digests, manual/genuine timer IDs, recovery, both checkpoints and preservation; reviewed docs-only PR/full head and main CI, no docs deployment."
+      ],
+      "runtime_boundary": "No start identity or window allocated by this plan; no fourth clone, higher resources/time/query/SQL/startup budget or proof waiver."
+    },
+    {
+      "id": "S3_NSE01_CONTRACTS",
+      "title": "Freeze TLAM current-fund and NSE transaction-reference contracts",
+      "depends_on": ["S2_FS13_CLOSEOUT"],
+      "implementation": [
+        "Reconcile existing TLAM fund catalogue, research/assignment eligibility, current provider consumption, exact-variant mappings, reference collection and private read seams before choosing one collector owner or endpoint names.",
+        "Reconcile supplied API Details1.9.8 with existing code/docs and available actual layouts for SCH/SIP/STP/SWP/NAV/SET; explicitly inventory Step Up and leave operation/code/layout unsupported until verified. No invented type codes or name-only identity match.",
+        "Implement provider-free versioned contract/schema/fixture validators and source-to-field/facility matrix for current list/search, exact variant details, facility/rules and bounded selected-variant revalidation.",
+        "Separate mapping, eligibility, freshness and research-readiness. Unknown/stale/ambiguous/unmapped is not transaction permission. Design complete snapshot/version/ETag semantics and required fields per facility/mode.",
+        "Design credential ownership/rotation and runtime access without copying values; daily after-market schedule is only proposed after publication/conflict assessment. TLAM retains investor authorization, KYC/mandates/payments/orders/submission/reconciliation."
+      ],
+      "acceptance": [
+        "Named exact-head review includes complete field/facility matrix, consumer/source contracts, no-order tests, bounded batch/version-conflict and missing/stale/error/Step Up negatives; compatible existing routes and data remain intact.",
+        "Whole CI and normal merge/main CI; offline/dormant deliverables only, no artificial runtime deployment for documentation or schema fixtures.",
+        "Resolve missing actual contract/source evidence before S4 acquisition; record any exact credential/IAM/provider-read authority still needed rather than treating this plan as permission."
+      ],
+      "runtime_boundary": "No NSE endpoint request, credential access/copy, IAM grant, schedule activation or order operation in this sprint."
+    },
+    {
+      "id": "S4_NSE01_DELIVERY",
+      "title": "Deliver immutable NSE reference snapshots and private current APIs",
+      "depends_on": ["S3_NSE01_CONTRACTS"],
+      "implementation": [
+        "Implement only reviewed reference-download operations, bounded transport/auth/parser contracts and immutable dated original files with byte/schema/parser hashes and complete row accounting; no order/registration/payment endpoints or public scraping.",
+        "Add separate NSE-owned tables/snapshots and exact one-to-many variant/ISIN/NSE-code mappings, staged whole-snapshot validation and atomic publication/recovery/replay; never rewrite AMFI/AMC data or merge identities.",
+        "Implement versioned private current catalogue/detail/rules/batch interfaces, snapshot-pinned pagination, stable unavailable/stale/ambiguous reasons and freshness/expiry rules; no live NSE request per TLAM row or unreviewed order-time provider call.",
+        "Complete TLAM no-order consumer integration through existing seams without weakening research/recommendation/assignment policies. Disabled/removed facilities cannot remain eligible through an old snapshot.",
+        "Only with exact provider-reference-read/credential/IAM authority, perform bounded actual reference acquisition and clone preservation/recovery tests; propose/activate a reviewed nonconflicting scheduled refresh separately."
+      ],
+      "acceptance": [
+        "Actual reference-file/auth/layout/mapping/rules evidence, full original bytes and row accounting, changed/unchanged/error/truncated/removal controls, clone full preservation and deterministic atomic recovery/replay.",
+        "Private least-privilege API and TLAM no-order consumer evidence, real refresh/failure/staleness behavior and genuine scheduled execution after explicit schedule approval, exact image/identity/input/terminal and cleanup proof.",
+        "Named exact-head review and whole head/main CI before scoped DEV deployment; deployment/readiness/publication/consumer acceptance recorded separately. No claim of NSE order acceptance."
+      ],
+      "runtime_boundary": "Production-hosted NSE reference reads require explicit exact operation/credential authority; they do not authorize real-money orders, UAT substitutions, PROD application release or broad IAM."
+    },
+    {
+      "id": "S5_EXP01",
+      "title": "Accept the next genuinely source-ready AMC cohort",
+      "depends_on": ["S4_NSE01_DELIVERY"],
+      "implementation": [
+        "Reassess ordinary official discovery/layout/identity readiness; select exact cohort after evidence, normally at most4 AMCs. Abakkus/360.ONE/Angel One remain candidates, not admitted sources or fixed membership.",
+        "Use fresh policy12/SQL045 only after actual ledger/conflict reconciliation; never overwrite earlier allocated policy/migration versions. Preserve original four-AMC frozen contracts and all past observations.",
+        "Design an additive versioned full-coverage API and explicit transparent legacy scope before exceeding frozen v9 BookStatus.sources maximum4; no silent widening, truncation, consumer breakage or model replacement.",
+        "Implement supported facts for two actual available reporting periods, exact scheme/plan/option matching, complete retained-population accounting and honest field/period gaps; no arbitrary caller URLs or catalogue fallback.",
+        "Keep Kotak authority expiry before2026-11-01 explicit; ordinary source-channel review only, no challenge bypass, date extension or fabricated freshness. If necessary evidence is missing, split/re-scope through review or stop rather than weakening acceptance."
+      ],
+      "acceptance": [
+        "Named review/full CI/normal merge/main CI/exact immutable images and a wholly fresh bounded source rollout, backup/restored clone/full financial and whole-original/prior-layer preservation.",
+        "Every actual source receipt/original archive byte/generation/hash, independent issuer references, full private/core/value/latency controls, fenced recovery/replay/reactivation, genuine timer/restored schedules, final backup/state/cleanup/original EXIT0/sealed acceptance and reviewed handover.",
+        "Only named accepted AMC/period/field coverage is claimed; complete all-AMC/all-field data, BER substitution or adjusted IDCW analytics are not implied."
+      ],
+      "runtime_boundary": "NSE01 acceptance precedes EXP01 publication; no automatic selected source, identity, start window or waiver."
+    }
+  ],
+  "global_invariants": [
+    "Backend DEV only; no UI/PROD/raw correction/deletion/identity merge/model replacement/broad IAM/new GitHub gate variables/local Docker/localPG or production repair.",
+    "All GCP resource commands explicit trillionlane-dev/asia-south1/trillionlaneassetmanagement@gmail.com; no shared credential/config mutation or local secret printing.",
+    "Keep NAV06/20 and audit06:10/20:10 Europe/Dublin and source03:30UTC intact; observe actual normal executions, never manually run them as a shortcut.",
+    "Owner statement5s/lock5s/transaction15s and existing RR300/420/dump240/source sequential600s/task/retry/resource/transport/startup bounds unchanged; control-plane polling retry is not a task retry.",
+    "TER is not BER; needs_verification remains honest; adjusted IDCW disabled and partial fields not all-AMC completeness. No invented load-speed improvement claim.",
+    "No fixed completion dates or permanent monitor. Dependency/source/authority blockers stay visible; finite progress and exact evidence govern successor entry."
+  ]
+}
