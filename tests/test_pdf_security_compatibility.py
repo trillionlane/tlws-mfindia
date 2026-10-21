@@ -118,6 +118,25 @@ def test_dependency_contract_cannot_be_relabelled_and_runtime_must_match(monkeyp
         uti_book_pdf_v4.extract(b"%PDF-")
 
 
+def test_new_uti_engine_seals_transitive_historical_layout_policy_without_editing_it(monkeypatch):
+    # v4 -> retained v2/v1 policy -> historical layout policy, including limits.
+    # Test the engine artifact independently of the whole-history manifest.
+    historical = Path(uti_book_pdf_v4.uti_book_pdf_v2.layout_book_pdf.__file__).resolve()
+    original_read = Path.read_bytes
+    original_bytes = historical.read_bytes()
+    before = uti_book_pdf_v4.engine_hash()
+
+    def changed_read(path):
+        raw = original_read(path)
+        return raw + b"\n# synthetic lineage tamper\n" if path.resolve() == historical else raw
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "read_bytes", changed_read)
+        assert uti_book_pdf_v4.engine_hash() != before
+    assert historical.read_bytes() == original_bytes
+    assert uti_book_pdf_v4.engine_hash() == before
+
+
 def test_historical_bytes_and_all_registered_authorities_are_unchanged_and_new_decoder_dormant():
     baseline = json.loads((ROOT / "docs/PDF_HISTORICAL_AUTHORITY_4157.json").read_bytes())
     for path, sha in baseline["frozen_files"].items():

@@ -31,6 +31,7 @@ def engine_hash():
              Path(uti_aum_row.__file__), Path(uti_book_pdf_v2.__file__),
              Path(uti_book_pdf_v2.__file__).with_name("_uti_book_pdf_worker_v2.py"),
              Path(uti_book_pdf_v2.uti_book_pdf.__file__), Path(layout_book_pdf.__file__),
+             Path(uti_book_pdf_v2.layout_book_pdf.__file__),
              Path(layout_book_pdf.__file__).with_name("_layout_book_pdf_worker_v2.py")]
     return hashlib.sha256(b"".join(p.read_bytes() for p in files)).hexdigest()
 
