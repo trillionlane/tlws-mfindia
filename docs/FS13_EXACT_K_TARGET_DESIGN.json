@@ -1,0 +1,29 @@
+{
+  "format": "fs13-exact-K-target-design-v1",
+  "design_before_code": true,
+  "review_type": "IMPLEMENTER DESIGN ONLY; NOT independent approval",
+  "authority": "Direct human Let's do it right away authorizes immediate fresh-attempt preparation after approved isolated CONNECTION repair. Do not hold for the earlier proposed13UTC buffer. Runtime start still requires an exact bounded window and complete readiness; none is assigned by this design.",
+  "base": "52a6ead8101d9287d4eb33a3a20562dccf0e3d67",
+  "target": {
+    "rollout": "dev-uti-gap-261021k",
+    "pre_backup": "dev-uti-gap-pre-261021k",
+    "post_backup": "dev-uti-gap-post-261021k",
+    "scratch_database": "mfdata_fs13_final_image_261021k",
+    "acquire_prefix": "verified-review-rollouts/dev-uti-gap-261021k-acquire-checkpoint/",
+    "rehearsal_prefix": "verified-review-rollouts/dev-uti-gap-261021k-rehearsal-checkpoint/",
+    "new_root": null,
+    "start_utc": null,
+    "end_utc_exclusive": null,
+    "window_status": "UNASSIGNED; not runtime-ready or launch authority. Earliest fully verified readiness, not an arbitrary waiting period."
+  },
+  "code_scope": [
+    "Only add exact261021k to existing two v2 checkpoint-prefix/localDB alternatives and the error label; retain historical G/H/I/J unchanged. No arbitrary date/letter wildcard or backup relaxation.",
+    "Re-pin ONLY3 full native smoke constants J->K (DB, prebackup, acquire prefix), preserving all program, limits, proof and original inner step order otherwise.",
+    "Add exactK/current-date/wrong-date/future-letter/own-backup/predecessor/full two-handoff/localRRREADONLY/fullcatalogue tests. Retain all old tests/assertions; normalize only the new exact alternative/native pins when verifying frozen historical byte algorithms.",
+    "The separately approved canonical CONNECTION import repair is outside the unchanged failedJ root. Its63 real-generated-module/original-dispatch regressions,326 retained corrected-source cases and80 pure cases remain mandatory local future-operator preparation evidence; these are not claimed as provider/native coverage. Future actualK operator must pass the same real-module regression before sealing."
+  ],
+  "validation": "Focused tests then stable full prepush; full exact-head two-jobCI including actualPG18/fullcertifier/native3cluster/sharedsnapshot/tamper/concurrentwriter/coldHTTP/BOTH APPTOOLS full aggregate input exec. Completion IMPLEMENTER review NOT independent, normal matching-head squash/identicaltree, independent wholemainCI/genericdeploySKIP, sole new image-only workflow/provenance manifest+configBYTES TWICE. No unchanged CI/runtime retry.",
+  "frozen": "All failedA-J roots/originals/receipts/backups/checkpoints/code/READYs remain immutable and never reused. Frozenv1 and v2 logical metadata/financial/source/projection/preservation algorithms unchanged. Source5/policy11/migration044 unchanged. NAV/source schedules untouched.",
+  "limits": "All16originalgates/exactly3distinct900s2CPU4Gi1taskmaxRetries0/noSecrets clonejobs/TWOcompletecheckpointrestores/full4ORIGINALfinancialqueriesENTIREcohort/full52private19core/alloriginals+priorlayers+wholeAMC+oldUTI/fencedactualactivation-knownpriorrecovery-replay-reactivation/source6EVERYarchive/independent4UTIPDFtwoactualperiodsGrowthIDCWTER/genuine6tasktimer/restoredschedule/finalcore-afterbackup/all5actualIAMabsence/ORIGINALexit0+verified22. Ownerstatement5s/lock5s/transaction15s;independentRR300s420s/dump240s. No fourthjob/resources/time/query/startup/proof waiver.",
+  "no_actions_from_design": "No runtime root/manifest/scope/intent/backup/clone/source/schema/traffic/IAM/schedule/provider/NSE/PROD writes or manual normal jobs. No old DONEimage/controller/dryRun rerun. New target and readiness are not activation or acceptance. Extraactualcore/reviewedGit then prioritizedNSE01 beforeEXP01 remain."
+}

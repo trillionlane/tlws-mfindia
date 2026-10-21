@@ -111,12 +111,14 @@ def test_J_real_transport_two_handoffs_preserves_input_and_predecessor(tmp_path)
 
 def test_only_two_literal_guards_label_and_three_native_pins_change():
     source = Path(cp.__file__).read_text()
+    source = source.replace("|261021k)", ")").replace("G/H/I/J/K stage-specific", "G/H/I/J stage-specific")
     old = "(?:[0-9]{6}g|261020h|261020i)"
     new = "(?:[0-9]{6}g|261020h|261020i|261020j)"
     assert source.count(new) == 2
     normalized = source.replace(new,old).replace("G/H/I/J stage-specific","G/H/I stage-specific")
     assert hashlib.sha256(normalized.encode()).hexdigest() == "c98854bb2afc8fcceca518b31696bfc658af34916502fe6daf67ccc7ede66916"
     smoke = (ROOT / "scripts/smoke_clone_checkpoint_v2.py").read_text()
+    smoke = smoke.replace("261021k", "261020j")
     assert smoke.count("261020j") == 3
     assert hashlib.sha256(smoke.replace("261020j","261020i").encode()).hexdigest() == "be67f53d3e296e7636d7fd692bcd06f1c2a8e5f512b48f5185d3b7983df1a06c"
 
