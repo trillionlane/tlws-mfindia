@@ -167,6 +167,7 @@ def test_proposal_window_is_not_allocated_and_exact_seconds_are_required():
 
 def test_only_two_exact_target_guards_and_label_changed_since_reviewed_base():
     source = Path(current.__file__).read_text()
+    source = source.replace("|261021k)", ")").replace("G/H/I/J/K stage-specific", "G/H/I/J stage-specific")
     source = source.replace("|261020j)", ")").replace("G/H/I/J stage-specific", "G/H/I stage-specific")
     extended = "(?:[0-9]{6}g|261020h|261020i)"
     original = "(?:[0-9]{6}g|261020h)"
@@ -178,6 +179,7 @@ def test_only_two_exact_target_guards_and_label_changed_since_reviewed_base():
         "942a3db8c710727edfe50069444443eaf11e94e5babedb8f2102d7a9e58327fb"
     )
     smoke = (ROOT / "scripts/smoke_clone_checkpoint_v2.py").read_text()
+    smoke = smoke.replace("261021k", "261020j")
     smoke = smoke.replace("261020j", "261020i")
     assert 'DATABASE = "mfdata_fs13_final_image_261020i"' in smoke
     assert "dev-uti-gap-pre-261020i/snapshot.dump" in smoke

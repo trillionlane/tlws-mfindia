@@ -107,7 +107,7 @@ def test_certificate_cannot_cross_phase_or_previous_execution():
 
 def test_frozen_catalogue_algorithm_is_retained_without_dropping_any_query():
     assert inspect.getsource(cp.logical_metadata).replace(
-        "(?:[0-9]{6}g|261020h|261020i|261020j)", "[0-9]{6}f"
+        "(?:[0-9]{6}g|261020h|261020i|261020j|261021k)", "[0-9]{6}f"
     ) == inspect.getsource(old.logical_metadata)
     assert inspect.getsource(cp.require_restored_seals) == inspect.getsource(
         old.require_restored_seals

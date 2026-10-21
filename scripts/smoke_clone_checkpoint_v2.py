@@ -22,7 +22,7 @@ from mfdataindia.review import clone_checkpoint_v2 as cp
 from mfdataindia.review.clone_final_snapshot import DUMP_START, DUMP_EXPORT
 
 
-DATABASE = "mfdata_fs13_final_image_261020j"
+DATABASE = "mfdata_fs13_final_image_261021k"
 
 
 class FixtureResponse:
@@ -77,13 +77,13 @@ class FixtureTransport:
 
 def fixture_context():
     return {"format": "mfdata-disposable-clone-checkpoint-v2", "manifest_sha256": "a" * 64,
-        "backup": {"uri": "gs://" + cp.BUCKET + "/verified-review-rollouts/dev-uti-gap-pre-261020j/snapshot.dump",
+        "backup": {"uri": "gs://" + cp.BUCKET + "/verified-review-rollouts/dev-uti-gap-pre-261021k/snapshot.dump",
                    "generation": "1", "size": 1, "sha256": "b" * 64, "md5": "AAAAAAAAAAAAAAAAAAAAAA=="},
         "app_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia@sha256:" + "c" * 64,
         "tools_image": "asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools@sha256:" + "d" * 64,
         "git_sha": "e" * 40, "helper_hashes": {"checkpoint_worker.py": "f" * 64},
         "reference_sha256": "1" * 64,
-        "checkpoint_prefix": "verified-review-rollouts/dev-uti-gap-261020j-acquire-checkpoint/",
+        "checkpoint_prefix": "verified-review-rollouts/dev-uti-gap-261021k-acquire-checkpoint/",
         "phase": "acquire", "previous_checkpoint_sha256": None, "previous_execution_sha256": None}
 
 
