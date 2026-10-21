@@ -378,3 +378,11 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_books_transport_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/smoke_certification_input_transport.py
           docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_certification_input_transport.py
+
+      - name: Verify patched PDF workers and dormant source guards in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" /app/scripts/smoke_pdf_security_compatibility.py
+          docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_pdf_security_compatibility.py

@@ -6,11 +6,14 @@ import json
 import os
 from pathlib import Path
 
-from mfdataindia.enrichment import book_runtime, book_sources
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 from refresh_official_facts_dev import validate as validate_runtime
 
 
 def run(environment, root):
+    require_source_authority()
+    from mfdataindia.enrichment import book_runtime, book_sources
+
     count = book_sources.registry(root=root)["maximum_sources_per_execution"]
     dsn = validate_runtime(environment, root, task_count=count)
     return book_runtime.execute(

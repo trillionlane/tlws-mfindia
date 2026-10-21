@@ -21,7 +21,7 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "PyJWT[crypto]>=2.10.1",
-    "pypdf>=6.20.1,<7",
+    "pypdf==6.21.1",
     "xlrd==2.0.2",
     "defusedxml==0.7.1",
 ]

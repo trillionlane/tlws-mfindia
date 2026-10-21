@@ -1,0 +1,27 @@
+{
+  "format": "pdf-security-compatibility-design-v1",
+  "design_before_code": true,
+  "approved_scope": "Separate versioned PDF compatibility repair; no K restart or source activation",
+  "base": "4157feee278e59cfcb35f2256d7f6853cde83367",
+  "dependency": {"name": "pypdf", "exact_version": "6.21.1", "advisory": "GHSA-5hx5-vpf9-5wcv"},
+  "stages": [
+    {"name": "dormant-security-image", "now": true, "changes": ["exact patched dependency and audited lock", "new uniquely versioned layout and UTI decoders", "missing Contents explicitly rejected, explicit empty stream accepted", "exact dependency artifact, policy, engine and extraction self-hash admission", "old source operational entrypoints fail closed before DB/provider/write; reads and recovery remain available"], "source_activation": false},
+    {"name": "future-source-authority", "now": false, "requires": ["authorized actual installed policy/migration ledger reconciliation", "new registry/configuration/policy allocation", "complete transition for all active PDF consumers", "fresh approved source rollout and all original proof gates"]}
+  ],
+  "historical_preservation": {
+    "decoder_worker_files": "byte-identical at existing paths; archived authority, not runtime-certified under 6.21.1",
+    "registries_specifications_configurations_policies": "all historical outputs identical; no new active registry/policy/SQL number",
+    "runtime_guard_hash_coupling": "Named reviewer rejected archive substitution. Keep historically hashed runtime files unchanged at their paths. Guard the reviewed executable command with a new dispatcher before registry/DSN/runtime import/DB/provider/write. Old direct .run functions are internal historical library code, not authorized process entrypoints; CI inventories operational source commands and rejects unguarded callers. No shadow hash mapping.",
+    "test_transition": "Explicitly retarget missing-content assertion to replacement; retain full rejection contract, add replacement empty-stream test, pin previous test artifact SHA through preservation manifest. No skip/xfail/import alias.",
+    "financial_bounds": "All original numerical/identity/date/TER rules and decoder CPU/wall/memory/source/page/stream/text limits unchanged. No unsafe legacy dependency isolation, monkeypatch, waiver or source request."
+  },
+  "guard": {
+    "active_authorities": [],
+    "policy": "No currently registered source specification has a compatible dependency contract; current operational PDF source paths always deny. No environment bypass or caller-invented contract can activate source work.",
+    "boundaries": ["registered book/monthly/refresh source CLI run functions before lazy runtime import", "monthly append command", "legacy facts publication and evidence import commands", "PDF capture/extraction and IDCW discovery CLI", "raw legacy factsheet CLI"],
+    "not_blocked": ["read-only policy/configuration imports", "fixed diagnostic worker", "source inspection and known-prior recovery", "pure archived algorithm tests", "normal NAV/audit jobs"]
+  },
+  "verification": ["pin every historical decoder/worker plus registered configuration and policy output", "unmocked no-IO rejection at every guarded operational boundary", "real isolated new workers: missing/empty/malformed/encrypted/stream bounds", "exact-version/policy/engine/self-hash independent negative tests", "all retained mechanics with explicit fixture isolation where old execution is blocked", "focused/full non-PG, contracts/lint/credentials/audit/collection", "named exact-head review, resolve/re-review", "whole native CI before merge; whole main CI and images twice before diagnostic controller delivery"],
+  "delivery": "Separate branch/PR against actual main; reviewer clarification and complete review required. No cloud/data/IAM/schedule/action, diagnostic allocation, merge or deployment from this design alone.",
+  "review": "Consultation from named reviewer supports dormant route; implementation is not reviewed yet. Implementer self-review is not independent approval."
+}
