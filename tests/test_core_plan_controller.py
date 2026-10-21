@@ -9,8 +9,27 @@ import requests
 
 from mfdataindia.review import core_plan_controller as core
 from mfdataindia.review.core_plan_backend import Backend, metadata_arguments, load_approval
+from mfdataindia.review import core_plan_backend
 from mfdataindia.review.rollout import seal_evidence
 from test_verified_review_rollout import manifest
+
+NAMESPACE = "123456789012"  # Provider-free synthetic project number ONLY.
+JOB_UID = "11111111-1111-4111-8111-111111111111"
+EXEC_UID = "22222222-2222-4222-8222-222222222222"
+
+
+def metadata(name, *, execution=False, annotations=None):
+    result = {"name": name, "namespace": NAMESPACE,
+              "uid": EXEC_UID if execution else JOB_UID, "generation": 1,
+              "creationTimestamp": "2026-10-21T20:00:01Z" if execution else "2026-10-21T20:00:00Z",
+              "labels": {"cloud.googleapis.com/location": core.REGION},
+              "annotations": {"run.googleapis.com/creator": core.ACCOUNT,
+                              "run.googleapis.com/lastModifier": core.ACCOUNT,
+                              **(annotations or {})}}
+    if execution:
+        result["labels"].update({"run.googleapis.com/job": core.NAME,
+            "run.googleapis.com/jobUid": JOB_UID, "run.googleapis.com/jobGeneration": "1"})
+    return result
 
 
 def approval(**changes):
@@ -90,7 +109,7 @@ def test_metadata_adapter_denies_out_of_scope_commands_targets_and_injection(kin
 @pytest.mark.parametrize("kind,name", [("service", "tlws-mf-data-dev"),
                                       ("job", core.NAME), ("executions", None),
                                       ("schedule", "tlws-mf-official-facts-refresh-dev"),
-                                      ("operator", None), ("bucket", None)])
+                                      ("operator", None), ("bucket", None), ("project", None)])
 def test_metadata_resource_reads_pin_project_region_and_have_no_write_verb(kind, name):
     args = metadata_arguments(kind, name)
     assert "--project=trillionlane-dev" in args
@@ -132,6 +151,7 @@ class FakeBackend:
         self.events.append("preflight")
         if self.defect == "preflight":
             raise ValueError("synthetic existing job")
+        return NAMESPACE
 
     def protected(self):
         self.protected_reads += 1
@@ -148,8 +168,12 @@ class FakeBackend:
         spec = deepcopy(self.value["request"]["spec"])
         if self.defect == "deployed":
             spec["template"]["spec"]["template"]["spec"]["maxRetries"] = 1
-        return {"metadata": {"name": core.NAME, "generation": 1}, "spec": spec,
-                "status": {"conditions": [{"type": "Ready", "status": "True"}]}}
+        status = {"conditions": [{"type": "Ready", "status": "True"}], "executionCount": 0}
+        if "execute" in self.events:
+            status.update({"executionCount": 1, "latestCreatedExecution": {
+                "name": core.NAME + "-abcde", "creationTimestamp": "2026-10-21T20:00:01Z"}})
+        return {"apiVersion": "run.googleapis.com/v1", "kind": "Job",
+                "metadata": metadata(core.NAME), "spec": spec, "status": status}
 
     def execute(self):
         self.events.append("execute")
@@ -159,10 +183,14 @@ class FakeBackend:
         task = deepcopy(self.value["task"])
         if self.defect == "immutable":
             task["containers"][0]["args"] = ["other-script"]
-        return {"metadata": {"name": name, "annotations": self.value["annotations"]},
+        return {"apiVersion": "run.googleapis.com/v1", "kind": "Execution",
+                "metadata": metadata(name, execution=True, annotations=self.value["annotations"]),
                 "spec": {"taskCount": 1, "parallelism": 1, "template": {"spec": task}},
                 "status": {"succeededCount": 1, "conditions": [{"type": "Completed",
                     "status": "False" if self.defect == "terminal" else "True"}]}}
+
+    def executions(self):
+        return [self.execution(core.NAME + "-abcde")] if "execute" in self.events else []
 
     def certificate(self, name):
         result = {"code": 154117, "query_file_sha256": core.QUERY_SHA,
@@ -283,3 +311,169 @@ def test_result_rejects_changed_sql_bindings_or_executing_plan(field, value):
     result["plans"][0][field] = value
     with pytest.raises(ValueError):
         core.validate_result(a, seal_evidence(a.manifest, core.STAGE, result))
+
+
+@pytest.mark.parametrize("token", ["startExecutionToken", "runExecutionToken"])
+def test_job_spec_execution_tokens_never_admitted_even_if_empty(token):
+    b = FakeBackend(approval())
+    job = b.job()
+    job["spec"][token] = ""
+    with pytest.raises(ValueError, match="template-only"):
+        core.deployed(job, b.value, namespace=NAMESPACE)
+
+
+@pytest.mark.parametrize("defect", ["template_connector", "top_breakglass", "execution_template_label",
+                                    "top_extra_metadata", "wrong_creator", "wrong_namespace",
+                                    "wrong_location", "bool_task_count", "extra_execution_spec"])
+def test_whole_metadata_and_spec_reject_extra_capabilities(defect):
+    b = FakeBackend(approval())
+    job = b.job()
+    if defect == "template_connector":
+        job["spec"]["template"]["metadata"]["annotations"]["run.googleapis.com/vpc-access-connector"] = "other"
+    elif defect == "top_breakglass":
+        job["metadata"]["annotations"]["run.googleapis.com/binary-authorization-breakglass"] = "unapproved"
+    elif defect == "execution_template_label":
+        job["spec"]["template"]["metadata"]["labels"] = {"unexpected": "capability"}
+    elif defect == "top_extra_metadata":
+        job["metadata"]["ownerReferences"] = [{"unapproved": True}]
+    elif defect == "wrong_creator":
+        job["metadata"]["annotations"]["run.googleapis.com/creator"] = "other@example.com"
+    elif defect == "wrong_namespace":
+        job["metadata"]["namespace"] = "999999999999"
+    elif defect == "wrong_location":
+        job["metadata"]["labels"]["cloud.googleapis.com/location"] = "other"
+    elif defect == "bool_task_count":
+        job["spec"]["template"]["spec"]["taskCount"] = True
+    else:
+        job["spec"]["template"]["spec"]["extraCapability"] = "unapproved"
+    with pytest.raises(ValueError):
+        core.deployed(job, b.value, namespace=NAMESPACE)
+
+
+@pytest.mark.parametrize("field,value", [("executionCount", 1), ("executionCount", True),
+    ("latestCreatedExecution", {"name": core.NAME + "-prior"})])
+def test_unstarted_job_status_must_have_no_prior_executions(field, value):
+    b = FakeBackend(approval())
+    job = b.job()
+    job["status"][field] = value
+    with pytest.raises(ValueError):
+        core.job_execution_status(job)
+
+
+@pytest.mark.parametrize("field,value", [("uid", "33333333-3333-4333-8333-333333333333"),
+                                       ("creationTimestamp", "2026-10-21T20:00:02Z")])
+def test_resource_replacement_changes_seal_even_when_profile_identical(field, value):
+    b = FakeBackend(approval())
+    job = b.job()
+    sealed = core.deployed(job, b.value, namespace=NAMESPACE)
+    job["metadata"][field] = value
+    assert core.deployed(job, b.value, namespace=NAMESPACE) != sealed
+
+
+@pytest.mark.parametrize("defect", ["parent_uid", "parent_name", "parent_generation", "extra_annotation",
+                                    "execution_uid", "execution_created", "whole_spec"])
+def test_immutable_execution_binds_original_identity_parent_and_entire_input(defect):
+    b = FakeBackend(approval())
+    seal = core.deployed(b.job(), b.value, namespace=NAMESPACE)
+    e = b.execute()
+    identity = core.immutable_execution(e, b.value, seal, namespace=NAMESPACE)
+    if defect.startswith("parent"):
+        key = {"parent_uid": "jobUid", "parent_name": "job", "parent_generation": "jobGeneration"}[defect]
+        e["metadata"]["labels"]["run.googleapis.com/" + key] = "other"
+    elif defect == "extra_annotation":
+        e["metadata"]["annotations"]["run.googleapis.com/encryption-key"] = "unapproved"
+    elif defect == "execution_uid":
+        e["metadata"]["uid"] = "33333333-3333-4333-8333-333333333333"
+    elif defect == "execution_created":
+        e["metadata"]["creationTimestamp"] = "2026-10-21T20:00:02Z"
+    else:
+        e["spec"]["extraCapability"] = "unapproved"
+    with pytest.raises(ValueError):
+        core.immutable_execution(e, b.value, seal, namespace=NAMESPACE, identity=identity)
+
+
+@pytest.mark.parametrize("injected_at,expected_executes", [(1, 0), (2, 0), (3, 1), (4, 1)])
+def test_sibling_inventory_before_run_after_run_or_immediately_before_result_never_admitted(tmp_path, injected_at, expected_executes):
+    a = approval().model_copy(update={"root": str(tmp_path)})
+    (tmp_path / "approval.json").write_text("{}")
+    b = FakeBackend(a)
+    original = b.executions
+    inventory_reads = 0
+    def executions():
+        nonlocal inventory_reads
+        inventory_reads += 1
+        rows = original()
+        if inventory_reads == injected_at:
+            rows.append(b.execution(core.NAME + "-other"))
+        return rows
+    b.executions = executions
+    records = {}
+    with pytest.raises(ValueError):
+        core.run(a, b, claim=lambda p, v: records.setdefault(p, deepcopy(v)))
+    assert b.events.count("execute") == expected_executes
+    assert b.events.count("create") == 1
+    assert tmp_path / "result.json" not in records
+    assert tmp_path / "failure.json" in records
+
+
+def test_already_started_create_response_rejected_before_fresh_read_or_explicit_run(tmp_path):
+    a = approval().model_copy(update={"root": str(tmp_path)})
+    (tmp_path / "approval.json").write_text("{}")
+    b = FakeBackend(a)
+    original = b.create
+    def create(body):
+        job = original(body)
+        job["status"]["executionCount"] = 1
+        return job
+    b.create = create
+    with pytest.raises(ValueError, match="execution count"):
+        core.run(a, b, claim=lambda *_: None)
+    assert b.events == ["preflight", "create"]
+
+
+@pytest.mark.parametrize("changed_read,expected_executes", [(2, 0), (3, 0), (4, 0), (5, 1), (6, 1)])
+def test_recreated_job_uid_at_any_read_rejects_without_duplicate_execution(tmp_path, changed_read, expected_executes):
+    a = approval().model_copy(update={"root": str(tmp_path)})
+    (tmp_path / "approval.json").write_text("{}")
+    b = FakeBackend(a)
+    original = b.job
+    reads = 0
+    def job():
+        nonlocal reads
+        reads += 1
+        value = original()
+        if reads == changed_read:
+            value["metadata"]["uid"] = "33333333-3333-4333-8333-333333333333"
+        return value
+    b.job = job
+    records = {}
+    with pytest.raises(ValueError):
+        core.run(a, b, claim=lambda p, v: records.setdefault(p, deepcopy(v)))
+    assert b.events.count("execute") == expected_executes
+    assert tmp_path / "result.json" not in records
+
+
+@pytest.mark.parametrize("project", [None, {"projectId": "other", "projectNumber": NAMESPACE},
+    {"projectId": core.PROJECT, "projectNumber": "ambiguous"},
+    {"projectId": core.PROJECT, "projectNumber": NAMESPACE}])
+def test_preflight_binds_fresh_project_number_before_any_image_or_write(monkeypatch, project):
+    a = approval(controller_sha256=core.hashlib.sha256(Path(core.__file__).read_bytes()).hexdigest())
+    backend = Backend(a, Path.cwd())
+    events = []
+    monkeypatch.setattr(core_plan_backend, "verify_checkout", lambda *_: events.append("clean_git"))
+    monkeypatch.setattr(core_plan_backend, "verify_image", lambda *_: events.append("OCI_read"))
+    def read(kind, name=None):
+        events.append(kind)
+        return {"auth": [{"account": core.ACCOUNT}],
+                "operator": {"bindings": [{"role": "roles/owner", "members": ["user:" + core.ACCOUNT]}]},
+                "jobs": [], "executions": [], "project": project or {}}[kind]
+    monkeypatch.setattr(backend, "metadata", read)
+    if project and project.get("projectId") == core.PROJECT and project.get("projectNumber") == NAMESPACE:
+        assert backend.preflight(a) == NAMESPACE
+        assert events[-3:] == ["project", "OCI_read", "OCI_read"]
+    else:
+        with pytest.raises(ValueError, match="projectNumber"):
+            backend.preflight(a)
+        assert "OCI_read" not in events
+    assert not backend.created and not backend.executed
+    backend.session.close()

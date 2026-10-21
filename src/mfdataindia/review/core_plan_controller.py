@@ -6,6 +6,7 @@ Failed or ambiguous create/run requests are NEVER retried.
 """
 
 import hashlib
+from datetime import datetime
 import os
 from pathlib import Path
 import re
@@ -113,22 +114,124 @@ def validate_task(actual, expected):
         raise ValueError("all environment values and exact secret references required")
 
 
-def deployed(job, prepared):
-    if job["metadata"]["name"] != NAME or str(job["metadata"]["generation"]) != "1":
+def resource_identity(document, *, namespace, name, kind, prepared=None, parent=None):
+    """Reject unapproved metadata capabilities, retain stable provider identity.
+
+    ObjectMeta ownerReferences is documented as unsupported by Cloud Run;
+    execution parent proof uses the provider job/jobUid/jobGeneration labels.
+    """
+    if (set(document) - {"apiVersion", "kind", "metadata", "spec", "status"}
+            or document.get("apiVersion") != "run.googleapis.com/v1"
+            or document.get("kind") != kind):
+        raise ValueError("exact resource kind/schema required")
+    metadata = document["metadata"]
+    allowed = {"name", "namespace", "uid", "creationTimestamp", "generation",
+               "resourceVersion", "selfLink", "labels", "annotations"}
+    if (set(metadata) - allowed or metadata.get("name") != name
+            or metadata.get("namespace") not in (namespace, PROJECT)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{15,127}", metadata.get("uid", ""))
+            or isinstance(metadata.get("generation"), bool)
+            or str(metadata.get("generation")) != "1"):
+        raise ValueError("new exact provider resource identity required")
+    created = metadata.get("creationTimestamp", "")
+    if not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z", created):
+        raise ValueError("provider UTC creation timestamp required")
+    datetime.fromisoformat(created.replace("Z", "+00:00"))
+    annotations = metadata.get("annotations", {})
+    generated = {"run.googleapis.com/creator", "run.googleapis.com/lastModifier",
+                 "run.googleapis.com/operation-id"}
+    expected = prepared["annotations"] if kind == "Execution" else {}
+    if (set(annotations) - generated - set(expected)
+            or any(annotations.get(k) != v for k, v in expected.items())
+            or annotations.get("run.googleapis.com/creator") != ACCOUNT
+            or ("run.googleapis.com/lastModifier" in annotations
+                and annotations["run.googleapis.com/lastModifier"] != ACCOUNT)):
+        raise ValueError("unapproved resource annotation/creator capability")
+    operation = annotations.get("run.googleapis.com/operation-id")
+    if operation is not None and not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", operation):
+        raise ValueError("unexpected provider operation identity")
+    labels = metadata.get("labels", {})
+    wanted = {"cloud.googleapis.com/location": REGION}
+    if kind == "Execution":
+        wanted.update({"run.googleapis.com/job": NAME,
+                       "run.googleapis.com/jobUid": parent["identity"]["uid"],
+                       "run.googleapis.com/jobGeneration": "1"})
+    if labels != wanted:
+        raise ValueError("exact location and immutable parent labels required")
+    return {k: metadata[k] for k in ("name", "namespace", "uid", "creationTimestamp", "generation")}
+
+
+def deployed(job, prepared, *, namespace):
+    identity = resource_identity(job, namespace=namespace, name=NAME, kind="Job")
+    if set(job["spec"]) != {"template"}:
+        raise ValueError("template-only JobSpec required; execution tokens forbidden")
+    if str(job["metadata"]["generation"]) != "1":
         raise ValueError("new exact first-generation diagnostic job required")
     template = job["spec"]["template"]
+    if set(template) != {"metadata", "spec"} or set(template["metadata"]) != {"annotations"}:
+        raise ValueError("whole approved execution template metadata required")
     spec = template["spec"]
-    if spec.get("taskCount") != 1 or spec.get("parallelism") != 1:
+    if (set(spec) != {"taskCount", "parallelism", "template"}
+            or any(type(spec.get(k)) is not int or spec[k] != 1 for k in ("taskCount", "parallelism"))
+            or set(spec["template"]) != {"spec"}):
         raise ValueError("exact one task and parallelism required")
     annotations = template["metadata"]["annotations"]
     verify_network(annotations)
-    if annotations.get("run.googleapis.com/execution-environment") != "gen2":
-        raise ValueError("explicit gen2 diagnostic task required")
+    if annotations != prepared["annotations"]:
+        raise ValueError("WHOLE exact approved annotations required; no extra capabilities")
     task = spec["template"]["spec"]
     validate_task(task, prepared["task"])
     return {"task": task, "task_hash": fingerprint(task),
-            "network": {k: annotations[k] for k in prepared["annotations"]},
-            "whole_spec": spec, "generation": job["metadata"]["generation"], "before_execute": True}
+            "network": annotations, "whole_spec": spec, "whole_job_spec": job["spec"],
+            "identity": identity, "labels": job["metadata"]["labels"],
+            "provider_annotations": {k: v for k, v in job["metadata"]["annotations"].items()
+                                     if k != "run.googleapis.com/operation-id"},
+            "before_execute": True}
+
+
+def immutable_execution(execution, prepared, seal, *, namespace, identity=None):
+    name = execution["metadata"]["name"]
+    if not re.fullmatch(re.escape(NAME) + r"-[a-z0-9]{5,10}", name):
+        raise ValueError("sole execution response identity ambiguous")
+    actual = resource_identity(execution, namespace=namespace, name=name, kind="Execution",
+                               prepared=prepared, parent=seal)
+    if identity is not None and actual != identity:
+        raise ValueError("original immutable execution identity changed")
+    if (execution["spec"] != seal["whole_spec"]
+            or actual["namespace"] != seal["identity"]["namespace"]
+            or actual["uid"] == seal["identity"]["uid"]):
+        raise ValueError("WHOLE immutable execution/parent differs from seal")
+    return actual
+
+
+def job_execution_status(job, execution=None):
+    status = job.get("status", {})
+    count, latest = status.get("executionCount", 0), status.get("latestCreatedExecution")
+    expected_count = 1 if execution is not None else 0
+    if type(count) is not int or count != expected_count:
+        raise ValueError("exact sole job execution count required")
+    if execution is None:
+        if latest not in (None, {}):
+            raise ValueError("job already has a latest-created execution")
+    else:
+        if (not isinstance(latest, dict) or latest.get("name") != execution["name"]
+                or latest.get("creationTimestamp") != execution["creationTimestamp"]
+                or latest.get("deletionTimestamp")):
+            raise ValueError("latest execution does not bind sole run response")
+
+
+def execution_inventory(backend, prepared, seal, *, namespace, execution=None):
+    """Fail closed on unavailable/lagging/extra executions; never submit a retry."""
+    job, executions = backend.job(), backend.executions()
+    if deployed(job, prepared, namespace=namespace) != seal:
+        raise ValueError("whole created job identity/profile drift")
+    job_execution_status(job, execution)
+    expected_count = 1 if execution is not None else 0
+    if not isinstance(executions, list) or len(executions) != expected_count:
+        raise ValueError("exact sole execution inventory required")
+    if execution is not None:
+        immutable_execution(executions[0], prepared, seal, namespace=namespace, identity=execution)
+    return {"job": job, "executions": executions}
 
 
 def validate_result(approval, certificate):
@@ -179,7 +282,9 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
     claim(START, {"pid": os.getpid(), "approval_hash": approval_hash, "root": str(root)})
     before = None
     try:
-        backend.preflight(approval)  # Git/operator/OCI + empty jobs AND executions.
+        namespace = backend.preflight(approval)  # Verified projectNumber + Git/operator/OCI/absence.
+        if not isinstance(namespace, str) or not re.fullmatch(r"[0-9]{6,20}", namespace):
+            raise ValueError("verified explicit project namespace required")
         before = backend.protected()
         claim(root / "protected-before.json", before)
         if fingerprint(before) != approval.protected_hash:
@@ -188,11 +293,19 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
                                      "budget": prepared["budget"], "request_sha256": hashlib.sha256(prepared["body"]).hexdigest()})
         created = backend.create(prepared["body"])
         claim(root / "create-response.json", created)
+        created_seal = deployed(created, prepared, namespace=namespace)
+        job_execution_status(created)
+        claim(root / "created-identity.json", created_seal)
+        claim(root / "created-inventory.json", execution_inventory(
+            backend, prepared, created_seal, namespace=namespace))
         deadline = clock() + 300
         for index in range(31):
             job = backend.job()
             claim(root / f"created-job-{index:02}.json", job)
-            seal = deployed(job, prepared)
+            seal = deployed(job, prepared, namespace=namespace)
+            job_execution_status(job)
+            if seal != created_seal:
+                raise ValueError("created Job identity/profile changed during readiness")
             ready = [c for c in job.get("status", {}).get("conditions", []) if c["type"] == "Ready"]
             if len(ready) == 1 and ready[0]["status"] == "True":
                 break
@@ -203,25 +316,23 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
             raise TimeoutError("diagnostic readiness inspection exhausted")
         claim(root / "deployed-before-execute.json", seal)
         # Recheck current immutable-profile candidate immediately before run.
-        if deployed(backend.job(), prepared) != seal or backend.protected() != before:
+        if backend.protected() != before:
             raise ValueError("deployed/protected profile drift before execute")
+        claim(root / "inventory-before-execute.json", execution_inventory(
+            backend, prepared, seal, namespace=namespace))
         claim(root / "execute-intent.json", {"job": NAME, "deployed_hash": fingerprint(seal), "body": {}})
         execution = backend.execute()
-        name = execution["metadata"]["name"]
-        if not re.fullmatch(re.escape(NAME) + r"-[a-z0-9]{5,10}", name):
-            raise ValueError("sole execution response identity ambiguous")
         claim(root / "original-execution.json", execution)
+        execution_id = immutable_execution(execution, prepared, seal, namespace=namespace)
+        name = execution_id["name"]
+        claim(root / "inventory-after-execute.json", execution_inventory(
+            backend, prepared, seal, namespace=namespace, execution=execution_id))
         deadline = clock() + 720
         for index in range(73):
             observed = backend.execution(name)
             claim(root / f"execution-{index:02}.json", observed)
-            verify_network(observed["metadata"].get("annotations", {}))
-            if {k: observed["metadata"]["annotations"].get(k) for k in seal["network"]} != seal["network"]:
-                raise ValueError("immutable whole network/environment differs from preexecute seal")
-            spec, status = observed["spec"], observed["status"]
-            if (observed["metadata"]["name"] != name or spec.get("taskCount") != 1
-                    or spec.get("parallelism") != 1 or spec["template"]["spec"] != seal["task"]):
-                raise ValueError("WHOLE immutable execution differs from preexecute seal")
+            immutable_execution(observed, prepared, seal, namespace=namespace, identity=execution_id)
+            status = observed["status"]
             completed = [c for c in status.get("conditions", []) if c["type"] == "Completed"]
             if (len(completed) != 1 or any(status.get(k, 0) for k in ("failedCount", "retriedCount", "cancelledCount"))
                     or completed[0]["status"] == "False"):
@@ -252,6 +363,12 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
             raise
     # No completed diagnostic receipt exists until the final full protected
     # snapshot succeeds and matches. Even this result is NOT rollout acceptance.
+    try:
+        claim(root / "inventory-before-result.json", execution_inventory(
+            backend, prepared, seal, namespace=namespace, execution=execution_id))
+    except Exception as error:
+        claim(root / "failure.json", {"error_type": type(error).__name__, "acceptance": False})
+        raise
     claim(root / "result.json", {"execution": name, "certificate": certificate,
                                   "diagnostic_only": True, "acceptance": False})
     return result

@@ -26,6 +26,8 @@ def metadata_arguments(kind, name=None):
         return ["auth", "list", "--filter=account:" + core.ACCOUNT, "--format=json"]
     if kind == "operator" and name is None:
         args = ["projects", "get-iam-policy", core.PROJECT]
+    elif kind == "project" and name is None:
+        args = ["projects", "describe", core.PROJECT]
     elif kind in ("service", "serviceIAM") and name in SERVICES:
         args = ["run", "services", "describe" if kind == "service" else "get-iam-policy", name]
     elif kind in ("job", "jobIAM") and name in (*JOBS, core.NAME):
@@ -105,10 +107,15 @@ class Backend:
             raise ValueError("existing operator authorization unavailable; never add grants")
         if self.metadata("jobs") or self.metadata("executions"):
             raise ValueError("existing job/execution: inspect original only, never duplicate")
+        project = self.metadata("project")
+        if (project.get("projectId") != core.PROJECT
+                or not re.fullmatch(r"[0-9]{6,20}", str(project.get("projectNumber", "")))):
+            raise ValueError("explicit projectNumber binding unavailable")
         # Both fresh checks download only immutable manifest/config bytes, never
         # layers; independent image-preparation/recheck evidence still required.
         for _ in range(2):
             verify_image(self, approval.manifest.image, approval.manifest.git_sha)
+        return str(project["projectNumber"])
 
     def protected(self):
         queries = ([("service", n) for n in SERVICES] + [("serviceIAM", n) for n in SERVICES]
@@ -158,6 +165,9 @@ class Backend:
 
     def execution(self, name):
         return self.metadata("execution", name)
+
+    def executions(self):
+        return self.metadata("executions")
 
     def certificate(self, name):
         for attempt in range(6):
