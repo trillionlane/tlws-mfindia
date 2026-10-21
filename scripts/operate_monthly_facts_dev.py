@@ -8,12 +8,15 @@ import sys
 
 from mfdataindia.enrichment.monthly_deployment import execute
 from mfdataindia.review.rollout import Manifest
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument("operation", choices=["install", "append", "inspect"])
         args = parser.parse_args()
+        if args.operation == "append":
+            require_source_authority()
         print(
             json.dumps(
                 execute(

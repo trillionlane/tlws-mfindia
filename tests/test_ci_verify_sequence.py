@@ -33,12 +33,14 @@ def test_every_original_step_body_and_order_is_preserved():
     assert second[:3] == expected[:3]  # Only fresh-runner setup repeats.
     addition = "- name: Verify bounded certification input native exec in both images"
     worker = "- name: Verify packaged read-only core plan worker binding"
-    # Preserve all frozen original bodies/order byte-for-byte. Both later
+    security = "- name: Verify patched PDF workers and dormant source guards in both images"
+    # Preserve all frozen original bodies/order byte-for-byte. All later
     # mandatory steps are additive, after every original gate, in the same job.
-    assert [s["label"] for s in second[-2:]] == [addition, worker]
-    assert first + second[3:-2] == expected
+    assert [s["label"] for s in second[-3:]] == [addition, security, worker]
+    assert first + second[3:-3] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
     assert sum(s["label"] == worker for s in first + second) == 1
+    assert sum(s["label"] == security for s in first + second) == 1
     assert len(expected) == 40
 
 
@@ -91,3 +93,13 @@ def test_new_worker_smoke_checks_actual_packaged_program_and_git_without_dsn():
     assert "mismatched image Git/program binding accepted" in smoke
     for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
         assert forbidden not in smoke
+
+
+def test_security_smoke_is_additive_both_packaged_images_without_resource_or_gate_changes():
+    _, _, images = jobs()
+    addition = images.split("      - name: Verify patched PDF workers and dormant source guards in both images\n")[1]
+    assert addition.count("/app/scripts/smoke_pdf_security_compatibility.py") == 2
+    assert '"$image" /app/scripts/smoke_pdf_security_compatibility.py' in addition
+    assert '"$tools_image" /app/scripts/smoke_pdf_security_compatibility.py' in addition
+    for forbidden in ("--privileged", "--ulimit", "--memory", "--cpus", "|| true", "continue-on-error"):
+        assert forbidden not in addition

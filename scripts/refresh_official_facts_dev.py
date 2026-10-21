@@ -7,10 +7,12 @@ import os
 import re
 from pathlib import Path
 from psycopg.conninfo import conninfo_to_dict
-from mfdataindia.enrichment import refresh_runtime, refresh_policy
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 
 
 def validate(environment, root, *, task_count=1):
+    from mfdataindia.enrichment import refresh_runtime, refresh_policy
+
     configuration = json.loads((root / "config/official-facts-dev.json").read_text())
     if configuration != {
         "format": "official-facts-runtime-config-v1",
@@ -45,6 +47,9 @@ def validate(environment, root, *, task_count=1):
 
 
 def run(environment, root):
+    require_source_authority()
+    from mfdataindia.enrichment import refresh_runtime
+
     dsn = validate(environment, root)
     return refresh_runtime.execute(dsn, environment["CLOUD_RUN_EXECUTION"])
 
