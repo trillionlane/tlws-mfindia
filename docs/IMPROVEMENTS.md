@@ -154,8 +154,11 @@ fund-resolution paths before choosing any migration or adapter.
 ### Finite implementation slices and exit evidence
 
 1. **Consumer/source contract:** reconcile existing TLAM fund APIs, ownership,
-   secure credential boundary and all five pictured report families including
-   Step Up; produce a field/facility matrix, required-field rules and explicit
+   secure credential boundary and all six documented file types (`SCH`, `SIP`,
+   `STP`, `SWP`, `NAV`, `SET`). List pictured Step Up separately as a seventh
+   potential operation with unverified code/layout/support; account for every
+   item as supported, unsupported or unresolved. Produce a field/facility matrix,
+   required-field rules and explicit
    missing evidence. No credentials in docs or speculative parser layouts.
 2. **Reference acquisition and mapping:** reviewed parser/auth fixtures, separate
    immutable originals and staged snapshots, exact variant mapping, complete

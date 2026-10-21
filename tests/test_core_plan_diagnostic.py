@@ -5,8 +5,10 @@ from datetime import date
 from decimal import Decimal
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+from test_verified_review_store import verified_db as verified_db
 
 
 WORKER = Path(__file__).parents[1] / "scripts/diagnose_core_fund_plan_dev.py"
@@ -68,6 +70,11 @@ def verified(monkeypatch):
     monkeypatch.setattr(worker, "verify_runtime", lambda conn, purpose: calls.append(purpose))
     cfg = {"generation": 29, "policy_hash": worker.fingerprint(worker.book_sources.current_policy(4))}
     monkeypatch.setattr(worker.current, "configuration", lambda conn: dict(cfg))
+    monkeypatch.setattr(worker.current, "capture", lambda conn: {
+        "projection_active": True, "configuration_hash": worker.fingerprint(cfg),
+        "view_hashes": {"resolved": "a" * 64},
+    })
+    monkeypatch.setattr(worker.current, "view_definition", lambda conn, name: "SELECT sealed_projection")
     return calls, cfg
 
 
@@ -102,6 +109,8 @@ def test_full_plans_no_sibling_execution_and_one_own_select(verified, own, eligi
     assert result["current_own_facts_trigger_fallback"] is eligible
     assert result["original_own_facts_rows"] == len(own)
     assert result["actual_sibling_queries_executed"] == 0
+    assert result["sealed_active_projection"]["complete_capture"]["projection_active"] is True
+    assert result["sealed_active_projection"]["active_core_view_hash"] == worker.fingerprint("SELECT sealed_projection")
     assert result["historical_K_plan_or_core_role_proved"] is False
     assert result["performance_acceptance"] is False
     assert result["rollout_acceptance"] is False
@@ -188,3 +197,91 @@ def test_own_hash_handles_actual_decimal_date_types_without_float_rounding():
     assert worker.own_facts_hash(row) != worker.own_facts_hash({**row, "aum": str(row["aum"])})
     with pytest.raises(TypeError):
         worker.own_facts_hash({"unknown": object()})
+
+
+@pytest.mark.parametrize("captured", [None, {"projection_active": False}])
+def test_stored_configuration_without_active_projection_stops_before_explain(verified, monkeypatch, captured):
+    monkeypatch.setattr(worker.current, "capture", lambda conn: captured)
+    conn = Connection()
+    with pytest.raises(ValueError, match="active sealed"):
+        worker.diagnose(conn)
+    assert not any(q.startswith("EXPLAIN") or q == worker.queries._FACTS_SELECT for q, _ in conn.calls)
+
+
+def test_drifted_view_rejected_before_explain(verified, monkeypatch):
+    def drift(conn):
+        raise ValueError("current-facts view definitions differ from sealed installation")
+    monkeypatch.setattr(worker.current, "capture", drift)
+    conn = Connection()
+    with pytest.raises(ValueError, match="view definitions"):
+        worker.diagnose(conn)
+    assert not any(q.startswith("EXPLAIN") for q, _ in conn.calls)
+
+
+def test_projection_rechecked_after_queries(verified, monkeypatch):
+    states = iter([{"projection_active": True}, {"projection_active": False}])
+    monkeypatch.setattr(worker.current, "capture", lambda conn: next(states))
+    with pytest.raises(ValueError, match="active sealed"):
+        worker.diagnose(Connection())
+
+
+def binding_fixture():
+    manifest = SimpleNamespace(rollout_id=worker.DIAGNOSTIC_ID, cohort=[154117],
+                               canary_code=154117, git_sha="a" * 40, image="fixture-image")
+    environment = {"DEPLOYMENT_GIT_SHA": manifest.git_sha,
+                   "CORE_PLAN_PROGRAM_SHA256": worker.hashlib.sha256(WORKER.read_bytes()).hexdigest()}
+    return manifest, environment
+
+
+def test_binding_uses_actual_packaged_bytes_and_manifest_git_not_obsolete_image():
+    manifest, environment = binding_fixture()
+    binding = worker.worker_binding(manifest, environment)
+    assert binding == {"packaged_program_sha256": environment["CORE_PLAN_PROGRAM_SHA256"],
+                       "manifest_image": manifest.image, "manifest_git_sha": manifest.git_sha}
+
+
+@pytest.mark.parametrize("key,value", [("DEPLOYMENT_GIT_SHA", "b" * 40),
+                                       ("CORE_PLAN_PROGRAM_SHA256", "0" * 64),
+                                       ("CORE_PLAN_PROGRAM_SHA256", None)])
+def test_wrong_git_or_program_binding_rejected(key, value):
+    manifest, environment = binding_fixture()
+    environment[key] = value
+    with pytest.raises(ValueError, match="binding"):
+        worker.worker_binding(manifest, environment)
+
+
+@pytest.mark.parametrize("key,value", [("rollout_id", "dev-uti-gap-261021k"),
+                                       ("cohort", [123]), ("canary_code", 123)])
+def test_failed_identity_or_different_target_cannot_be_reused(key, value):
+    manifest, environment = binding_fixture()
+    setattr(manifest, key, value)
+    with pytest.raises(ValueError, match="binding"):
+        worker.worker_binding(manifest, environment)
+
+
+@pytest.mark.postgres
+def test_real_pg_configured_inactive_and_drifted_views_fail_before_any_plan(verified_db, monkeypatch):
+    # Existing historical synthetic projection fixture; only exercise the real
+    # common facade-sealing guard, not pretend this is live source4 acceptance.
+    from test_current_official_facts import prepared
+    from test_verified_review_store import connection
+    prepared(verified_db, monkeypatch)
+
+    class Guarded:
+        def __init__(self, conn):
+            self.conn = conn
+
+        def execute(self, statement, params=None):
+            assert not statement.startswith("EXPLAIN")
+            assert statement != worker.queries._FACTS_SELECT
+            return self.conn.execute(statement, params)
+
+    with connection(verified_db) as conn:
+        assert worker.current.configuration(conn)
+        with pytest.raises(ValueError, match="active sealed"):
+            worker.sealed_projection(Guarded(conn))
+        baseline = worker.current.configuration(conn)["baseline_definition"].rstrip(";\n ")
+        conn.execute("CREATE OR REPLACE VIEW mf.current_fund_facts AS SELECT * FROM ("
+                     + baseline + ") original WHERE false")
+        with pytest.raises(ValueError, match="projection drift"):
+            worker.sealed_projection(Guarded(conn))

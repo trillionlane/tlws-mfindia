@@ -32,11 +32,13 @@ def test_every_original_step_body_and_order_is_preserved():
     first, second = inventory(tests), inventory(images)
     assert second[:3] == expected[:3]  # Only fresh-runner setup repeats.
     addition = "- name: Verify bounded certification input native exec in both images"
-    # Preserve all frozen original bodies/order byte-for-byte. The sole new
-    # mandatory step is additive, after every original gate, in the same job.
-    assert second[-1]["label"] == addition
-    assert first + second[3:-1] == expected
+    worker = "- name: Verify packaged read-only core plan worker binding"
+    # Preserve all frozen original bodies/order byte-for-byte. Both later
+    # mandatory steps are additive, after every original gate, in the same job.
+    assert [s["label"] for s in second[-2:]] == [addition, worker]
+    assert first + second[3:-2] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
+    assert sum(s["label"] == worker for s in first + second) == 1
     assert len(expected) == 40
 
 
@@ -75,3 +77,17 @@ def test_new_transport_smoke_executes_both_final_images_without_resource_flags()
     assert '"$image" /app/scripts/certify_amc_books_transport_dev.py --help' in addition
     for forbidden in ("--privileged", "--ulimit", "--memory", "--cpus", "|| true", "continue-on-error"):
         assert forbidden not in addition
+
+
+def test_new_worker_smoke_checks_actual_packaged_program_and_git_without_dsn():
+    _, _, images = jobs()
+    smoke = images.split("      - name: Verify packaged read-only core plan worker binding\n")[1]
+    assert "sha256sum scripts/diagnose_core_fund_plan_dev.py" in smoke
+    assert '"$image" /app/scripts/diagnose_core_fund_plan_dev.py --help' in smoke
+    assert 'runpy.run_path("/app/scripts/diagnose_core_fund_plan_dev.py")' in smoke
+    assert 'DEPLOYMENT_GIT_SHA=$GITHUB_SHA' in smoke
+    assert 'CORE_PLAN_PROGRAM_SHA256=$program_sha' in smoke
+    assert 'w["worker_binding"](m,os.environ)' in smoke
+    assert "mismatched image Git/program binding accepted" in smoke
+    for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
+        assert forbidden not in smoke

@@ -38,7 +38,7 @@
       "depends_on": [],
       "implementation": [
         "First implement a bounded diagnostic worker for unchanged original queries at exact154117 using the existing restricted reader. One newly authorized create-only diagnostic job, one execution; no old job/root/manifest reuse.",
-        "Use non-executing EXPLAIN, not ANALYZE, and at most one original own-facts SELECT. Record complete plans, exact SQL/file/input hashes, current policy/configuration, effective identity and settings.",
+        "Build a new exact reviewed/merged-main immutable image containing the diagnostic worker after full head/main CI; old4157 image lacks the worker. Bind packaged program hash/OCI bytes/manifest Git/DEPLOYMENT_GIT_SHA, no inline injection. Use non-executing EXPLAIN, not ANALYZE, and at most one original own-facts SELECT. Record complete plans, exact SQL/file/input hashes, current policy/configuration, active sealed projection/view hash, effective identity and settings.",
         "The single sibling-facts join is a hypothesis, not confirmed root cause. A recovered source4/policy8 restricted-reader plan is not the historical active-K core-role plan.",
         "Only after evidence establishes the specific bottleneck, propose the minimal read-path change. Preserve every identity/AMC/plan/option/periodicity/category check, canonical ordering, family-safe borrowing, NULL/zero semantics and every response.",
         "Add independent result-equality and SQL-scope regressions, including missing/unusable facts, no sibling, identity collisions, Direct/Regular, Growth/IDCW and benchmark-only facts; preserve real unassessed signals:null."

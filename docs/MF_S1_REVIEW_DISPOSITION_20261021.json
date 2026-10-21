@@ -1,0 +1,32 @@
+{
+  "format": "mf-sprint-review-disposition-v1",
+  "reviewer_thread": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "reviewed_head": "5ddde451d06e965edd331a5fb05f9a718c38f848",
+  "original_verdict": "CHANGES_REQUIRED_NO_GO",
+  "current_status": "CORRECTIONS_IMPLEMENTED_REVIEW_AND_NATIVE_CI_PENDING_NOT_APPROVED",
+  "findings": [
+    {
+      "priority": "P1",
+      "finding": "Old4157 image cannot contain newly authored diagnostic worker; no runnable code/provenance path.",
+      "disposition": "Removed obsolete hard-coded image/Git pins. Worker requires fresh exact diagnostic identity/cohort, actual packaged program SHA equality with controller-pinned CORE_PLAN_PROGRAM_SHA256 and manifest Git==DEPLOYMENT_GIT_SHA before database connection. Evidence includes recomputed packaged program hash and manifest image/Git. Design now requires a NEW reviewed/merged-main immutable image, external OCI manifest/config byte verification and exact deployed/immutable input seal. No inline injection or old-image exception.",
+      "regressions": "Provider-free positive/negative identity, target, program hash and deployment Git cases; additive mandatory CI image smoke executes packaged --help, verifies actual worker bytes against host reviewed SHA and rejects wrong Git/program inputs. Existing image OCI-revision/user check and ALL earlier steps remain mandatory.",
+      "limitations": "Unit tests/image smoke are not actual provider image provenance. Build and verify final immutable DEV image only after exact-head re-review, whole CI, normal merge and independent main CI. Separate create-once controller remains unimplemented/unreviewed; NO cloud job may execute from this PR alone."
+    },
+    {
+      "priority": "P1",
+      "finding": "Stored configuration hash does not prove active sealed core projection.",
+      "disposition": "Before any EXPLAIN/own-facts SELECT, require current.capture to seal installed view definitions and confirm projection_state TRUE; baseline/inactive and drifted views fail closed. Recheck full capture and active core-view hash after reads and record them in evidence.",
+      "regressions": "Provider-free inactive/missing/drifted/recheck cases stop before plans as applicable. Added native PostgreSQL case against real installed historical synthetic projection: configured inactive baseline and drifted core view both reject the common facade guard before any query plan or own-facts read. This is a guard regression, not live source4 acceptance; native execution still pending CI.",
+      "limitations": "Current recovered source4/policy8 restricted-reader plan is still not historical active-K/core-role plan, measured root cause or performance acceptance. No state restoration, SET ROLE or wider query limit."
+    },
+    {
+      "priority": "P2",
+      "finding": "NSE report family matrix says five while listing six plus unresolved Step Up.",
+      "disposition": "Consistently enumerate SCH/SIP/STP/SWP/NAV/SET and separately identify Step Up as seventh potential operation, code/layout/support unverified; require supported/unsupported/unresolved accounting for every item.",
+      "regressions": "Contract/source matrix requirement retained in five-sprint plan and existing detailed NSE scope; no guessed Step Up file code or API request."
+    }
+  ],
+  "local_validation_so_far": "41 focused nonPG cases PASS0.84s; 1 new native PG case deselected locally. Stable full prepush26 checks PASS65.653s:2246nonPG PASS384PGdeselected50.73s/all21contracts/lint/credential scan/diff/no known audited-dependency vulnerabilities. Private unpublished mfdataindia0.1.0 explicitly NOT audited. Complete collection2630; native PostgreSQL/image CI still mandatory, no native/image success assumed.",
+  "not_merge_or_runtime_authority": true,
+  "no_data_IAM_runtime_or_schedule_mutation": true
+}

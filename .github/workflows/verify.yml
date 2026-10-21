@@ -378,3 +378,21 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_books_transport_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/smoke_certification_input_transport.py
           docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_certification_input_transport.py
+
+      - name: Verify packaged read-only core plan worker binding
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          program_sha="$(sha256sum scripts/diagnose_core_fund_plan_dev.py | cut -d ' ' -f 1)"
+          docker run --rm --entrypoint python "$image" /app/scripts/diagnose_core_fund_plan_dev.py --help
+          docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" --env "CORE_PLAN_PROGRAM_SHA256=$program_sha" "$image" -c '
+          import os,runpy
+          from types import SimpleNamespace
+          w=runpy.run_path("/app/scripts/diagnose_core_fund_plan_dev.py")
+          m=SimpleNamespace(rollout_id=w["DIAGNOSTIC_ID"],cohort=[154117],canary_code=154117,git_sha=os.environ["DEPLOYMENT_GIT_SHA"],image="CI_FIXTURE_NOT_PROVIDER_PROVENANCE")
+          b=w["worker_binding"](m,os.environ)
+          assert b["packaged_program_sha256"]==os.environ["CORE_PLAN_PROGRAM_SHA256"]
+          for key,value in [("DEPLOYMENT_GIT_SHA","0"*40),("CORE_PLAN_PROGRAM_SHA256","0"*64)]:
+              try: w["worker_binding"](m,{**os.environ,key:value})
+              except ValueError: pass
+              else: raise AssertionError("mismatched image Git/program binding accepted")'
