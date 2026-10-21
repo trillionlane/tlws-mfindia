@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 from mfdataindia.enrichment import evidence, operations, schemas, store
 from mfdataindia.store.dsn import resolve_dsn
 from mfdataindia.review.rollout import CONNECTION
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 
 
 def bounded_file(path, maximum):
@@ -47,6 +48,7 @@ def main():
         )
         return
     if args.operation == "import":
+        require_source_authority()
         intake = schemas.Intake.model_validate_json(bounded_file(args.manifest, 16384))
         content = bounded_file(args.document, evidence.MAX_BYTES)
     dsn = resolve_dsn(None, purpose="official enrichment operator")

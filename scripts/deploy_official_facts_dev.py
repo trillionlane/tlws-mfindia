@@ -14,6 +14,10 @@ from mfdataindia.review.policy import fingerprint
 
 
 def execute(manifest, environment, operation, *, root=Path("/app")):
+    if operation == "publish":
+        from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
+
+        require_source_authority()
     if operation not in ("install", "publish"):
         raise ValueError("unsupported facts operation")
     selection = facts_schemas.Selection.model_validate_json(environment["OFFICIAL_FACTS_SELECTION"]) if operation == "publish" else None
@@ -41,6 +45,10 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument("operation", choices=["install", "publish"])
         args = parser.parse_args()
+        if args.operation == "publish":
+            from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
+
+            require_source_authority()
         print(json.dumps(execute(Manifest.model_validate_json(os.environ["REVIEW_MANIFEST"]), os.environ, args.operation), sort_keys=True))
     except Exception as exc:
         print("official facts operation failed: " + type(exc).__name__, file=sys.stderr)

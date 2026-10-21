@@ -1,0 +1,16 @@
+{
+  "format": "pdf-security-review-disposition-v1",
+  "reviewer_thread": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "reviewed_head": "42af58d12be2bbe6b4fec28f024ff09bf1eee4af",
+  "verdict": "CHANGES_REQUESTED: no P1, one P2",
+  "findings": [{
+    "priority": "P2",
+    "issue": "New UTI-v4 engine hash omitted historical layout_book_pdf policy module reached through retained v2/v1 policies",
+    "resolution": "Add actual historical layout module bytes to NEW v4 engine only; historical file and every old engine/config/policy stay unchanged",
+    "regression": "Synthetic read-only byte-tamper test proves new engine changes independently of historical manifest, then original bytes/hash remain identical",
+    "state": "IMPLEMENTED; exact changed-head re-review required"
+  }],
+  "boundary": "Reviewer confirmed executable command inventory matches declared guard boundary. Direct historical library functions are not authorized process entrypoints.",
+  "scope": "Dormant security compatibility only, not source activation, registry/policy/SQL allocation, merge/deployment or diagnostic/runtime acceptance",
+  "pending": "Full focused/full-local/native CI and exact changed-head named review; no stale-head or implementer-self-review approval"
+}

@@ -1,0 +1,26 @@
+{
+  "format": "mf-s1-preservation-integration-v1",
+  "design_before_code": "PR109-after-security-main-preservation-integration-design-20261021.json SHA256 a0af14395e39b3424c8035594fff8e07210b60dfe06ddbe02b111d6ec69e7f54 retained in preparation artifacts",
+  "worker_ancestor": "08491c871656019857aabc72870ed5d040d705df",
+  "admitted_security_main": "156914c05a1dcbd094ddf5a1de1c3f7c8dfd4e73",
+  "independent_security_main_CI": {
+    "run": 39683131875,
+    "conclusion": "SUCCESS",
+    "actual_jobs_steps_cleanup": "BOTH jobs, 39 image + 16 PostgreSQL steps, all successful",
+    "native_collection": "2642 unique = 13 focused + 2629 exact complement; 2641 PASS, one pre-existing empty-database skip",
+    "complete_log_sha256": "75325d6c092c5ff6e34f8ea0a34e59e20bbca5fccd197560bfecdcce6790f267",
+    "generic_deployment": "39683131876 ACTUAL SKIPPED; MFDATAINDIA_DEV_AUTO_DEPLOY false"
+  },
+  "merge_resolution": "Only workflow and sequence-test additive conflicts: all 40 frozen original step bodies/order, followed by unchanged certification transport, unchanged BOTH-image PDF security smoke, unchanged packaged diagnostic-worker binding smoke. No timeout/resource/SQL/security-boundary change.",
+  "unchanged_worker_sha256": "7ef6110a5032566b8ab42418134c9bbdd45780bb0978624c336ebac5ae4484ab",
+  "unchanged_five_sprint_plan_sha256": "ae095b2223c1290a71f14946216c16e5c8ae1046e1161b77a53563d53d0a0f81",
+  "local_work_preserved": {
+    "old_worktree": "mf-five-sprint-delivery-20261021 remains on local08491c8 with all four dirty candidates untouched; isolated integration branch updates remote PR109 fast-forward-only, never force",
+    "pyproject.toml": "d53bb1da42119f19c336ff17ad2c1078695d7a30ad898f7466c11c0bcfd7e136",
+    "uv.lock": "2b918b885ec038f9a9957eb0cf7e4dfa897d127e4fb2795248b8d352e52a773d",
+    "docs/PYPDF_SECURITY_REPAIR_DESIGN_20261021.json": "310ad5c332cf97142055f73cbf70e335c2a9ff8f3f311c5adfb9fd650b3832bb",
+    "tests/test_pypdf_security_floor.py": "f949aad2f9feba5e0f1484d3a328ea6e514d03564c893b43fccdee99e925b550"
+  },
+  "review_and_delivery": "Integrated exact head needs fresh named review, full native head CI, completion implementer self-review explicitly not independent, normal exact-head merge, identical tree and independent full main CI. Prior084 review is not approval of this integration.",
+  "runtime": "No controller delivery, images, diagnostic root/job/execution, IAM, source policy/configuration allocation, schedule or live runtime change. K remains failed and recovered; no sprint or FS13 acceptance. Patched PDF source commands stay dormant and denied until separately complete versioned source authority."
+}

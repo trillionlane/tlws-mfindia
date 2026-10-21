@@ -5,7 +5,9 @@
   "second_reviewed_head": "2c4c73940e1ed7c259c82a53a9462679062c6db6",
   "second_review_verdict": "FIRST_THREE_RESOLVED_ONE_NEW_P2_CURRENT_FACTS_ACL",
   "original_verdict": "CHANGES_REQUIRED_NO_GO",
-  "current_status": "CORRECTIONS_IMPLEMENTED_REVIEW_AND_NATIVE_CI_PENDING_NOT_APPROVED",
+  "current_status": "ALL_FOUR_CORRECTIONS_REVIEWED_CLEAR_AT08491C8; SECURITY_MAIN_INTEGRATION_REQUIRES_FRESH_EXACT_HEAD_REVIEW_AND_NATIVE_CI",
+  "prior_final_review": "08491c871656019857aabc72870ed5d040d705df NO_REMAINING_P1_P2; raw report SHA2569ad06a720910ad60f999748051f7986982e27742baa137f6ff93309d082ae33a retained. This is not approval of the new integrated head.",
+  "integration": "See MF_S1_SECURITY_MAIN_INTEGRATION_20261021.json. Worker bytes and limits unchanged; exact6.21.1 dormant security repair admitted from independent main CI. Whole integrated head and new named review pending.",
   "findings": [
     {
       "priority": "P2",

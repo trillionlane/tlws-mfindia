@@ -7,9 +7,16 @@ import stat
 from pathlib import Path
 
 from mfdataindia.enrichment.idcw_discovery import MAX_BYTES, IdcwDiscoveryRequest, discover
+from mfdataindia.enrichment.pdf_source_dispatch import require_source_authority
 
 
 def run(manifest, source_dir, output):
+    require_source_authority()
+    return _archived_offline_report(manifest, source_dir, output)
+
+
+def _archived_offline_report(manifest, source_dir, output):
+    """Historical file mechanics only; not a supported executable entrypoint."""
     if manifest.stat().st_size > 65536:
         raise ValueError("bounded request required")
     request = IdcwDiscoveryRequest.model_validate_json(manifest.read_bytes())
