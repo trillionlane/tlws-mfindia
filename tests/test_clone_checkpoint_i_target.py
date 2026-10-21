@@ -55,7 +55,7 @@ def test_exact_I_is_an_addition_not_historical_target_replacement(candidate, pha
 
 
 @pytest.mark.parametrize("phase", ["acquire", "rehearsal"])
-@pytest.mark.parametrize("attempt", ["261019i", "261021i", "261020j", "261020f"])
+@pytest.mark.parametrize("attempt", ["261019i", "261021i", "261020k", "261020f"])
 def test_other_date_or_letter_is_never_implicitly_approved(candidate, phase, attempt):
     with pytest.raises(ValueError):
         candidate.validate_context(bound(phase, attempt))
@@ -100,7 +100,7 @@ def test_exact_I_uses_identical_full_metadata_queries_to_H(candidate):
     ("127.0.0.1", 5432, "mfdata_fs13_final_image_261020i"),
     ("/cloudsql/trillionlane-dev:asia-south1:tlws-mf-data-dev", 55540, "mfdataindia"),
     ("127.0.0.1", 55540, "mfdata_fs13_final_image_261021i"),
-    ("127.0.0.1", 55540, "mfdata_fs13_final_image_261020j"),
+    ("127.0.0.1", 55540, "mfdata_fs13_final_image_261020k"),
 ])
 def test_metadata_other_target_rejected_before_SQL(candidate, host, port, name):
     connection = Connection(name, host=host, port=port)
@@ -167,6 +167,7 @@ def test_proposal_window_is_not_allocated_and_exact_seconds_are_required():
 
 def test_only_two_exact_target_guards_and_label_changed_since_reviewed_base():
     source = Path(current.__file__).read_text()
+    source = source.replace("|261020j)", ")").replace("G/H/I/J stage-specific", "G/H/I stage-specific")
     extended = "(?:[0-9]{6}g|261020h|261020i)"
     original = "(?:[0-9]{6}g|261020h)"
     assert source.count(extended) == 2
@@ -177,6 +178,7 @@ def test_only_two_exact_target_guards_and_label_changed_since_reviewed_base():
         "942a3db8c710727edfe50069444443eaf11e94e5babedb8f2102d7a9e58327fb"
     )
     smoke = (ROOT / "scripts/smoke_clone_checkpoint_v2.py").read_text()
+    smoke = smoke.replace("261020j", "261020i")
     assert 'DATABASE = "mfdata_fs13_final_image_261020i"' in smoke
     assert "dev-uti-gap-pre-261020i/snapshot.dump" in smoke
     assert "dev-uti-gap-261020i-acquire-checkpoint/" in smoke

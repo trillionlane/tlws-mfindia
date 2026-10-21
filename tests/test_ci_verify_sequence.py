@@ -1,4 +1,4 @@
-"""Sequential CI retains every original check and fixed per-job limits."""
+"""Parallel jobs retain every original check, inner order and per-job limits."""
 
 import hashlib
 import json
@@ -31,14 +31,20 @@ def test_every_original_step_body_and_order_is_preserved():
     expected = json.loads((ROOT / "tests/fixtures/ci_verify_step_inventory.json").read_text())
     first, second = inventory(tests), inventory(images)
     assert second[:3] == expected[:3]  # Only fresh-runner setup repeats.
-    assert first + second[3:] == expected
+    addition = "- name: Verify bounded certification input native exec in both images"
+    # Preserve all frozen original bodies/order byte-for-byte. The sole new
+    # mandatory step is additive, after every original gate, in the same job.
+    assert second[-1]["label"] == addition
+    assert first + second[3:-1] == expected
+    assert sum(s["label"] == addition for s in first + second) == 1
     assert len(expected) == 40
 
 
-def test_required_final_gate_is_sequential_and_has_no_service_or_live_dsn():
+def test_independent_existing_jobs_keep_both_mandatory_and_have_no_live_dsn():
     text, tests, images = jobs()
     assert "    name: Test, audit, and build\n" in images
-    assert "    needs: tests\n" in images
+    assert "needs:" not in images and "needs:" not in tests
+    assert re.findall(r"^  ([a-z_]+):\n", text.split("jobs:\n", 1)[1], re.M) == ["tests", "verify"]
     assert "    services:\n" in tests and "image: postgres:18.6-alpine" in tests
     assert "MF_TEST_DSN:" in tests
     assert "services:" not in images and "MF_TEST_DSN:" not in images
@@ -58,3 +64,14 @@ def test_both_full_pg_partitions_and_native_restore_smoke_remain_mandatory():
     assert "docker build --build-arg" in images
     assert "--file Dockerfile.review-tools" in images
     assert "/app/scripts/smoke_clone_checkpoint.py" in images
+
+
+def test_new_transport_smoke_executes_both_final_images_without_resource_flags():
+    _, _, images = jobs()
+    addition = images.split("      - name: Verify bounded certification input native exec in both images\n")[1]
+    assert addition.count("/app/scripts/smoke_certification_input_transport.py") == 2
+    assert '"$image" /app/scripts/smoke_certification_input_transport.py' in addition
+    assert '"$tools_image" /app/scripts/smoke_certification_input_transport.py' in addition
+    assert '"$image" /app/scripts/certify_amc_books_transport_dev.py --help' in addition
+    for forbidden in ("--privileged", "--ulimit", "--memory", "--cpus", "|| true", "continue-on-error"):
+        assert forbidden not in addition

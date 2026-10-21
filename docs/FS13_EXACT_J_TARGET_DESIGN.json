@@ -1,0 +1,43 @@
+{
+  "format": "fs13-exact-J-target-design-v1",
+  "written_before_J_target_code": true,
+  "authorization": "User explicitly requested merging and deployment after implementation. Preserve all original authority, safety and finite acceptance gates; failed I and A-H never rerun or reused.",
+  "review_type": "IMPLEMENTER DESIGN ONLY; NOT independent approval",
+  "status": "Prospective exact target and future-window proposal, NOT allocated root/window, runtime launch permission, READY or acceptance",
+  "base": "8ef611c1d61d478793109dcef149aa9a131ef99a",
+  "proposed": {
+    "rollout": "dev-uti-gap-261020j",
+    "pre_backup": "dev-uti-gap-pre-261020j",
+    "post_backup": "dev-uti-gap-post-261020j",
+    "scratch_database": "mfdata_fs13_final_image_261020j",
+    "acquire_prefix": "verified-review-rollouts/dev-uti-gap-261020j-acquire-checkpoint/",
+    "rehearsal_prefix": "verified-review-rollouts/dev-uti-gap-261020j-rehearsal-checkpoint/",
+    "new_root": null,
+    "start_utc": "2026-10-20T22:00:00Z",
+    "end_utc_exclusive": "2026-10-20T22:15:00Z",
+    "status": "PROPOSAL ONLY. Allocate/bind only after whole Git/main CI, new immutable image provenance twice, fresh local operator review/seal and actual current normal-cycle preflight. If not ready, no early/late waiver, historical command or individual phase launch.",
+    "genuine_normal_cycles": "Source03:30UTC20Oct + NAV19:00/audit19:10UTC20Oct (20:00/20:10 EuropeDublin); actual terminal Scheduler/tasks/apps/runtime/current DB/all4 accepted populations must be freshly reconciled. No assumed dataset37 or manual normal-job run.",
+    "next_normal_windows_clear": ["2026-10-21T03:30:00Z source", "2026-10-21T05:00:00Z NAV (06:00 Dublin)", "2026-10-21T05:10:00Z audit (06:10 Dublin)"]
+  },
+  "narrow_target_diff": [
+    "ONLY add exact literal261020j to existing two v2 checkpoint-prefix/localDB guard alternatives and error label. Preserve historical G/H/I. No wildcard/future date or backup relaxation.",
+    "Re-pin ONLY three native full-transport smoke constants I->J (DB, pre-backup URI, acquire prefix), preserving exact program otherwise.",
+    "Retain all historical I/H/G positives, failed-backup negatives and SQL inventory checks. Future unapproved-letter probes move J->K only because J becomes explicit. New J own-backup/date/context/phase/predecessor/nonlocal/RW/full two-handoff tests are additive.",
+    "Normalized production module must equal reviewed8ef c98854bb2afc8fcceca518b31696bfc658af34916502fe6daf67ccc7ede66916; normalized native program must equal reviewed I be67f53d3e296e7636d7fd692bcd06f1c2a8e5f512b48f5185d3b7983df1a06c."
+  ],
+  "future_operator_transport_integration": "ALL five certification phases use shared prepare_submission/worker_program, original full expectation/certifier/stdout renderer. Preflight ALL full env/argv/serialized requests before dispatch intent and recheck all late-bound inputs. Verify full actual immutable args/ALLenv/secret refs alongside original image/identity/network/resources/volumes. No copying failed I state/receipts/secrets/backups or data into new root.",
+  "frozen": "source_rehearsal bbcc275fc1468cf8b1b967c949f6004909d07d725e14493fc23bf1f931b2077a; source_reference a8419a36dd9b406d823c2dc60a994f31a4e7691c9cbf479b4e7ef36e76c701db; checkpoint_worker a6697af4ff4b1b8df28b580b4f02343caa1a1b6d9063bdac892fa579d175ea8e; all failed roots/35I reviewed files untouched.",
+  "unchanged": {
+    "clone_jobs": 3, "checkpoints": 2, "seconds_per_job": 900,
+    "cpu": "2", "memory": "4Gi", "tasks": 1, "max_retries": 0, "secrets": 0,
+    "owner_statement_seconds": 5, "lock_seconds": 5, "writer_transaction_seconds": 15,
+    "independent_RR_statement_seconds": 300, "independent_RR_transaction_seconds": 420,
+    "dump_seconds": 240, "native_argument_bytes_exclusive": 131072,
+    "checkpoint_state_keys": [16,17], "financial_queries": 4,
+    "financial_population": "ENTIRE actual retained cohort, never sample or assume3220",
+    "private_paths": 52, "core_templates": 19, "temporary_bindings": 5,
+    "all_original_acceptance_gates": 16
+  },
+  "all_original_protocol_still_mandatory": "Wholly fresh backup/every original+prior layer; three distinct immutable bounded SUCCESS executions and TWO full checkpoint restores; actual original-source/full-cohort financial and raw/canonical evidence; exact same RRREADONLY shared DUMP_START/DUMP_EXPORT; full metadata/roles/privileges/RLS/settings; fenced preview/activation/recovery/replay/reactivation; private/core contracts; all5 actual temporary grant absence; real six-task source receipts+EVERY archive bytes/gen/SHA/MD5; independent four UTI PDFs/two periods/Growth/IDCW/TER; genuine six-task Scheduler timer/restored schedule; final core/after-backup/whole original+all layers+whole AMCs+old UTI selected/dated-primary/TER/human-review preservation; ORIGINAL coordinator EXIT0 AND verified22. File/appPASS insufficient. Then extra actual core witness/reviewed Git, NSE01 before EXP01.",
+  "no_actions_from_design": "No runtime root/window/controller/manifest/backup/clone/IAM/schema/source/traffic/schedule/sourceHTTP mutations. No local PG18/Docker, generic deploy, broad IAM, new gate variables, added resource/time/query/proof allowance or fourth job. CI fixtures remain synthetic only."
+}

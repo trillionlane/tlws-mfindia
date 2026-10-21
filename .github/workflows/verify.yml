@@ -106,7 +106,6 @@ jobs:
 
   verify:
     name: Test, audit, and build
-    needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -370,3 +369,12 @@ jobs:
           docker run --rm --entrypoint python "$image" -c \
             'import io; from pypdf import PdfWriter; from pypdf.generic import DecodedStreamObject; from mfdataindia.enrichment import uti_book_pdf_v2,uti_book,book_sources; from mfdataindia.review.policy import fingerprint; w=PdfWriter(); page=w.add_blank_page(width=200,height=200); stream=DecodedStreamObject(); stream.set_data(b""); page.replace_contents(stream); b=io.BytesIO(); w.write(b); result=uti_book_pdf_v2.extract(b.getvalue()); assert result["pages"][0]["physical_title"] is None; assert result["pages"][0]["physical_left_text"] is None; assert result["policy_hash"]==fingerprint(uti_book_pdf_v2.policy()); assert result["engine_hash"]==uti_book_pdf_v2.engine_hash(); assert result["whole_document_semantic_coverage"] is False'
           docker run --rm --entrypoint python "$image" /app/scripts/smoke_uti_aum_decoder.py
+
+      - name: Verify bounded certification input native exec in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_books_transport_dev.py --help
+          docker run --rm --entrypoint python "$image" /app/scripts/smoke_certification_input_transport.py
+          docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_certification_input_transport.py

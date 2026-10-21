@@ -56,6 +56,23 @@ def test_partitions_are_disjoint_and_exhaustive_and_preserve_order():
     assert len(later) == 3
 
 
+def test_native_certifier_moves_early_without_dropping_or_reordering_original_partitions():
+    original = population()
+    native = Item("tests/test_certification_input_native.py::test_shared_worker", True)
+    unit = Item("tests/test_certification_input_native.py::test_unit_not_pg", False)
+    before = Partition("focused")
+    original_early, original_later = collect(before, original)
+    focused = Partition("focused")
+    early, later = collect(focused, [native, *original, unit])
+    assert early == [native.nodeid, *original_early]
+    assert later == [*original_later, unit.nodeid]
+    remainder = Partition("remainder", {"exit_code": 0, "inventory": focused.inventory})
+    actual_later, actual_early = collect(remainder, [native, *original, unit])
+    assert actual_later == later and actual_early == early
+    assert not set(early) & set(later)
+    assert set(early + later) == {i.nodeid for i in [native, *original, unit]}
+
+
 @pytest.mark.parametrize("change", ["add", "remove", "marker", "failed", "missing", "extra"])
 def test_remainder_rejects_collection_or_evidence_drift(change):
     items = population()
