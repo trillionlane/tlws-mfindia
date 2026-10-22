@@ -1,0 +1,23 @@
+{
+  "format": "core-permission-diagnostic-design-before-code-v1",
+  "created_UTC": "2026-10-22 09:31:10 UTC",
+  "human_authority": "Latest direct Approved authorizes ONE NEW separately reviewed read-only permission diagnostic. It does NOT authorize retry ofdev-core-plan-261021a, permissions/role/IAM changes or unrelated source/FS13/NSE/EXP01 operations.",
+  "base": "8535a27addaa8e13ed4968582a2868f9bae4f7ad",
+  "scope": "Catalogue-only metadata snapshot under directexistingmfdata_verified_reader. Fixedcontext/roleflags, four schemas mf,mf_review,mf_live_facts,public and fixed15relations: mf.current_fund_facts/funds/fund_variants, mf_live_facts.configuration+sixknownfacadeviews, mf_review.policies/snapshots/results/events/certifications. Privilegeinquirybuiltins/OID joins only; no rowdata/viewSQLbodies/rawACLgrantees/owneridentitylisting. Denied schema/tableprivileges are observedbooleans, missingobjects explicitnull—not a failure-to-success fallback.",
+  "SQL": "RRREADONLY/5sstatement5slock15stransaction before metadata. Ownidentitycurrent_user=session_user=mfdata_verified_reader/database mfdataindia; failbefore targetcataloguequeries on elevatedrole/memberships/drift. Read fixedpg_catalog namespaces/classes/roles only, builtinhas_schema_privilege/has_table_privilege/has_any_column_privilege. No oldverify_runtime/current.capture call, SELECTfromapplicationtables, EXPLAIN/ANALYZE, applicationfunctionexecution, SETROLE, originalqueryretry, connectionfallback, writes or permissiongrant.",
+  "causality": "This reveals currenteffectivecataloguepermissions. It cannot identify the exact historicaldeniedstatement/object or prove originalReadTimeout/globaljoincause; no performance/FS13/source/mathacceptance.",
+  "new_identity": {
+    "rollout": "dev-core-perm-261022a",
+    "job": "mf-core-permission-diagnostic-261022a",
+    "root_pattern": "mf-core-permission-diagnostic-20261022-XXXXXX",
+    "root_not_allocated": true,
+    "job_not_created": true
+  },
+  "implementation": "Separate isolatedworktree from currentactualmain; newfixedspec/worker/controller/backend/entrypoint/tests/design only plus ADDITIVE BOTH-image packagedpermissionworker+spec binding smoke. Oldfailedworker/controller/backend/querysource/runtimehelpers/root/startrecords allUNCHANGED. Newcontroller/backend derivedfromreviewedexistingguardedengine, preservingall create-only/inventory/profile/immutable/finalprotectedLASTread guards; onlyfixednewidentity/path/stage/worker+spec pins and strictnewcatalogueresultvalidator differ. No monkeypatch/sharedgatevars/limitincrease.",
+  "binding": "Newworker and sharedcataloguespec hashes both pinned in request env and verified from actualpackagedfiles BEFORE DSN/DB; originalfailedsourcefiles/query/helpers hashes recordedforattribution, notexecuted. Fullrequest/envargvbudgetbeforecreateintent; newglobalSTART; no knobs foridentity/SQL/principal/profile/secret.",
+  "cloud": "After exactnamedreview/wholeheadCI/normalmatchheadmerge/identicaltree/wholeindependentmainCI/newfinalimagesBOTHstrictmanifestconfigbytesGitLinuxamd64TWICE/freshprotectedprofiles+exactnewzero-inventory only: onejoboneexecution/existingCALLERSA+readerDSNsecret1/1CPU1Gi600s1taskparallel1max0/gen2/networkSQL/noVolumes/noIAM. WholedeployedmetadataUIDtime+alltaskenvsecretrefs seal before soleemptyexecute; terminalimmutableequality/freshfullremoteevidence/finalinventoryTHENprotectedLASTread before result. No retry/cleanupdelete/roles/grants.",
+  "validation": "Fixedqueryinventory and noapplicationreads/nocallerSQL tests; missing/deniedpermissions explicit; type/shape/count/duplicate/context/elevated/membership/drift/hash and onecallfailure/noSQLonwrongbinding negatives. NativePG18CI fixture tests with deliberately missing schema/SELECT, no app-rowread and unchangeddata/grants, read-onlylimits. Fullnewcontrollerguardnegative suite adaptedwithoutdroppingoldtests. All40frozenCIsteps+3existingadditions preserved bodies/order; add fourth Both-image smoke and sequenceguard, no resource/time changes. Focused/full26prepush/exactcollection/fullnativehead+main evidence mandatory.",
+  "delivery": "Designbeforecode now. Push exacthead/namedreview01a15fe3-b5d6-7030-8cc4-dd6837cb193f/readcomments/address/re-review. No cloud job/root/approval or imageworkflow during this initialcode slice. No routinehumanapprovalforalreadyauthorizedscope; any furtherauthorityexpansion stops.",
+  "failure": "Newdiagnostic failure/timeout/permissions/ambiguity consumesitsownattempt; retainall/STOP/no retry/grant/capraise. Existingfailedjob/root/START retainedimmutable. CurrentglobalFS13runtimepointer remains Kfailure; five-sprints incomplete.",
+  "primary_doc": "https://www.postgresql.org/docs/18/functions-info.html#FUNCTIONS-INFO-ACCESS-TABLE"
+}
