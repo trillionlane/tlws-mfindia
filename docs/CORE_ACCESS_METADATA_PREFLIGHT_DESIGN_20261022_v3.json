@@ -1,0 +1,156 @@
+{
+  "format": "mf-two-object-read-metadata-preflight-design-before-code-v3",
+  "created_UTC": "2026-10-22T13:08:00Z",
+  "status": "CORRECTED_GATE_SPLIT_FOR_NAMED_REVIEW/NO_RUNTIME_ALLOCATION",
+  "authority": {
+    "latest_direct_Approved": "Proceed with bounded metadata-only preparation/preflight following reviewed access-repair plan; never live grants, credentials changes, query-performance diagnostic or old-job reuse.",
+    "owner_lifetime_question": "Deferred unresolved decision for any future permission write: temporary approved diagnostic window or permanent shared-reader access. User asked for explanation, not a selection. No grant needed or applied for metadata-only reading.",
+    "remaining_owner_gate": "Grant lifetime, shared-reader/all-consumer/all-exposed-row acceptance and operating grantor/credential remain unresolved before access-repair implementation/permission write. They do not block otherwise authorized metadata-only preparation. Live metadata execution separately requires exact delivered inputs/readiness approval; review of this design alone admits neither code nor execution.",
+    "latest_direct_planned_milestones": "User asked to proceed with planned milestones. Prior direct Approved for bounded metadata-only preparation/preflight is retained; not a grant choice, live exact-input approval, credential change or query diagnostic."
+  },
+  "predecessors": {
+    "plan": "/Users/deviojha/projects/codex/artifacts/MF_S1_READ_ACCESS_REPAIR_PLAN_20261022_v1.json",
+    "plan_sha256": "dcacf986c59b7dea08c1c391c88ef9c75e068cbe5cfc5933beb5ce5ebf54ebc6",
+    "plan_review_sha256": "5e257991345fcad1334f5029c3798f12b49ecf038229c0d85100302cd318a6f4",
+    "actual_catalogue_certificate": "20ef53c3d19b76308212e5b9eafd3cf49431dae3a28ded800db7679b815567c0",
+    "old_checkpoints": "1135 completed catalogue one-shot retained; all old job/root/START/receipts immutable. Git/cloud/DB evidence is point-in-time, not current readiness."
+  },
+  "base": {
+    "repo": "/Users/deviojha/projects/codex/worktrees/mfdata-data-01",
+    "main": "7eba4444917194fbd0374c2dacbe2baa0fb4567b",
+    "tree": "572556f6f44bd89dbd383f497d790209918abca3",
+    "query_sha256": "c2043667ab261be1ae02eb9e5f32658c142e325739487582a555530f0e3f691e",
+    "existing_permission_worker_sha256": "e8c1ec3f79b6a98716828cfe21e2f043f59426dfd17f6aa2a6771c1e809d0e8e",
+    "existing_permission_spec_sha256": "72ae4e44b67f6f24c883114f2645774d12de11d105ec42a55922cc83c9d13d0a",
+    "existing_permission_controller_sha256": "734adc9f743decafa5c86d4a5d4e5dd41dc0366296dfe31a7b5a822302fd7a9f",
+    "all_old_files_guards_and_historical_outputs_unchanged": true
+  },
+  "new_identity_design_only": {
+    "rollout": "dev-core-aclmeta-261022a",
+    "job": "mf-core-access-metadata-261022a",
+    "stage": "core-access-metadata-not-acceptance",
+    "root_pattern": "mf-core-access-metadata-20261022-[A-Za-z0-9]{6,16}",
+    "all_unallocated": "No worktree/branch/code/PR/new image preparation/runtime approval/root/START/job/execution allocated by this design."
+  },
+  "scope": {
+    "project": "trillionlane-dev",
+    "region": "asia-south1",
+    "operator": "trillionlaneassetmanagement@gmail.com",
+    "instance": "trillionlane-dev:asia-south1:tlws-mf-data-dev",
+    "database": "mfdataindia",
+    "direct_effective_and_session_principal": "mfdata_verified_reader",
+    "existing_workload_identity": "trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com",
+    "existing_read_DSN_secret_reference_only": "tlws-mf-review-read-dsn-dev version1",
+    "targets": [
+      {
+        "schema": "mf",
+        "name": "current_fund_facts",
+        "kind": "v"
+      },
+      {
+        "schema": "mf",
+        "name": "fund_variants",
+        "kind": "r"
+      }
+    ],
+    "schema_catalogue": "mf only for target namespace identity/ACL/default semantics; no all-database source inventory.",
+    "no_new_identity_secret_or_IAM_grants": true
+  },
+  "metadata_contract": [
+    {
+      "id": "context",
+      "purpose": "Exact existing direct principal/current DB/RR READ ONLY/connect5s/statement5s/lock5s/transaction15s/current snapshot before and after; fail on elevation, wrong identity or unexpected parent memberships before target metadata."
+    },
+    {
+      "id": "target_objects",
+      "purpose": "Exactly two fixed qualified names -> existence/OID/namespaceOID/ownerOID+role name/kind/row-security flags/view security options; reject missing, duplicate, unsupported relation kind or identity change. Missing object is not a privilege denial."
+    },
+    {
+      "id": "columns",
+      "purpose": "Complete ordered attnum>0 metadata for BOTH targets, distinguish dropped attributes from live visible columns. Freeze actual names/typeOID/typmod/collation/attnum/not-null and raw-ACL NULL-versus-explicit state. No column values/default expressions/attmissingval/source data. Must include every currently visible view column because frozen original batch SQL uses SELECT *. Reject incomplete/duplicate ordering or incomplete evidence; never equate 44 static served fields with all live columns."
+    },
+    {
+      "id": "target_and_schema_ACLs",
+      "purpose": "Full raw and normalized table/view/schema and column ACL metadata for only the two targets and mf namespace, including grantor/grantee/options. Preserve NULL/raw ACL state; derive default ACL via documented acldefault for NULL only, not current pg_default_acl. Do not confuse owner implicit capability with an explicit grant or claim current defaults govern existing objects."
+    },
+    {
+      "id": "effective_capabilities",
+      "purpose": "Under exact reader: schema USAGE/CREATE, table-level SELECT and write/grant options, and EACH live column SELECT/write/grant options for two targets. Table-level SELECT may be false under a future approved column profile; has_any_column_privilege alone is never a complete column proof. No grant statements. Additionally, for EVERY relation/column reference in the complete declared dependency graph, record metadata-only effective SELECT under its derived actual access-check principal; preserve referenced-column sub-IDs/whole-row references and exact applicable column population. This is metadata privilege inquiry, never selecting data or granting underlying privileges."
+    },
+    {
+      "id": "reader_membership_edges",
+      "purpose": "Snapshot metadata for role-membership paths connected to the reader in BOTH directions, preserving grantor/admin/inherit/set options. Parent memberships/elevation drift fails the dedicated direct-reader gate. Child/grantee membership exposure must remain visible even when reader's own parent membership count is zero. Do not query password-bearing pg_authid or role settings."
+    },
+    {
+      "id": "view_definition_and_rewrite_edges",
+      "purpose": "Retrieve complete fixed view definition into private worker memory, hash exact bytes and suppress raw SQL body in logs/certificate. Retain complete metadata dependency edges for its SELECT rewrite and recursively referenced views through pg_rewrite+pg_depend, including referenced column sub-IDs, object classes/OIDs/kinds/owners/security modes/definition hashes. Full closure through catalog-declared relation/rewrite dependencies; never truncate or claim completeness after timeout/transport failure. Unexpected dependency class/kind, cycle handling ambiguity or unavailable metadata fails or explicitly blocks access-plan admission. Derive and retain the root requesting principal and effective access-check principal at EVERY nested view boundary from actual security_invoker options and view ownership. Default owner-checked and invoker-checked edges must be distinct; do not assume all relations are checked as the root reader or as one global owner."
+    },
+    {
+      "id": "function_and_operator_implications",
+      "purpose": "For function/operator references in that declared closure: metadata signatures/OIDs/owner/security-definer/volatility/leakproof flags and effective EXECUTE booleans for reader and relevant view owner, including operator->function mapping. Never execute a target function, read prosrc/probin/credential text or assume catalog dependencies describe dynamic procedural SQL/calls. Any unmodeled/dynamic/unknown dependency remains an explicit unresolved owner-review blocker; no claim of full runtime safety."
+    },
+    {
+      "id": "row_security_metadata",
+      "purpose": "For each target and every relation reached by the complete declared dependency closure, bind the actual access-check principal derived at each nested-view boundary, its relevant role memberships, superuser/BYPASSRLS flags, relation ownership, row_security/FORCE RLS flags and applicable policies (command/role memberships/permissiveness/qual-with-check hashes). Distinguish normal owner bypass, FORCE RLS, superuser/BYPASSRLS and invoker security contexts according to PostgreSQL18. Catalogue flags/policy hashes are NOT a proof of rows returned or policy-expression/function safety. Unknown/ambiguous principal propagation, missing column SELECT, unknown policy applicability, unsupported/dynamic dependency or incomplete metadata MUST block access-profile admission. No data/view/RLS/function execution or underlying grants."
+    },
+    {
+      "id": "complete_before_after",
+      "purpose": "One RR READ ONLY transaction, hash full metadata at entry and end according to fixed query inventory. Same transaction/snapshot equality proves only consistent captured metadata, not absence of concurrent changes outside its snapshot. Any future grant needs a newly approved fresh before fingerprint and race guard; never reuse this snapshot as writer permission."
+    }
+  ],
+  "consumer_and_grantor_limits": {
+    "known_consumers": "At delivery readiness, inspect only the existing approved fixed protected service/job profiles and their pinned secret references. No namespace-wide executions list, pg_stat_activity/pg_stat_statements, arbitrary secret reads, auth-token printing or unknown provider calls.",
+    "not_complete_consumer_inventory": "Role-membership edges and known protected references do NOT discover every session/client or all copies of a DSN. Owner must separately attest allowed consumers; unknown consumers remain a blocker before shared-role grant.",
+    "grantor": "Metadata may identify owners and existing ACL grantors. That does not prove an operating grantor credential is available/authorized; no admin secret access, role switch, owner fallback or IAM bootstrap.",
+    "dependency_principals": "Role/membership metadata may expand only to actual owner/invoker/policy principals referenced by the fixed two-root dependency graph, never a blanket all-role or all-database scan. Complete graph and explicit unresolved cases are mandatory; result transport/5s5s15s failure is terminal, not a reason to omit a branch."
+  },
+  "forbidden": [
+    "No SELECT from application tables/views, original query or EXPLAIN/ANALYZE, ledger/configuration rows, sourceHTTP, endpoint replay or application function call.",
+    "No write to database/catalogue, GRANT/REVOKE/ALTER ROLE/SET ROLE, new role/secret/credential access, IAM/service/source/scheduler changes.",
+    "No broad historic privilege reconciler, schema/table-wide grant, PUBLIC/default privilege, SQL/policy allocation, query/dependency/financial/security rules change.",
+    "No reuse/retry of either old consumed job, root, approval, manifest or START; no worker inline injection, old-image exception, retry or cap/resource/time increase.",
+    "No fresh cloud/DB readiness or consumer/population/performance/FS13 acceptance claim from prior snapshot or this design."
+  ],
+  "implementation_if_gates_clear": {
+    "layout": "New separate fixed spec/worker/controller/backend/entrypoint/tests/design plus additive BOTH-image packaged-worker/spec smoke and CI sequence guard. Preserve all old files and exact guard function bodies; new global start identity and strict result schema only. No caller-selected SQL, role, object names, credentials, target URL or retry knobs.",
+    "source_binding": "Packaged worker AND spec independently hash bound BEFORE DSN. Resolve actual installed package files, never assume /app/src exists. Bind frozen source attribution hashes without importing/running target application modules.",
+    "query_inventory": "Before code review freeze exact finite metadata SQL strings/bindings/result schemas and statement counts. Use qualified catalog names and fixed parameters; no arbitrary SQL, target module imports or fallback/extra query. Entire metadata result must fit unchanged sealed evidence transport; failure is terminal, never sampling or partial acceptance.",
+    "validation": "Provider-free fixed query inventory/BEFORE-DSN/identity/elevation/wrong binding/no extra SQL/schema/type/order/null/duplicate/transport failures. Native PostgreSQL18 CI fixtures only: complete live/dropped columns; NULL/default/table+column ACLs and grantors; parent+child membership path semantics; nested views/security modes/operator/function dependencies and dynamic/unmodeled blocker; unchanged row values/definitions/grants across read-only probe. Full old+new collection exact focused complement, all contracts/security/audit/credential/original smokes and physical headroom unchanged. No localPG or Docker. Include nested default-owner/invoker combinations, different view owners, owner lacking a referenced column SELECT, direct and inherited policy-role applicability, owner versus FORCE RLS, superuser/BYPASSRLS and ambiguous/unmodelled branches. A captured graph with unresolved dependency security must not be admitted as a grant profile."
+  },
+  "delivery_and_runtime": {
+    "code": "Metadata-only code preparation: reviewed metadata design AND scoped direct human implementation authority; no prerequisite grant lifetime/grantor/shared-role decision. Isolated preservation-safe worktree; full validation/push/exact-head named review/fix/re-review/whole head CI/normal exact merge/identical tree/whole independent main CI. This gate correction itself authorizes neither implementation nor execution and never implies numerical native proof.",
+    "images": "Only admitted final Git permits fresh image-only preparation; reread original PR108 templates, pins-only/all4 normalized bytes/34 cases/named review/sole intent workflow/exact3 runtime steps skipped/all other steps cleanup success/BOTH immutable manifest+config BYTES/Linuxamd64/final Git TWICE/0 layers/frozen FS12 helper/auth-only. Old DONE images/workflows/rechecks never repeat.",
+    "runtime": "One newly approved job/one execution,1CPU1Gi600s1taskparallel1maxRetries0,existing caller+readDSN1 only/noIAM; original30s HTTP/60s metadata/connect5s/RR5s5s15s unchanged. Full env+argv/request/startup budget before create intent; global create-only START consumes before ambiguity; zero/one inventories/UID/time/whole metadata and task seals before sole empty execute; immutable terminal equality/full fresh certificate; final inventory THEN protected LAST provider read BEFORE result/original execPIDsEXIT. No live start until exact delivered inputs and fresh protected/readiness scope reviewed.",
+    "failure": "Any denial/timeout/unsupported/transport failure/ambiguous create-run-metadata -> retain exact attempt and STOP; no retry, additional SQL, grant, role switch, cap raise, cleanup deletion or live repair."
+  },
+  "unallocated_or_not_done": {
+    "implementation": false,
+    "new_Git_branch_PR": false,
+    "live_metadata_probe": false,
+    "runtime_root_START_job_execution": false,
+    "new_images": false,
+    "grant_or_role_or_IAM_change": false,
+    "SQL_policy_number": false,
+    "old_attempt_retry": false,
+    "FS13_NSE_EXP_acceptance": false
+  },
+  "retained_gates": "Global FS13K pointer c0c2f502c274f73cd9f659e3da2db37d180c64fb31007e0e115c123daf414d20 unchanged. S1 incomplete; all16 source/financial/fullpreservation/3clones2restores/wholecohort/archivefullbytes/fencedlive/timer/cleanup/originalEXIT0+sealed22, extra core/handover remain before NSE contracts/delivery and EXP. No permission lifetime/new start window or future grants inferred.",
+  "official_sources": [
+    "https://www.postgresql.org/docs/18/catalog-pg-depend.html",
+    "https://www.postgresql.org/docs/18/catalog-pg-attribute.html",
+    "https://www.postgresql.org/docs/18/catalog-pg-auth-members.html",
+    "https://www.postgresql.org/docs/18/rules-privileges.html",
+    "https://www.postgresql.org/docs/18/sql-createview.html",
+    "https://www.postgresql.org/docs/18/ddl-rowsecurity.html"
+  ],
+  "previous_design": {
+    "path": "/Users/deviojha/projects/codex/artifacts/MF_S1_TWO_OBJECT_METADATA_PREFLIGHT_DESIGN_20261022_v2.json",
+    "sha256": "1f4048911365015785b7ea9b54a62e5cddc15ab3648dd19364e7e8fc2ecc2d96",
+    "review_disposition": "CHANGES_REQUIRED/soleP2 metadata preparation incorrectly gated on future permission owner decision; dependency-principal model clear."
+  },
+  "metadata_gate_split": {
+    "metadata_preparation": "Reviewed metadata design + scoped direct human implementation authority; provider-free local preparation can precede grant-lifetime/grantor/shared-role choice.",
+    "live_metadata_execution": "Exact reviewed/delivered code, full CI, final immutable images twice, newly approved exact inputs and fresh protected/readiness evidence before sole new create-only job. No write or original-query authority.",
+    "permission_repair": "Owner acceptance of grantee/consumer/all-row exposure/lifetime/grantor remains G1; actual frozen metadata/exact delta/full review then G5 explicit write authority. No old diagnostic retry."
+  }
+}
