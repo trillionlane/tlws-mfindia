@@ -404,3 +404,14 @@ jobs:
               try: w["worker_binding"](m,{**os.environ,key:value})
               except ValueError: pass
               else: raise AssertionError("mismatched image Git/program binding accepted")'
+
+      - name: Verify packaged catalogue-permission worker and specification in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          for target in "$image" "$tools_image"; do
+            docker run --rm --entrypoint python "$target" /app/scripts/diagnose_core_permissions_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_core_permission_diagnostic_dev.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_core_permission_binding.py
+          done

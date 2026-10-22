@@ -34,13 +34,15 @@ def test_every_original_step_body_and_order_is_preserved():
     addition = "- name: Verify bounded certification input native exec in both images"
     worker = "- name: Verify packaged read-only core plan worker binding"
     security = "- name: Verify patched PDF workers and dormant source guards in both images"
+    permission = "- name: Verify packaged catalogue-permission worker and specification in both images"
     # Preserve all frozen original bodies/order byte-for-byte. All later
     # mandatory steps are additive, after every original gate, in the same job.
-    assert [s["label"] for s in second[-3:]] == [addition, security, worker]
-    assert first + second[3:-3] == expected
+    assert [s["label"] for s in second[-4:]] == [addition, security, worker, permission]
+    assert first + second[3:-4] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
     assert sum(s["label"] == worker for s in first + second) == 1
     assert sum(s["label"] == security for s in first + second) == 1
+    assert sum(s["label"] == permission for s in first + second) == 1
     assert len(expected) == 40
 
 
@@ -91,6 +93,18 @@ def test_new_worker_smoke_checks_actual_packaged_program_and_git_without_dsn():
     assert 'CORE_PLAN_PROGRAM_SHA256=$program_sha' in smoke
     assert 'w["worker_binding"](m,os.environ)' in smoke
     assert "mismatched image Git/program binding accepted" in smoke
+    for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
+        assert forbidden not in smoke
+
+
+def test_permission_smoke_is_additive_both_images_and_binds_packaged_worker_spec_before_dsn():
+    _, _, images = jobs()
+    smoke = images.split("      - name: Verify packaged catalogue-permission worker and specification in both images\n")[1]
+    assert 'for target in "$image" "$tools_image"' in smoke
+    assert '/app/scripts/diagnose_core_permissions_dev.py --help' in smoke
+    assert '/app/scripts/operate_core_permission_diagnostic_dev.py --help' in smoke
+    assert '/app/scripts/smoke_core_permission_binding.py' in smoke
+    assert 'DEPLOYMENT_GIT_SHA=$GITHUB_SHA' in smoke
     for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
         assert forbidden not in smoke
 
