@@ -40,8 +40,7 @@ def metadata_arguments(kind, name=None):
     elif kind == "jobs" and name is None:
         args = ["run", "jobs", "list", "--filter=metadata.name=" + core.NAME, "--limit=2"]
     elif kind == "executions" and name is None:
-        args = ["run", "jobs", "executions", "list",
-                "--filter=metadata.name~^" + core.NAME + "-", "--limit=2"]
+        args = ["run", "jobs", "executions", "list", "--job=" + core.NAME, "--limit=2"]
     elif kind in ("execution", "logs") and isinstance(name, str) and re.fullmatch(re.escape(core.NAME) + r"-[a-z0-9]{5,10}", name):
         if kind == "execution":
             args = ["run", "jobs", "executions", "describe", name]
