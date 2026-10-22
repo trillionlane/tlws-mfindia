@@ -1,0 +1,8 @@
+{
+  "format": "PR113-review-disposition-v1",
+  "reviewed_head": "e92322deda2999a794ce72bee821b4bd98386a2f",
+  "finding": "P2 packaged runtime omits /app/src; attribution binding must hash installed package sources, not checkout source paths.",
+  "correction_design_before_code": "Keep all pinned source SHA256 values. Deterministically resolve the three src/mfdataindia entries relative to the actual imported core_permission_spec.__file__ package root; resolve the one frozen script under packaged scripts root. No fallback, source copying into image, imports of target modules, weakened hash, DSN access or capability change. New regression simulates installed-only layout without src and tampers each pinned target separately. Update exact SPEC_SHA binding; full local/native both-image CI and exact-head named re-review mandatory.",
+  "runtime_unchanged": true,
+  "no_retry_of_failed_old_diagnostic": true
+}

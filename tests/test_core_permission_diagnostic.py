@@ -315,6 +315,28 @@ def test_source_drift_stops_before_any_permission_queries(tmp_path):
         spec.verify_sources(tmp_path)
 
 
+@pytest.mark.parametrize("tampered", list(spec.SOURCE_HASHES))
+def test_installed_only_sources_bind_without_checkout_src_and_reject_each_tamper(tmp_path, monkeypatch, tampered):
+    application = tmp_path / "app"
+    package = tmp_path / "site-packages" / "mfdataindia"
+    locations = {}
+    for name in spec.SOURCE_HASHES:
+        target = (package / name.removeprefix("src/mfdataindia/")
+                  if name.startswith("src/mfdataindia/") else application / name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((WORKER.parents[1] / name).read_bytes())
+        locations[name] = target
+    installed_spec = package / "review" / "core_permission_spec.py"
+    installed_spec.parent.mkdir(parents=True, exist_ok=True)
+    installed_spec.write_bytes(Path(spec.__file__).read_bytes())
+    monkeypatch.setattr(spec, "__file__", str(installed_spec))
+    assert not (application / "src").exists()
+    spec.verify_sources(application)
+    locations[tampered].write_bytes(b"unreviewed source")
+    with pytest.raises(ValueError, match="source bytes differ"):
+        spec.verify_sources(application)
+
+
 @pytest.mark.postgres
 def test_native_catalogue_denied_select_and_missing_schema_without_application_reads_or_grant_changes(
     verified_db,

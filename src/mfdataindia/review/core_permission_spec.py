@@ -83,8 +83,13 @@ def specification():
 
 
 def verify_sources(root):
+    # Both images install a non-editable package. The application runtime has
+    # no checkout src tree: bind the actual installed package, never a fallback.
+    package = Path(__file__).resolve().parents[1]
     for name, expected in SOURCE_HASHES.items():
-        if hashlib.sha256((Path(root) / name).read_bytes()).hexdigest() != expected:
+        source = (package / name.removeprefix("src/mfdataindia/")
+                  if name.startswith("src/mfdataindia/") else Path(root) / name)
+        if hashlib.sha256(source.read_bytes()).hexdigest() != expected:
             raise ValueError("original failure-attribution source bytes differ")
 
 
