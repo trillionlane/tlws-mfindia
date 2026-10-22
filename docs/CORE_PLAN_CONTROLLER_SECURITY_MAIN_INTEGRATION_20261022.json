@@ -1,0 +1,28 @@
+{
+  "format": "core-plan-controller-security-main-integration-v1",
+  "scope": "Separate create-once read-only diagnostic controller PREPARATION ONLY, not runtime dispatch or sprint acceptance",
+  "design_before_integration": "controller-after-worker-security-main-integration-design-20261021.json SHA2563de3b2214466171f268c4fb0fe49f50d1dd0a8c8742318dda327ba49a063642f retained in preparation artifacts",
+  "controller_parent": "a152305605258aadf8be25e76512f817a53f5d73",
+  "admitted_worker_security_main": "9322d8ae6e7c49c79929dcb87217a4733618ddb4",
+  "independent_main_CI": {
+    "run": 39691814390,
+    "conclusion": "SUCCESS23:39:19UTC21October",
+    "actual_jobs_steps_cleanup": "BOTH jobs,40image+16PostgreSQL actual steps, all successful",
+    "native_collection": "2682unique/13focused+2669exactcomplement;13PASS269.54s+2668PASS1pre-existingemptyDBskip1316.27s=2681PASS1skip",
+    "complete_log_sha256": "00834566f59dfe27c69b33527df784a79c0bc7a08725449493564b8999c8ea03",
+    "generic": "39691813417 actual SKIPPED/MFDATAINDIA_DEV_AUTO_DEPLOY false; no settings mutation"
+  },
+  "prior_controller_reviews": "Original P1/P2 and final-publication P2 corrected beforea152305; named exacta152305 NO_REMAINING_P1_P2 for PREPARATION ONLY, raw report SHA256d666e57417820cb97f8ce0211b81157032721437681a91292bde5b42b3a9bc9c. All prior preparation-status/audit-failure documents are retained historical evidence, not current dependency or approval claims. Integrated exact head requires fresh named review and whole CI.",
+  "merge_resolution": "Squashed worker ancestry leaves merge-base4157. Three conflicts inspected before resolution: workflow, sequence test and worker disposition. Narrow blocks retain complete exact admitted9322d8a file bytes. Full diff versus9322d8a is eight unchanged additive controller files plus this integration record. All controller programs/tests and original design records remain byte-identical toa152305; no worker/SQL/security/dependency/CI/source-authority change.",
+  "program_sha256": {
+    "entrypoint": "eb869418f45e59d99de2c488795c480d08bf6e562e60ff95d922399fd2df6ca7",
+    "backend": "a33d5468361a59e02ab65c53e65ab16366fd545cc8101dd1329650bc7b6a7f1c",
+    "controller": "b4e292c066cda4903f9532d78accc7572f7030379f996e565614ec9ad8ee769a",
+    "controller_tests": "2397fa8c0b39f08fd8ecd81d5737c8355bc6f01d8cea70936fa407321043bd88",
+    "worker": "7ef6110a5032566b8ab42418134c9bbdd45780bb0978624c336ebac5ae4484ab"
+  },
+  "unchanged_guards": "One global create-only start record before provider reads; full env/argv/request/startup budget before sole create intent; exactly one new task/job/execution,1CPU1Gi600s/parallelism1/maxRetries0/existing SA+readsecret only/noIAM. Template-only JobSpec/no run tokens or overrides; complete metadata UID/creation/parent/time/task/env/secretref/volume/network seals and exact zero/one execution inventories. No retries on ambiguous create/run/task. Final inventory THEN fresh protected-final equality as LAST provider read before result. Deep-copy seals prevent alias mutation.",
+  "delivery_gates": "Focused+full local validation, exact new named review, whole native head CI, implementer completion self-review explicitly not independent, normal matching-head merge/identical reviewed tree/parent/currentremote and independent whole main CI. Final reviewed immutable images/manifest+config bytes/Linuxamd64/exact finalGit TWICE and fresh protected-state preflight still precede ONE already-approved diagnostic. Worker PR alone cannot dispatch.",
+  "unallocated": "No diagnostic approval/root/manifest/start intent/Cloud job/execution or final image preparation allocated here. K remains terminal failed/recovered, never restarted/reused. No source/DB/data/IAM/schedule/runtime change, active PDF source policy/configuration allocation, financial rule change or performance acceptance. Dormant PDF command denial remains exact from security main.",
+  "preservation": "Old clean controller brancha152305 and dirty worker branch08491c8/all four dirty files remain in place untouched; integration is isolated. All40frozen original CI bodies/order plus transport, BOTH-image PDF security and packaged-worker binding steps remain byte-exact."
+}
