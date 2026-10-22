@@ -3,6 +3,7 @@
 from copy import deepcopy
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 import requests
@@ -118,6 +119,42 @@ def test_metadata_resource_reads_pin_project_region_and_have_no_write_verb(kind,
     if args[0] == "scheduler":
         assert "--location=asia-south1" in args
     assert not set(args) & {"create", "execute", "deploy", "update", "delete", "access"}
+
+
+def test_execution_inventory_uses_exact_provider_job_selector_before_client_filter_and_limit():
+    assert metadata_arguments("executions") == [
+        "run", "jobs", "executions", "list", "--job=" + core.NAME,
+        "--filter=metadata.name~^" + core.NAME + "-", "--limit=2",
+        "--region=" + core.REGION, "--project=" + core.PROJECT, "--format=json",
+    ]
+
+
+@pytest.mark.parametrize("target", [core.NAME, "other-job", "other-job --project=other"])
+def test_execution_inventory_cannot_accept_caller_job_override(target):
+    with pytest.raises(ValueError, match="unapproved diagnostic metadata"):
+        metadata_arguments("executions", target)
+
+
+def test_execution_inventory_metadata_timeout_is_once_without_create_or_execute(monkeypatch):
+    backend = Backend(approval(), Path.cwd())
+    calls = []
+
+    def timeout(argv, **kwargs):
+        calls.append((argv, kwargs))
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    monkeypatch.setattr("mfdataindia.review.core_plan_backend.subprocess.run", timeout)
+    try:
+        with pytest.raises(subprocess.TimeoutExpired):
+            backend.metadata("executions")
+        assert len(calls) == 1
+        assert calls[0][0] == [
+            "gcloud", "--account=" + core.ACCOUNT, *metadata_arguments("executions")]
+        assert "--job=" + core.NAME in calls[0][0]
+        assert calls[0][1]["timeout"] == 60
+        assert not backend.created and not backend.executed and not backend.sent_urls
+    finally:
+        backend.session.close()
 
 
 def test_backend_consumes_ambiguous_create_without_retry(monkeypatch):

@@ -1,0 +1,20 @@
+{
+  "format": "core-plan-inventory-provider-selector-repair-design-v1",
+  "created_UTC": "2026-10-22T01:09:15Z",
+  "design_before_code": true,
+  "evidence": {
+    "observer": "diagnostic-preflight-observer-timeout-retained-20261022_0107.json",
+    "session": 40208,
+    "exit": 1,
+    "error": "subprocess.TimeoutExpired for execution-list metadata after60s; NO diagnostic controller/globalstart/root/job/SQL",
+    "installed_CLI_surface": "/Users/deviojha/google-cloud-sdk/lib/surface/run/jobs/executions/list.py:Run calls _SortExecutions(client.ListExecutions(namespace,label_selector)); label_selector only set for args.job",
+    "installed_CLI_pager": "/Users/deviojha/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/serverless_operations.py:1558-1592 pages namespace executions with optional labelSelector; CLI Run passes no backend limit. Client filter/limit happen after sort.",
+    "official_reference": "https://docs.cloud.google.com/sdk/gcloud/reference/run/jobs/executions/list",
+    "claim_boundary": "Timeout proves current broad metadata request exceeded60s; installed code proves no server job selector. Narrow pushdown addresses this evidence; no claim of DB latency rootcause or confirmed live success."
+  },
+  "correction": "Only add exact --job=mf-core-plan-diagnostic-261021a to existing executions metadata list BEFORE unchanged prefix filter/limit2. This narrows provider reads to the same approved job, preserves all its executions and duplicate detection. Caller cannot choose/override target.",
+  "unchanged": "60s metadata timeout/stderr ambiguity failure/zero-one inventory/globalstart/createonly/UIDtime/wholemetadata-task seals/deepcopy/finalinventoryTHENprotectedLASTread/1CPU1Gi600s task/5s5s15s SQL/no retries/query scope/worker/hash/source/policy/CI/security/profile/IAM all unchanged.",
+  "tests": "Provider-free exact full arguments regression (first fails on old code), arbitrary/explicit job override rejection, timeout onecall/no retry/no create/no execute with bound60. Retain all existing tests; full local/collection/native head+main CI/named exact review mandatory.",
+  "delivery": "Fresh isolated branch/worktree from actual admitted537eb97, preserve all old worktrees/dirty4files/imageprep. New exacthead named review/findings resolution/fullCI/normalexactmerge/identicaltree/independentmainCI. New final-Git images twice after newmain; existing537 images remain DONE but not newGit authority. No oldcontroller/images/CI rerun or source replacement.",
+  "provider_stop": "No repeat of the failed broad list, no alternate live query, no permission/IAM/time/resource/SQL changes or diagnostic allocation during this repair. Fresh readiness only after reviewed correction delivery and final-image gates."
+}
