@@ -1,0 +1,10 @@
+{
+  "format": "collector-required-variant-fields-P2-disposition-before-correction-v1",
+  "observed_UTC": "2026-10-22 16:06:10 UTC",
+  "head": "d5a924fb6c4d235fd978cb96abc4a9010870c808",
+  "finding": "Sole P2, no P1. Full capture and result validation accepted missing/renamed required group_key. Additional live columns are valid, not an exact two-column whole-table population.",
+  "reproduction": "Providerfree mutation renamed group_key in a complete physical inventory; validate_snapshot accepted. No DB/provider calls.",
+  "correction": "Require exactly the two requested fields amfi_scheme_code and group_key as a SUBSET of actual non-dropped variant columns. Retain complete physical metadata, all additional live columns and all dropped slots. Separate helper, negative missing/renamed/dropped cases for either name, positive additional-live-and-dropped case, CI-native missing required field case.",
+  "unchanged": "All frozenV4SQL/context/schema/controlstatements/bindings/29statementcounts, old code/functions/source/security/budgets unchanged. No new runtime/grant/IAM/image/source authority. Only spec semantic admission check/tests + controller spec hash pin update.",
+  "gates": "Fullstablevalidation/newlosslesscollection/push/freshEXACTnamedreview/newnativeCI. Old headreviewnotapproval; no blind unchanged CI retry/manualstop; normal changed-head concurrency allowed."
+}

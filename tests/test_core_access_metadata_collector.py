@@ -146,6 +146,54 @@ def test_29_exact_statements_full_counts_private_hashes_and_no_acceptance():
     assert len(value["groups"]["M03_physical_columns"]) == 4  # Dropped tail retained.
 
 
+@pytest.mark.parametrize("name", ["amfi_scheme_code", "group_key"])
+@pytest.mark.parametrize("defect", ["missing", "renamed", "dropped"])
+def test_required_variant_access_field_cannot_be_missing_renamed_or_dropped(name, defect):
+    conn = Connection()
+    cols = conn.groups["M03_physical_columns"]
+    col = next(c for c in cols if c["relation_oid"] == 21 and c["name"] == name)
+    num = col["attnum"]
+    if defect == "renamed":
+        col["name"] = "renamed_" + name
+    else:
+        caps = conn.groups["M08_effective_capabilities"]
+        caps[:] = [c for c in caps if not (c["object_kind"] == "column" and c["object_oid"] == 21 and c["sub_id"] == num)]
+        if defect == "dropped":
+            col.update(name="........pg.dropped........", dropped=True, type_oid=0)
+        else:
+            cols.remove(col)
+            conn.groups["M02_relation_graph"][1]["attribute_count"] -= 1
+            for other in cols:
+                if other["relation_oid"] == 21 and other["attnum"] > num:
+                    other["attnum"] -= 1
+            acls = conn.groups["M04_root_and_mf_ACLs"]
+            acls[:] = [a for a in acls if not (a["object_kind"] == "column" and a["object_oid"] == 21 and a["sub_id"] == num)]
+            for row in [*acls, *caps]:
+                if row["object_kind"] == "column" and row["object_oid"] == 21 and row["sub_id"] > num:
+                    row["sub_id"] -= 1
+    with pytest.raises(worker.ProbeFailure):
+        worker.collect(conn)
+    assert conn.calls.count("ROLLBACK") == 1
+
+
+def test_additional_variant_live_columns_and_dropped_slots_are_retained_not_rejected():
+    conn = Connection()
+    conn.groups["M02_relation_graph"][1]["attribute_count"] = 4
+    conn.groups["M03_physical_columns"].append(dict(relation_oid=21, attnum=4, name="additional_live_field",
+        dropped=False, type_oid=25, type_modifier=-1, collation_oid=0, not_null=False))
+    conn.groups["M04_root_and_mf_ACLs"].append(dict(object_kind="column", object_oid=21, sub_id=4,
+        owner_oid=12, raw_acl=None, raw_acl_is_null=True, normalized_acl=[]))
+    caps = conn.groups["M08_effective_capabilities"]
+    caps.extend([{**c, "sub_id": 4} for c in caps if c["object_kind"] == "column" and c["object_oid"] == 21 and c["sub_id"] == 2])
+    for definition in DEFINITIONS:
+        conn.groups[definition["id"]].sort(key=lambda r: tuple(r[k] for k in definition["unique_order_key"]))
+    value = worker.collect(conn)
+    spec.validate_result({**value, "worker_binding": {}})
+    columns = value["groups"]["M03_physical_columns"]
+    assert any(c["name"] == "additional_live_field" for c in columns)
+    assert any(c["dropped"] for c in columns)
+
+
 @pytest.mark.parametrize("field,value", [("current_user", "postgres"), ("database_name", "wrong"),
     ("parent_membership_count", True), ("parent_membership_count", 1), ("reader_oid", True),
     ("statement_timeout", "30s"), ("row_security", "off"), ("server_version_num", 190000)]
@@ -332,7 +380,7 @@ def metadata_db(pg_dsn):
 def native_state(dsn):
     with psycopg.connect(dsn, row_factory=dict_row) as admin:
         return [admin.execute(sql).fetchall() for sql in (
-            "SELECT amfi_scheme_code,group_key FROM mf.fund_variants ORDER BY amfi_scheme_code",
+            "SELECT to_jsonb(v)::text FROM mf.fund_variants v ORDER BY to_jsonb(v)::text",
             "SELECT c.oid,c.relowner,c.relacl::text,c.reloptions,c.relrowsecurity,c.relforcerowsecurity,CASE WHEN c.relkind='v' THEN pg_get_viewdef(c.oid,false) END AS body FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mf' ORDER BY c.oid",
             "SELECT a.attrelid,a.attnum,a.attacl::text FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mf' AND a.attnum>0 ORDER BY a.attrelid,a.attnum",
             "SELECT roleid,member,grantor,admin_option,inherit_option,set_option FROM pg_auth_members ORDER BY roleid,member,grantor",
@@ -413,3 +461,19 @@ def test_native_function_execute_original_reader_only_body_identity_and_shell_op
     role = next(r for r in value["groups"]["M06_relevant_role_flags"] if r["role_oid"] == function["owner_oid"])
     assert role["is_function_body_principal"] is True and role["is_relation_access_principal"] is False
     assert "FUNCTION_BODY_OR_OPERATOR_SAFETY_UNMODELED" in value["access_admission_blockers"]
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("name", ["amfi_scheme_code", "group_key"])
+def test_native_renamed_required_variant_field_fails_without_second_capture_or_row_changes(metadata_db, name):
+    with psycopg.connect(metadata_db) as admin:
+        admin.execute(psycopg.sql.SQL("ALTER TABLE mf.fund_variants RENAME COLUMN {} TO {}").format(
+            psycopg.sql.Identifier(name), psycopg.sql.Identifier("renamed_" + name)))
+    before = native_state(metadata_db)
+    direct = make_conninfo(metadata_db, user="mfdata_verified_reader", password="metadata-fixture-only")
+    with psycopg.connect(direct, row_factory=dict_row, autocommit=True, prepare_threshold=None) as conn:
+        with pytest.raises(worker.ProbeFailure) as failure:
+            worker.collect(conn)
+        assert failure.value.phase == "seal"
+        assert conn.info.transaction_status == psycopg.pq.TransactionStatus.IDLE
+    assert native_state(metadata_db) == before

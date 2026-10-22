@@ -211,6 +211,13 @@ def relation_access(roots, relations, edges, reader):
         pairs = expanded
 
 
+def validate_variant_fields(columns, relation_oid):
+    # Exactly two requested fields, NOT exactly two table columns. Extra live
+    # columns and dropped physical slots remain in the complete witness.
+    live = {c["name"] for c in columns if c["relation_oid"] == relation_oid and not c["dropped"]}
+    require({"amfi_scheme_code", "group_key"} <= live)
+
+
 def validate_snapshot(groups, context):
     definitions = inventory()["statements"]
     exact_keys(groups, [d["id"] for d in definitions])
@@ -236,6 +243,7 @@ def validate_snapshot(groups, context):
                 == (t["nspoid"], t["nspname"], t["relname"], t["expected_kind"]))
     col_map = {(c["relation_oid"], c["attnum"]): c for c in columns}
     require(set(col_map) == {(r["relation_oid"], n) for r in graph for n in range(1, r["attribute_count"] + 1)})
+    validate_variant_fields(columns, targets[1]["reloid"])
     for r in graph:
         require(r["owner_oid"] in role_map)
         require(r["private_view_definition"]["is_null"] is (r["relation_kind"] != "v"))
