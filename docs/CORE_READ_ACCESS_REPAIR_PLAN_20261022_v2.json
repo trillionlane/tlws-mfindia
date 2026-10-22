@@ -1,0 +1,230 @@
+{
+  "format": "mf-s1-least-privilege-read-access-repair-plan-v2",
+  "created_UTC": "2026-10-22T13:08:00Z",
+  "status": "CORRECTED_GATE_ORDER_FOR_NAMED_REVIEW/PLAN_ONLY_NOT_EXECUTABLE",
+  "human_authority": {
+    "latest_direct_Yes": "Prepare a separately reviewed least-privilege access-repair plan. No grants, runtime execution, new database/cloud probes, credentials or reruns authorized.",
+    "prior_one_shots": "Old plan diagnostic failed and is immutable; new catalogue diagnostic completed and is consumed. Neither can be restarted or reused."
+  },
+  "objective": "Define the smallest independently reviewable permission delta that could support the frozen original diagnostic statements, without changing queries, financial/data/source semantics, identity guards, time/resource bounds or accepting FS13.",
+  "evidence": {
+    "checkpoint": "/Users/deviojha/projects/codex/artifacts/MF_S1_PERMISSION_DIAGNOSTIC_COMPLETE_CURRENT_READER_GAPS_NO_REPAIR_AUTHORITY_20261022_1135.json",
+    "checkpoint_sha256": "3a78d93cdee79bc576d6d457e9d6e332fc614a4935ae42d900a335fc2b02b6bc",
+    "catalogue_certificate_sha256": "20ef53c3d19b76308212e5b9eafd3cf49431dae3a28ded800db7679b815567c0",
+    "catalogue_sha256": "b9b1bf5d7297ccf665609f1f34717e5e02a82a0fbc12c30d5dd0414463dd26b5",
+    "diagnostic_execution": "mf-core-permission-diagnostic-261022a-x4mmb",
+    "catalogue_time": "2026-10-22T11:31:52.068522Z",
+    "facts": "Direct mfdata_verified_reader/RR READ ONLY/5s statement5s lock15s transaction. Four schemas USAGE true/CREATE false; all15 relations exist. Table and any-column SELECT false for mf.current_fund_facts and mf.fund_variants; other13 SELECT true. All tested write/elevation flags false/memberships0.",
+    "limitations": "Point-in-time current effective permissions, not fresh current owner/grantor/column inventory. Does not identify exact historical denied statement or original K/core-role ReadTimeout cause, plans, performance, active DB projection/configuration/populations or acceptance."
+  },
+  "static_baseline": {
+    "checkout": "/Users/deviojha/projects/codex/worktrees/mfdata-data-01",
+    "git": "7eba4444917194fbd0374c2dacbe2baa0fb4567b",
+    "tree": "572556f6f44bd89dbd383f497d790209918abca3",
+    "clean_when_inspected": true,
+    "query_file": "src/mfdataindia/api/queries.py",
+    "query_sha256": "c2043667ab261be1ae02eb9e5f32658c142e325739487582a555530f0e3f691e",
+    "historical_privilege_reconciler": "scripts/sql/reconcile_verified_review_privileges.sql",
+    "historical_privilege_reconciler_sha256": "b0b2bab8a7ece0384b96f658f6570fe2f4339bbda9862011381b470e5f000e38",
+    "observation": "Historical optional reconciler grants selected named base tables but not these two targets, and first revokes table/column ACLs broadly for three verified-review roles. Existing rollout_database.install path invokes it. Absence of the two grants is not by itself proof of a bug. Do NOT run that reconciler to fix this gap or amend its historical bytes/outputs.",
+    "privileges_sha256": "4929964f90292e48f9d81c054e848ed835d190c71a1c54230f82d0e4eb049c33",
+    "current_facts_store_sha256": "380f656f5d70a4870c9c86d2f821cc14c418128a1ffb51cf9124c5e3b8b5afc0"
+  },
+  "security_decision": {
+    "candidate": "Existing-role, two-object, explicit-column SELECT-only profile, conditional on owner approval of shared-role exposure.",
+    "shared_role_warning": "mfdata_verified_reader is not a job-scoped identity. Grants affect every session/consumer using that principal; no claim of only code154117, one-job or one-execution database enforcement. Current targets have row_security=false in retained catalogue. Any newly granted column can be read across all rows exposed by that object. Owner must explicitly accept this boundary before a live change.",
+    "alternative": "If shared-role exposure is unacceptable, STOP this candidate. Prepare a separately authorized dedicated diagnostic-principal design; it would require separately reviewed identity/credential/worker/controller changes and full delivery gates. Never switch to admin/core-role or SET ROLE as a fallback.",
+    "selection_NOT_granted_by_this_plan": true
+  },
+  "candidate_delta": [
+    {
+      "object": "mf.fund_variants",
+      "expected_kind": "r",
+      "grantee": "mfdata_verified_reader",
+      "privilege": "SELECT",
+      "grant_scope": "COLUMN",
+      "columns": [
+        "amfi_scheme_code",
+        "group_key"
+      ],
+      "with_grant_option": false,
+      "why": "Only variant identifiers/group join keys referenced by both frozen sibling statements.",
+      "all_table_columns": false
+    },
+    {
+      "object": "mf.current_fund_facts",
+      "expected_kind": "v",
+      "grantee": "mfdata_verified_reader",
+      "privilege": "SELECT",
+      "grant_scope": "COLUMN",
+      "columns": null,
+      "unresolved": "Enumerate and freeze EVERY current non-dropped visible view column in actual ordinal order in a separately approved metadata-only preflight. The unchanged batch statement contains SELECT *; granting only fields referenced after planning is not presumed sufficient. No executable grant can be generated until exact live column names/types/attnums and view definition hash are admitted.",
+      "minimum_static_own_facts_fields": [
+        "aum",
+        "expense_ratio",
+        "face_value",
+        "inception_date",
+        "sebi_category_name",
+        "asset_class",
+        "sub_asset_class",
+        "taxability",
+        "return_1day",
+        "return_3month",
+        "return_6month",
+        "return_1year",
+        "return_3year",
+        "return_5year",
+        "return_10year",
+        "return_since_launch",
+        "min_initial_investment_amount",
+        "min_subsequent_investment_amount",
+        "is_sip_allowed",
+        "status",
+        "transaction_status",
+        "benchmark",
+        "benchmark_name",
+        "fund_manager_name",
+        "risk_level",
+        "base_expense_ratio",
+        "registrar_agent",
+        "expense_ratio_history",
+        "crisil_rating",
+        "sub_type",
+        "exit_load_value",
+        "exit_load",
+        "lock_in_period",
+        "portfolio_turnover",
+        "return_1week",
+        "return_1month",
+        "return_9month",
+        "sharpe_ratio",
+        "beta",
+        "std_deviation",
+        "risk_rating",
+        "holdings_analysis",
+        "holdings_maturity",
+        "category_return"
+      ],
+      "additional_static_predicate_column": "amfi_scheme_code",
+      "facts_usable_fields": [
+        "aum",
+        "expense_ratio",
+        "benchmark",
+        "benchmark_name",
+        "fund_manager_name",
+        "inception_date"
+      ],
+      "with_grant_option": false,
+      "all_table_columns": false,
+      "why": "Explicit present-column grants avoid a table/view-wide SELECT privilege that would automatically include future columns. A new view column must cause renewed review, not silent privilege expansion."
+    }
+  ],
+  "excluded": [
+    "No table-wide SELECT fallback, ALL TABLES/ALL PRIVILEGES/wildcards/default privileges/PUBLIC/grant option.",
+    "No schema/database CREATE, DML, sequence/function access, owner changes, role membership/inheritance changes, password rotation, new secret/IAM grants or SET ROLE.",
+    "No view definition/security_invoker/security_barrier/RLS policy changes or grant on underlying relations by inference.",
+    "No query rewrite, selector/code154117 change, sampling, EXPLAIN ANALYZE/application row query, timeout/resource/stack increase or assertion/audit weakening.",
+    "No existing services/jobs/schedules/source registry/policy/migration allocations; no production/NSE/sourceHTTP/ledger query."
+  ],
+  "approval_and_delivery_gates": [
+    {
+      "id": "G1_OWNER_SCOPE",
+      "required_before": "Any access-repair/grant implementation or permission write, NOT metadata-only code preparation",
+      "deliverable": "Human owner chooses shared-role explicit-column candidate versus separately scoped dedicated identity, lifetime, allowed consumers/all-row exposure and operating grantor/credential. These decisions block permission-repair implementation/write, not independent metadata-only code preparation. Metadata preparation requires reviewed metadata design and scoped human implementation authority; live metadata execution additionally requires exact delivered inputs/readiness approval. This gate-order correction supplies neither authority."
+    },
+    {
+      "id": "G2_NEW_METADATA_ONLY_PREFLIGHT",
+      "required_before": "Executable change bytes or live approval",
+      "deliverable": "With separate exact read-only authority: fresh object namespace/name/OID/kind/owner; all ordered view columns/attnums/types; full view definition hash/security mode/dependency and function-execution implications; exact direct role/column ACLs with grantors/options; effective table AND each-column privileges including pre-existing grants via PUBLIC/membership; no role elevation/write capability; known grantor authority and existing source/core/private consumer reference inventory without credential values. No application data, query planning/execution, migration-ledger or source requests. New identity/inputs/start authority only if a job is approved; no old diagnostic reuse."
+    },
+    {
+      "id": "G3_FREEZE_CHANGE_AND_REVIEW",
+      "required_before": "Live grants",
+      "deliverable": "Freeze exact two-object column lists, OIDs/definitions/before ACL hashes, role, grantor, planned additive delta/lifetime, transaction/race guards, explicit rollback delta and verification request inventory. New additive optional versioned profile; allocate no SQL/policy number before actual authorized ledger/conflict process if a repository migration is chosen. Preserve old reconciler; future provisioning/reconciliation composition must be reviewed so old broad reconciliation cannot silently erase/reapply the candidate profile. No automatic profile admission or wildcard expansion."
+    },
+    {
+      "id": "G4_IMPLEMENTATION_IF_SEPARATELY_APPROVED",
+      "required_before": "Live grants",
+      "deliverable": "Isolated worktree/plan-before-code, focused+full tests, unchanged nativePG18/full contracts/security/audit/original BOTH-image smokes, exact-head named review/fix/re-review, normal match-head merge/identical reviewed tree/whole independent main CI. No docs-only deployment; actual runtime tools/images additionally need full exact provenance and immutable profile gates. No localPG/Docker/new cloud clone or existing gate-variable write."
+    },
+    {
+      "id": "G5_EXACT_LIVE_CHANGE_APPROVAL",
+      "required_before": "Any permission write",
+      "deliverable": "Human approval must name DEV account/project/region/database, exact role/two object OIDs+column lists/plan SHA/grantor/input hashes, lifetime, original one change operation, 5s statement/5s lock/15s transaction bounds and prearmed exact-delta reversal authority. No grant option/identity/DDL/source change or second attempt. No broad owner role or credentials reused from another task."
+    },
+    {
+      "id": "G6_EXECUTION_AND_RECONCILIATION",
+      "required_before": "Declaring access delta delivered",
+      "deliverable": "Only after G1-G5: verified exact live before fingerprints and reviewed stable-identity/ACL administrative-race guard. One transactional additive change, fail on any unknown/concurrent drift; no replay/broad privilege reconciler. Retain original PID/session/EXIT and sanitized exact SQL/request bytes plus before/after ACL/capability/profile evidence. Verify every required column true, unrelated direct/effective ACLs exactly unchanged, no grant option/DML/DDL/function/sequence/elevation/membership/credential/IAM/schedule/data/view-definition changes. Table-level has_table_privilege may remain false by design; has_any_column_privilege alone is insufficient."
+    },
+    {
+      "id": "G7_DISTINCT_FUTURE_DIAGNOSTIC_AUTHORITY",
+      "required_before": "Any new original-query plan/facts diagnostic",
+      "deliverable": "Permission delivery does NOT authorize an app query or consume/restore an old diagnostic. A wholly new identity/root/manifest/one-shot job and separately approved exact original SQL/role/154117/bounds must be reviewed and delivered with whole CI/final images twice/fresh readiness/whole request and immutable deployment seals/full evidence/final inventory THEN protected LAST provider read. Old jobs/STARTs remain immutable. A current reader plan is still not historical core-role/K causality or acceptance."
+    }
+  ],
+  "rollback_and_failure": {
+    "before_commit": "Any mismatch, warning, exception or timeout before commit -> transactional rollback and STOP. No blind retry.",
+    "after_commit": "Only a separately preapproved reversal of this exact new grant delta; never REVOKE ALL/CASCADE or remove pre-existing/other-operator privileges. Before reversal require exact recorded current direct ACL/grantor state and identity/definition matching. If other ACL changes/dependencies or commit result ambiguity exist, retain all and STOP for owner decision; do not guess, automatically retry, or continue to a diagnostic.",
+    "lifetime": "Must be explicitly selected at G1/G5; no implied permanent grant and no unreviewed timer/revocation job.",
+    "baseline": "A deliberate DB ACL delta needs its own approved scoped before/after baseline. Equal cloud protected profiles do not prove DB ACL/data preservation; do not overwrite historical FS13/protected acceptance records."
+  },
+  "validation_plan": {
+    "provider_free": [
+      "Verify exactly two fixed qualified targets/one fixed grantee/SELECT-column/no grant option; reject wildcards/defaults/role/schema/owner/extra privileges/objects.",
+      "Reject unresolved view-column inventory, unexpected column/attnum/type/definition/OID/owner/security mode drift, duplicate or missing columns and unknown grantor/lifetime.",
+      "Verify full actual request/env/argv/startup budget before any intent if a cloud controller is proposed; consume once before ambiguous I/O.",
+      "Reject inherited/direct/column privileges outside exact delta, unsafe row exposure assumptions, and rollback touching pre-existing grants."
+    ],
+    "native_CI_fixture_only": [
+      "Disposable CI PostgreSQL18 fixtures for baseline reader denied SELECT on both targets; grant only two variant columns and frozen present-view columns, then privilege-only checks and separately scoped unchanged EXPLAIN/SELECT test-fixture queries succeed.",
+      "Prove an ungranted variant column remains denied; adding a new view column makes frozen SELECT * fail closed until a new column-profile review.",
+      "Prove other roles/ACLs, all fixture row values, view definitions, memberships, PUBLIC/default/function/sequence/DML/DDL privileges unchanged.",
+      "Test transaction abort/no partial grants, exact-delta reversal preserving pre-existing column grants, concurrent administrative drift/ambiguous commit STOP, and rejected revoke-CASCADE/broad helper replay.",
+      "Test approved future provisioning composition only with explicit additive profile; no historical script alteration and no silent admission after old broad reconciliation."
+    ]
+  },
+  "not_done_this_turn": {
+    "live_metadata_preflight": false,
+    "DB_or_cloud_calls": false,
+    "SQL_executed": false,
+    "grant_or_role_IAM_change": false,
+    "new_runtime_job_or_start": false,
+    "new_SQL_policy_number": false,
+    "old_jobs_retried": false,
+    "query_or_dependency_code_change": false,
+    "Git_branch_PR_push_or_merge": false,
+    "FS13_acceptance": false,
+    "NSE_delivery": false,
+    "automatic_followup_scheduled": false
+  },
+  "unchanged_future_scope": {
+    "runtime_checkpoint": "/Users/deviojha/projects/codex/artifacts/FS13K_FINAL_CORE_READTIMEOUT_FAILED_KNOWN_PRIOR_RECOVERED_20261021_1750.json",
+    "runtime_checkpoint_sha256": "c0c2f502c274f73cd9f659e3da2db37d180c64fb31007e0e115c123daf414d20",
+    "five_sprints": "S1 incomplete -> S2 fresh FS13+extra actual core+reviewed handover -> S3 NSE contracts -> S4 NSE delivery -> S5 EXP01. ALL original16 gates, source/PDF authority, preservation/clone/restore/full cohort/bytes and no-waiver bounds retained; no authority expansion from this plan."
+  },
+  "official_semantics_sources": [
+    {
+      "url": "https://www.postgresql.org/docs/18/sql-grant.html",
+      "use": "Object versus column privileges; no grant option. Whole-object SELECT is not restricted to an individual code/job."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/18/rules-privileges.html",
+      "use": "Views may use owner rather than invoker relation privileges; exact view/owner/dependencies must be reviewed, not assumed."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/18/ddl-rowsecurity.html",
+      "use": "Column access alone is not row scoping; absent relevant row-security policy, the grantee can read every exposed row. No RLS change proposed."
+    }
+  ],
+  "previous_plan": {
+    "path": "/Users/deviojha/projects/codex/artifacts/MF_S1_READ_ACCESS_REPAIR_PLAN_20261022_v1.json",
+    "sha256": "dcacf986c59b7dea08c1c391c88ef9c75e068cbe5cfc5933beb5ce5ebf54ebc6",
+    "review": "NO_REMAINING_P1_P2/PLAN_ONLY; later metadata design review identified circular gate ordering."
+  },
+  "metadata_gate_split": {
+    "metadata_preparation": "Reviewed metadata design + scoped direct human implementation authority; provider-free local preparation can precede grant-lifetime/grantor/shared-role choice.",
+    "live_metadata_execution": "Exact reviewed/delivered code, full CI, final immutable images twice, newly approved exact inputs and fresh protected/readiness evidence before sole new create-only job. No write or original-query authority.",
+    "permission_repair": "Owner acceptance of grantee/consumer/all-row exposure/lifetime/grantor remains G1; actual frozen metadata/exact delta/full review then G5 explicit write authority. No old diagnostic retry."
+  }
+}

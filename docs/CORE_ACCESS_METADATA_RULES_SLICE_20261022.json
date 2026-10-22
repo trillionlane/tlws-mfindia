@@ -1,0 +1,52 @@
+{
+  "format": "mf-core-access-metadata-rules-slice-design-before-code-v1",
+  "scope": "S1 preparation-only pure rules supporting the reviewed metadata preflight; NOT full collector, current metadata evidence, grant profile or live execution.",
+  "authority": "Latest direct user requested proceeding with planned milestones; prior bounded metadata-only preparation/preflight Approved retained. Local implementation preparation only here; no exact live inputs, grant choice or performance-query authority inferred.",
+  "base": {
+    "head": "7eba4444917194fbd0374c2dacbe2baa0fb4567b",
+    "tree": "572556f6f44bd89dbd383f497d790209918abca3"
+  },
+  "predecessors": {
+    "plan_v2_sha256": "46485e6e8a070a27f90c1cf2842037cb0b37e6de32c52cc502fa46e16b8b28ae",
+    "design_v3_sha256": "a46ad0d9b620f487d09dc7bc8e6333b06f30522a561dce9cb05c1c71519d0bb3",
+    "review": "NO_REMAINING_P1_P2/DESIGN_ONLY; neither execution nor permission authority"
+  },
+  "implementation": [
+    "New dormant pure rules module, tests and this design only. No SQL strings/collector/entrypoint/controller/backend/job identity allocated in this slice.",
+    "Nested security_invoker view resets its underlying relation principal to ORIGINAL query user even beneath a default-owner outer view, not the incoming outer-view owner. Default view uses its own owner.",
+    "Functions in a view require EXECUTE for original query user; SECURITY DEFINER changes function-body identity, not the original EXECUTE check. Do not execute/inspect a function body.",
+    "Complete ordered live/dropped columns; explicit fixed two variant columns versus all current visible view columns for frozen SELECT *. No static44-list substitution.",
+    "Table SELECT or exact required column SELECT, whole-row and any-column requirements remain distinct; unknown dependency-column interpretation blocks conclusions. Do not infer whole-row from pg_depend sub-ID0 alone.",
+    "RLS bypass versus owner/FORCE/superuser/BYPASSRLS context; applicable policy roles from explicit captured role-usage metadata. Never claim returned rows or policy-expression safety.",
+    "Strict identifiers/count/boolean/type/order/duplicate/missing metadata negatives; never evaluate SQL or accept an operational admission flag."
+  ],
+  "validation": [
+    "Provider-free tests for all rules and negative cases; input preservation and no imports or calls capable of provider/DB/source activity in new module.",
+    "Disposable native PostgreSQL18 CI fixture independently tests all four nested default/invoker view combinations and deliberate missing underlying SELECT, without modifying actual project tables, roles, schemas or privileges.",
+    "Full existing local nonPG/contracts/security/audit plus native PG/both images CI unchanged; derive new complete collection and exact focused/remainder complement.",
+    "Named exact-head review, findings disposition/retest/review, whole head CI, normal matching-head merge/identical tree and whole independent main CI. No deployment for this dormant preparation-only slice."
+  ],
+  "deferred": [
+    "All fixed metadata SQL/result inventory and packaged collector/controller; native SQL/nullACL/complete graph/role-path/RLS/dependency capture tests before that later slice.",
+    "All fresh exact runtime inputs, images twice and protected readiness gates before ONE new metadata-only job.",
+    "All owner/shared-role/lifetime/grantor/frozen metadata/delta/race-guard/exact write-approval gates before any access repair.",
+    "New original-query/performance diagnostic authority; S1 cause and repair remain unproved, FS13 remains failed/unaccepted."
+  ],
+  "implementation_addenda_before_final_validation": [
+    "RLS owner bypass uses exact captured effective owner-role USAGE, including inherited ownership, not OID equality. Native CI tests compare inherited ownership and FORCE RLS on disposable fixtures; no live query added.",
+    "Unique native fixture cleanup uses IF EXISTS after rollback, preserving the original failure if setup did not commit."
+  ],
+  "unchanged": [
+    "All existing files/functions/SQL/CI/dependencies/contracts/source policies",
+    "Old failed/successful diagnostics and A-K evidence",
+    "Protected serving authority, data, source jobs, IAM and schedules",
+    "Five-sprint order and all acceptance gates"
+  ],
+  "official_sources": [
+    "https://www.postgresql.org/docs/18/sql-createview.html",
+    "https://www.postgresql.org/docs/18/ddl-rowsecurity.html",
+    "https://www.postgresql.org/docs/18/catalog-pg-depend.html",
+    "https://raw.githubusercontent.com/postgres/postgres/REL_18_STABLE/src/backend/utils/misc/rls.c",
+    "https://raw.githubusercontent.com/postgres/postgres/REL_18_STABLE/src/backend/catalog/aclchk.c"
+  ]
+}
