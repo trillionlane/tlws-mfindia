@@ -415,3 +415,14 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/operate_core_permission_diagnostic_dev.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_core_permission_binding.py
           done
+
+      - name: Verify packaged two-root metadata collector and specification in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          for target in "$image" "$tools_image"; do
+            docker run --rm --entrypoint python "$target" /app/scripts/collect_core_access_metadata_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_core_access_metadata_dev.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_core_access_metadata_binding.py
+          done

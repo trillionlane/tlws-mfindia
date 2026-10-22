@@ -35,14 +35,16 @@ def test_every_original_step_body_and_order_is_preserved():
     worker = "- name: Verify packaged read-only core plan worker binding"
     security = "- name: Verify patched PDF workers and dormant source guards in both images"
     permission = "- name: Verify packaged catalogue-permission worker and specification in both images"
+    metadata = "- name: Verify packaged two-root metadata collector and specification in both images"
     # Preserve all frozen original bodies/order byte-for-byte. All later
     # mandatory steps are additive, after every original gate, in the same job.
-    assert [s["label"] for s in second[-4:]] == [addition, security, worker, permission]
-    assert first + second[3:-4] == expected
+    assert [s["label"] for s in second[-5:]] == [addition, security, worker, permission, metadata]
+    assert first + second[3:-5] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
     assert sum(s["label"] == worker for s in first + second) == 1
     assert sum(s["label"] == security for s in first + second) == 1
     assert sum(s["label"] == permission for s in first + second) == 1
+    assert sum(s["label"] == metadata for s in first + second) == 1
     assert len(expected) == 40
 
 
@@ -117,3 +119,15 @@ def test_security_smoke_is_additive_both_packaged_images_without_resource_or_gat
     assert '"$tools_image" /app/scripts/smoke_pdf_security_compatibility.py' in addition
     for forbidden in ("--privileged", "--ulimit", "--memory", "--cpus", "|| true", "continue-on-error"):
         assert forbidden not in addition
+
+
+def test_metadata_smoke_additive_both_images_binds_program_spec_and_inventory_without_dsn():
+    _, _, images = jobs()
+    smoke = images.split("      - name: Verify packaged two-root metadata collector and specification in both images\n")[1]
+    assert 'for target in "$image" "$tools_image"' in smoke
+    for name in ("collect_core_access_metadata_dev.py --help", "operate_core_access_metadata_dev.py --help",
+                 "smoke_core_access_metadata_binding.py"):
+        assert "/app/scripts/" + name in smoke
+    assert "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" in smoke
+    for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
+        assert forbidden not in smoke

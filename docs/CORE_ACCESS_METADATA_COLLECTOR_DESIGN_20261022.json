@@ -1,0 +1,21 @@
+{
+  "format": "mf-s1-metadata-collector-implementation-design-before-code-v1",
+  "created_UTC": "2026-10-22T15:45:00Z",
+  "base": "681a8689d3bb9f81c1a1d9e55c595c43eee41cbe",
+  "inventory_sha256": "8452e93a483f8e78155a892e1966294fc461fbe732dcacffe4d7410c35d73396",
+  "parent_sha256": "a46ad0d9b620f487d09dc7bc8e6333b06f30522a561dce9cb05c1c71519d0bb3",
+  "plan_sha256": "46485e6e8a070a27f90c1cf2842037cb0b37e6de32c52cc502fa46e16b8b28ae",
+  "scope": "Separate additive fixed metadata collector preparation only, no live approval or grant decision. No existing source/query/controller/security/dependency/contract changes.",
+  "layout": [
+    "core_access_metadata_inventory.py: exact frozen V4 SQL and descriptors, shared common CTE only mechanically deduplicated; no runtime knobs",
+    "core_access_metadata_spec.py: strict exact shape, types, ordering, cardinality, cross-identity/principal sets, private body hashes and explicit no-authority output",
+    "collect_core_access_metadata_dev.py: independent program/spec/inventory/attribution binding BEFORE DSN, autocommit+explicit 29 statements, appwall15s, complete command/driver/fetched counts, rollback and redacted failure",
+    "Separate new controller/backend/operator entrypoint: fixed new identity, copied exact critical guard bodies and consumed-before-ambiguous-I/O capabilities. No use until later complete delivery/readiness/approval gates.",
+    "Provider-free complete fixture and tamper tests; CI-only PostgreSQL18 fixtures; additive BOTH-image packaged binding smoke and sequence assertion."
+  ],
+  "protocol": "Exactly6setup+22SELECT+terminalROLLBACK29, fixedemptybindings. Context BEFORE metadata and after same snapshot. Complete10groups twice normalized exact equality. Private expressions only local memory then hash/null/bytes. Full sealed transport unchanged; overflow fails.",
+  "validation": "Focused providerfree first, complete stable nonPG/contracts/lint/audit/credentials, full3012old+new collection exactpartition and mandatory nativePG18/oldsmokes in actual CI. No localPG/Docker. Code review only exact complete candidate; any actual native SQL issue requires preserved design disposition and exact named re-review, never silently alter frozenSQL.",
+  "authority": "No new runtime approval/root/START/job/execution/images/grants/IAM/DSN/DB/provider/source calls. GlobalFS13K pointer unchanged. Unknown/cyclic/functionbody/policy-expression branches remain explicit access admission blockers, no fallback principal/grant. Runtime and FS13/performance acceptance alwaysfalse.",
+  "preservation": "Existing operationalmain clean681a868; current remote equal; olddirty084four hashes exact; no active relevant controller processes observed; all old branches/worktrees/consumed attempts retained.",
+  "remaining": "Full delivery and native verification are mandatory and not yet performed. No SQL/policy allocation."
+}
