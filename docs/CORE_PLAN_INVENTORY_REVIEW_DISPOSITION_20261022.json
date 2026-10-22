@@ -1,0 +1,13 @@
+{
+  "format": "core-plan-inventory-empty-result-review-repair-v1",
+  "design_before_correction": true,
+  "created_UTC": "2026-10-22T01:16:40Z",
+  "reviewed_head": "4c0e0b266ab436a2557f97971cdb13df54182dac",
+  "review": "CHANGES_REQUIRED/sole P2: legitimate empty execution inventory emits missing metadata.name warning because redundant clientfilter has no resources to inspect; strict stderr check must remain.",
+  "raw_review_sha256": "973a7383c5cb25858892db4daf2fb38232d791cb5c73a6c1816d4ecbb5d009aa",
+  "offline_proof_sha256": "7bd328ac248fe3295d67f7a579450ac25c4ae176b336343d8a999c98b5b9a6ca",
+  "correction": "Retain exact fixed --job provider selector and limit2; REMOVE redundant clientprefixfilter only. No returned execution is silently filtered away; preflight rejects ANY nonempty inventory, later whole immutable identities/parentUID/prefix/count remain validated. Caller job overrides still rejected.",
+  "guards_unchanged": "Any stderr/nonzero/timeout remains failure; metadata60s unchanged/no retry, create-only/zero-one/fullmetadata-task/profile/time/UID/finalprotectedLAST guards unchanged. No job/root/globalstart/SQL/provider read is authorized during correction.",
+  "tests": "Update exact argv regression; new provider-empty cases accept [] ONLY without stderr and reject any warning. Keep all old tests/full validation/actualcollection/exactnewhead namedre-review/fullnativehead+mainCI mandatory.",
+  "status": "Correction snapshot only; not re-review/CI/runtime acceptance. Current delivery state lives in external checkpoint; do not edit this document merely to claim approval."
+}

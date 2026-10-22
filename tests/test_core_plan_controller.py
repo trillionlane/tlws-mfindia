@@ -124,7 +124,7 @@ def test_metadata_resource_reads_pin_project_region_and_have_no_write_verb(kind,
 def test_execution_inventory_uses_exact_provider_job_selector_before_client_filter_and_limit():
     assert metadata_arguments("executions") == [
         "run", "jobs", "executions", "list", "--job=" + core.NAME,
-        "--filter=metadata.name~^" + core.NAME + "-", "--limit=2",
+        "--limit=2",
         "--region=" + core.REGION, "--project=" + core.PROJECT, "--format=json",
     ]
 
@@ -152,6 +152,32 @@ def test_execution_inventory_metadata_timeout_is_once_without_create_or_execute(
             "gcloud", "--account=" + core.ACCOUNT, *metadata_arguments("executions")]
         assert "--job=" + core.NAME in calls[0][0]
         assert calls[0][1]["timeout"] == 60
+        assert not backend.created and not backend.executed and not backend.sent_urls
+    finally:
+        backend.session.close()
+
+
+@pytest.mark.parametrize("warning", ["", "unexpected provider warning"])
+def test_server_scoped_empty_execution_inventory_keeps_stderr_fail_closed(monkeypatch, warning):
+    backend = Backend(approval(), Path.cwd())
+    calls = []
+
+    def empty_provider(argv, **kwargs):
+        calls.append(argv)
+        # The installed SDK warns on an empty result when a client filter is
+        # present. A server-scoped job selection requires no client filter.
+        stderr = warning or ("missing metadata.name" if any(
+            arg.startswith("--filter=") for arg in argv) else "")
+        return subprocess.CompletedProcess(argv, 0, stdout="[]", stderr=stderr)
+
+    monkeypatch.setattr("mfdataindia.review.core_plan_backend.subprocess.run", empty_provider)
+    try:
+        if warning:
+            with pytest.raises(RuntimeError, match="unavailable or ambiguous"):
+                backend.metadata("executions")
+        else:
+            assert backend.metadata("executions") == []
+        assert len(calls) == 1 and "--job=" + core.NAME in calls[0]
         assert not backend.created and not backend.executed and not backend.sent_urls
     finally:
         backend.session.close()
