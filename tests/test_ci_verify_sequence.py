@@ -10,6 +10,28 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/verify.yml"
 
 
+def test_verify_manual_fallback_preserves_both_automatic_triggers():
+    text = WORKFLOW.read_text()
+    triggers = text.split("on:\n", 1)[1].split("\npermissions:\n", 1)[0]
+    assert triggers == (
+        "  pull_request:\n"
+        "    branches: [main]\n"
+        "  push:\n"
+        "    branches: [main]\n"
+        "  workflow_dispatch:\n"
+    )
+
+
+def test_manual_verify_has_no_elevated_permissions_or_live_credentials():
+    text = WORKFLOW.read_text()
+    permissions = text.split("\npermissions:\n", 1)[1].split("\nconcurrency:\n", 1)[0]
+    assert permissions == "  contents: read\n"
+    assert not re.search(r"\$\{\{\s*secrets(?:\.|\[)", text)
+    for forbidden in ("id-token:", "write-all", "workflow_run:",
+                      "repository_dispatch:"):
+        assert forbidden not in text
+
+
 def inventory(job):
     steps = job.split("    steps:\n", 1)[1]
     blocks = [b for b in re.split(r"(?=^      - )", steps, flags=re.M) if b.strip()]
