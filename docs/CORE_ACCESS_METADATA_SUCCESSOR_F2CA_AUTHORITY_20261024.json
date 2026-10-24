@@ -1,0 +1,19 @@
+{
+  "format": "FROZEN_F2CA_SUCCESSOR_PREDECESSOR_FULL_BYTE_AUTHORITY_V1",
+  "git": "f2ca284ba132054a1bce039d7eb52af4e6825cb7",
+  "tree": "9329ae1986fd319d1014992d41c870d86863abd5",
+  "sha256": {
+    "src/mfdataindia/review/core_access_metadata_inventory.py": "abbdfa18ed7923669447dd077e30b91c89ab8da542a0cfe64582b8948c059eb1",
+    "src/mfdataindia/review/core_access_metadata_controller.py": "aaa5ac3bf1aa6a304c481f379af7b8b2b492e3116ba6f276719e83e005f1e4c1",
+    "src/mfdataindia/review/core_access_metadata_backend.py": "67845397c65af1a80a640adc91d07a746edbf465bca5cbc75b1177377f8fb1d5",
+    "src/mfdataindia/review/core_access_metadata_spec.py": "0c383479f03a528330f943dc42a52c002acc8297cdf6d21f849a84cc0725f18a",
+    "scripts/collect_core_access_metadata_dev.py": "8e3d00a212b251487ec0f5d4061fbe1a74f27e59e4fae647026be64afae949ef",
+    "scripts/operate_core_access_metadata_dev.py": "d1ed5ea16866dafaf6d32bbd04cb7e8a56b932642fcf18efe2f0394d7679fd4c",
+    "scripts/smoke_core_access_metadata_binding.py": "9898877720870a4ceb974aaf2f2f37dc0a2392170c945646e25c135ca2a0074c",
+    "tests/test_core_access_metadata_controller.py": "5ac92ea3a9f51697ba8700a6acbe6443cda18f67799c8a912a851c20a4a65644",
+    "tests/test_core_access_metadata_collector.py": "fe95843169a89262f5ee00cf45904515f899de9d7fa77ee6ec7a2f860810be05",
+    "tests/test_core_access_metadata_oci_resolution.py": "42c1f7c258e6136f2cda6801657ef216eba750d739f7c9cfd2fee21a4dcdef08",
+    ".github/workflows/verify.yml": "2ce30fea1aab8cfd67715466df5cdbe7bb24b5f5e999247e1d8bf5bee9097e75",
+    "tests/test_ci_verify_sequence.py": "8f78013e894ca4c171bda9d58ea09e892d1b094abb10f0644697c0f9295143e1"
+  }
+}

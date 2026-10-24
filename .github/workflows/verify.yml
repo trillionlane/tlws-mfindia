@@ -427,3 +427,30 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/operate_core_access_metadata_dev.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_core_access_metadata_binding.py
           done
+
+      - name: Verify packaged fixed successor metadata collector in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          for target in "$image" "$tools_image"; do
+            docker run --rm --entrypoint python "$target" /app/scripts/collect_core_access_metadata_dev_v2.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_core_access_metadata_dev_v2.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_core_access_metadata_binding_v2.py
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" -c '
+          import hashlib,os,runpy
+          from pathlib import Path
+          from types import SimpleNamespace
+          from mfdataindia.review import core_access_metadata_spec_v2 as spec
+          from mfdataindia.review import core_access_metadata_inventory as frozen
+          path=Path("/app/scripts/collect_core_access_metadata_dev_v2.py")
+          worker=runpy.run_path(str(path))
+          git=os.environ["DEPLOYMENT_GIT_SHA"]
+          env={"DEPLOYMENT_GIT_SHA":git}
+          for key,p in (("PROGRAM",path),("SPEC",Path(spec.__file__)),("INVENTORY",Path(frozen.__file__))):
+              env["CORE_ACCESS_METADATA_"+key+"_SHA256"]=hashlib.sha256(p.read_bytes()).hexdigest()
+          old=SimpleNamespace(rollout_id="dev-core-aclmeta-261022a",cohort=[154117],canary_code=154117,git_sha=git,image="SYNTHETIC_NO_AUTHORITY")
+          try: worker["worker_binding"](old,env)
+          except ValueError: pass
+          else: raise AssertionError("consumed identity admitted by successor worker")'
+          done

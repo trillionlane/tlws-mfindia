@@ -58,15 +58,17 @@ def test_every_original_step_body_and_order_is_preserved():
     security = "- name: Verify patched PDF workers and dormant source guards in both images"
     permission = "- name: Verify packaged catalogue-permission worker and specification in both images"
     metadata = "- name: Verify packaged two-root metadata collector and specification in both images"
+    successor = "- name: Verify packaged fixed successor metadata collector in both images"
     # Preserve all frozen original bodies/order byte-for-byte. All later
     # mandatory steps are additive, after every original gate, in the same job.
-    assert [s["label"] for s in second[-5:]] == [addition, security, worker, permission, metadata]
-    assert first + second[3:-5] == expected
+    assert [s["label"] for s in second[-6:]] == [addition, security, worker, permission, metadata, successor]
+    assert first + second[3:-6] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
     assert sum(s["label"] == worker for s in first + second) == 1
     assert sum(s["label"] == security for s in first + second) == 1
     assert sum(s["label"] == permission for s in first + second) == 1
     assert sum(s["label"] == metadata for s in first + second) == 1
+    assert sum(s["label"] == successor for s in first + second) == 1
     assert len(expected) == 40
 
 
@@ -151,5 +153,20 @@ def test_metadata_smoke_additive_both_images_binds_program_spec_and_inventory_wi
                  "smoke_core_access_metadata_binding.py"):
         assert "/app/scripts/" + name in smoke
     assert "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" in smoke
+    for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
+        assert forbidden not in smoke
+
+
+def test_successor_smoke_additive_both_actual_packages_rejects_consumed_identity_without_dsn():
+    _, _, images = jobs()
+    smoke = images.split("      - name: Verify packaged fixed successor metadata collector in both images\n")[1]
+    assert 'for target in "$image" "$tools_image"' in smoke
+    for name in ("collect_core_access_metadata_dev_v2.py --help", "operate_core_access_metadata_dev_v2.py --help",
+                 "smoke_core_access_metadata_binding_v2.py"):
+        assert "/app/scripts/" + name in smoke
+    assert "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" in smoke
+    assert 'rollout_id="dev-core-aclmeta-261022a"' in smoke
+    assert 'worker["worker_binding"](old,env)' in smoke
+    assert "consumed identity admitted by successor worker" in smoke
     for forbidden in ("MFDATAINDIA_DSN", "gcloud", "--privileged", "--ulimit", "--memory", "--cpus", "|| true"):
         assert forbidden not in smoke
