@@ -260,6 +260,24 @@ def deployed(job, prepared, *, namespace):
             "before_execute": True})
 
 
+def validated_image_resolution(proof, prepared):
+    """Validate the narrow fresh backend receipt, never a caller child override."""
+    keys = {"image", "resolved_image", "config_digest", "git_sha", "platform", "layers_downloaded"}
+    image = prepared["task"]["containers"][0]["image"]
+    repository = image.rsplit("@", 1)[0]
+    if (type(proof) is not dict or set(proof) != keys
+            or proof["image"] != image
+            or proof["git_sha"] != prepared["environment"]["DEPLOYMENT_GIT_SHA"]
+            or proof["platform"] != "linux/amd64"
+            or type(proof["layers_downloaded"]) is not int or proof["layers_downloaded"] != 0
+            or not isinstance(proof["resolved_image"], str)
+            or not re.fullmatch(re.escape(repository) + r"@sha256:[0-9a-f]{64}", proof["resolved_image"])
+            or not isinstance(proof["config_digest"], str)
+            or not re.fullmatch(r"sha256:[0-9a-f]{64}", proof["config_digest"])):
+        raise ValueError("exact authenticated image resolution receipt required")
+    return deepcopy(proof)
+
+
 def immutable_execution(execution, prepared, seal, *, namespace, identity=None):
     name = execution["metadata"]["name"]
     if not re.fullmatch(re.escape(NAME) + r"-[a-z0-9]{5,10}", name):
@@ -268,7 +286,14 @@ def immutable_execution(execution, prepared, seal, *, namespace, identity=None):
                                prepared=prepared, parent=seal)
     if identity is not None and actual != identity:
         raise ValueError("original immutable execution identity changed")
-    if (execution["spec"] != seal["whole_spec"]
+    comparable = execution["spec"]
+    if "image_resolution" in prepared:
+        proof = validated_image_resolution(prepared["image_resolution"], prepared)
+        comparable = deepcopy(comparable)
+        container = comparable["template"]["spec"]["containers"][0]
+        if container["image"] == proof["resolved_image"]:
+            container["image"] = proof["image"]
+    if (comparable != seal["whole_spec"]
             or actual["namespace"] != seal["identity"]["namespace"]
             or actual["uid"] == seal["identity"]["uid"]):
         raise ValueError("WHOLE immutable execution/parent differs from seal")
@@ -334,6 +359,8 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
         namespace = backend.preflight(approval)  # Verified projectNumber + Git/operator/OCI/absence.
         if not isinstance(namespace, str) or not re.fullmatch(r"[0-9]{6,20}", namespace):
             raise ValueError("verified explicit project namespace required")
+        prepared["image_resolution"] = validated_image_resolution(backend.image_resolution(), prepared)
+        claim(root / "image-resolution.json", prepared["image_resolution"])
         before = backend.protected()
         claim(root / "protected-before.json", before)
         if fingerprint(before) != approval.protected_hash:

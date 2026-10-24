@@ -23,17 +23,20 @@ EXEC_UID = "22222222-2222-4222-8222-222222222222"
 
 def test_every_original_critical_guard_body_is_byte_exact_except_explicit_identity_input_result_binding():
     root = Path(__file__).resolve().parents[1]
-    for old, new, excluded in (
-        ("core_permission_controller.py", "core_access_metadata_controller.py", {"exact_scope", "inputs", "validate_result"}),
-        ("core_permission_backend.py", "core_access_metadata_backend.py", {"preflight"}),
+    # Explicit OCI-resolution disposition changes only run/immutable/preflight;
+    # all other original guard bodies remain mechanically byte-exact.
+    for old, new, excluded, added in (
+        ("core_permission_controller.py", "core_access_metadata_controller.py",
+         {"exact_scope", "inputs", "validate_result", "run", "immutable_execution"}, {"validated_image_resolution"}),
+        ("core_permission_backend.py", "core_access_metadata_backend.py", {"preflight"}, {"image_resolution"}),
     ):
         def functions(name):
             source = (root / "src/mfdataindia/review" / name).read_text()
             return {n.name: ast.get_source_segment(source, n) for n in ast.walk(ast.parse(source))
                     if isinstance(n, ast.FunctionDef)}
         first, second = functions(old), functions(new)
-        assert first.keys() == second.keys()
-        assert len(first.keys() - excluded) == (10 if "controller" in old else 15)
+        assert first.keys() | added == second.keys()
+        assert len(first.keys() - excluded) == (8 if "controller" in old else 15)
         for name in first.keys() - excluded:
             assert first[name] == second[name], name
 
@@ -240,6 +243,11 @@ class FakeBackend:
     def protected(self):
         self.protected_reads += 1
         return {"protected": False if self.defect == "protected" and self.protected_reads > 2 else True}
+
+    def image_resolution(self):
+        return {"image": self.a.manifest.image, "resolved_image": self.a.manifest.image,
+                "config_digest": "sha256:" + "d" * 64, "git_sha": self.a.manifest.git_sha,
+                "platform": "linux/amd64", "layers_downloaded": 0}
 
     def create(self, body):
         self.events.append("create")
@@ -538,7 +546,11 @@ def test_preflight_binds_fresh_project_number_before_any_image_or_write(monkeypa
     backend = Backend(a, Path.cwd())
     events = []
     monkeypatch.setattr(core_access_metadata_backend, "verify_checkout", lambda *_: events.append("clean_git"))
-    monkeypatch.setattr(core_access_metadata_backend, "verify_image", lambda *_: events.append("OCI_read"))
+    def image(*args, **kwargs):
+        events.append("OCI_read")
+        assert kwargs == {"include_resolution": True}
+        return FakeBackend(a).image_resolution()
+    monkeypatch.setattr(core_access_metadata_backend, "verify_image", image)
     def read(kind, name=None):
         events.append(kind)
         return {"auth": [{"account": core.ACCOUNT}],
