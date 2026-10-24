@@ -1,0 +1,68 @@
+{
+  "base": "86ae2a3fc17e274101cb74f644f910d564451682",
+  "configurations": {
+    "1": "6b919e1993a911edac89cffca400d51a8cbd3138d1210c709a5b265ea58d5aba",
+    "2": "fa113f5e095fe5b7ad1e738401552d8ffbea15d44ebeb5e3fdf313680f6cf221",
+    "3": "addd97f4c2acbf7a66b72ca2c0ffa61b7bae5242f69c36c8b8ed7f2bbb3eec7f",
+    "4": "6fb6c0c804a1dac20e4e2c4aa25f3cd107ce7c58517164409ae2da52e97869d4",
+    "5": "9cc968c862f4f299ef4e3ac75f564701545cb15d21fd7ac01b42fb9f6043a73c"
+  },
+  "format": "PDF_SECURITY_HISTORY_BEFORE_6_21_2_V1",
+  "frozen_files": {
+    "src/mfdataindia/enrichment/_amc_book_pdf_worker.py": "0f7b8333a49321e28dfbe8327cf1b9c485e28a9db5232b56d9a1dfe30dbbcd0c",
+    "src/mfdataindia/enrichment/_idcw_discovery_worker.py": "b7d6e10f272923f4a6127ca0e53cd5690af2f37d3757d1b8dd26d55dde9af949",
+    "src/mfdataindia/enrichment/_layout_book_pdf_worker.py": "f5a56e05b124caad12c6f9de011cbbc7e2dd2d1f8ea800d31a51c0482db03a34",
+    "src/mfdataindia/enrichment/_layout_book_pdf_worker_v2.py": "c7dde7cc78485e50c6d8cca3533382120c98af23a0bb41460f0271dc44ca0599",
+    "src/mfdataindia/enrichment/_monthly_pdf_worker.py": "ce874651a4d5ea7f03381c2255f303d93d00528f8e3d3c55dda921ccd49a85ed",
+    "src/mfdataindia/enrichment/_pdf_worker.py": "c7901cf15edd2f18fd1fd334274e9a18d7584bb2d329523b9cac7dd4adcaa098",
+    "src/mfdataindia/enrichment/_uti_book_pdf_worker.py": "004f1bdf4d8e0826de108bab1b2e5a8b9713907ba660d3af51a549edd877f3c0",
+    "src/mfdataindia/enrichment/_uti_book_pdf_worker_v2.py": "3d12a48b40f561d24b70d02a4dbe189d5bb8afd09465fcf9c6567618295e1aaf",
+    "src/mfdataindia/enrichment/_uti_book_pdf_worker_v3.py": "11c90116110649ec9482c3ed5c2289f2833fa2893e3278f3802d9946add30656",
+    "src/mfdataindia/enrichment/_uti_book_pdf_worker_v4.py": "76624e050f158d2522003f164b8e6bbb50e22eb5b8b0c22e5778f56dfb9cac92",
+    "src/mfdataindia/enrichment/amc_book_pdf.py": "22a9b1e02a71839af6f0332435558488f48dc76d1244d3d099e4bd6df831754d",
+    "src/mfdataindia/enrichment/idcw_discovery.py": "8e867da895d56e764b9448dd3cb3a665b66925f08fca2e6e7b6df8d4773fad14",
+    "src/mfdataindia/enrichment/kotak_runtime.py": "97fcdcb2a0c985659dce9ee5c68c6816bb8e6e593d5e46c728e5b640bd446d3c",
+    "src/mfdataindia/enrichment/layout_book_pdf.py": "83ba64c507988b746be3627b0164397ac52766f32a1fd69a20b7dc9306126083",
+    "src/mfdataindia/enrichment/layout_book_pdf_v2.py": "b1a79d844c6f348e84c1e2f3683a6cd955eca30753ec696eb58ec1e097738142",
+    "src/mfdataindia/enrichment/monthly_pdf.py": "21d408151309f0a0754d98001ef658cc5e7b31f73d5e9e81514fb67b2b3306c2",
+    "src/mfdataindia/enrichment/pdf_evidence.py": "5b18fb1b47992765802d518b2eef82c8a897af5bbd19eccf66af44cd54b47f94",
+    "src/mfdataindia/enrichment/pdf_security.py": "62aaf8edee478f986e8db48bfb63bba4a988dddbbd912e7afd9988a84b17db81",
+    "src/mfdataindia/enrichment/sbi_runtime.py": "032a2c3972dd83722531edf058140491e1036dd401558af8eab4baa2e51c1c13",
+    "src/mfdataindia/enrichment/uti_aum_row.py": "0b471722ca0d524700953b763e6297a9af23e27c3c0dd648a4dc15979babdea3",
+    "src/mfdataindia/enrichment/uti_book_pdf.py": "8fa5b0c175ff12729719e43c4224ce54ee9e485240ea26532e771feeb9e5d502",
+    "src/mfdataindia/enrichment/uti_book_pdf_v2.py": "e9b267322856d370dd07ee91d4aa36af79f00586c2ac77cadf8538b902db1428",
+    "src/mfdataindia/enrichment/uti_book_pdf_v3.py": "8154cb70df7d976f7d882f32a7f9f727c4988bb2902b54347927750749422492",
+    "src/mfdataindia/enrichment/uti_book_pdf_v4.py": "7614060ad6d9507ef4f0b94ff87e2a13421b150319f09947ab8dee9f4f8ee5c3",
+    "src/mfdataindia/enrichment/uti_header_evidence.py": "489c5e4e585f1eeeb8f77690c31137b73a5ef0865bf29f91aae25c509040a1dd",
+    "src/mfdataindia/enrichment/uti_runtime.py": "63d9c3d7ed9284766851701b6384ff6e0a0d2c82d02684fd2e8a6937ebf54b67",
+    "src/mfdataindia/enrichment/uti_runtime_v2.py": "e6e73f6bba029892ff54360c28059eb9d58fc31da5528544dd92e78956159d69",
+    "src/mfdataindia/enrichment/uti_runtime_v3.py": "e80188f1556930dc4f0a2489594f8216ce43e6f7f1f0e34817f3bb13c358ebf6",
+    "src/mfdataindia/enrichment/uti_runtime_v4.py": "5a1de6cd87d5e567e9eab8d20a46a3def5e633a80fa7d981749196b2d4a25ca9"
+  },
+  "layout_v2_policy_hashes": {
+    "kotak": "2cf10cf34ae6f5c4553df1fefb1bc419915bd70d9a9836f79d7ee2bac11fa4d7",
+    "uti": "7af307cebc387e7acbafb1d17978cb1ca4c79f8c34cb270e9db26ad4abcd151d"
+  },
+  "old_dormant_pdf_modules_will_reject_new_runtime": true,
+  "pdf_security_v1_contract": {
+    "advisory": "GHSA-5hx5-vpf9-5wcv",
+    "distribution": "pypdf",
+    "format": "patched-pdf-dependency-v1",
+    "missing_contents": "reject; explicit zero-byte stream accepted",
+    "sdist_sha256": "2d62c383acd6e0dff0a96322ba8b1135229343b084d73c6f6cfd947fd291afcb",
+    "version": "6.21.1",
+    "wheel_sha256": "553e2d42f5bb3bb2a785a7d3de8ef90bb7df74b5413eff5a7b4388007ea9254b"
+  },
+  "policies": {
+    "1": "3166a7e28c9a2d833e46cad8a45a994dc3f82a163a7cc5a45899dbf8dd2a1dba",
+    "2": "151093a8798bb41803315b73bca944bb292adc661701173225173958d3b17302",
+    "3": "4e9edd71a73c781603653164de24227b73f09fa2c369d8cf8b7ad68dd59c6fe3",
+    "4": "2b1d478498a72a267ecd4719300a5456db52fa0764b2a446e9ee75b545839e5a",
+    "5": "5e9396ff7acf5c66ba605c9139ef2b668901c2f1c05e0db568a59f17b8a19cd0"
+  },
+  "retargeted_smoke_previous_sha256": "04889f11501bd1b053f38e8217a10ba81de96eddee1869708eb45bd4ff7b6fc0",
+  "retargeted_test_previous_sha256": "368647f172ee8771dd65592ba5da558d36e9f2cdb6491bd3ae2030d5369eedfe",
+  "source_authority_remains_unallocated": true,
+  "uti_v4_engine_hash": "e99a19b0868fba71f69fec0982f35dbbd3f58295f37161b2d4b7f574e493db5b",
+  "uti_v4_policy_hash": "cf72ea23305d1b43f99d88cb604b43da30cb60e92559602ab65285446d8b9876"
+}
