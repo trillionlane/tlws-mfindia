@@ -1,0 +1,202 @@
+{
+  "format": "MF_SUCCESSOR_FROZEN_LITERAL_NORMALIZATION_V1",
+  "authority": {
+    "path": "docs/CORE_ACCESS_METADATA_SUCCESSOR_F2CA_AUTHORITY_20261024.json",
+    "sha256": "b31771005bfe48ce40eb9e31cbb887dee341230df1e4172efe1629da163a6734"
+  },
+  "rule": "Ordered one-way literal byte replacements ONLY; exact occurrence counts per step; full restored successor bytes must equal frozen predecessor bytes. No regex/AST/whitespace normalization/ignored region/function-body removal. Separately verify every predecessor file still has its frozen hash.",
+  "production": {
+    "src/mfdataindia/review/core_access_metadata_spec.py": {
+      "successor_path": "src/mfdataindia/review/core_access_metadata_spec_v2.py",
+      "predecessor_sha256": "0c383479f03a528330f943dc42a52c002acc8297cdf6d21f849a84cc0725f18a",
+      "successor_sha256": "fa48bc8eff625d18de0609decd3665f8aafd60427cb343ff54d7f8ccb93bec74",
+      "normalization": [
+        {
+          "successor_literal": "dev-core-aclmeta-261024b",
+          "predecessor_literal": "dev-core-aclmeta-261022a",
+          "occurrences": 1
+        }
+      ]
+    },
+    "scripts/collect_core_access_metadata_dev.py": {
+      "successor_path": "scripts/collect_core_access_metadata_dev_v2.py",
+      "predecessor_sha256": "8e3d00a212b251487ec0f5d4061fbe1a74f27e59e4fae647026be64afae949ef",
+      "successor_sha256": "ebe6c3521c92f0ff5c4d3de1a2f8eec362f18d8756353b603ab42e5043c0060b",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_spec_v2",
+          "predecessor_literal": "core_access_metadata_spec",
+          "occurrences": 1
+        }
+      ]
+    },
+    "src/mfdataindia/review/core_access_metadata_controller.py": {
+      "successor_path": "src/mfdataindia/review/core_access_metadata_controller_v2.py",
+      "predecessor_sha256": "aaa5ac3bf1aa6a304c481f379af7b8b2b492e3116ba6f276719e83e005f1e4c1",
+      "successor_sha256": "accf80c6befc5b9b1f9f420b31d8aec68bbd27b8cc0417be8c51bcb18dd7cd0d",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_spec_v2",
+          "predecessor_literal": "core_access_metadata_spec",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "mf-core-access-metadata-261024b",
+          "predecessor_literal": "mf-core-access-metadata-261022a",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "dev-core-aclmeta-261024b",
+          "predecessor_literal": "dev-core-aclmeta-261022a",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "collect_core_access_metadata_dev_v2.py",
+          "predecessor_literal": "collect_core_access_metadata_dev.py",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "mf-core-access-metadata-20261024-",
+          "predecessor_literal": "mf-core-access-metadata-20261022-",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "ebe6c3521c92f0ff5c4d3de1a2f8eec362f18d8756353b603ab42e5043c0060b",
+          "predecessor_literal": "8e3d00a212b251487ec0f5d4061fbe1a74f27e59e4fae647026be64afae949ef",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "fa48bc8eff625d18de0609decd3665f8aafd60427cb343ff54d7f8ccb93bec74",
+          "predecessor_literal": "0c383479f03a528330f943dc42a52c002acc8297cdf6d21f849a84cc0725f18a",
+          "occurrences": 1
+        }
+      ]
+    },
+    "src/mfdataindia/review/core_access_metadata_backend.py": {
+      "successor_path": "src/mfdataindia/review/core_access_metadata_backend_v2.py",
+      "predecessor_sha256": "67845397c65af1a80a640adc91d07a746edbf465bca5cbc75b1177377f8fb1d5",
+      "successor_sha256": "8288aaa58259246d7529a0c4974583609faa0dad21e70db84d664ef0c1f9d15e",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_controller_v2",
+          "predecessor_literal": "core_access_metadata_controller",
+          "occurrences": 2
+        },
+        {
+          "successor_literal": "core_access_metadata_backend_v2.py",
+          "predecessor_literal": "core_access_metadata_backend.py",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "core_access_metadata_spec_v2.py",
+          "predecessor_literal": "core_access_metadata_spec.py",
+          "occurrences": 2
+        }
+      ]
+    },
+    "scripts/operate_core_access_metadata_dev.py": {
+      "successor_path": "scripts/operate_core_access_metadata_dev_v2.py",
+      "predecessor_sha256": "d1ed5ea16866dafaf6d32bbd04cb7e8a56b932642fcf18efe2f0394d7679fd4c",
+      "successor_sha256": "484093d51cd4bf01a5607a5f711c3b37c8eedff33f4355294358c98500dab854",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_backend_v2",
+          "predecessor_literal": "core_access_metadata_backend",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "core_access_metadata_controller_v2",
+          "predecessor_literal": "core_access_metadata_controller",
+          "occurrences": 1
+        }
+      ]
+    },
+    "scripts/smoke_core_access_metadata_binding.py": {
+      "successor_path": "scripts/smoke_core_access_metadata_binding_v2.py",
+      "predecessor_sha256": "9898877720870a4ceb974aaf2f2f37dc0a2392170c945646e25c135ca2a0074c",
+      "successor_sha256": "042ddfbbea9f3b10413fd61c58be94024b8124374aab253b9adb45b8728de5e4",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_spec_v2",
+          "predecessor_literal": "core_access_metadata_spec",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "collect_core_access_metadata_dev_v2.py",
+          "predecessor_literal": "collect_core_access_metadata_dev.py",
+          "occurrences": 1
+        },
+        {
+          "successor_literal": "packaged_metadata_binding_smoke_v2",
+          "predecessor_literal": "packaged_metadata_binding_smoke",
+          "occurrences": 1
+        }
+      ]
+    }
+  },
+  "mechanically_replayed_tests": {
+    "tests/test_core_access_metadata_controller.py": {
+      "successor_path": "tests/test_core_access_metadata_controller_v2.py",
+      "predecessor_sha256": "5ac92ea3a9f51697ba8700a6acbe6443cda18f67799c8a912a851c20a4a65644",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_controller_v2",
+          "predecessor_literal": "core_access_metadata_controller",
+          "occurrences": 2
+        },
+        {
+          "successor_literal": "core_access_metadata_backend_v2",
+          "predecessor_literal": "core_access_metadata_backend",
+          "occurrences": 8
+        },
+        {
+          "successor_literal": "20261024",
+          "predecessor_literal": "20261022",
+          "occurrences": 2
+        },
+        {
+          "successor_literal": "metadata_collector_v2",
+          "predecessor_literal": "metadata_collector",
+          "occurrences": 1
+        }
+      ]
+    },
+    "tests/test_core_access_metadata_collector.py": {
+      "successor_path": "tests/test_core_access_metadata_collector_v2.py",
+      "predecessor_sha256": "fe95843169a89262f5ee00cf45904515f899de9d7fa77ee6ec7a2f860810be05",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_spec_v2",
+          "predecessor_literal": "core_access_metadata_spec",
+          "occurrences": 2
+        },
+        {
+          "successor_literal": "collect_core_access_metadata_dev_v2.py",
+          "predecessor_literal": "collect_core_access_metadata_dev.py",
+          "occurrences": 2
+        },
+        {
+          "successor_literal": "metadata_collector_v2",
+          "predecessor_literal": "metadata_collector",
+          "occurrences": 1
+        }
+      ]
+    },
+    "tests/test_core_access_metadata_oci_resolution.py": {
+      "successor_path": "tests/test_core_access_metadata_oci_resolution_v2.py",
+      "predecessor_sha256": "42c1f7c258e6136f2cda6801657ef216eba750d739f7c9cfd2fee21a4dcdef08",
+      "normalization": [
+        {
+          "successor_literal": "core_access_metadata_controller_v2",
+          "predecessor_literal": "core_access_metadata_controller",
+          "occurrences": 2
+        },
+        {
+          "successor_literal": "core_access_metadata_backend_v2",
+          "predecessor_literal": "core_access_metadata_backend",
+          "occurrences": 1
+        }
+      ]
+    }
+  }
+}
