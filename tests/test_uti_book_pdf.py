@@ -87,11 +87,11 @@ def test_real_isolated_workers_accept_explicit_empty_content_stream():
 
 def test_versioned_security_decoder_rejects_missing_content_stream():
     from pypdf import PdfWriter
-    from mfdataindia.enrichment import uti_book_pdf_v4
+    from mfdataindia.enrichment import uti_book_pdf_v5
 
     writer = PdfWriter()
     writer.add_blank_page(width=200, height=200)
     output = io.BytesIO()
     writer.write(output)
     with pytest.raises(ValueError, match="layout book decoder failed"):
-        uti_book_pdf_v4.extract(output.getvalue())
+        uti_book_pdf_v5.extract(output.getvalue())

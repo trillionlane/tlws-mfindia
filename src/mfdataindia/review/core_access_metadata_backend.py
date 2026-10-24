@@ -1,6 +1,7 @@
 """Exact provider adapter for the one approved diagnostic; deny all other writes."""
 
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
@@ -89,6 +90,7 @@ class Backend:
         return json.loads(completed.stdout)
 
     def preflight(self, approval):
+        self._image_resolution = None
         if approval != self.approval:
             raise ValueError("backend approval differs")
         verify_checkout(self.repo, approval.controller_git_sha)
@@ -117,9 +119,21 @@ class Backend:
             raise ValueError("explicit projectNumber binding unavailable")
         # Both fresh checks download only immutable manifest/config bytes, never
         # layers; independent image-preparation/recheck evidence still required.
+        first = None
         for _ in range(2):
-            verify_image(self, approval.manifest.image, approval.manifest.git_sha)
+            proof = core.validated_image_resolution(verify_image(
+                self, approval.manifest.image, approval.manifest.git_sha,
+                include_resolution=True), self.prepared)
+            if first is not None and proof != first:
+                raise ValueError("independent immutable image resolutions differ")
+            first = proof
+        self._image_resolution = deepcopy(first)
         return str(project["projectNumber"])
+
+    def image_resolution(self):
+        if getattr(self, "_image_resolution", None) is None:
+            raise ValueError("two fresh immutable image resolutions required")
+        return deepcopy(self._image_resolution)
 
     def protected(self):
         queries = ([("service", n) for n in SERVICES] + [("serviceIAM", n) for n in SERVICES]

@@ -9,7 +9,7 @@ import sys
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject
 
-from mfdataindia.enrichment import pdf_security, uti_book_pdf_v4
+from mfdataindia.enrichment import pdf_security_v2, uti_book_pdf_v5
 from mfdataindia.review.policy import fingerprint
 
 
@@ -26,15 +26,15 @@ def fixture(*, missing):
 
 
 def main():
-    pdf_security.require_runtime()
-    empty = uti_book_pdf_v4.extract(fixture(missing=False))
+    pdf_security_v2.require_runtime()
+    empty = uti_book_pdf_v5.extract(fixture(missing=False))
     assert empty["pages"][0]["text"] == ""
     assert empty["pages"][0]["physical_left_text"] is None
-    pdf_security.admit_extraction(
-        empty, dependency=pdf_security.dependency_contract(),
-        engine_hash=uti_book_pdf_v4.engine_hash(), policy_hash=fingerprint(uti_book_pdf_v4.policy()))
+    pdf_security_v2.admit_extraction(
+        empty, dependency=pdf_security_v2.dependency_contract(),
+        engine_hash=uti_book_pdf_v5.engine_hash(), policy_hash=fingerprint(uti_book_pdf_v5.policy()))
     try:
-        uti_book_pdf_v4.extract(fixture(missing=True))
+        uti_book_pdf_v5.extract(fixture(missing=True))
     except ValueError as error:
         assert "layout book decoder failed" in str(error)
     else:
