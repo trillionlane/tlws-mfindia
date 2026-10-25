@@ -1,0 +1,14 @@
+{
+  "format": "MF_PR120_EXACT_HEAD_REVIEW_AND_NATIVE_FAILURE_DISPOSITION_BEFORE_CORRECTION_V1",
+  "reviewed_failed_head": "d411a8de690f3861af9105dad3103a054041569a",
+  "review_turn": "01a1735d-d4dc-7f80-8768-45c15360f7d3",
+  "review_P2": "Terminal sealed evidence and controller result must directly bind canonical external approval L and full request B in addition to payload A.",
+  "P2_correction": "Worker reconstructs the SAME deterministic finite A->E->B->L graph from decoded A through the existing pure approval_document function, and emits request_sha256 and approval_sha256. Controller validates both exact hashes against its approved L/B and persists them explicitly in result.json. L, B and their hashes remain outside A/E; no cycle, placeholder, ignored bytes, fallback or human authentication inference.",
+  "native_run": 40200281905,
+  "native_terminal_UTC": "2026-10-25T14:29:09Z",
+  "native_failure": "Only new mismatch[definition] fixture failed: witness helper returned shared nested definition dict from plan.before. Mutating the synthetic wanted hash also mutated the expected unchanged before-state, causing the preservation assertion to compare real unchanged state against a corrupted expectation. Actual mismatch denied before GRANT and rolled back.",
+  "native_correction": "Deep-copy the FULL witness rows at fixture construction; keep the deliberately mismatched hash, expected abort, full before-state equality and row preservation assertions. Add provider-free aliasing regression that fails the old helper. No production engine/profile/SQL/lock/timeout changes, removed cases, new skips or assertion weakening.",
+  "failure_evidence": "Complete original raw 2260020 bytes SHA256 795f693d637ae22877f16f06048c727de2401098daa4f2d89361d3f09a43b011 retained losslessly before formatting; focused13PASS265.96s plus remainder3696PASS1FAIL1oldskip1353.81s, total3709PASS1FAIL1skip3711. Image job all steps succeeded. Failed run is immutable, never refetched/rerun/admitted.",
+  "validation": "Add regressions BEFORE correction, demonstrate failures on exact old implementation, then apply narrow changes, update additive source pins, full stable local26checks/exhaustive old+new collection, fresh exact immutable head review and native whole CI. Design clearance and old clear reviews do not substitute.",
+  "scope": "CODE_ONLY. No secret read, DB/provider connection, images/runtimeRoot/START/job/execution, actual grant/revoke/G5, IAM/source/schedule/gate mutation or original query/performance retry. All previous preservation and later direct exact-human approval gates remain unchanged."
+}

@@ -28,7 +28,7 @@ CALLER_SA = permission.OWNER_SA
 NAME = "mf-reader-access-correction-261025a"
 IDENTITY = "dev-reader-acl-261025a"
 WORKER = "scripts/apply_reader_access_correction_dev.py"
-WORKER_SHA = "43e49b69785cec73cb0c0487fcdb0ac6ed85bb264f9e8da31940e02532aadcca"
+WORKER_SHA = "5e3e13b7c848897558798060fd3c3cc5572cbbd72efc90d95cfba62056d2878c"
 SPEC_SHA = "9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e"
 ADAPTER_SHA = "fe5e888bd737d7e3f38408d7c9c652ceb604dfbadeb58e1af56bd9faa4c02336"
 ENGINE_SHA = permission.ENGINE_SHA
@@ -369,6 +369,8 @@ def validate_result(approval, certificate):
                "manifest_image": approval.manifest.image, "manifest_git_sha": approval.manifest.git_sha}
     expected = {"engine_receipt": permission.expected_engine_receipt(approval.payload),
                 "payload_sha256": fingerprint(approval.payload),
+                "request_sha256": approval.request_sha256,
+                "approval_sha256": fingerprint(approval.model_dump(mode="json")),
                 "lock_witness": approval.payload["grant_proposal"]["lock_witness"],
                 "worker_binding": binding, "performance_or_FS13_acceptance": False,
                 "postcommit_permanence_guarantee": False}
@@ -490,5 +492,8 @@ def run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.
         claim(root / "failure.json", {"error_type": type(error).__name__, "acceptance": False})
         raise
     claim(root / "result.json", {"execution": name, "certificate": certificate,
+                                  "approval_sha256": approval_hash,
+                                  "request_sha256": approval.request_sha256,
+                                  "payload_sha256": fingerprint(approval.payload),
                                   "exact_column_grant_only": True, "acceptance": False})
     return result

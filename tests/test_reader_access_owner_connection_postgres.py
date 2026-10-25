@@ -15,11 +15,13 @@ pytestmark = pytest.mark.postgres
 
 
 def witness(plan, names):
-    return [
-        {k: r[k] for k in ("oid", "nspname", "relname", "relkind", "owner", "definition")}
-        for r in plan["before"]["relations"]
-        if r["nspname"] == "mf" and r["relname"] in names
-    ]
+    return deepcopy(
+        [
+            {k: r[k] for k in ("oid", "nspname", "relname", "relkind", "owner", "definition")}
+            for r in plan["before"]["relations"]
+            if r["nspname"] == "mf" and r["relname"] in names
+        ]
+    )
 
 
 @pytest.mark.parametrize("shape", ["base", "nested", "inherited"])

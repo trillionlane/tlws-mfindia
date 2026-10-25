@@ -55,8 +55,10 @@ def packaged_binding(m, controller_sha256, environment):
 
 
 def expected_result(payload, binding):
+    approval = core.approval_document(payload)
     return {"engine_receipt": spec.expected_engine_receipt(payload),
-            "payload_sha256": fingerprint(payload), "lock_witness": payload["grant_proposal"]["lock_witness"],
+            "payload_sha256": fingerprint(payload), "request_sha256": approval["request_sha256"],
+            "approval_sha256": fingerprint(approval), "lock_witness": payload["grant_proposal"]["lock_witness"],
             "worker_binding": binding, "performance_or_FS13_acceptance": False,
             "postcommit_permanence_guarantee": False}
 

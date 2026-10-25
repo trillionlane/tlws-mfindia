@@ -42,14 +42,40 @@ def binding(a):
 
 
 def expected_result(p, b):
+    approval = core.approval_document(p)
     return {
         "engine_receipt": spec.expected_engine_receipt(p),
         "payload_sha256": core.fingerprint(p),
+        "request_sha256": approval["request_sha256"],
+        "approval_sha256": core.fingerprint(approval),
         "lock_witness": deepcopy(p["grant_proposal"]["lock_witness"]),
         "worker_binding": b,
         "performance_or_FS13_acceptance": False,
         "postcommit_permanence_guarantee": False,
     }
+
+
+@pytest.mark.parametrize("field", ["approval_sha256", "request_sha256"])
+@pytest.mark.parametrize("defect", ["missing", "wrong", "swapped"])
+def test_terminal_exact_approval_and_request_hashes_are_required(field, defect):
+    a = approval()
+    value = expected_result(a.payload, binding(a))
+    if defect == "missing":
+        del value[field]
+    elif defect == "wrong":
+        value[field] = "0" * 64
+    else:
+        value[field] = value["request_sha256" if field == "approval_sha256" else "approval_sha256"]
+    with pytest.raises(ValueError, match="full exact grant receipt"):
+        core.validate_result(a, seal_evidence(a.manifest, core.STAGE, value))
+
+
+def test_legacy_payload_only_terminal_evidence_is_rejected():
+    a = approval()
+    value = expected_result(a.payload, binding(a))
+    del value["request_sha256"], value["approval_sha256"]
+    with pytest.raises(ValueError, match="full exact grant receipt"):
+        core.validate_result(a, seal_evidence(a.manifest, core.STAGE, value))
 
 
 def metadata(name, *, execution=False, annotations=None):
@@ -207,6 +233,10 @@ def test_once_full_seals_final_inventory_then_LAST_protected_and_duplicate_STOP(
     assert list(records)[-2:] == [root / "protected-final.json", root / "result.json"]
     assert records[root / "execute-intent.json"]["body"] == {}
     assert records[root / "intent.json"]["request"] == core.inputs(a)["request"]
+    assert records[root / "result.json"]["approval_sha256"] == core.fingerprint(
+        a.model_dump(mode="json")
+    )
+    assert records[root / "result.json"]["request_sha256"] == a.request_sha256
     assert result == expected_result(a.payload, binding(a))
     with pytest.raises(FileExistsError):
         core.run(a, b, claim=claim)

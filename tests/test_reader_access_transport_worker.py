@@ -16,6 +16,26 @@ from mfdataindia.review.policy import canonical
 from test_reader_access_transport import before, environment, payload, worker
 
 
+def test_terminal_worker_result_binds_exact_external_approval_and_full_request():
+    p = payload()
+    result = worker().expected_result(p, {"synthetic_binding": True})
+    approval = core.approval_document(p)
+    assert result["request_sha256"] == approval["request_sha256"]
+    assert result["approval_sha256"] == core.fingerprint(approval)
+    assert result["payload_sha256"] == core.fingerprint(p)
+    assert not {"request_sha256", "approval_sha256"} & set(p)
+
+
+def test_native_witness_mutation_cannot_change_full_before_state_expectation():
+    from test_reader_access_owner_connection_postgres import witness
+
+    plan = {"before": before()}
+    original = deepcopy(plan)
+    wanted = witness(plan, {"current_fund_facts", "fund_variants"})
+    next(r for r in wanted if r["relkind"] == "v")["definition"]["sha256"] = "0" * 64
+    assert plan == original
+
+
 @pytest.mark.parametrize("failure", [None, "COMMIT", "close"])
 def test_complete_worker_connects_once_verifies_full_receipt_and_never_retries(
     monkeypatch, failure
@@ -58,6 +78,8 @@ def test_complete_worker_connects_once_verifies_full_receipt_and_never_retries(
         output = w.run_worker(e)
         cert = decode_evidence(json.loads(output))
         assert cert["evidence"]["engine_receipt"]["stage"] == "COMMITTED_VERIFIED"
+        approved = core.Approval.model_validate(core.approval_document(p))
+        assert core.validate_result(approved, cert) == cert["evidence"]
         assert "SYNTHETIC_PRIVATE_DSN" not in output
     saved = list(conn.calls)
     with pytest.raises(ValueError):
