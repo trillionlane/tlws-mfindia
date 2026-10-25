@@ -1,0 +1,20 @@
+{
+  "format": "READER_PERMISSION_CAPTURE_DESIGN_REVIEW_DISPOSITION_V1",
+  "design_before_code": "docs/READER_PERMISSION_CAPTURE_DESIGN_20261025.json",
+  "reviewer": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "turn": "01a1751b-b7aa-7082-9782-9e6cf40f1a1a",
+  "verdict": "NO_REMAINING_P1_P2_DESIGN_ONLY",
+  "raw_review_sha256": "db4da88c97fd68ee620995f0b843fcf8fccac99b6c13250166e26832e82c910d",
+  "clarifications_reviewed_before_code": [
+    "The old owner transport test's existing CI full-byte reverse proof also obtains original_parent_bytes before applying ALL its old counted inverse/SHA assertions.",
+    "New collector source bytes are in spec.SOURCE_HASHES and checked before DSN lookup. Importing spec names from collector embeds no spec hash and creates no content-hash cycle.",
+    "All825 original tracked files are frozen; only exact workflow append and explicitly enumerated old test substitutions normalize back to full parent bytes.",
+    "Private _capture context-manager mechanics in disposable CI do not produce production acceptance. Public Capture.run always enforces unchanged production profile under the SAME15s wall before confirmed ROLLBACK. No identity/profile override exists."
+  ],
+  "implementation_bookkeeping": [
+    "The owner constant replacement uses two exact contextual literals, not a global OWNER_SA count that would overlap its new definition. Full inverse equality is tested.",
+    "Worker pin in the literal plan includes the pre-DSN main-thread/no-existing-timer check. All actual source pins must match packaged files."
+  ],
+  "authority": "CODE ONLY. Design approval/hash is not native CI, runtime/image preparation, exact live capture input or G5/G7 approval.",
+  "candidate": "CONSERVATIVE_CATALOG_DEPENDENCY_CANDIDATE_NOT_ACTUAL_LOCK_WITNESS; view ONLY/inheritance can overapproximate. Actual later G5 lock witness must match approved expectation before any grant, otherwise abort without shrink/fallback."
+}

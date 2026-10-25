@@ -1,0 +1,68 @@
+{
+  "format": "MF_READER_PERMISSION_CAPTURE_FIXED_READONLY_DESIGN_BEFORE_CODE_V1",
+  "created_UTC": "2026-10-25 22:08:32 UTC",
+  "authority": "Direct human Let's proceeed accepts immediate collector implementation through usual design/named exact review/tests/push/normalmerge/full independent MAIN. CODE ONLY: no live DB/DSN/credential/provider/images/runtime approval/job/execute/GRANT/REVOKE/G7 calls.",
+  "base": "21f337ea0dcefc210827118e66fdd821dadd6025",
+  "preparation_root": "/Users/deviojha/projects/codex/artifacts/mf-s1-reader-capture-preparation-20261025-0fXmP2",
+  "NOT_runtime_root": true,
+  "purpose": "Deliver a separate fixed read-only full before-state + conservative recursive dependency candidate capture path. Never repurpose existing grant worker/private fixture helpers. Capture is current evidence, not write authority, historical cause, performance or FS13 acceptance.",
+  "design_only_identity": {
+    "identity": "dev-reader-cap-261025b",
+    "job": "mf-reader-permission-capture-261025b",
+    "root_pattern": "mf-reader-permission-capture-20261025-[A-Za-z0-9]{6,16}",
+    "global_start": "mf-reader-permission-capture-261025b-controller-start.json",
+    "allocated": false
+  },
+  "fixed_owner": {
+    "database": "mfdataindia",
+    "principal": "mfdata_admin",
+    "session": "mfdata_admin",
+    "owner_oid": 16587,
+    "reader": "mfdata_verified_reader",
+    "reader_oid": 40032,
+    "service_account": "tlws-mf-data-migrate-dev@trillionlane-dev.iam.gserviceaccount.com",
+    "secret_reference": "tlws-mf-data-admin-dsn-dev:1",
+    "no_new_IAM_roles_credentials": true
+  },
+  "collector": {
+    "inventory": "Separate fixed inventory module references frozen engine.STATE_SQL EXACT bytes; no copy/edit/rewrite. New context SELECT uses frozen CONTEXT_SQL plus fixed pid/pg_current_snapshot/transaction_timestamp UTC metadata. New recursive catalogue-only candidate query anchors exactly mf.current_fund_facts and mf.fund_variants, traverses view _RETURN pg_depend class relations and inheritance descendants for dependency relations, never data rows or function bodies.",
+    "SQL_sequence": "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL statement_timeout5s/lock_timeout5s/transaction_timeout15s/search_pathpg_catalog/TimeZoneUTC. Six complete SELECTs exactly CONTEXT,STATE,CANDIDATE,STATE,CANDIDATE,CONTEXT; then ROLLBACK. No explicit LOCK/COMMIT/GRANT/REVOKE/SETROLE/DDL/DML/appqueries/EXPLAIN/ANALYZE/old diagnostic replay.",
+    "guarantees": "One IDLE autocommit connection, prepare=False. Exact context direct fixed owner/db/server180006/RR/readonly/5s5s15s/searchpath/timezone. Each cursor exact ordered column schema + SELECT commandtag/driver.rowcount/fetched count equality. State exact frozen transport.state_shape; server-side private role/function settings/view body seals BEFORE connectionboundary. Canonical bool/int/ACL/schema/order/duplicates checks; public engine.validate_frozen production admission required, no alternate profile flag.",
+    "consistency": "One RR snapshot; full state and candidate twice equal; fixed context/snapshot/pid/starttimestamp before/after equal. Equality within snapshot is NOT proof of no concurrent external changes or future freshness. No current data population or read/performance claim.",
+    "candidate_semantics": "Always labelled CONSERVATIVE_CATALOG_DEPENDENCY_CANDIDATE_NOT_ACTUAL_LOCK_WITNESS. Root ONLY respected; recursively referenced relations include inheritance descendants conservatively. pg_depend is not parsed view RTE ONLY flags and can overapproximate. Candidate never automatically grants/claims exact future lock set. Unsupported kind or candidate outside captured mf/mf_review catalogue is failclosed, no omission. Cyclic finite traversal deduplicated; no arbitrary namespace expansion or dynamic functionbody inference. Candidate row OID/schema/name/kind/owner/viewdefseal equals corresponding full-state row. Both fixed roots mandatory. Future G5 must approve candidate and actual post-lock witness EXACT-match before any grant; mismatch aborts, never shrink/fallback. Conservative extra locks still require explicit availability/admin window later.",
+    "budget": "One whole15s SIGALRM mainthread timer covers transaction/validation/serialization/rollback, no active timer accepted, previous handler restored. Consume one-use capture object before first connectionIO, no retry. No further DBIO after timer spent (including rollback). For ordinary failure with budget remaining, at most one ROLLBACK, consumed before IO; rollback failure or timeout STOP no second attempt. Worker closes transport only; no reconnect. connect_timeout5s separately; unchanged evidence raw/log/chunk/request/startup limits; complete receipt or terminal overflow, no capraise/truncation/sampling.",
+    "result": "Strict canonical full context/state/candidate/completions/frozen inventory+source hashes/content fingerprints; snapshot timestamp is evidence only. All permission/runtime/performance/FS13 authority booleans false. Only return after confirmed ROLLBACK and validation; errors fixed phase+typename only, never raw SQL/settings/private server/DSN text. Unknown columns/rows/malformed/private plaintext rejected before evidence serialization."
+  },
+  "worker": {
+    "separate_program": "scripts/collect_reader_permission_capture_dev.py",
+    "spec": "reader_permission_capture_spec.py",
+    "inventory": "reader_permission_capture_inventory.py",
+    "collector": "reader_permission_capture.py",
+    "gates": "Single consume before manifest decode/secret lookup/connectionIO. Strict fixed identity/cohort154117/Git and actual packaged worker/spec/inventory/source hashes; job/execution/task0attempt0count1 binding; no PG* inheritedenv. Fixed owner DSN parser identical strict existing grant DSN policy but separate read-only worker; direct CloudSQL socket only, exact db/user/password/port5432/ssldisable, options/service/hostaddr rejected. One connect only; fixed READONLY collector; close always; whole sealed evidence unchanged transport.",
+    "source_paths": "Installed package deterministic spec.__file__.resolve().parents[1] (no /app/src assumption); frozen engine/profile/transport schema hashes verified before DSN. No grant worker imports/calls, no private engine transaction helper invocation.",
+    "code_only": "New worker/controller/operator CLI code delivered but not invoked outside provider-free fixtures/native disposable CI. --help and packaged binding smoke do not read secrets/connect."
+  },
+  "controller_backend": {
+    "sources": "Versioned additive copies of reviewed core_access_metadata_controller_v2.py/backend_v2.py/operator, full-byte reversible counted literal import/identity/date/worker/hash/env/ownerSA/secret-reference changes only; catalogue result validator new spec. Old files unchanged. No oldcontroller alias/global monkeypatch/runtime injection/generalized capability.",
+    "unchanged": "Global create-only START before provider reads, canonical strict Approval/no normalization, one fresh root only approval.json, whole request/envargv budget before createintent, exact1job1emptyexecution/1CPU1Gi600s1taskparallel1max0, original HTTP30s/metadata60s, whole metadataUID/time/task allenv/secretref/volume/network seal and immutable terminal equality, consumed-before-ambiguity flags, fixed server--job inventory zero/one, fresh twice OCI index/child/config receipt and narrow exec image normalization, original finalinventory THEN protectedLASTproviderread, no retry/redeploy/delete/IAM/source/schedule mutation.",
+    "modified": "Fixed newidentity/job/root only; existing ownerSA and adminDSNsecret1 reference (CODE ONLY not live authority). Full source hash checks in specworker before secret and backend checked hashed worker/spec/inventory. Exact approval includes final delivered Git/images/controller/full request/protectedhash/newroot; NEW DIRECT HUMAN EXACT INPUT approval required before operator/START/live before-state capture. Code review/hash/scope does not supply that approval.",
+    "no_current_runtime": true
+  },
+  "preservation": {
+    "all825_old_files": "Full old tracked-file authority before code. Entire engine/profile/SQL/dependencies/PDF/source/oldcontrollers/rollout workflow unchanged. No old tests removed/skipped/xfail/assertion weakening.",
+    "verify_workflow": "Original whole Verify bytes EXACT prefix; append one final BOTH actual images capture worker/controller --help + positive/negative packaged source/Git/oldidentity/missingapproval-beforeDSN smoke. No resources/permissions/jobs/deps/old step body/order changes.",
+    "old_preservation_tests": "Necessary counted normalization only: test_ci_verify_sequence old7additions ->8 with new capture label retaining all40original bodies/order; old transport preservation test obtains original Verify bytes by removing EXACTnew suffix; old image-guard preservation test obtains ORIGINAL parent bytes through new test-only inverse helper before its existing hashes/substitution restore. New825-file regression reverses entire named literal changes and full workflow append to exact old hashes; helper has no ignored regions/AST/whitespace exceptions. All literal substitutions/counts captured BEFORE changes; independent design review required before code.",
+    "no_reuse_consumed_roots": true
+  },
+  "validation": {
+    "providerfree": "Strict complete fake cursor protocol/unknown fields/count/order/typed schema/private seal rejection; noSQLafterspentwall and single rollback; context/role/profile drift; oneconsume/deepcopy; timestamp/snapshot consistency; DSN/platform/source pre-secret negative; controller profile/UID/time/inventory/OCI/failure/ambiguity guards; all old IDs retained exact.",
+    "nativePG18": "Disposable CI fixtures only, no Docker/localPG/DEV. Same fixed SQL/transaction mechanics at ephemeral OIDs through explicitly PRIVATE non-operational helper, never production admission bypass. Production public collector remains hardbound frozen profile. Real context/RRreadonly/snapshot/rollback/whole state+rows unchanged, private settings serverseals numericACL types, nested view/inheritance/ONLY conservative candidate vs later actual-lock witness in synthetic rollback-only tests, outside-scope/unsupported denial, busy underlying data writer unaffected by capture (no AccessExclusive).",
+    "release": "Fullstable26checks/all21contracts/lint/audit/credential/diff/full own exhaustive3766base+new IDs/445oldPG exact retained; named exact HEAD review and whole actualnativeHEADCI rawONCEretainbeforeformat, normalmatchingheadmerge/identicaltree/independent whole ownMAIN raw+admission/genericactualSKIP/autofalse/safeFF. No images/runtime/DB calls authorized by this code-only task."
+  },
+  "further_gates": "Existing21fimages are DONE not future collectorGit images. New final code must fully deliver before any separately approved image preparation/live capture. Livecapture requires reviewed exact transport+fresh readiness+NEW direct canonical exact-input approval. ActualG5 separately binds full fresh capture/expected actual recursive window/owner/allrows/allconsumers/lifetime/exactdelta/reversal+NEW exact write approval. No G7 or oldquery retry. FS13K/protectedmaster/A-K/oldwork/NAVsource/FS12/API16FS11/NSE/EXP/PDF untouched; S1NOTcomplete.",
+  "official_sources": [
+    "https://www.postgresql.org/docs/18/sql-lock.html",
+    "https://www.postgresql.org/docs/18/sql-set-transaction.html",
+    "https://www.postgresql.org/docs/18/catalog-pg-depend.html"
+  ]
+}

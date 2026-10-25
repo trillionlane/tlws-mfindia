@@ -231,7 +231,8 @@ def test_every_other_parent_file_is_full_byte_unchanged():
     assert authority["count"] == len(authority["files"]) == 821
     changed = []
     for path, expected in authority["files"].items():
-        if hashlib.sha256((ROOT / path).read_bytes()).hexdigest() != expected:
+        from test_reader_permission_capture_preservation import original_parent_bytes
+        if hashlib.sha256(original_parent_bytes(path)).hexdigest() != expected:
             changed.append(path)
     assert changed == [
         ".github/workflows/rollout-verified-review-dev.yml",
@@ -242,7 +243,8 @@ def test_every_other_parent_file_is_full_byte_unchanged():
 def test_prior_preservation_test_restores_entire_original_bytes_exactly():
     authority = json.loads(AUTHORITY.read_text())
     substitution = json.loads(PLAN.read_text())["preservation_test_substitution"]
-    current = (ROOT / substitution["path"]).read_text()
+    from test_reader_permission_capture_preservation import original_parent_bytes
+    current = original_parent_bytes(substitution["path"]).decode()
     assert current.count(substitution["new"]) == substitution["count"] == 1
     restored = current.replace(substitution["new"], substitution["old"], 1).encode()
     assert hashlib.sha256(restored).hexdigest() == authority["files"][substitution["path"]]
