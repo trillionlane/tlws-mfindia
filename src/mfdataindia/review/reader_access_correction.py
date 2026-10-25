@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 import hashlib
 import json
 from pathlib import Path
+import re
 import signal
 import threading
 
@@ -37,9 +38,16 @@ PROFILE_SHA256 = "0377a4fadec994556d2aa6fe042b224a377f6ed8bd0eabfa986fe69b7eb0f2
 # All observations are catalog/privilege inquiries, never application row reads.
 # ACL ordering is canonical, including grantor/options; NULL column ACL == [].
 # NULL object ACL is expanded with acldefault, not discarded as 'no privileges'.
-ACL = """COALESCE((SELECT jsonb_agg(jsonb_build_array(x.grantor,x.grantee,
+ACL = """COALESCE((SELECT jsonb_agg(jsonb_build_array(x.grantor::bigint,x.grantee::bigint,
  x.privilege_type,x.is_grantable) ORDER BY x.grantor,x.grantee,x.privilege_type,x.is_grantable)
  FROM pg_catalog.aclexplode({}) x),'[]'::jsonb)"""
+# Custom role/function settings may hold credentials. Only this server-side
+# null/hash/UTF8-byte seal can cross the connection boundary, never the array.
+SETTINGS_SEAL = """jsonb_build_object('is_null',{value} IS NULL,
+ 'sha256',CASE WHEN {value} IS NULL THEN NULL ELSE
+ encode(sha256(convert_to(to_jsonb({value})::text,'UTF8')),'hex') END,
+ 'utf8_bytes',CASE WHEN {value} IS NULL THEN 0 ELSE
+ octet_length(convert_to(to_jsonb({value})::text,'UTF8')) END)"""
 STATE_SQL = """
 WITH rels AS (
  SELECT c.*,n.nspname FROM pg_catalog.pg_class c
@@ -87,7 +95,7 @@ WITH rels AS (
  FROM pg_catalog.pg_database d WHERE d.datname=current_database()
 ), functions AS (
  SELECT p.oid::bigint,p.pronamespace::bigint,p.proname,p.proowner::bigint,
- p.prosecdef,p.prokind::text,p.proargtypes::text,p.prorettype::bigint,p.proconfig,
+ p.prosecdef,p.prokind::text,p.proargtypes::text,p.prorettype::bigint,{function_settings} AS proconfig,
  encode(sha256(convert_to(p.prosrc,'UTF8')),'hex') AS private_body_sha256,
  {function_acl} AS acl,has_function_privilege('{reader}',p.oid,'EXECUTE') AS execute_allowed
  FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
@@ -97,7 +105,7 @@ WITH rels AS (
  {default_acl} AS acl FROM pg_catalog.pg_default_acl d
 ), roles AS (
  SELECT oid::bigint,rolname,rolsuper,rolinherit,rolcreaterole,rolcreatedb,
- rolcanlogin,rolreplication,rolbypassrls,rolconfig FROM pg_catalog.pg_roles
+ rolcanlogin,rolreplication,rolbypassrls,{role_settings} AS rolconfig FROM pg_catalog.pg_roles
 ), memberships AS (
  SELECT roleid::bigint,member::bigint,grantor::bigint,admin_option,inherit_option,set_option
  FROM pg_catalog.pg_auth_members
@@ -124,7 +132,9 @@ SELECT jsonb_build_object(
     column_acl=ACL.format("a.attacl"), schema_acl=ACL.format("COALESCE(n.nspacl,acldefault('n',n.nspowner))"),
     database_acl=ACL.format("COALESCE(d.datacl,acldefault('d',d.datdba))"),
     function_acl=ACL.format("COALESCE(p.proacl,acldefault('f',p.proowner))"),
-    default_acl=ACL.format("d.defaclacl"))
+    default_acl=ACL.format("d.defaclacl"),
+    function_settings=SETTINGS_SEAL.format(value="p.proconfig"),
+    role_settings=SETTINGS_SEAL.format(value="rolconfig"))
 
 CONTEXT_SQL = """SELECT current_database() AS database,current_user AS principal,
  session_user AS session, current_setting('server_version_num')::int AS version,
@@ -172,16 +182,43 @@ def _atom(row):
     return [row["grantor"], row["grantee"], row["privilege"], row["grantable"]]
 
 
+def _validate_settings_seals(before):
+    for group, setting_field in (("roles", "rolconfig"), ("functions", "proconfig")):
+        for row in before[group]:
+            seal = row.get(setting_field)
+            if (not isinstance(seal, dict) or set(seal) != {"is_null", "sha256", "utf8_bytes"}
+                    or type(seal["is_null"]) is not bool or type(seal["utf8_bytes"]) is not int
+                    or (seal["is_null"] and (seal["sha256"] is not None or seal["utf8_bytes"] != 0))
+                    or (not seal["is_null"] and (seal["utf8_bytes"] < 2 or not isinstance(seal["sha256"], str)
+                                                or not re.fullmatch("[0-9a-f]{64}", seal["sha256"])))):
+                raise ChangeFailure("PRIVATE_SETTINGS_SEAL_REQUIRED")
+
+
+def _validate_acl_atoms(before):
+    for group in ("relations", "columns", "namespaces", "databases", "functions", "defaults"):
+        for row in before[group]:
+            atoms = row["acl"]
+            if (not isinstance(atoms, list) or any(not isinstance(a, list) or len(a) != 4
+                    or type(a[0]) is not int or not 0 <= a[0] <= 4294967295
+                    or type(a[1]) is not int or not 0 <= a[1] <= 4294967295
+                    or not isinstance(a[2], str) or not a[2] or type(a[3]) is not bool for a in atoms)
+                    or atoms != sorted(atoms) or len({tuple(a) for a in atoms}) != len(atoms)):
+                raise ChangeFailure("CANONICAL_NUMERIC_ACL_ATOMS_REQUIRED")
+
+
 def validate_frozen(before):
     """Production OIDs, every column and before ACL are non-configurable."""
     p = profile()
     if fingerprint(p) != PROFILE_SHA256:
         raise ChangeFailure("PROFILE_DRIFT")
+    _validate_settings_seals(before)
+    _validate_acl_atoms(before)
     roles = _index(before["roles"], ("rolname",))
     reader = roles.get((READER,))
     expected = {"oid": 40032, "rolname": READER, "rolsuper": False, "rolinherit": False,
                 "rolcreaterole": False, "rolcreatedb": False, "rolcanlogin": True,
-                "rolreplication": False, "rolbypassrls": False, "rolconfig": None}
+                "rolreplication": False, "rolbypassrls": False,
+                "rolconfig": {"is_null": True, "sha256": None, "utf8_bytes": 0}}
     if reader != expected or any(m["member"] == 40032 for m in before["memberships"]):
         raise ChangeFailure("READER_IDENTITY_DRIFT")
     if (any(r["owner"] == 40032 or (r["capabilities"] and r["capabilities"][2])
@@ -228,6 +265,8 @@ def validate_frozen(before):
 
 def _project(before, selected):
     """Exact normalized delta; never remove pre-existing column privileges."""
+    _validate_acl_atoms(before)
+    _validate_settings_seals(before)
     after, delta = deepcopy(before), []
     rels = _index(after["relations"], ("nspname", "relname"))
     roles = _index(after["roles"], ("rolname",))

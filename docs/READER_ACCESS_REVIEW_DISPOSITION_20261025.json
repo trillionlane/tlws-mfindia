@@ -1,0 +1,21 @@
+{
+  "format": "MF_S1_PR119_REVIEW_AND_NATIVE_FAILURE_DISPOSITION_V1",
+  "status": "DISPOSITION_BEFORE_CORRECTIVE_CODE",
+  "reviewed_head": "caa25e7e7c8f939bdf8be5fe432ef5cc53ac6c3b",
+  "named_review": "CHANGES_REQUIRED; sole P1 raw role/function setting arrays can contain private values",
+  "native_run": 40179606082,
+  "actual_failure": "Terminal FAILURE09:33:21. ImagejobSUCCESS. Focused13PASS207.67s; remainder9FAILED3532PASS1OLDskip13deselected1068.35s. All nine failures are in the new correction-native file. No wholeHEAD/native acceptance claimed.",
+  "sole_complete_raw_log": {
+    "path": "/Users/deviojha/projects/codex/artifacts/mf-s1-reader-access-correction-20261025-lY1WaX/PR119-caa25e7-terminal-complete-failure-log.json",
+    "raw_bytes": 813108,
+    "raw_sha256": "e18bbc37304d6b566ffcfe6024d720436e0892b3b939202b752a2cb92e1172de",
+    "original_session": 35029,
+    "exit": 0,
+    "retained_losslessly_before_format": true,
+    "never_refetch_or_rerun_unchanged_head": true
+  },
+  "P1_correction": "Hash BOTH pg_roles.rolconfig and pg_proc.proconfig inside fixed server-side catalog SQL BEFORE values cross connection boundary. Seal canonical to_jsonb(array)::text UTF8 as exact is_null/SHA256/bytecount; distinguish NULL from empty array; no key or value returned in plaintext. Pure production admission rejects raw, malformed or missing seals for every observed role/function, including unrelated roles. Add providerfree negative sentinel test and actual PG18 sentinel role/function settings tests covering plan/receipt/error redaction and deterministic drift detection. No new config values read from live provider; these are disposable CI fixtures only.",
+  "native_type_correction": "Full retained log proves existing-column projection crashes sorting int and str ACL identities. PostgreSQL JSON conversion of oid uses its scalar text representation, unlike the integer identities in the fixed candidate/projected delta. Explicitly cast aclexplode grantor/grantee to bigint BEFORE jsonb_build_array, preserving all grantors/options/privileges and exact before/after comparison. Do not coerce arbitrary returned text to integer or ignore mismatches. Add strict atom-shape/type validation, providerfree SQL-boundary regression and native JSON numeric-type assertions. This is a representation correction, not a privilege or query-scope change. The other eight precommit aborts are consistent with exact post-state comparison rejecting this type mismatch; only a new actual full native run can establish their correction.",
+  "preservation": "Frozen profile module/84+2columns/OIDs/types/grantee/grantor/ACLscope/lifetime/old798files/oldquerySQL/workflows/dependencies/oldreconciler/controllers all unchanged. All62neworiginalcases retained; no skips/xfails/cap/resource/time/assertion weakening. No localPG/Docker/newruntime/providerDBsourceIAMsecretwrites/reads. New actualhead requires fullvalidation/namedexactrereview/wholeHEADCI/normalmerge/independentMAINCI.",
+  "authority": "G1 implementation correction only. G5 exact livewrite/secret access/runtime transport NOTapproved. No merge with current review/CI failure; no old consumed diagnostic reuse."
+}

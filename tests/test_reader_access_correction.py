@@ -22,7 +22,7 @@ def frozen_state():
     for name, oid in ((c.READER, 40032), (c.OWNER, 16587)):
         state["roles"].append(dict(oid=oid, rolname=name, rolsuper=False, rolinherit=name == c.OWNER,
             rolcreaterole=name == c.OWNER, rolcreatedb=name == c.OWNER, rolcanlogin=True,
-            rolreplication=False, rolbypassrls=False, rolconfig=None))
+            rolreplication=False, rolbypassrls=False, rolconfig=dict(is_null=True, sha256=None, utf8_bytes=0)))
     for item in p["objects"]:
         i, d = item["expected_identity"], item["relation_definition_and_security"]
         root = next(a for a in item["direct_relation_and_all_column_ACLs_before"] if a["object_kind"] == "relation")
@@ -101,7 +101,8 @@ def test_each_identity_acl_type_security_or_privilege_drift_fails_closed(defect)
     elif defect == "column_grant_option":
         state["columns"][0]["capabilities"][1] = True
     else:
-        state["functions"] = [dict(proowner=16587, prosecdef=True, execute_allowed=True)]
+        state["functions"] = [dict(proowner=16587, prosecdef=True, execute_allowed=True,
+                                   proconfig=dict(is_null=True, sha256=None, utf8_bytes=0), acl=[])]
     with pytest.raises(c.ChangeFailure):
         c.prepare_change(state, window_reference="SYNTHETIC_WINDOW")
 
@@ -281,3 +282,64 @@ def test_deadline_covers_rollback_and_never_retries_unconfirmed_cleanup(monkeypa
     with pytest.raises(c.ChangeFailure, match="PRECOMMIT_ROLLBACK_UNCONFIRMED"):
         c.run_change(conn, c.Permit(doc, c.fingerprint(doc)))
     assert conn.calls.count("ROLLBACK") == 1 and "COMMIT" not in conn.calls
+
+
+@pytest.mark.parametrize("kind", ["role", "function"])
+def test_raw_private_settings_are_rejected_before_plan_or_receipt(kind):
+    state = frozen_state()
+    sentinel = "SYNTHETIC_PRIVATE_SETTING_SENTINEL"
+    if kind == "role":
+        state["roles"].append({**state["roles"][1], "oid": 49999, "rolname": "unrelated_fixture_role",
+                               "rolconfig": ["vendor.api_secret=" + sentinel]})
+    else:
+        state["functions"].append(dict(proowner=16587, prosecdef=False, execute_allowed=False,
+                                       proconfig=["vendor.api_secret=" + sentinel]))
+    with pytest.raises(c.ChangeFailure, match="PRIVATE_SETTINGS_SEAL_REQUIRED") as error:
+        c.prepare_change(state, window_reference="SYNTHETIC_WINDOW")
+    assert sentinel not in str(error.value)
+
+
+def test_catalog_acl_oid_json_boundary_requires_explicit_bigint_not_text():
+    assert "jsonb_build_array(x.grantor::bigint,x.grantee::bigint" in c.STATE_SQL
+
+
+@pytest.mark.parametrize("seal", [None, [], {}, {"is_null": True, "sha256": "0" * 64, "utf8_bytes": 0},
+    {"is_null": True, "sha256": None, "utf8_bytes": 1},
+    {"is_null": False, "sha256": None, "utf8_bytes": 2},
+    {"is_null": False, "sha256": "A" * 64, "utf8_bytes": 2},
+    {"is_null": False, "sha256": "0" * 64, "utf8_bytes": True},
+    {"is_null": False, "sha256": "0" * 64, "utf8_bytes": 1}])
+@pytest.mark.parametrize("kind", ["role", "function"])
+def test_malformed_or_legacy_private_settings_seals_cannot_be_admitted(kind, seal):
+    state = frozen_state()
+    if kind == "role":
+        state["roles"].append({**state["roles"][1], "oid": 49999, "rolname": "unrelated_fixture_role", "rolconfig": seal})
+    else:
+        state["functions"].append(dict(proowner=16587, prosecdef=False, execute_allowed=False, proconfig=seal, acl=[]))
+    with pytest.raises(c.ChangeFailure, match="PRIVATE_SETTINGS_SEAL_REQUIRED"):
+        c.prepare_change(state, window_reference="SYNTHETIC_WINDOW")
+
+
+def test_nonnull_setting_seals_are_preserved_without_plaintext_and_detect_drift():
+    import json
+    state = frozen_state()
+    sentinel = "SYNTHETIC_NEVER_PERSISTED_PRIVATE_SETTING"
+    encoded = json.dumps(["vendor.api_secret=" + sentinel], ensure_ascii=False).encode()
+    seal = dict(is_null=False, sha256=hashlib.sha256(encoded).hexdigest(), utf8_bytes=len(encoded))
+    state["roles"].append({**state["roles"][1], "oid": 49999, "rolname": "unrelated_fixture_role", "rolconfig": seal})
+    state["functions"].append(dict(proowner=16587, prosecdef=False, execute_allowed=False, proconfig=deepcopy(seal), acl=[]))
+    doc = c.prepare_change(state, window_reference="SYNTHETIC_WINDOW")
+    receipt = c.run_change(Connection(doc), c.Permit(doc, c.fingerprint(doc)))
+    assert sentinel not in json.dumps(doc) and sentinel not in json.dumps(receipt)
+    changed = deepcopy(state)
+    changed["roles"][-1]["rolconfig"]["sha256"] = "1" * 64
+    assert c.fingerprint(changed) != c.fingerprint(state)
+    assert receipt["change"]["before"]["roles"][-1]["rolconfig"] == seal
+
+
+@pytest.mark.parametrize("bad", ["16587", True, -1, 4294967296])
+def test_text_boolean_or_out_of_range_acl_identities_rejected_not_coerced(bad):
+    state = frozen_state()
+    state["relations"][0]["acl"][0][0] = bad
+    with pytest.raises(c.ChangeFailure, match="CANONICAL_NUMERIC_ACL_ATOMS_REQUIRED"):
+        c.prepare_change(state, window_reference="SYNTHETIC_WINDOW")

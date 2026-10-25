@@ -280,3 +280,67 @@ def test_native_historical_reconcile_erases_profile_and_new_admission_stops_no_r
     with pytest.raises(c.ChangeFailure, match="PROFILE_ERASED_OR_UNAPPROVED_NO_AUTOMATIC_REAPPLY"):
         c.require_provisioning_admission(after, reconciler_bytes=raw, explicitly_selected_profile=c.PROFILE_SHA256)
     assert rows(fixture_db) == original_rows
+
+
+def test_native_acl_oid_json_boundary_returns_canonical_numeric_atoms(fixture_db):
+    with owner(fixture_db) as conn:
+        conn.execute("GRANT SELECT(amfi_scheme_code) ON mf.fund_variants TO mfdata_verified_reader")
+        # PostgreSQL's OID scalar is a JSON string unless explicitly cast.
+        old_type = conn.execute("SELECT jsonb_typeof(to_jsonb('mfdata_admin'::regrole::oid)) AS kind").fetchone()["kind"]
+        assert old_type == "string"
+        actual = c._snapshot(conn)
+    atoms = [a for group in ("relations", "columns", "namespaces", "databases", "functions", "defaults")
+             for row in actual[group] for a in row["acl"]]
+    assert atoms and all(type(a[0]) is int and type(a[1]) is int for a in atoms)
+    plan = fixture_change(fixture_db)
+    assert sum(len(d["columns"]) for d in plan["delta"]) == 85
+    with owner(fixture_db) as conn:
+        c._execute(conn, plan)
+    assert state(fixture_db) == plan["after"]
+
+
+def test_native_role_and_function_private_settings_sealed_before_client_plan_receipt_or_error(fixture_db, monkeypatch):
+    import json
+    sentinel = "SYNTHETIC_PRIVATE_SETTING_SENTINEL_é"
+    with psycopg.connect(fixture_db, autocommit=True) as admin:
+        admin.execute(sql.SQL("ALTER ROLE mfdata_admin SET vendor.api_secret TO {}").format(sql.Literal(sentinel)))
+        admin.execute(sql.SQL("ALTER ROLE mfdata_verified_admin SET vendor.api_secret TO {}").format(sql.Literal(sentinel)))
+        admin.execute(sql.SQL("ALTER FUNCTION mf.fixture_function() SET vendor.api_secret TO {}").format(sql.Literal(sentinel)))
+    plan = fixture_change(fixture_db)
+    assert sentinel not in json.dumps(plan, ensure_ascii=False)
+    for group, key in (("roles", "rolconfig"), ("functions", "proconfig")):
+        seals = [r[key] for r in plan["before"][group]]
+        assert all(isinstance(v, dict) and set(v) == {"is_null", "sha256", "utf8_bytes"} for v in seals)
+        assert any(not v["is_null"] and len(v["sha256"]) == 64 and v["utf8_bytes"] > 2 for v in seals)
+        assert any(v == {"is_null": True, "sha256": None, "utf8_bytes": 0} for v in seals)
+    with owner(fixture_db) as conn:
+        receipt = c._execute(conn, plan)
+    assert sentinel not in json.dumps(receipt, ensure_ascii=False)
+    reverse = {**deepcopy(plan), "operation": "REVOKE", "before": plan["after"], "after": plan["before"]}
+    with owner(fixture_db) as conn:
+        c._execute(conn, reverse)
+
+    def private_server_error(conn):
+        conn.execute("DO $$ BEGIN RAISE EXCEPTION USING MESSAGE=current_setting('vendor.api_secret'); END $$")
+
+    monkeypatch.setattr(c, "_snapshot", private_server_error)
+    with owner(fixture_db) as conn, pytest.raises(c.ChangeFailure) as error:
+        c._execute(conn, plan)
+    assert sentinel not in str(error.value) and str(error.value) == "PRECOMMIT_ABORTED_NO_RETRY"
+
+
+@pytest.mark.parametrize("kind", ["role", "function"])
+def test_native_private_setting_changes_produce_different_seals_and_fail_approval_drift(fixture_db, kind):
+    import json
+    original = fixture_change(fixture_db)
+    sentinel = "SYNTHETIC_CHANGED_PRIVATE_SETTING"
+    with psycopg.connect(fixture_db, autocommit=True) as admin:
+        statement = "ALTER ROLE mfdata_verified_admin SET vendor.api_secret TO {}" if kind == "role" else \
+                    "ALTER FUNCTION mf.fixture_function() SET vendor.api_secret TO {}"
+        admin.execute(sql.SQL(statement).format(sql.Literal(sentinel)))
+    updated = state(fixture_db)
+    assert c.fingerprint(updated) != c.fingerprint(original["before"])
+    assert sentinel not in json.dumps(updated)
+    with owner(fixture_db) as conn, pytest.raises(c.ChangeFailure, match="PRECOMMIT_ABORTED"):
+        c._execute(conn, original)
+    assert state(fixture_db) == updated
