@@ -16,7 +16,7 @@ SOURCE_HASHES = {
     "src/mfdataindia/review/reader_access_correction.py": "863fd37dfa45be74642cf731f44bbd7cc182e263c95309a7d48a4c91af315d00",
     "src/mfdataindia/review/reader_access_profile_v1.py": "5d54dbee9631c806b039306599ad0de0e07533fe4be54e93c6d9a817bcf5fdb9",
     "src/mfdataindia/review/reader_access_transport_spec.py": "9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e",
-    "src/mfdataindia/review/reader_permission_capture.py": "9cd000513e53909f020f04fa933e60713575f2789e30add0fa73095f124a356f",
+    "src/mfdataindia/review/reader_permission_capture.py": "71850e2b7ef2d248fef766851c8b189a7cb35c9c39016db0fb0ded0d22a6a724",
 }
 DENIALS = ("permission_authority", "runtime_authority", "performance_acceptance",
            "FS13_acceptance", "actual_lock_witness", "concurrent_change_exclusion", "future_freshness")

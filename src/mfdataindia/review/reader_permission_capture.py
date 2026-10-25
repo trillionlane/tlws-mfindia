@@ -16,6 +16,14 @@ class WallTimeout(TimeoutError):
     """Spent wall: no further database I/O, including cleanup SQL."""
 
 
+class AbortUnconfirmed(RuntimeError):
+    """The sole ROLLBACK outcome is not confirmed; STOP, never retry."""
+
+
+class WallAbortUnconfirmed(WallTimeout):
+    """Spent wall leaves abort unconfirmed; transport teardown only."""
+
+
 @contextmanager
 def _wall():
     spec.require(threading.current_thread() is threading.main_thread())
@@ -49,6 +57,11 @@ def _capture(conn, *, clock=time.monotonic):
     def remaining():
         if clock() >= deadline:
             raise WallTimeout("capture wall spent; STOP_NO_RETRY")
+
+    def unconfirmed(error):
+        if isinstance(error, WallTimeout) or clock() >= deadline:
+            raise WallAbortUnconfirmed("CAPTURE_ABORT_UNCONFIRMED_WALL_TIMEOUT_NO_RETRY") from None
+        raise AbortUnconfirmed("CAPTURE_ABORT_UNCONFIRMED_NO_RETRY") from None
 
     def control(sql, tag):
         remaining()
@@ -100,12 +113,14 @@ def _capture(conn, *, clock=time.monotonic):
             rollback_attempted = True
             control(inventory.TERMINAL, "ROLLBACK")
         except BaseException as error:
-            if begun and not rollback_attempted and not isinstance(error, WallTimeout) and clock() < deadline:
+            if begun:
+                if rollback_attempted or isinstance(error, WallTimeout) or clock() >= deadline:
+                    unconfirmed(error)
                 rollback_attempted = True
                 try:
                     control(inventory.TERMINAL, "ROLLBACK")
-                except BaseException:
-                    pass  # Original failure survives; never a second rollback/reconnect.
+                except BaseException as rollback_error:
+                    unconfirmed(rollback_error)
             raise
 
 

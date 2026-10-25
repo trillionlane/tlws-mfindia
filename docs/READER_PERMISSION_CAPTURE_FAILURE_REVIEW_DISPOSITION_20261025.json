@@ -1,0 +1,10 @@
+{
+  "format": "READER_CAPTURE_ROLLBACK_AMBIGUITY_DISPOSITION_BEFORE_CORRECTION_V1",
+  "reviewed_head": "82c1d73709de809d7a5e57f14ac4987dbf4adf65",
+  "reviewer": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "review_turn": "01a17526-a631-7a32-8eee-d692ba0ab3b8",
+  "finding": "P2: Failed/timed-out cleanup ROLLBACK was swallowed when an original error already existed, hiding whether abort was confirmed.",
+  "correction": "Fail closed with fixed AbortUnconfirmed or WallAbortUnconfirmed marker whenever a begun transaction cannot confirm its sole ROLLBACK, including normal terminal rollback failure and spent-wall denial of cleanup. Preserve ordinary original errors only after confirmed rollback. No SQL after spent wall, second rollback, retry, reconnect or acceptance.",
+  "regressions": "First reproduce dual original-error plus rollback failure/timeout under old code; then require fixed ambiguity marker, exactly one rollback attempt, no later SQL, restored timer, and no retry. All prior IDs and all native fixtures retained.",
+  "scope_unchanged": "CODE ONLY. Frozen old engine/profile/STATE_SQL/SQL inventory/budgets and all825 parent files unchanged. Update only new collector/source pins/controller literal pin plan and new tests; full stable validation plus named exact-head re-review and fresh automatic native CI required."
+}

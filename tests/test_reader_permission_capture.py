@@ -423,3 +423,24 @@ def test_existing_signal_timer_rejected_without_transaction_io():
         assert not conn.calls
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
+
+
+@pytest.mark.parametrize("rollback_timeout", [False, True])
+def test_original_error_plus_failed_rollback_is_explicit_unconfirmed_abort(rollback_timeout):
+    def fail(_, statement, cursor):
+        if statement == inv.CONTEXT_SQL:
+            cursor.rows[0]["readonly"] = "off"
+        if statement == "ROLLBACK":
+            if rollback_timeout:
+                raise c.WallTimeout("PRIVATE_ROLLBACK_TIMEOUT")
+            raise RuntimeError("PRIVATE_ROLLBACK_FAILURE")
+
+    conn = Connection(transform=fail)
+    capture = c.Capture()
+    with pytest.raises((RuntimeError, c.WallTimeout), match="CAPTURE_ABORT_UNCONFIRMED") as caught:
+        capture.run(conn)
+    assert type(caught.value).__name__ == ("WallAbortUnconfirmed" if rollback_timeout else "AbortUnconfirmed")
+    assert conn.calls[-1] == "ROLLBACK" and conn.calls.count("ROLLBACK") == 1
+    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+    with pytest.raises(ValueError):
+        capture.run(conn)
