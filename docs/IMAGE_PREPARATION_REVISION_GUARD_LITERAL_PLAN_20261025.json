@@ -1,0 +1,34 @@
+{
+  "format": "MF_IMAGE_REVISION_GUARD_THREE_LITERAL_INSERTIONS_V1",
+  "base_workflow_sha256": "5f3ca5de584a637f39a1e73d15e4f59a664cfc530eda7f29d2addcc4213eca0c",
+  "insertions": [
+    {
+      "anchor": "      manifest_json:\n",
+      "before": "      expected_git_sha:\n        type: string\n        required: false\n        description: Exact approved commit; required for prepare-image only\n",
+      "count": 1
+    },
+    {
+      "anchor": "      - uses: actions/checkout@v4\n",
+      "before": "      - name: Require exact approved image revision before checkout\n        if: inputs.operation == 'prepare-image'\n        env:\n          EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}\n          LC_ALL: C\n        run: |\n          set -euo pipefail\n          [[ \"$EXPECTED_GIT_SHA\" =~ ^[0-9a-f]{40}$ ]]\n          test \"$EXPECTED_GIT_SHA\" = \"$GITHUB_SHA\"\n",
+      "count": 1
+    },
+    {
+      "anchor": "      - uses: actions/setup-python@v5\n",
+      "before": "      - name: Verify checked-out image revision before tooling and cloud authentication\n        if: inputs.operation == 'prepare-image'\n        env:\n          EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}\n          LC_ALL: C\n        run: |\n          set -euo pipefail\n          [[ \"$EXPECTED_GIT_SHA\" =~ ^[0-9a-f]{40}$ ]]\n          test \"$EXPECTED_GIT_SHA\" = \"$GITHUB_SHA\"\n          test \"$(git rev-parse HEAD)\" = \"$EXPECTED_GIT_SHA\"\n          test -z \"$(git status --porcelain=v1)\"\n",
+      "count": 1
+    }
+  ],
+  "future_controller_dispatch_exception": {
+    "old": "\"--ref\", \"main\", \"-f\", \"operation=prepare-image\", document=False)",
+    "new": "\"--ref\", \"main\", \"-f\", \"expected_git_sha=\" + SHA, \"-f\", \"operation=prepare-image\", document=False)",
+    "count": 1
+  },
+  "no_other_existing_file_or_step_body_change": true,
+  "full_reverse_restoration_required": true,
+  "preservation_test_substitution": {
+    "path": "tests/test_reader_access_transport.py",
+    "old": "            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha, name",
+    "new": "            actual = (ROOT / name).read_bytes()\n            if name == \".github/workflows/rollout-verified-review-dev.yml\":\n                guard_plan = json.loads(\n                    (ROOT / \"docs/IMAGE_PREPARATION_REVISION_GUARD_LITERAL_PLAN_20261025.json\").read_text()\n                )\n                for insertion in reversed(guard_plan[\"insertions\"]):\n                    addition = insertion[\"before\"].encode()\n                    assert actual.count(addition) == insertion[\"count\"] == 1\n                    actual = actual.replace(addition, b\"\", 1)\n            assert hashlib.sha256(actual).hexdigest() == sha, name",
+    "count": 1
+  }
+}

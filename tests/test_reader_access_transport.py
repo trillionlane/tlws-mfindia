@@ -340,7 +340,16 @@ def test_all_old_files_fullbytes_and_workflow_fullprefix_preserved():
     assert len(a["files"]) == 804
     for name, sha in a["files"].items():
         if name not in (".github/workflows/verify.yml", "tests/test_ci_verify_sequence.py"):
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha, name
+            actual = (ROOT / name).read_bytes()
+            if name == ".github/workflows/rollout-verified-review-dev.yml":
+                guard_plan = json.loads(
+                    (ROOT / "docs/IMAGE_PREPARATION_REVISION_GUARD_LITERAL_PLAN_20261025.json").read_text()
+                )
+                for insertion in reversed(guard_plan["insertions"]):
+                    addition = insertion["before"].encode()
+                    assert actual.count(addition) == insertion["count"] == 1
+                    actual = actual.replace(addition, b"", 1)
+            assert hashlib.sha256(actual).hexdigest() == sha, name
     old = gzip.decompress(base64.b64decode(a["workflow_full_prior_bytes"]["gzip_base64"]))
     actual = (ROOT / ".github/workflows/verify.yml").read_bytes()
     assert (
