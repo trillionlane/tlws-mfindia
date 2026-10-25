@@ -1,0 +1,48 @@
+{
+  "format": "MF_IMAGE_PREPARATION_EXPECTED_COMMIT_GUARD_DESIGN_BEFORE_CODE_V2",
+  "created_UTC": "2026-10-25 16:13:26 UTC",
+  "base": "19ff70b830951ef63cbd1e6dd1bba6fdd6355ad5",
+  "scope_approval": "Direct human 'Proceed' accepts the explicit narrow CODE-ONLY expected-commit workflow/dispatch guard plus regressions as exceptionto prior pins-only template rule. Usualdesign/exactreview/tests/push/normalmerge/fullindependentMAIN. No live imageworkflow/DBgrant execution authorized bythis guard approval alone; prior imagepreparation scope retained onlyafterfinaladmittedguardGit/reviewedpreparation.",
+  "finding": {
+    "review_turn": "01a173c8-d669-7751-b9e0-6857df5ef9e3",
+    "raw_sha256": "56aa5147f947f95263714807b143d0d506f4538a5a7e80ab348f2c963c88cbf0",
+    "P2": "Checked mainSHA is mutablebetweencheckand--refmain dispatch. Late --commitSHA lookup cannotprevent earlierimagepush."
+  },
+  "repository_delta": [
+    "Add optional expected_git_sha string workflow_dispatch input. Required by guard for prepare-image only; existingexecute inputs/behavior remain unchanged.",
+    "Add prepare-image-only firststep BEFOREcheckout/cloudauth/build/push: EXPECTED_GIT_SHA via env expression, LC_ALL=C, strict40lowerhex, exactequality to GITHUB_SHA. No directuntrustedexpression in runbody.",
+    "Add prepare-image-only step immediatelyAFTERoldcheckout beforetooling/cloudauth/build/push: repeatstrict40lowerhex/equality; require git rev-parse HEAD exactmatch and cleancheckout. Bothguards failclosedmissing/malformed/wrong/racedSHA; no fallback/secret/network operation.",
+    "New provider-free tests executeactualBashguard bodies extractedfromworkflow, withsyntheticenv and disposableGitfixtures only. Wrong/raced/missing/uppercase/nonhex/length/control/shellinjection failBEFOREsentinelimageaction, positiveexactmatch passes. Execute compatibility, guardplacement/condition/env, alloldworkflowFULLbytes andoldsteprelativeorder preserved, no oldtestID removed.",
+    "Approved preservation test amendment: exact counted whole-block substitution only; oldworkflow is FULL-byte restored before original hash assertion; new test FULL-byte restores oldtest; every other819oldfiles unchanged."
+  ],
+  "preservation": {
+    "old_rollout_workflow_full_bytes_sha256": "5f3ca5de584a637f39a1e73d15e4f59a664cfc530eda7f29d2addcc4213eca0c",
+    "allowed_old_file_change": ".github/workflows/rollout-verified-review-dev.yml plus tests/test_reader_access_transport.py exact counted preservation normalization",
+    "full_reverse_restoration": "Freeze entire114linebaselinebytes compressed in added authorityJSON. Exact3 additive insertions only (input + firstguard + postcheckoutguard). Remove each literalnewblock EXACTcount1 and compare entire restored FULLbytes/hash. No AST/whitespace/ignoredregions/body substitutions.",
+    "all_other_prior_tracked_files_full_bytes_unchanged": true,
+    "verify_yml_full_bytes_sha256": "b6a33a1e2f9dce183e8e0d2883b22179f19fdaaddc0e49ca26891e206f9b1f75",
+    "old_execute_runtime_permissions_concurrency_resources_actions_dependencies_SQL_PDF_source_engine_profile_guards_unchanged": true
+  },
+  "future_preparation_delta": {
+    "not_implemented_or_dispatched_now": true,
+    "pins": "ONLYactualfinalnewPR/head/main/tree/HEADCI/MAINCI/genericpins afterdelivery",
+    "controller_exception": "Exactlyone counted literal dispatchargument insertion '-f expected_git_sha='+SHA BEFOREexisting '-f operation=prepare-image', keepingoldlast2args andall34oldtestIDs+all4fullinversepin/dispatchliteralnormalization. NewproviderfreeexactdispatchSHA/racedref checks. No algorithm/account/helper/limits/profile/intent/provenancechanges.",
+    "prepare_image_guard_required": "Old19ffimagecontrollerblocked andneverlaunched. Newcontroller sends exactfinaladmittedmain SHA. Workflowrejects ifeventSHAorcheckoutdiffers. ExpectedinputmatchesfinalbuiltGit twice viaimmutablemanifestANDconfigBYTES/Linuxamd64/0layers."
+  },
+  "trust_boundary": "Protects check/dispatch race when the executing workflow enforces these guards. Does NOT claim exclusion of arbitraryrepositoryadmins/rewinds or maliciousfutureworkflow replacement. No branch/tag/settings mutations or immunityclaim. NormalreviewedmainandwholeCI remain required.",
+  "gates": "NamedDESIGNreviewBEFOREworkflowcode. Newfailbeforefixregressions, stableall26checks/all21contracts/lintsecurityauditcredentials/fullold3720IDs445PG13focused retained+newunitONLY. Exactimmutablecode review/findingsfix-rereview/fullHEADlogONCEretainbeforeformat/normalmatchheadsquash/identicaltree/fullindependentMAINownlog/admission/genericACTUALSKIP/autofalse/safeFF. Then separatelyreviewednewimagepreparation; NO obsolete19ffimages.",
+  "unchanged_scope": "No secret/DSN/DB/provider/IAM/source/schedule/gate writes, Docker/localPG or actualG5/operatorSTART/job/execution/grants/originalqueryperformanceG7 in codepreparation. Beforestatecollector stillseparate reviewedtransportneeded; no grantworkerrepurposing/consumedmetadatareuse. GlobalFS13K/protectedmaster/A-K/oldbranchesdirtywork/alloriginalFS13NSEEXPPDFNAVgates remain.",
+  "amendment_before_code": {
+    "reason": "Full local 3319PASS/1FAIL/445deselected: old preservation regression correctly rejects approved image workflow additions. No production guard failure.",
+    "evidence": "stable-full-local-validation-complete-raw.json decodedsha4dc34e7ecc98271502a2294be16dd4f27081da9b0986c24bcaca3792238eeb16",
+    "correction": "One counted exact literal substitution in existing test_reader_access_transport.py: only the rolloutworkflow bytes are normalized by removing each exact approved addition count1, then SAMEcompleteoriginalSHAcheck. All other file hashes/Verifyfullprefix/CIguardbytechecks remain unchanged. New regression reverses this fulltest substitution and compares entire oldtest bytes/hash.",
+    "literal_substitution": {
+      "path": "tests/test_reader_access_transport.py",
+      "old": "            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha, name",
+      "new": "            actual = (ROOT / name).read_bytes()\n            if name == \".github/workflows/rollout-verified-review-dev.yml\":\n                guard_plan = json.loads(\n                    (ROOT / \"docs/IMAGE_PREPARATION_REVISION_GUARD_LITERAL_PLAN_20261025.json\").read_text()\n                )\n                for insertion in reversed(guard_plan[\"insertions\"]):\n                    addition = insertion[\"before\"].encode()\n                    assert actual.count(addition) == insertion[\"count\"] == 1\n                    actual = actual.replace(addition, b\"\", 1)\n            assert hashlib.sha256(actual).hexdigest() == sha, name",
+      "count": 1
+    },
+    "all_old_test_ids_retained": true,
+    "no_skip_xfail_weakened_ignored_region": true
+  }
+}

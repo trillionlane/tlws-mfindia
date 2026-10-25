@@ -8,6 +8,10 @@ on:
         options: [prepare-image, execute]
         required: true
         description: Prepare image only, or execute the approved bounded DEV rollout
+      expected_git_sha:
+        type: string
+        required: false
+        description: Exact approved commit; required for prepare-image only
       manifest_json:
         type: string
         description: Exact rollout manifest JSON; required for execute
@@ -41,7 +45,27 @@ jobs:
         ports: ['5432:5432']
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
+      - name: Require exact approved image revision before checkout
+        if: inputs.operation == 'prepare-image'
+        env:
+          EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}
+          LC_ALL: C
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_GIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_GIT_SHA" = "$GITHUB_SHA"
       - uses: actions/checkout@v4
+      - name: Verify checked-out image revision before tooling and cloud authentication
+        if: inputs.operation == 'prepare-image'
+        env:
+          EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}
+          LC_ALL: C
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_GIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_GIT_SHA" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_GIT_SHA"
+          test -z "$(git status --porcelain=v1)"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
