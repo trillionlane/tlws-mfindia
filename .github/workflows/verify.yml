@@ -454,3 +454,14 @@ jobs:
           except ValueError: pass
           else: raise AssertionError("consumed identity admitted by successor worker")'
           done
+
+      - name: Verify packaged fixed owner grant transport in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:${{ github.sha }}"
+          tools_image="tlws-mf-review-tools:${{ github.sha }}"
+          for target in "$image" "$tools_image"; do
+            docker run --rm --entrypoint python "$target" /app/scripts/apply_reader_access_correction_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_reader_access_correction_dev.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_access_transport_binding.py
+          done

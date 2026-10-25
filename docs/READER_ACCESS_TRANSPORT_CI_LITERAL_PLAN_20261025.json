@@ -1,0 +1,19 @@
+{
+  "format": "MF_OWNER_TRANSPORT_CI_GUARD_LITERAL_PLAN_V1",
+  "path": "tests/test_ci_verify_sequence.py",
+  "base": "abe35637f306e84c527139623cd42cb241ad3fb7",
+  "original_full_sha256": "e56039abe5dfad1d888612a27ccf9224392814477d1ec121b1ec03b091cafd36",
+  "substitutions": [
+    {
+      "count": 1,
+      "old": "    assert [s[\"label\"] for s in second[-6:]] == [addition, security, worker, permission, metadata, successor]\n",
+      "new": "    assert [s[\"label\"] for s in second[-7:]] == [addition, security, worker, permission, metadata, successor, \"- name: Verify packaged fixed owner grant transport in both images\"]\n"
+    },
+    {
+      "count": 1,
+      "old": "    assert first + second[3:-6] == expected\n",
+      "new": "    assert first + second[3:-7] == expected\n"
+    }
+  ],
+  "proof": "Reverse exactly these two substitutions exactly once each, then compare entire restored original SHA256; no ignored regions/AST/whitespace normalization. All40 original body/order checks and original testIDs retained."
+}
