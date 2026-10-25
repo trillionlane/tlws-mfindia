@@ -1,0 +1,46 @@
+{
+  "format": "MF_OWNER_TRANSPORT_IMPLEMENTATION_AND_REVIEW_DISPOSITION_V1",
+  "approved_design_sha256": "80fb48a58228b42d629c8631582413fafdbcbf4a046766940d8619a88dabb908",
+  "named_design_clear_raw_sha256": "c51fa0b7d20df6ffede70b9fb8cc04b6efeb4961c0d58ec56b62d3ce3ac8455c",
+  "initial_findings": {
+    "P1": "Finite P->A->E->B->L topology implemented: L.request_sha256 seals full B outside embedded A; A/P contain no whole request/hash. Original raw review retained. No fixed-point/placeholder/ignoredbyte shortcut.",
+    "P2": "Preservation criteria corrected before code to803+workflow; then existing strict sequence guard caught extra step. Named v3 amendment authorizes exactly802+workflow+two literal CIguard substitutions, reversible to original fullhash. All40 original stepbody/order checks and old testIDs retained."
+  },
+  "full_source_guard_disposition": {
+    "controller": {
+      "template": "core_access_metadata_controller_v2.py",
+      "changed": [
+        "exact_scope",
+        "inputs",
+        "validate_result",
+        "run"
+      ],
+      "added": [
+        "manifest",
+        "root",
+        "controller_git_sha",
+        "controller_sha256",
+        "protected_hash",
+        "window",
+        "inputs_payload",
+        "approval_document"
+      ],
+      "unchanged": "Every other original guard body FULL source byte equality, including UID/time/whole task/env/secret/annotations/network/volume/zero-oneinventory/OCI canonicalization and durable exclusive writer. Fixed module constants/import paths bind new identity/ownerSA/secret1/worker/spec/adapter/engine/profile."
+    },
+    "backend": {
+      "template": "core_access_metadata_backend_v2.py",
+      "changed": [
+        "__init__",
+        "preflight",
+        "_post"
+      ],
+      "unchanged": "Every other guard FULL source byte equality. __init__ deepcopies exact approval. Preflight verifies fixed new source files + all old engine/profile hashes, fixed new-job absence/existing operator/currentGit/twice immutableOCI. _post adds window recheck BEFORE and AFTER token latency; original exact body/URL once-only consumed-before-IO/30s/no-retry behavior retained."
+    }
+  },
+  "preconnection": "No DSN read until full canonical proposal+payload+package/context/source/platform/clock/mainthread/noexistingtimer/output-capacity checks pass. Deny ambient PG* and extra libpq target/service/options. Fixed args/socket/db/owner/port5432/password/connect5s/autocommit/prepareNone/dict_row. No secret fetch API, credential output or writes in code-preparation.",
+  "clock_and_commit": "Recheck approved window after large plan validation, immediately before first wire BEGIN INSIDE frozen engine15s SIGALRM. Window failure there closes adapter to all further SQL. One lock witness SQL after second fixed root LOCK and before first GRANT, within original5s statement/15s operation budgets. Strict knownSQL allowlist. COMMIT consumed before IO; any ambiguity denies rollback/furtherSQL and retry. Connection teardown never substitutes another SQL/reconnect/reversal; teardown failure cannot erase original COMMIT_UNKNOWN and successful-commit teardown failure becomes COMMITTED_UNVERIFIED.",
+  "output": "Complete deterministic success certificate rendered against unchanged bounded evidence transport BEFORE DSN; knowingly oversized success cannot be committed. Only after actual frozen engine receipt and actual lock witness equal the complete predicted values is that full seal emitted. Output delivery failure remains an ambiguous consumed operation, never auto-retried.",
+  "preservation": "802old files byte-exact; workflow full prior bytes exactprefix + one final bothimage sourcebinding step; sequenceguard exact2literal substitutions reversed to original entirehash. Frozen engine/profile/candidate/source math/PDF/deps/SQL/installers/oldcontrollers/inventory untouched. No real images/runtime/DB/cloud/secret calls performed.",
+  "tests": "Provider-free lifecycle/metadata/full seals/ambiguity/canonical/fullcatalog schema/private redaction/DSN/source tamper/beforeDSN/wholewall/finite graph/codec bomb/multichunk/caps/expiredtoken/firstSQL checks. Nine new actual native PG18 cases for base/nested/inherited lock witnesses, missing/extra/OID/owner/definition mismatches and NOWAIT underlying contention, on disposable CI only. All old tests retained; no new skips/xfails/proofwaivers.",
+  "authority": "Human approved code-only transport/package preparation and usual delivery, NOT actual secretread/DBconnect/providerread/imagepreparation/newjob/execution/G5write. Final actual G5 human approval and separately explicit readiness/transport scope remain mandatory. Hash pairing is not human authentication. External exclusive admin/recursive availability window is not guaranteed against arbitrary administrators or after commit. No FS13/performance/source acceptance."
+}
