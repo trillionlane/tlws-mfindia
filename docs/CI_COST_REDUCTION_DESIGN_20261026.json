@@ -1,0 +1,140 @@
+{
+  "correction_disposition_before_code": {
+    "finding": "V2 incorrectly identified PR123 guard as the only full-parent guard. PR122 capture helper checks825 parentfiles and is used by PR121821-file proof; PR120 transport checks804 directly. Both still encounter exact approved runner/fixture/argv changes.",
+    "fix": "Keep all parent SHA comparisons/checks. Extend finite counted inverse to exactly SIX parent files: original three fixture/runner/partition files PLUS exactly import/read-wrapper substitutions in PR123 broad guard, PR122 capture guard and PR120 transport guard. Capture wrapper runs BEFORE its existing historical suffix/literal inverses. This also repairs PR121821-file caller without editing that test. No skipped comparisons or new ignored regions.",
+    "helper_rule": "Tests-only restore_parent_file accepts fixedSIX names ONLY; validates exact V3 design bytes/hash, count1 per literal, then SAME original parent SHA. Other names returned byte-identical. No importing or monkeypatching old test modules/functions. All original code/SQL/workflow/production/guard assertions except these listed counted wrappers unchanged.",
+    "independent_proof": "New CI-cost preservation test independently reverses ALL exact counted substitutions for allSIX names and compares entire original parent SHA, including ALL three guards. It also requires restored bytes == restoration-helper result, all other851parentfiles unchanged, exact6-key allowed set and exact reviewed design hash. Mutation rejection append/drop/duplicate for ALLSIX. No regex/AST/whitespace exemptions or oldhashupdate.",
+    "no_additional_live_or_CI_authority": true,
+    "original_full_local_exit": 1,
+    "original_full_raw_file": "stable-full-local-validation-complete-raw.json",
+    "original_raw_file_sha256": "270e62aa9501be945fa2d855458732876ee2d1fcecd2e17ca602d7d43f44c7fd",
+    "original_session": 17105,
+    "results": "3596passed3failed472PGdeselected/130.60s. Three exact preservation failures, not data/prod/native failure."
+  },
+  "counted_literal_recipe_before_code": {
+    "scripts/run_ci_tests.py": {
+      "old_full_sha256": "5385d1af493da3d651f58758c958673745d76aaf9227b702f872e81a5d4b4c46",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "pytest.main([\"tests/\", \"-q\", \"--durations=50\", \"--durations-min=0.1\"], plugins=[plugin])",
+          "old": "pytest.main([\"tests/\", \"-q\"], plugins=[plugin])"
+        }
+      ]
+    },
+    "tests/test_broad_reader_policy_preservation.py": {
+      "exception": "Superseded in V3 by explicit TWO substitutions here and same pattern in exactly TWO older parent guards. The SIX-file finite inverse is independently proven against entire originals, not ignored regions.",
+      "old_full_sha256": "db68bb097482e9575013766132a1394f524892912ea7e60a2af0e7c502764c68",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "from pathlib import Path\n\nfrom ci_cost_preservation import restore_parent_file\n",
+          "old": "from pathlib import Path\n"
+        },
+        {
+          "count": 1,
+          "new": "            data = restore_parent_file(name, path.read_bytes())\n",
+          "old": "            data = path.read_bytes()\n"
+        }
+      ]
+    },
+    "tests/test_ci_test_partition.py": {
+      "old_full_sha256": "66a72f87e22a8b883cf2c264553cc1069a44ddb00bab9ac752c9e4b0cef907a9",
+      "semantics": "Same existing parametrized exit0/1/5 and create-only successful receipt assertions remain exact. This strengthens the expected CLI argument list for the approved timing flags; no assertion removed/relaxed.",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "        assert args == [\"tests/\", \"-q\", \"--durations=50\", \"--durations-min=0.1\"]\n",
+          "old": "        assert args == [\"tests/\", \"-q\"]\n"
+        }
+      ]
+    },
+    "tests/test_reader_access_transport.py": {
+      "old_full_sha256": "69c51d99ac397a8daa4454361b0bfe83beec6405badb80d510c126d880678f8a",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "from pathlib import Path\n\nfrom ci_cost_preservation import restore_parent_file\n",
+          "old": "from pathlib import Path\n"
+        },
+        {
+          "count": 1,
+          "new": "            actual = restore_parent_file(name, (ROOT / name).read_bytes())\n",
+          "old": "            actual = (ROOT / name).read_bytes()\n"
+        }
+      ]
+    },
+    "tests/test_reader_permission_capture_preservation.py": {
+      "old_full_sha256": "2af0c6c4f6e628c796e424ca4d2cdccba6aec02ccc7051fad45fb2a7bd3716cd",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "from pathlib import Path\n\nfrom ci_cost_preservation import restore_parent_file\n",
+          "old": "from pathlib import Path\n"
+        },
+        {
+          "count": 1,
+          "new": "    raw = restore_parent_file(path, (ROOT / path).read_bytes())\n",
+          "old": "    raw = (ROOT / path).read_bytes()\n"
+        }
+      ]
+    },
+    "tests/test_verified_review_store.py": {
+      "old_full_sha256": "4ddf5564008b24d1cd468f5132756378973f16caa03bbdc69faba5ffd6e82c8f",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "from verified_fixture_seed import seed_fixture_nav\n",
+          "old": "from datetime import date, timedelta\n"
+        },
+        {
+          "count": 1,
+          "new": "                    seed_fixture_nav(conn, code)\n",
+          "old": "                    day = date(2024,1,1)\n                    for i in range(270):\n                        while day.weekday()>=5:\n                            day += timedelta(days=1)\n                        conn.execute(\"INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav) VALUES(%s,%s,%s)\", (code,day,'100' if i%2==0 else '110'))\n                        day += timedelta(days=1)\n"
+        }
+      ]
+    }
+  },
+  "data_work_unchanged": "No generic hardening diversion or new data/ACL scope; this specifically reduces engineering feedback cost requested by human. Existing broad-read/data/FS13/NSE/EXP/Insights ownership/preservation/runtime boundaries remain. No live permission or data changed.",
+  "direct_human": "we are wasting a lot of min in github action in full test collection we have to reduce that",
+  "first_slice": {
+    "batch_fixture_NAV": "New tests-only helper materializes EXACT original ordered270 weekday/date/value/AMFI tuples per existing fund, same original INSERT SQL. Existing fixture calls cursor.executemany once per fund instead of connection.execute270times. Two batches per fixture/468 API calls per full suite rather than126360; PostgreSQL still executes the SAME126360 single-row INSERT statements/triggers in order, same transaction/no COPY/no new commits/rollbacks/retries. Do not batch across the intervening fund/variant/facts setup or change date/NAV values. No database reuse: every case still gets its fresh database, roles, migrations, preservation assertions and cleanup.",
+    "do_not_do_now": "No naive xdist/shared-database parallelism, more runner shards, bigger runners, weaker server durability/timeouts, cached mutable database/template reuse, disabled triggers, smaller fixture datasets, sampling, skip/xfail changes, moved nightly-only tests, reduced HEAD/main coverage, runtime/source/financial SQL/math changes, dependency/audit bypasses or deployment changes. Dependency cache is not first priority because observed install is4s. Further fixture/migration reuse only after actual durations prove the bottleneck and a separate reviewed isolation-preserving design.",
+    "goal": "Reduce total billed runner time, not merely wall time by adding more concurrent jobs. Measure actual before/after phase/job times before claiming savings.",
+    "profiling": "Add built-in pytest --durations=50 --durations-min=0.1 to existing scripts/run_ci_tests.py pytest.main arguments in BOTH unchanged focused/remainder phases. Preserve exact ID inventory, disjoint exhaustive selection/order, receipt binding, skip behavior and failures. Report setup/call/teardown timings in existing retained whole CI logs, no new job/artifact action/dependency needed."
+  },
+  "format": "MF_CI_COST_REDUCTION_DESIGN_BEFORE_CORRECTION_V3",
+  "observations": {
+    "NAV_per_fixture": 540,
+    "current_actual_metadata": "Run40276346735: install deps4s; contracts22s; focused gate262s (05:51:15-05:55:37); image job approx270s (05:50:35-05:55:05) completedSUCCESS; remainder started05:55:37 and was stillrunning06:05. No current full log fetched or final runtime inferred.",
+    "current_collection": 4048,
+    "current_head": "2739559d7f8a3c11349031f4825201251585e540",
+    "fixture_definition": "Function-scoped tests/test_verified_review_store.py: fresh database/core migrations, 2funds x270weekday NAV rows inserted one call per row, source-preservation checks, per-test roles/default-control/optional023/reconciler and cleanup. Reused by41 test modules. This is a concrete repeated-setup candidate, NOT measured proof that these inserts cause all suite time.",
+    "full_local": "PR123 nonPG3576PASS96.23s; 472native deselected. No localPG/Docker/provider. Collection-only inspection counted fixture users without running tests or connecting to DB.",
+    "individual_NAV_connection_execute_calls": 126360,
+    "no_per_case_baseline_yet": true,
+    "postgres_cases": 472,
+    "unit_cases": 3576,
+    "verified_db_fixture_users": 234
+  },
+  "parent_gate": "Do not restart or modify PR123 exact2739559/treeed634 current run40276346735. Stage this as a separate CI-only follow-on after PR123 normal merge/independent MAIN proof. Final baseline must have identical delivered PR123 tree; otherwise reconcile/review the new actual baseline before code/push. No extra benchmark workflow dispatch or unchanged rerun.",
+  "primary_references": [
+    "https://www.psycopg.org/psycopg3/docs/advanced/pipeline.html",
+    "https://docs.pytest.org/en/stable/how-to/usage.html"
+  ],
+  "prior_design_review": {
+    "finding": "P2: preserved test_cli_only_records_successful_focused_run asserts exact old pytest.main args. Add counted literal assertion update and full-byte inverse; same exit/evidence semantics retained.",
+    "fixed_before_code": true,
+    "result": "CHANGES_REQUIRED_DESIGN_ONLY",
+    "reviewer": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+    "turn": "01a176d7-1749-7230-9544-304cbe0ad5f9"
+  },
+  "status": "NAMED_REVIEW_REQUIRED_BEFORE_ADDITIONAL_PRESERVATION_GUARD_EDITS",
+  "supersedes": "Prior no-CI-optimization scope is superseded for this explicit, narrow request. No weakening/removal of required coverage, live DB/provider/GCP/data or permissions authority.",
+  "validation": {
+    "cost_acceptance": "Capture before currentPR123 and after optimized normal CI metadata/full logs; compare focused/remainder/setup/call/teardown and sum of both actual runner durations, separately from queue/wall time. No promised percentage or minute target before measurement. Batch calls are reduced structurally; actual speedup may be small if server/migration CPU dominates. If so, use measured durations for the next narrow fixture-reuse change, not claim success or reduce coverage.",
+    "native": "Existing full native cases exercise the new fixture setup unchanged; no native ID removed/marked differently. All472 current native proofs and every original smoke/build/contract/security check remain required on actual HEAD and independent MAIN. No localPG/Docker/provider calls. Use normal CI, not extra dispatched benchmark runs.",
+    "provider_free": "Exact tuple-by-tuple/SQL/order equivalence against a literal implementation of the old two270-row loops; 540rows/540distinct(code,date)/same2funds/weekdays/alternating100110/lastdate. Recording cursor proves exactly two executemany calls, no per-row connection.execute, no helper commits/rollbacks, failure propagation, no fallback retries and order. Preserve all existing fixture assertions and full-file inverses. Existing partition tests plus new duration-argument test retain exhaustive IDs and failure behavior. V3 additionally run all three old full-parent guard groups (PR120/121/122/123) and independent SIX full-file inverses before another stable full validation; old failed full output retained unchanged.",
+    "usual_delivery": "Designclear before code; implement in isolated CI-only worktree based on admitted finalPR123 tree; full local/exact review/fix-rereview/nativeHEAD/normalmatchingheadsquash/independentMAIN/admission/safeFF. Any edited preservation guard needs its counted full-byte inverse, not weakening arbitrary tests."
+  }
+}

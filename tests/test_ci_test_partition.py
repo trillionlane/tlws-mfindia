@@ -127,7 +127,7 @@ def test_cli_only_records_successful_focused_run(tmp_path, monkeypatch, exit_cod
     monkeypatch.setattr("sys.argv", ["run_ci_tests.py", "focused", "--evidence", str(evidence)])
 
     def run(args, *, plugins):
-        assert args == ["tests/", "-q"]
+        assert args == ["tests/", "-q", "--durations=50", "--durations-min=0.1"]
         collect(plugins[0], population())
         return exit_code
 

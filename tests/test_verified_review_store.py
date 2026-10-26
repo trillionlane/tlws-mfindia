@@ -1,5 +1,5 @@
 """Disposable PostgreSQL proofs. Never certifies a live restore or touches DEV."""
-from datetime import date, timedelta
+from verified_fixture_seed import seed_fixture_nav
 from pathlib import Path
 from uuid import uuid4
 
@@ -52,12 +52,7 @@ def verified_db(pg_dsn):
                                  "VALUES(%s,1,%s,%s,'OPEN_ENDED','Equity','REGULAR',%s)", (code,f'Fund {code}',f'FUND {code}',option))
                     conn.execute("INSERT INTO mf.fund_variants(amfi_scheme_code,group_key,base_scheme_name) VALUES(%s,%s,%s)", (code,str(code),f'Fund {code}'))
                     conn.execute("INSERT INTO mf.fund_facts(amfi_scheme_code,source,aum,return_1year) VALUES(%s,'MANUAL',123.45,999)", (code,))
-                    day = date(2024,1,1)
-                    for i in range(270):
-                        while day.weekday()>=5:
-                            day += timedelta(days=1)
-                        conn.execute("INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav) VALUES(%s,%s,%s)", (code,day,'100' if i%2==0 else '110'))
-                        day += timedelta(days=1)
+                    seed_fixture_nav(conn, code)
                 certify_comparison_fixture(conn)
             for role in fixture_roles:
                 admin.execute(sql.SQL("CREATE ROLE {} LOGIN PASSWORD 'verified-local-fixture-only'").format(sql.Identifier(role)))

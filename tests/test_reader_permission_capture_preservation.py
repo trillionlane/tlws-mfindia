@@ -5,13 +5,15 @@ import hashlib
 import json
 from pathlib import Path
 
+from ci_cost_preservation import restore_parent_file
+
 ROOT = Path(__file__).resolve().parents[1]
 AUTHORITY = json.loads((ROOT / "docs/READER_PERMISSION_CAPTURE_PARENT_AUTHORITY_20261025.json").read_text())
 PLAN = json.loads((ROOT / "docs/READER_PERMISSION_CAPTURE_LITERAL_PLAN_20261025.json").read_text())
 
 
 def original_parent_bytes(path):
-    raw = (ROOT / path).read_bytes()
+    raw = restore_parent_file(path, (ROOT / path).read_bytes())
     if path == ".github/workflows/verify.yml":
         suffix = PLAN["workflow_append"].encode()
         assert raw.endswith(suffix) and raw.count(suffix) == 1
