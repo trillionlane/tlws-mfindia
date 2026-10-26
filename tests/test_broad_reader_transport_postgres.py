@@ -1,6 +1,7 @@
 """Disposable native PG18 only; no local/DEV/PROD connection authority."""
 
 from copy import deepcopy
+import hashlib
 
 import psycopg
 from psycopg import sql
@@ -116,7 +117,19 @@ def test_native_public_complete_broad_capture_preserves_all_sixteen_rows_acls_an
     assert value["state"] == before == state(broad_db)
     assert all_rows(broad_db) == rows
     assert {r["nspname"] for r in value["candidate"]} == set(policy.SCHEMAS)
-    assert any(r["relkind"] == "m" for r in value["candidate"])
+    materialized = next(r for r in value["candidate"] if r["relkind"] == "m")
+    with owner(broad_db) as conn:
+        definition = (
+            conn.execute("SELECT pg_get_viewdef('mf.broad_materialized'::regclass,false) AS value")
+            .fetchone()["value"]
+            .encode()
+        )
+    assert materialized["definition"] == dict(
+        is_null=False, sha256=hashlib.sha256(definition).hexdigest(), utf8_bytes=len(definition)
+    )
+    assert next(r for r in value["state"]["relations"] if r["oid"] == materialized["oid"])[
+        "definition"
+    ] == dict(is_null=True, sha256=None, utf8_bytes=0)
     assert len(value["completions"]) == 6 and value["context"]["readonly"] == "on"
 
 
@@ -183,6 +196,42 @@ def test_native_outside_materialized_dependency_is_visible_not_filtered(broad_db
         admin.execute("ALTER MATERIALIZED VIEW public.outside_broad OWNER TO mfdata_admin")
     with owner(broad_db) as conn:
         conn.execute("CREATE VIEW mf.outside_broad_view AS SELECT value FROM public.outside_broad")
+    before, rows = state(broad_db), all_rows(broad_db)
+    with pytest.raises(ValueError):
+        read_capture(broad_db)
+    assert state(broad_db) == before and all_rows(broad_db) == rows
+
+
+def test_native_materialized_root_outside_dependency_is_visible_not_filtered(broad_db):
+    with psycopg.connect(broad_db, autocommit=True) as admin:
+        admin.execute("CREATE TABLE public.outside_materialized_source(value integer)")
+        admin.execute("ALTER TABLE public.outside_materialized_source OWNER TO mfdata_admin")
+    with owner(broad_db) as conn:
+        conn.execute(
+            "CREATE MATERIALIZED VIEW mf.outside_materialized_root AS SELECT value FROM public.outside_materialized_source"
+        )
+    before, rows = state(broad_db), all_rows(broad_db)
+    with pytest.raises(ValueError):
+        read_capture(broad_db)
+    assert state(broad_db) == before and all_rows(broad_db) == rows
+
+
+@pytest.mark.parametrize("kind", ["partition", "inheritance"])
+def test_native_root_outside_child_is_visible_not_filtered(broad_db, kind):
+    with psycopg.connect(broad_db, autocommit=True) as admin:
+        if kind == "partition":
+            admin.execute(
+                "CREATE TABLE mf.outside_child_root(value integer) PARTITION BY RANGE(value)"
+            )
+            admin.execute(
+                "CREATE TABLE public.outside_child PARTITION OF mf.outside_child_root FOR VALUES FROM (0) TO (10)"
+            )
+        else:
+            admin.execute("CREATE TABLE mf.outside_child_root(value integer)")
+            admin.execute("CREATE TABLE public.outside_child() INHERITS(mf.outside_child_root)")
+        admin.execute("ALTER TABLE mf.outside_child_root OWNER TO mfdata_admin")
+        admin.execute("ALTER TABLE public.outside_child OWNER TO mfdata_admin")
+        admin.execute("INSERT INTO public.outside_child VALUES(7)")
     before, rows = state(broad_db), all_rows(broad_db)
     with pytest.raises(ValueError):
         read_capture(broad_db)

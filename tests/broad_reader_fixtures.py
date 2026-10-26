@@ -84,6 +84,12 @@ def sample():
         for r in before["relations"]
         if r["relkind"] in ("r", "p", "v", "m")
     ]
+    for row in candidate:
+        if row["relkind"] == "m":
+            raw = b"SELECT 7 AS value"
+            row["definition"] = dict(
+                is_null=False, sha256=hashlib.sha256(raw).hexdigest(), utf8_bytes=len(raw)
+            )
     return dict(
         context=context(),
         state=before,

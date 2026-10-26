@@ -1,6 +1,7 @@
 """Full broad capture, exact payloads and wire failures; synthetic providers only."""
 
 from copy import deepcopy
+import hashlib
 import json
 
 import pytest
@@ -27,6 +28,52 @@ from broad_reader_fixtures import (
 )
 
 ERRORS = (ValueError, policy.PolicyError)
+
+
+def test_public_candidate_preserves_independent_materialized_definition_seal():
+    value = sample()
+    row = next(r for r in value["candidate"] if r["relkind"] == "m")
+    raw = b"SELECT 7 AS value"
+    row["definition"] = dict(
+        is_null=False, sha256=hashlib.sha256(raw).hexdigest(), utf8_bytes=len(raw)
+    )
+    cs.candidate_shape(value["candidate"], value["state"])
+    old = next(r for r in value["state"]["relations"] if r["oid"] == row["oid"])
+    assert old["definition"] == dict(is_null=True, sha256=None, utf8_bytes=0)
+    p = payload()
+    assert p["grant_proposal"]["materialized_unlocked"][0]["definition"] == row["definition"]
+
+
+@pytest.mark.parametrize("defect", ["null", "empty", "sha", "owner", "name", "extra", "omitted"])
+def test_independent_materialized_seal_does_not_relax_exact_metadata_or_root_coverage(defect):
+    value = sample()
+    row = next(r for r in value["candidate"] if r["relkind"] == "m")
+    if defect == "null":
+        row["definition"] = dict(is_null=True, sha256=None, utf8_bytes=0)
+    elif defect == "empty":
+        row["definition"]["utf8_bytes"] = 0
+    elif defect == "sha":
+        row["definition"]["sha256"] = "malformed"
+    elif defect == "owner":
+        row["owner"] += 1
+    elif defect == "name":
+        row["relname"] += "_relabelled"
+    elif defect == "extra":
+        row["unknown"] = True
+    else:
+        value["candidate"].remove(row)
+    with pytest.raises(ValueError):
+        cs.candidate_shape(value["candidate"], value["state"])
+
+
+def test_fixed_query_enumerates_and_seals_materialized_root_dependencies():
+    text = cs.frozen.CANDIDATE_SQL
+    assert "WHERE c.relkind IN ('v','m')" in text
+    assert "CASE WHEN c.relkind IN ('v','m')" in text
+
+
+def test_fixed_query_descends_inheritance_from_every_root():
+    assert "SELECT c.oid,true FROM pg_catalog.pg_class c" in cs.frozen.CANDIDATE_SQL
 
 
 class CaptureConnection:

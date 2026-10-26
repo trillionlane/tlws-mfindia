@@ -19,6 +19,21 @@
           "old": "reader-permission-capture-inventory-v1",
           "new": "broad-reader-capture-inventory-v1",
           "count": 1
+        },
+        {
+          "old": "SELECT c.oid,false FROM pg_catalog.pg_class c",
+          "new": "SELECT c.oid,true FROM pg_catalog.pg_class c",
+          "count": 1
+        },
+        {
+          "old": "WHERE c.relkind='v'",
+          "new": "WHERE c.relkind IN ('v','m')",
+          "count": 1
+        },
+        {
+          "old": "CASE WHEN c.relkind='v'",
+          "new": "CASE WHEN c.relkind IN ('v','m')",
+          "count": 1
         }
       ]
     },
@@ -146,6 +161,11 @@
         {
           "old": "    require(type(value[\"root\"]) is str and re.fullmatch(\n        r\"/Users/deviojha/projects/codex/artifacts/mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", value[\"root\"]))",
           "new": "    require(type(value[\"root\"]) is str)\n    root = Path(value[\"root\"])\n    require(root.parent == ARTIFACTS and re.fullmatch(\n        r\"mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", root.name))",
+          "count": 1
+        },
+        {
+          "old": "\n    require(type(rows) is list)\n    relations = {r[\"oid\"]: r for r in state[\"relations\"]}\n    for row in rows:\n        keys(row, frozen.CANDIDATE_COLUMNS)\n        for key in (\"oid\", \"owner\"):\n            require(type(row[key]) is int and 0 < row[key] <= 4294967295)\n        require(type(row[\"nspname\"]) is str and row[\"nspname\"] in engine.SCHEMAS)\n        require(type(row[\"relname\"]) is str and bool(row[\"relname\"]))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] != \"v\"))\n        require(row[\"oid\"] in relations)\n        require(row == {k: relations[row[\"oid\"]][k] for k in frozen.CANDIDATE_COLUMNS})\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    roots = [{k: r[k] for k in frozen.CANDIDATE_COLUMNS}\n             for r in state[\"relations\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\")]\n    require(rows == sorted(roots, key=lambda r: r[\"oid\"]))\n",
+          "new": "\n    require(type(rows) is list)\n    relations = {r[\"oid\"]: r for r in state[\"relations\"]}\n    for row in rows:\n        keys(row, frozen.CANDIDATE_COLUMNS)\n        for key in (\"oid\", \"owner\"):\n            require(type(row[key]) is int and 0 < row[key] <= 4294967295)\n        require(type(row[\"nspname\"]) is str and row[\"nspname\"] in engine.SCHEMAS)\n        require(type(row[\"relname\"]) is str and bool(row[\"relname\"]))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] not in (\"v\", \"m\")))\n        if row[\"relkind\"] in (\"v\", \"m\"):\n            require(row[\"definition\"][\"utf8_bytes\"] > 0)\n        require(row[\"oid\"] in relations)\n        # Frozen public STATE_SQL seals ordinary views only. Materialized-view\n        # definitions are independently server-sealed by the candidate query;\n        # do not relabel its null state definition as a genuine definition seal.\n        common = [k for k in frozen.CANDIDATE_COLUMNS\n                  if not (row[\"relkind\"] == \"m\" and k == \"definition\")]\n        require({k: row[k] for k in common} == {k: relations[row[\"oid\"]][k] for k in common})\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    roots = sorted(r[\"oid\"] for r in state[\"relations\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\"))\n    require([r[\"oid\"] for r in rows] == roots)\n",
           "count": 1
         }
       ]
@@ -320,6 +340,16 @@
           "old": "SPEC_SHA = \"1b849bbd49b0fc07d6140f2174a93b3d3ed967dae278212c2eee94140202a037\"",
           "new": "SPEC_SHA = \"6d757dfd7d4c0a78f5cb9d314d7026f57a704b0d71c7bb855966c7a27015a958\"",
           "count": 1
+        },
+        {
+          "old": "SPEC_SHA = \"6d757dfd7d4c0a78f5cb9d314d7026f57a704b0d71c7bb855966c7a27015a958\"",
+          "new": "SPEC_SHA = \"af1e36051f7357f98a3275dc0d1eb892d9cabd011086b5ee4ac5a3630b8e48cd\"",
+          "count": 1
+        },
+        {
+          "old": "INVENTORY_SHA = \"5d6e68f66d54a7117152c1cf5244f9a5f9539438baae385adc30061be71046f1\"",
+          "new": "INVENTORY_SHA = \"92225c1edb08e2c3dbfa108ce981b248448fe54aca61a2f5a8fb012178a59416\"",
+          "count": 1
         }
       ]
     },
@@ -463,6 +493,11 @@
           "old": "CAPTURE_CONTROLLER_SHA = \"7e7bf8966e026262bb9eaf951659333aec9f8cd1adf02e4ae608d3e6a8c07b03\"",
           "new": "CAPTURE_CONTROLLER_SHA = \"75bb5e95cbaee1a3849f5df6b34addaaff3ba96d895428d0e4f2e3f5cff77979\"",
           "count": 1
+        },
+        {
+          "old": "CAPTURE_CONTROLLER_SHA = \"75bb5e95cbaee1a3849f5df6b34addaaff3ba96d895428d0e4f2e3f5cff77979\"",
+          "new": "CAPTURE_CONTROLLER_SHA = \"2de3c8788ec7e4628e510a9cee39f26598d828b68c000758134ccfd0d48a526b\"",
+          "count": 1
         }
       ]
     },
@@ -594,6 +629,11 @@
         {
           "old": "SPEC_SHA = \"4e59728c6784694769a8c98caab65b333d10fb0b7db25d5cbce147091e4aebe7\"",
           "new": "SPEC_SHA = \"399e7e083c1503419a16741e1faa140b7047121179f19db93048551db0cb7fe9\"",
+          "count": 1
+        },
+        {
+          "old": "SPEC_SHA = \"399e7e083c1503419a16741e1faa140b7047121179f19db93048551db0cb7fe9\"",
+          "new": "SPEC_SHA = \"42c9309b28bd51db00f2b3595b743cbbcf6425abc9275f2f1e059a3fe2fce56e\"",
           "count": 1
         }
       ]

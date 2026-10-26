@@ -52,13 +52,19 @@ def candidate_shape(rows, state):
         require(type(row["relname"]) is str and bool(row["relname"]))
         require(row["relkind"] in ("r", "p", "v", "m"))
         seal(row["definition"])
-        require(row["definition"]["is_null"] is (row["relkind"] != "v"))
+        require(row["definition"]["is_null"] is (row["relkind"] not in ("v", "m")))
+        if row["relkind"] in ("v", "m"):
+            require(row["definition"]["utf8_bytes"] > 0)
         require(row["oid"] in relations)
-        require(row == {k: relations[row["oid"]][k] for k in frozen.CANDIDATE_COLUMNS})
+        # Frozen public STATE_SQL seals ordinary views only. Materialized-view
+        # definitions are independently server-sealed by the candidate query;
+        # do not relabel its null state definition as a genuine definition seal.
+        common = [k for k in frozen.CANDIDATE_COLUMNS
+                  if not (row["relkind"] == "m" and k == "definition")]
+        require({k: row[k] for k in common} == {k: relations[row["oid"]][k] for k in common})
     require([r["oid"] for r in rows] == sorted({r["oid"] for r in rows}))
-    roots = [{k: r[k] for k in frozen.CANDIDATE_COLUMNS}
-             for r in state["relations"] if r["relkind"] in ("r", "p", "v", "m")]
-    require(rows == sorted(roots, key=lambda r: r["oid"]))
+    roots = sorted(r["oid"] for r in state["relations"] if r["relkind"] in ("r", "p", "v", "m"))
+    require([r["oid"] for r in rows] == roots)
 
 def validate_capture_result(value):
     keys(value, BODY_KEYS)

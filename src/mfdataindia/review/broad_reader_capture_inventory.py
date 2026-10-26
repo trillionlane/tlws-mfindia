@@ -8,7 +8,7 @@ CONTEXT_SQL = ("SELECT q.*,pg_backend_pid()::int AS pid,pg_current_snapshot()::t
                "'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS transaction_started_at FROM ("
                + engine.CONTEXT_SQL + ") q")
 CANDIDATE_SQL = """WITH RECURSIVE walk(oid,descend) AS (
- SELECT c.oid,false FROM pg_catalog.pg_class c
+ SELECT c.oid,true FROM pg_catalog.pg_class c
  JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
  WHERE n.nspname IN ('mf','mf_analytics','mf_book_facts','mf_distributions','mf_enrichment','mf_fact_refresh','mf_fact_review','mf_idcw','mf_live_facts','mf_monthly_facts','mf_multi_facts','mf_official_facts','mf_overlap','mf_portfolios','mf_review','mf_rolling') AND c.relkind IN ('r','p','v','m')
  UNION
@@ -17,13 +17,13 @@ CANDIDATE_SQL = """WITH RECURSIVE walk(oid,descend) AS (
   SELECT d.refobjid AS oid,true AS descend FROM pg_catalog.pg_rewrite r
   JOIN pg_catalog.pg_depend d ON d.classid='pg_catalog.pg_rewrite'::regclass
    AND d.objid=r.oid AND d.refclassid='pg_catalog.pg_class'::regclass
-  WHERE c.relkind='v' AND r.ev_class=c.oid AND r.rulename='_RETURN' AND d.refobjid<>c.oid
+  WHERE c.relkind IN ('v','m') AND r.ev_class=c.oid AND r.rulename='_RETURN' AND d.refobjid<>c.oid
   UNION
   SELECT i.inhrelid,true FROM pg_catalog.pg_inherits i WHERE w.descend AND i.inhparent=c.oid
  ) e
 )
 SELECT c.oid::bigint AS oid,n.nspname,c.relname,c.relkind::text,c.relowner::bigint AS owner,
- CASE WHEN c.relkind='v' THEN jsonb_build_object('is_null',false,
+ CASE WHEN c.relkind IN ('v','m') THEN jsonb_build_object('is_null',false,
  'sha256',encode(sha256(convert_to(pg_get_viewdef(c.oid,false),'UTF8')),'hex'),
  'utf8_bytes',octet_length(convert_to(pg_get_viewdef(c.oid,false),'UTF8')))
  ELSE jsonb_build_object('is_null',true,'sha256',null,'utf8_bytes',0) END AS definition
