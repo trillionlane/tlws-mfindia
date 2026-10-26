@@ -1,0 +1,29 @@
+{
+  "format": "MF_BROAD_READER_TRANSPORT_DORMANT_OPERATIONS_V1",
+  "implementation_only": true,
+  "identities": {
+    "capture": {
+      "identity": "dev-bread-cap-261026r",
+      "job": "mf-reader-broad-capture-261026r",
+      "root_pattern": "mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}"
+    },
+    "write": {
+      "identity": "dev-reader-broad-261026w",
+      "job": "mf-reader-broad-access-261026w",
+      "root_pattern": "mf-reader-broad-access-20261026-[A-Za-z0-9]{6,16}"
+    }
+  },
+  "policy": {
+    "engine_SHA256": "eec850a112b39b5fb147653dba2e17c8452d29592dcd4042d4dfe36de3267653",
+    "profile_SHA256": "5519d0af8782e18d9a3ef81494d2fec4c002f43a2f079a1310f0770f6dc15edf",
+    "scope": "Alreadyapproved authenticated16-domain current/future fundresearchREAD/allrows/allsharedreaderconsumers. Not PUBLIC/globalread/othercreator/newschemaautoenrolment."
+  },
+  "read_only_stage": "One fixed newcapturejob/execution only after finalGitimages/protectedreadiness/exactcaptureinputs/directhumanapproval. Exactly6catalogueSELECTcompletions/RR/5sconnectstatementlock/15stxnwall/ROLLBACK. Capturedata complete16schemas/currentmmetadata and explicitnon-lock-witnesscandidate; private settings/body serverseals only. No source/applicationrowreads.",
+  "write_stage": "Separatehuman exactG5approval of fullcapturecompletion/canonicalrequest/sourcehashes/currentfinalGitimages/controller/protected/root/window/wholeexactdelta/reversal. Preflightverifiesactualcapturejob/execution/fullcert beforewritejobPOST. OneexistingownerSA/secret1/directownerconnection, same15swall andcaps, no IAM/rolefallback/SQLretry.",
+  "materialized": "Includedfullcatalogue/candidate/currentfutureSELECT. Not LOCKTABLE-supported inPG18, explicitlyunlocked inproposal+G5+terminalreceipt. Existingexternalexclusiveadministration/schema/futureownerprovisioningtrust persists. No allobject-locked/concurrency/adminimmunity/postcommitpermanence claim.",
+  "reversal": "Exactdelta RESTRICT templates are NOT executable permits. Separateapproval required. Futuredefaultsreversal DOES NOT revoke SELECT inherited by objects createdaftergrant; no automatedreversal afterambiguousCOMMIT.",
+  "forbidden": "No oldnarrow/consumedroot/START/job/execution reuse, monkeypatch or privatehelperproductionbypass; no sourcewrites/financialmath/PDFactivepolicy/registry/schemaDDL/DML/defaultscopebroadening/time/resource/budgetraises/no currentDBprobe/G7 retry.",
+  "no_live_authority_in_code_or_hashes": true,
+  "Insights_owner": "No Insights code edits here; Insights owns adapters/UI/mappings. Producer notifies only actual newAPI/datafeature/readiness milestones, no repetitive internal-CI/image notes.",
+  "after_delivery": "CodeHEAD+ownMAINnativeproof/admission/safeFF still not deployment/access/FS13 acceptance. Finalimages/readiness/exactcaptureapproval then separatelyG5; no authorization inferred from currentcodeapproval."
+}

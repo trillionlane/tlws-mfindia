@@ -476,3 +476,16 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/operate_reader_permission_capture_dev.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_permission_capture_binding.py
           done
+
+      - name: Verify packaged broad-reader capture and owner transport in both images
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:$GITHUB_SHA"
+          tools_image="tlws-mf-review-tools:$GITHUB_SHA"
+          for target in "$image" "$tools_image"; do
+            docker run --rm --entrypoint python "$target" /app/scripts/collect_broad_reader_capture_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_capture_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/apply_broad_reader_access_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_access_dev.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_broad_reader_binding.py
+          done

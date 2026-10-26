@@ -1,0 +1,7 @@
+{
+  "before_corrective_code": true,
+  "scope": "Implementation same exactsource/projectbinding; no authority or API target expansion",
+  "finding": "Selfreview found capturecompletion.namespace was validated numeric and provider profile, but not explicitly equal to fresh writepreflight GCP projectNumber. Fixedproject URLstillprotected but exactnamespace input shouldnotdrift.",
+  "regression": "Newtest FIRSTFAILED uncorrectedcode (DIDNOTRAISE), exactrawretainedcapture-namespace-binding-regression-before-fix.json; noprovider/DB/network called.",
+  "fix": "Save validatedactualprojectNumber inBackend.preflight; requireapprovedcapturecompletion.namespace equalsit BEFORE captureproviderreads. Missing/differentnamespacefailclosed; fixedtargets/resources/wholeprofiles/sourcepinsunchanged. Updateonlysyntheticproviderfixtures withmatchingexplicitprojectnumber. Fullstablelocal/collection/reviewrerunrequired afterchange."
+}

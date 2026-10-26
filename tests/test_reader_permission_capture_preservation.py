@@ -5,7 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from ci_cost_preservation import restore_parent_file
+from broad_transport_preservation import restore_ci_parent_file as restore_parent_file
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTHORITY = json.loads((ROOT / "docs/READER_PERMISSION_CAPTURE_PARENT_AUTHORITY_20261025.json").read_text())

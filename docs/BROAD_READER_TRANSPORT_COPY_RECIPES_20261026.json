@@ -1,0 +1,709 @@
+{
+  "base": "fd69b4ce355e91e5b77b98393b7f066a0bb17e28",
+  "copies": [
+    {
+      "old_path": "src/mfdataindia/review/reader_permission_capture_inventory.py",
+      "new_path": "src/mfdataindia/review/broad_reader_capture_inventory.py",
+      "substitutions": [
+        {
+          "old": "reader_access_correction as engine",
+          "new": "broad_reader_policy as engine",
+          "count": 1
+        },
+        {
+          "old": "WHERE n.nspname='mf' AND c.relname IN ('current_fund_facts','fund_variants')",
+          "new": "WHERE n.nspname IN ('mf','mf_analytics','mf_book_facts','mf_distributions','mf_enrichment','mf_fact_refresh','mf_fact_review','mf_idcw','mf_live_facts','mf_monthly_facts','mf_multi_facts','mf_official_facts','mf_overlap','mf_portfolios','mf_review','mf_rolling') AND c.relkind IN ('r','p','v','m')",
+          "count": 1
+        },
+        {
+          "old": "reader-permission-capture-inventory-v1",
+          "new": "broad-reader-capture-inventory-v1",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_permission_capture.py",
+      "new_path": "src/mfdataindia/review/broad_reader_capture.py",
+      "substitutions": [
+        {
+          "old": "reader_permission_capture_inventory",
+          "new": "broad_reader_capture_inventory",
+          "count": 1
+        },
+        {
+          "old": "reader_permission_capture_spec",
+          "new": "broad_reader_capture_spec",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_permission_capture_spec.py",
+      "new_path": "src/mfdataindia/review/broad_reader_capture_spec.py",
+      "substitutions": [
+        {
+          "old": "reader_access_correction as engine",
+          "new": "broad_reader_policy as engine",
+          "count": 1
+        },
+        {
+          "old": "reader_permission_capture_inventory",
+          "new": "broad_reader_capture_inventory",
+          "count": 1
+        },
+        {
+          "old": "dev-reader-cap-261025b",
+          "new": "dev-reader-broad-cap-261026r",
+          "count": 1
+        },
+        {
+          "old": "mf-reader-permission-capture-261025b",
+          "new": "mf-reader-broad-capture-261026r",
+          "count": 1
+        },
+        {
+          "old": "reader-permission-capture-not-write-acceptance",
+          "new": "broad-reader-capture-not-write-acceptance",
+          "count": 1
+        },
+        {
+          "old": "\"src/mfdataindia/review/reader_access_correction.py\": \"863fd37dfa45be74642cf731f44bbd7cc182e263c95309a7d48a4c91af315d00\"",
+          "new": "\"src/mfdataindia/review/broad_reader_policy.py\": \"eec850a112b39b5fb147653dba2e17c8452d29592dcd4042d4dfe36de3267653\"",
+          "count": 1
+        },
+        {
+          "old": "src/mfdataindia/review/reader_permission_capture.py",
+          "new": "src/mfdataindia/review/broad_reader_capture.py",
+          "count": 1
+        },
+        {
+          "old": "71850e2b7ef2d248fef766851c8b189a7cb35c9c39016db0fb0ded0d22a6a724",
+          "new": "CAPTURE_COLLECTOR_SHA_PLACEHOLDER",
+          "count": 1
+        },
+        {
+          "old": "    require(type(rows) is list and len(rows) >= 2)\n    relations = {r[\"oid\"]: r for r in state[\"relations\"]}\n    for row in rows:\n        keys(row, frozen.CANDIDATE_COLUMNS)\n        for key in (\"oid\", \"owner\"):\n            require(type(row[key]) is int and 0 < row[key] <= 4294967295)\n        require(type(row[\"nspname\"]) is str and row[\"nspname\"] in (\"mf\", \"mf_review\"))\n        require(type(row[\"relname\"]) is str and bool(row[\"relname\"]))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] != \"v\"))\n        require(row[\"oid\"] in relations)\n        require(row == {k: relations[row[\"oid\"]][k] for k in frozen.CANDIDATE_COLUMNS})\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    roots = [r for r in state[\"relations\"] if r[\"nspname\"] == \"mf\" and r[\"relname\"] in engine.TARGETS]\n    require(len(roots) == 2 and {r[\"relname\"]: r[\"relkind\"] for r in roots}\n            == {\"current_fund_facts\": \"v\", \"fund_variants\": \"r\"})\n    require(all({k: r[k] for k in frozen.CANDIDATE_COLUMNS} in rows for r in roots))\n",
+          "new": "    require(type(rows) is list and len(rows) >= 1)\n    relations = {r[\"oid\"]: r for r in state[\"relations\"]}\n    for row in rows:\n        keys(row, frozen.CANDIDATE_COLUMNS)\n        for key in (\"oid\", \"owner\"):\n            require(type(row[key]) is int and 0 < row[key] <= 4294967295)\n        require(type(row[\"nspname\"]) is str and row[\"nspname\"] in engine.SCHEMAS)\n        require(type(row[\"relname\"]) is str and bool(row[\"relname\"]))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] != \"v\"))\n        require(row[\"oid\"] in relations)\n        require(row == {k: relations[row[\"oid\"]][k] for k in frozen.CANDIDATE_COLUMNS})\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    roots = [{k: r[k] for k in frozen.CANDIDATE_COLUMNS}\n             for r in state[\"relations\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\")]\n    require(rows == sorted(roots, key=lambda r: r[\"oid\"]))",
+          "count": 1
+        },
+        {
+          "old": "engine.validate_frozen(value[\"state\"])",
+          "new": "engine.prepare(value[\"state\"])",
+          "count": 1
+        },
+        {
+          "old": "reader-permission-capture-v1",
+          "new": "broad-reader-capture-v1",
+          "count": 2
+        },
+        {
+          "old": "keys(value, (*BODY_KEYS, \"worker_binding\"))",
+          "new": "keys(value, (*BODY_KEYS, \"worker_binding\", \"input_binding\"))",
+          "count": 1
+        },
+        {
+          "old": "\"manifest_image\", \"manifest_git_sha\"))",
+          "new": "\"manifest_image\", \"manifest_git_sha\", \"packaged_controller_sha256\"))",
+          "count": 1
+        },
+        {
+          "old": "for k in (\"packaged_program_sha256\", \"packaged_spec_sha256\", \"packaged_inventory_sha256\"):",
+          "new": "for k in (\"packaged_program_sha256\", \"packaged_spec_sha256\", \"packaged_inventory_sha256\", \"packaged_controller_sha256\"):",
+          "count": 1
+        },
+        {
+          "old": "\"\"\"Complete current permission evidence, not grant, freshness or lock authority.\"\"\"\nfrom copy import deepcopy\nfrom datetime import datetime\nimport re\n\nfrom mfdataindia.review import broad_reader_policy as engine\nfrom mfdataindia.review import broad_reader_capture_inventory as frozen\nfrom mfdataindia.review.evidence_transport import MAX_RAW_BYTES\nfrom mfdataindia.review.policy import canonical, fingerprint\nfrom mfdataindia.review.reader_access_transport_spec import state_shape, seal, keys, require, digest\n\nIDENTITY = \"dev-reader-broad-cap-261026r\"\nJOB = \"mf-reader-broad-capture-261026r\"\nSTAGE = \"broad-reader-capture-not-write-acceptance\"\nSOURCE_HASHES = {\n    \"src/mfdataindia/review/broad_reader_policy.py\": \"eec850a112b39b5fb147653dba2e17c8452d29592dcd4042d4dfe36de3267653\",\n    \"src/mfdataindia/review/reader_access_profile_v1.py\": \"5d54dbee9631c806b039306599ad0de0e07533fe4be54e93c6d9a817bcf5fdb9\",\n    \"src/mfdataindia/review/reader_access_transport_spec.py\": \"9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e\",\n    \"src/mfdataindia/review/broad_reader_capture.py\": \"CAPTURE_COLLECTOR_SHA_PLACEHOLDER\",\n}\nDENIALS = (\"permission_authority\", \"runtime_authority\", \"performance_acceptance\",\n           \"FS13_acceptance\", \"actual_lock_witness\", \"concurrent_change_exclusion\", \"future_freshness\")\nBODY_KEYS = (\"format\", \"context\", \"state\", \"candidate\", \"completions\", \"candidate_semantics\",\n             \"inventory_sha256\", \"source_hashes\", \"capture_sha256\", *DENIALS)\n\n\ndef context_shape(row):\n    keys(row, frozen.CONTEXT_COLUMNS)\n    fixed = {\"database\": \"mfdataindia\", \"principal\": engine.OWNER, \"session\": engine.OWNER,\n        \"isolation\": \"repeatable read\", \"readonly\": \"on\", \"statement_timeout\": \"5s\",\n        \"lock_timeout\": \"5s\", \"transaction_timeout\": \"15s\", \"search_path\": \"pg_catalog\", \"timezone\": \"UTC\"}\n    require(all(type(row[k]) is str and row[k] == v for k, v in fixed.items()))\n    require(type(row[\"version\"]) is int and 180000 <= row[\"version\"] < 190000)\n    require(type(row[\"pid\"]) is int and row[\"pid\"] > 0)\n    require(type(row[\"snapshot\"]) is str and re.fullmatch(r\"[0-9]+:[0-9]+:(?:[0-9]+(?:,[0-9]+)*)?\", row[\"snapshot\"]))\n    require(type(row[\"transaction_started_at\"]) is str and re.fullmatch(\n        r\"\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d\\.\\d{6}Z\", row[\"transaction_started_at\"]))\n    datetime.fromisoformat(row[\"transaction_started_at\"].replace(\"Z\", \"+00:00\"))\n\n\ndef candidate_shape(rows, state):\n    require(type(rows) is list and len(rows) >= 1)\n    relations = {r[\"oid\"]: r for r in state[\"relations\"]}\n    for row in rows:\n        keys(row, frozen.CANDIDATE_COLUMNS)\n        for key in (\"oid\", \"owner\"):\n            require(type(row[key]) is int and 0 < row[key] <= 4294967295)\n        require(type(row[\"nspname\"]) is str and row[\"nspname\"] in engine.SCHEMAS)\n        require(type(row[\"relname\"]) is str and bool(row[\"relname\"]))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] != \"v\"))\n        require(row[\"oid\"] in relations)\n        require(row == {k: relations[row[\"oid\"]][k] for k in frozen.CANDIDATE_COLUMNS})\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    roots = [{k: r[k] for k in frozen.CANDIDATE_COLUMNS}\n             for r in state[\"relations\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\")]\n    require(rows == sorted(roots, key=lambda r: r[\"oid\"]))\n\ndef validate_capture_result(value):\n    keys(value, BODY_KEYS)\n    require(value[\"format\"] == \"broad-reader-capture-v1\")\n    context_shape(value[\"context\"])\n    require(value[\"context\"][\"version\"] == 180006)\n    state_shape(value[\"state\"])\n    engine.prepare(value[\"state\"])\n    candidate_shape(value[\"candidate\"], value[\"state\"])\n    require(value[\"candidate_semantics\"] == frozen.LABEL)\n    require(value[\"inventory_sha256\"] == fingerprint(frozen.inventory()))\n    require(value[\"source_hashes\"] == SOURCE_HASHES)\n    require(all(value[k] is False for k in DENIALS))\n    completions = value[\"completions\"]\n    require(type(completions) is list and len(completions) == 6)\n    for name, completion in zip(frozen.inventory()[\"sequence\"], completions, strict=True):\n        keys(completion, (\"id\", \"command_rows\", \"driver_rows\", \"fetched_rows\"))\n        require(completion[\"id\"] == name)\n        expected = len(value[\"candidate\"]) if name == \"candidate\" else 1\n        require(all(type(completion[k]) is int and completion[k] == expected\n                    for k in (\"command_rows\", \"driver_rows\", \"fetched_rows\")))\n    captured = {k: value[k] for k in (\"context\", \"state\", \"candidate\", \"completions\")}\n    require(value[\"capture_sha256\"] == fingerprint(captured))\n    require(len(canonical(value).encode()) <= MAX_RAW_BYTES)\n\n\ndef result(captured):\n    keys(captured, (\"context\", \"state\", \"candidate\", \"completions\"))\n    value = deepcopy(captured) | {\"format\": \"broad-reader-capture-v1\",\n        \"candidate_semantics\": frozen.LABEL, \"inventory_sha256\": fingerprint(frozen.inventory()),\n        \"source_hashes\": deepcopy(SOURCE_HASHES), \"capture_sha256\": fingerprint(captured),\n        **dict.fromkeys(DENIALS, False)}\n    validate_capture_result(value)\n    return value\n\n\ndef validate_result(value):\n    keys(value, (*BODY_KEYS, \"worker_binding\", \"input_binding\"))\n    validate_capture_result({k: value[k] for k in BODY_KEYS})\n    b = value[\"worker_binding\"]\n    keys(b, (\"packaged_program_sha256\", \"packaged_spec_sha256\", \"packaged_inventory_sha256\",\n             \"manifest_image\", \"manifest_git_sha\", \"packaged_controller_sha256\"))\n    for k in (\"packaged_program_sha256\", \"packaged_spec_sha256\", \"packaged_inventory_sha256\", \"packaged_controller_sha256\"):\n        digest(b[k])\n    require(type(b[\"manifest_image\"]) is str and bool(b[\"manifest_image\"]))\n    require(type(b[\"manifest_git_sha\"]) is str and re.fullmatch(r\"[0-9a-f]{40}\", b[\"manifest_git_sha\"]))\n    require(len(canonical(value).encode()) <= MAX_RAW_BYTES)\n",
+          "new": "\"\"\"Complete current permission evidence, not grant, freshness or lock authority.\"\"\"\nfrom copy import deepcopy\nfrom datetime import datetime\nimport re\n\nfrom mfdataindia.review import broad_reader_policy as engine\nfrom mfdataindia.review import broad_reader_capture_inventory as frozen\nfrom mfdataindia.review.evidence_transport import MAX_RAW_BYTES\nfrom mfdataindia.review.policy import canonical, fingerprint\nfrom mfdataindia.review.reader_access_transport_spec import state_shape, seal, keys, require, digest\n\nIDENTITY = \"dev-reader-broad-cap-261026r\"\nJOB = \"mf-reader-broad-capture-261026r\"\nSTAGE = \"broad-reader-capture-not-write-acceptance\"\nSOURCE_HASHES = {\n    \"src/mfdataindia/review/reader_access_transport_spec.py\": \"9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e\",\n    \"src/mfdataindia/review/reader_access_correction.py\": \"863fd37dfa45be74642cf731f44bbd7cc182e263c95309a7d48a4c91af315d00\",\n    \"src/mfdataindia/review/broad_reader_policy.py\": \"eec850a112b39b5fb147653dba2e17c8452d29592dcd4042d4dfe36de3267653\",\n    \"src/mfdataindia/review/reader_access_profile_v1.py\": \"5d54dbee9631c806b039306599ad0de0e07533fe4be54e93c6d9a817bcf5fdb9\",\n    \"src/mfdataindia/review/reader_access_transport_spec.py\": \"9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e\",\n    \"src/mfdataindia/review/broad_reader_capture.py\": \"66860bd9945e713b60f6b83693fac3421e7e634deb12e03fd0251cb8c9400be1\",\n}\nDENIALS = (\"permission_authority\", \"runtime_authority\", \"performance_acceptance\",\n           \"FS13_acceptance\", \"actual_lock_witness\", \"concurrent_change_exclusion\", \"future_freshness\")\nBODY_KEYS = (\"format\", \"context\", \"state\", \"candidate\", \"completions\", \"candidate_semantics\",\n             \"inventory_sha256\", \"source_hashes\", \"capture_sha256\", *DENIALS)\n\n\ndef context_shape(row):\n    keys(row, frozen.CONTEXT_COLUMNS)\n    fixed = {\"database\": \"mfdataindia\", \"principal\": engine.OWNER, \"session\": engine.OWNER,\n        \"isolation\": \"repeatable read\", \"readonly\": \"on\", \"statement_timeout\": \"5s\",\n        \"lock_timeout\": \"5s\", \"transaction_timeout\": \"15s\", \"search_path\": \"pg_catalog\", \"timezone\": \"UTC\"}\n    require(all(type(row[k]) is str and row[k] == v for k, v in fixed.items()))\n    require(type(row[\"version\"]) is int and 180000 <= row[\"version\"] < 190000)\n    require(type(row[\"pid\"]) is int and row[\"pid\"] > 0)\n    require(type(row[\"snapshot\"]) is str and re.fullmatch(r\"[0-9]+:[0-9]+:(?:[0-9]+(?:,[0-9]+)*)?\", row[\"snapshot\"]))\n    require(type(row[\"transaction_started_at\"]) is str and re.fullmatch(\n        r\"\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d\\.\\d{6}Z\", row[\"transaction_started_at\"]))\n    datetime.fromisoformat(row[\"transaction_started_at\"].replace(\"Z\", \"+00:00\"))\n\n\ndef candidate_shape(rows, state):\n    require(type(rows) is list and len(rows) >= 1)\n    relations = {r[\"oid\"]: r for r in state[\"relations\"]}\n    for row in rows:\n        keys(row, frozen.CANDIDATE_COLUMNS)\n        for key in (\"oid\", \"owner\"):\n            require(type(row[key]) is int and 0 < row[key] <= 4294967295)\n        require(type(row[\"nspname\"]) is str and row[\"nspname\"] in engine.SCHEMAS)\n        require(type(row[\"relname\"]) is str and bool(row[\"relname\"]))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] != \"v\"))\n        require(row[\"oid\"] in relations)\n        require(row == {k: relations[row[\"oid\"]][k] for k in frozen.CANDIDATE_COLUMNS})\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    roots = [{k: r[k] for k in frozen.CANDIDATE_COLUMNS}\n             for r in state[\"relations\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\", \"m\")]\n    require(rows == sorted(roots, key=lambda r: r[\"oid\"]))\n\ndef validate_capture_result(value):\n    keys(value, BODY_KEYS)\n    require(value[\"format\"] == \"broad-reader-capture-v1\")\n    context_shape(value[\"context\"])\n    require(value[\"context\"][\"version\"] == 180006)\n    state_shape(value[\"state\"])\n    engine.prepare(value[\"state\"])\n    candidate_shape(value[\"candidate\"], value[\"state\"])\n    require(value[\"candidate_semantics\"] == frozen.LABEL)\n    require(value[\"inventory_sha256\"] == fingerprint(frozen.inventory()))\n    require(value[\"source_hashes\"] == SOURCE_HASHES)\n    require(all(value[k] is False for k in DENIALS))\n    completions = value[\"completions\"]\n    require(type(completions) is list and len(completions) == 6)\n    for name, completion in zip(frozen.inventory()[\"sequence\"], completions, strict=True):\n        keys(completion, (\"id\", \"command_rows\", \"driver_rows\", \"fetched_rows\"))\n        require(completion[\"id\"] == name)\n        expected = len(value[\"candidate\"]) if name == \"candidate\" else 1\n        require(all(type(completion[k]) is int and completion[k] == expected\n                    for k in (\"command_rows\", \"driver_rows\", \"fetched_rows\")))\n    captured = {k: value[k] for k in (\"context\", \"state\", \"candidate\", \"completions\")}\n    require(value[\"capture_sha256\"] == fingerprint(captured))\n    require(len(canonical(value).encode()) <= MAX_RAW_BYTES)\n\n\ndef result(captured):\n    keys(captured, (\"context\", \"state\", \"candidate\", \"completions\"))\n    value = deepcopy(captured) | {\"format\": \"broad-reader-capture-v1\",\n        \"candidate_semantics\": frozen.LABEL, \"inventory_sha256\": fingerprint(frozen.inventory()),\n        \"source_hashes\": deepcopy(SOURCE_HASHES), \"capture_sha256\": fingerprint(captured),\n        **dict.fromkeys(DENIALS, False)}\n    validate_capture_result(value)\n    return value\n\n\ndef validate_result(value):\n    keys(value, (*BODY_KEYS, \"worker_binding\", \"input_binding\"))\n    validate_capture_result({k: value[k] for k in BODY_KEYS})\n    input_binding_shape(value[\"input_binding\"])\n    b = value[\"worker_binding\"]\n    keys(b, (\"packaged_program_sha256\", \"packaged_spec_sha256\", \"packaged_inventory_sha256\",\n             \"manifest_image\", \"manifest_git_sha\", \"packaged_controller_sha256\"))\n    for k in (\"packaged_program_sha256\", \"packaged_spec_sha256\", \"packaged_inventory_sha256\", \"packaged_controller_sha256\"):\n        digest(b[k])\n    require(type(b[\"manifest_image\"]) is str and bool(b[\"manifest_image\"]))\n    require(type(b[\"manifest_git_sha\"]) is str and re.fullmatch(r\"[0-9a-f]{40}\", b[\"manifest_git_sha\"]))\n    require(len(canonical(value).encode()) <= MAX_RAW_BYTES)\n\n\ndef input_binding_shape(value):\n    keys(value, (\"root\", \"approval_sha256\", \"request_sha256\", \"controller_git_sha\", \"controller_sha256\"))\n    require(type(value[\"root\"]) is str and re.fullmatch(\n        r\"/Users/deviojha/projects/codex/artifacts/mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", value[\"root\"]))\n    for key in (\"approval_sha256\", \"request_sha256\", \"controller_sha256\"):\n        digest(value[key])\n    require(type(value[\"controller_git_sha\"]) is str\n            and re.fullmatch(r\"[0-9a-f]{40}\", value[\"controller_git_sha\"]))\n",
+          "count": 1,
+          "whole_new_file_refinement": true
+        },
+        {
+          "old": "SOURCE_HASHES = {\n    \"src/mfdataindia/review/reader_access_transport_spec.py\": \"9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e\",",
+          "new": "SOURCE_HASHES = {",
+          "count": 1
+        },
+        {
+          "old": "require(type(rows) is list and len(rows) >= 1)",
+          "new": "require(type(rows) is list)",
+          "count": 1
+        },
+        {
+          "old": "dev-reader-broad-cap-261026r",
+          "new": "dev-bread-cap-261026r",
+          "count": 1
+        },
+        {
+          "old": "import re\n",
+          "new": "import re\nfrom pathlib import Path\n",
+          "count": 1
+        },
+        {
+          "old": "IDENTITY = \"dev-bread-cap-261026r\"",
+          "new": "ARTIFACTS = Path(\"/Users/deviojha/projects/codex/artifacts\")\nIDENTITY = \"dev-bread-cap-261026r\"",
+          "count": 1
+        },
+        {
+          "old": "    require(type(value[\"root\"]) is str and re.fullmatch(\n        r\"/Users/deviojha/projects/codex/artifacts/mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", value[\"root\"]))",
+          "new": "    require(type(value[\"root\"]) is str)\n    root = Path(value[\"root\"])\n    require(root.parent == ARTIFACTS and re.fullmatch(\n        r\"mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", root.name))",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "scripts/collect_reader_permission_capture_dev.py",
+      "new_path": "scripts/collect_broad_reader_capture_dev.py",
+      "substitutions": [
+        {
+          "old": "reader_permission_capture as collector",
+          "new": "broad_reader_capture as collector",
+          "count": 1
+        },
+        {
+          "old": "reader_permission_capture_inventory",
+          "new": "broad_reader_capture_inventory",
+          "count": 1
+        },
+        {
+          "old": "reader_permission_capture_spec",
+          "new": "broad_reader_capture_spec",
+          "count": 1
+        },
+        {
+          "old": "from mfdataindia.review.evidence_transport import render_evidence",
+          "new": "from mfdataindia.review import broad_reader_capture_controller as core\nfrom mfdataindia.review.evidence_transport import render_evidence\nfrom mfdataindia.review.policy import fingerprint",
+          "count": 1
+        },
+        {
+          "old": "READER_PERMISSION_CAPTURE_",
+          "new": "BROAD_READER_CAPTURE_",
+          "count": 1
+        },
+        {
+          "old": "    paths = {\"PROGRAM\": Path(__file__).resolve(), \"SPEC\": Path(spec.__file__).resolve(),",
+          "new": "    paths = {\"CONTROLLER\": Path(core.__file__).resolve(), \"PROGRAM\": Path(__file__).resolve(), \"SPEC\": Path(spec.__file__).resolve(),",
+          "count": 1
+        },
+        {
+          "old": "return {\"packaged_program_sha256\": actual[\"PROGRAM\"],",
+          "new": "return {\"packaged_controller_sha256\": actual[\"CONTROLLER\"], \"packaged_program_sha256\": actual[\"PROGRAM\"],",
+          "count": 1
+        },
+        {
+          "old": "    arguments = connection_arguments(environment[\"MFDATAINDIA_DSN\"])",
+          "new": "    document = spec.parse(environment[\"BROAD_READER_CAPTURE_APPROVAL\"])\n    approval = core.Approval.model_validate(document)\n    spec.require(document == approval.model_dump(mode=\"json\"))\n    spec.require(approval.manifest == manifest)\n    spec.require(binding[\"packaged_controller_sha256\"] == approval.controller_sha256)\n    spec.require(binding[\"packaged_program_sha256\"] == core.WORKER_SHA\n                 and binding[\"packaged_spec_sha256\"] == core.SPEC_SHA\n                 and binding[\"packaged_inventory_sha256\"] == core.INVENTORY_SHA)\n    bound = {\"root\": approval.root, \"approval_sha256\": fingerprint(document),\n             \"request_sha256\": hashlib.sha256(core.inputs(approval)[\"body\"]).hexdigest(),\n             \"controller_git_sha\": approval.controller_git_sha,\n             \"controller_sha256\": approval.controller_sha256}\n    spec.input_binding_shape(bound)\n    arguments = connection_arguments(environment[\"MFDATAINDIA_DSN\"])",
+          "count": 1
+        },
+        {
+          "old": "result = collector.Capture().run(conn) | {\"worker_binding\": binding}",
+          "new": "result = collector.Capture().run(conn) | {\"worker_binding\": binding, \"input_binding\": bound}",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_permission_capture_controller.py",
+      "new_path": "src/mfdataindia/review/broad_reader_capture_controller.py",
+      "substitutions": [
+        {
+          "old": "reader_permission_capture_spec",
+          "new": "broad_reader_capture_spec",
+          "count": 1
+        },
+        {
+          "old": "mf-reader-permission-capture-261025b",
+          "new": "mf-reader-broad-capture-261026r",
+          "count": 1
+        },
+        {
+          "old": "dev-reader-cap-261025b",
+          "new": "dev-reader-broad-cap-261026r",
+          "count": 1
+        },
+        {
+          "old": "collect_reader_permission_capture_dev.py",
+          "new": "collect_broad_reader_capture_dev.py",
+          "count": 1
+        },
+        {
+          "old": "fc8456818d2a1f74b5cc7bb06f0439a55ea7341d634f2c0d57b7062d6bafaa66",
+          "new": "ca4d9be5a6a3586645cf23d1b7e725f46c5c4ea2bfc50bedac16fd70450e5cac",
+          "count": 1
+        },
+        {
+          "old": "6f1c2e300f8021e321f2556535aadf42e0aefb4daf205f6851c45333cae4a65f",
+          "new": "0062aeffbc5fc3ba230babd0158e13397ac0902cf0b8bd99a4606060cbfbe5b9",
+          "count": 1
+        },
+        {
+          "old": "3eb03171e72f18f2791630db0c91f20a8784e8e6ccdf1e947797cd97b7edf77a",
+          "new": "5d6e68f66d54a7117152c1cf5244f9a5f9539438baae385adc30061be71046f1",
+          "count": 1
+        },
+        {
+          "old": "reader-permission-capture-not-write-acceptance",
+          "new": "broad-reader-capture-not-write-acceptance",
+          "count": 1
+        },
+        {
+          "old": "mf-reader-permission-capture-20261025-",
+          "new": "mf-reader-broad-capture-20261026-",
+          "count": 1
+        },
+        {
+          "old": "READER_PERMISSION_CAPTURE_",
+          "new": "BROAD_READER_CAPTURE_",
+          "count": 3
+        },
+        {
+          "old": "    env = [{\"name\": key, \"value\": value} for key, value in environment.items()]",
+          "new": "    environment[\"BROAD_READER_CAPTURE_APPROVAL\"] = canonical(approval.model_dump(mode=\"json\"))\n    env = [{\"name\": key, \"value\": value} for key, value in environment.items()]",
+          "count": 1
+        },
+        {
+          "old": "        \"packaged_inventory_sha256\": INVENTORY_SHA,",
+          "new": "        \"packaged_inventory_sha256\": INVENTORY_SHA, \"packaged_controller_sha256\": approval.controller_sha256,",
+          "count": 1
+        },
+        {
+          "old": "        raise ValueError(\"complete packaged permission worker/spec/Git binding required\")\n    return result",
+          "new": "        raise ValueError(\"complete packaged permission worker/spec/Git binding required\")\n    wanted = {\"root\": approval.root,\n              \"approval_sha256\": fingerprint(approval.model_dump(mode=\"json\")),\n              \"request_sha256\": hashlib.sha256(inputs(approval)[\"body\"]).hexdigest(),\n              \"controller_git_sha\": approval.controller_git_sha,\n              \"controller_sha256\": approval.controller_sha256}\n    if result[\"input_binding\"] != wanted:\n        raise ValueError(\"capture approval/request/root binding differs\")\n    return result",
+          "count": 1
+        },
+        {
+          "old": "        claim(root / \"inventory-before-result.json\", execution_inventory(\n            backend, prepared, seal, namespace=namespace, execution=execution_id))",
+          "new": "        last_inventory = execution_inventory(backend, prepared, seal, namespace=namespace, execution=execution_id)\n        claim(root / \"inventory-before-result.json\", last_inventory)",
+          "count": 1
+        },
+        {
+          "old": "    claim(root / \"result.json\", {\"execution\": name, \"certificate\": certificate,\n                                  \"diagnostic_only\": True, \"acceptance\": False})",
+          "new": "    completion = {\"approval\": approval.model_dump(mode=\"json\"), \"namespace\": namespace,\n                  \"execution\": name, \"certificate\": certificate,\n                  \"job\": last_inventory[\"job\"], \"execution_document\": last_inventory[\"executions\"][0],\n                  \"approval_sha256\": approval_hash,\n                  \"request_sha256\": hashlib.sha256(prepared[\"body\"]).hexdigest(),\n                  \"diagnostic_only\": True, \"acceptance\": False}\n    validate_completion(completion)\n    claim(root / \"result.json\", completion)",
+          "count": 1
+        },
+        {
+          "old": "\"\"\"Create-once diagnostic orchestration; no service/data/IAM/schedule mutations.\n\nThe injected backend is a narrow provider adapter, not an arbitrary command\nexecutor. A fixed global start record must be claimed before provider reads.\nFailed or ambiguous create/run requests are NEVER retried.\n\"\"\"\n\nimport hashlib\nfrom copy import deepcopy\nfrom datetime import datetime\nimport os\nfrom pathlib import Path\nimport re\nimport time\n\nfrom pydantic import BaseModel, ConfigDict, Field, StrictStr, model_validator\n\nfrom mfdataindia.review import broad_reader_capture_spec as permission\nfrom mfdataindia.review.certification_input_transport import (\n    MAX_REQUEST_BYTES, submission_budget,\n)\nfrom mfdataindia.review.policy import canonical, fingerprint\nfrom mfdataindia.review.rollout import CONNECTION, Manifest, PROJECT, REGION, verify_evidence\nfrom mfdataindia.review.rollout_cloud import verify_network\n\nACCOUNT = \"trillionlaneassetmanagement@gmail.com\"\nOWNER_SA = \"tlws-mf-data-migrate-dev@trillionlane-dev.iam.gserviceaccount.com\"\nNAME = \"mf-reader-broad-capture-261026r\"\nIDENTITY = \"dev-reader-broad-cap-261026r\"\nWORKER = \"scripts/collect_broad_reader_capture_dev.py\"\nWORKER_SHA = \"ca4d9be5a6a3586645cf23d1b7e725f46c5c4ea2bfc50bedac16fd70450e5cac\"\nSPEC_SHA = \"0062aeffbc5fc3ba230babd0158e13397ac0902cf0b8bd99a4606060cbfbe5b9\"\nINVENTORY_SHA = \"5d6e68f66d54a7117152c1cf5244f9a5f9539438baae385adc30061be71046f1\"\nSTAGE = \"broad-reader-capture-not-write-acceptance\"\nARTIFACTS = Path(\"/Users/deviojha/projects/codex/artifacts\")\nSTART = ARTIFACTS / (NAME + \"-controller-start.json\")\nBASE_URL = f\"https://{REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/{PROJECT}\"\n\n\nclass Approval(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\", frozen=True)\n    manifest: Manifest\n    controller_git_sha: StrictStr = Field(pattern=r\"^[0-9a-f]{40}$\")\n    controller_sha256: StrictStr = Field(pattern=r\"^[0-9a-f]{64}$\")\n    protected_hash: StrictStr = Field(pattern=r\"^[0-9a-f]{64}$\")\n    root: StrictStr\n\n    @model_validator(mode=\"after\")\n    def exact_scope(self):\n        m = self.manifest\n        if (m.rollout_id != IDENTITY or m.cohort != [154117] or m.canary_code != 154117\n                or m.git_sha != self.controller_git_sha):\n            raise ValueError(\"fresh exact diagnostic-only identity/Git/cohort required\")\n        root = Path(self.root)\n        if (root.parent != ARTIFACTS or root.is_symlink() or root.resolve() != root\n                or not re.fullmatch(r\"mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", root.name)):\n            raise ValueError(\"fresh diagnostic evidence root required, never a failed rollout root\")\n        return self\n\n\ndef exclusive(path, value):\n    \"\"\"Create-only durable JSON; never overwrite/resume/remove a prior attempt.\"\"\"\n    raw = (canonical(value) + \"\\n\").encode()\n    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)\n    with os.fdopen(fd, \"wb\") as handle:\n        handle.write(raw)\n        handle.flush()\n        os.fsync(handle.fileno())\n\n\ndef inputs(approval):\n    m = approval.manifest\n    environment = {\"DEPLOYMENT_GIT_SHA\": m.git_sha,\n                   \"REVIEW_MANIFEST\": m.model_dump_json(), \"BROAD_READER_CAPTURE_PROGRAM_SHA256\": WORKER_SHA,\n                   \"BROAD_READER_CAPTURE_SPEC_SHA256\": SPEC_SHA,\n                   \"BROAD_READER_CAPTURE_INVENTORY_SHA256\": INVENTORY_SHA}\n    environment[\"BROAD_READER_CAPTURE_APPROVAL\"] = canonical(approval.model_dump(mode=\"json\"))\n    env = [{\"name\": key, \"value\": value} for key, value in environment.items()]\n    env.append({\"name\": \"MFDATAINDIA_DSN\", \"valueFrom\": {\n        \"secretKeyRef\": {\"name\": \"tlws-mf-data-admin-dsn-dev\", \"key\": \"1\"}}})\n    task = {\"serviceAccountName\": OWNER_SA, \"timeoutSeconds\": \"600\", \"maxRetries\": 0,\n            \"containers\": [{\"image\": m.image, \"command\": [\"python\"], \"args\": [WORKER],\n                            \"env\": env, \"resources\": {\"limits\": {\"cpu\": \"1\", \"memory\": \"1Gi\"}}}]}\n    annotations = {\"run.googleapis.com/cloudsql-instances\": CONNECTION,\n                   \"run.googleapis.com/vpc-access-egress\": \"all-traffic\",\n                   \"run.googleapis.com/network-interfaces\": canonical([\n                       {\"network\": \"tl-dev-vpc\", \"subnetwork\": \"tl-dev-mumbai\"}]),\n                   \"run.googleapis.com/execution-environment\": \"gen2\"}\n    request = {\"apiVersion\": \"run.googleapis.com/v1\", \"kind\": \"Job\",\n               \"metadata\": {\"name\": NAME, \"namespace\": PROJECT},\n               \"spec\": {\"template\": {\"metadata\": {\"annotations\": annotations}, \"spec\": {\n                   \"taskCount\": 1, \"parallelism\": 1, \"template\": {\"spec\": task}}}}}\n    body = canonical(request).encode()\n    budget = submission_budget(environment, [\"python\", WORKER])\n    # Count the entire ACTUAL HTTP body, including secret references, profile,\n    # network and metadata. No optimistic approximation of a CLI request.\n    if len(body) > MAX_REQUEST_BYTES:\n        raise ValueError(\"complete diagnostic request exceeds unchanged budget\")\n    return {\"body\": body, \"request\": request, \"task\": task, \"annotations\": annotations,\n            \"environment\": environment, \"budget\": {**budget, \"request_bytes\": len(body)}}\n\n\ndef validate_task(actual, expected):\n    if set(actual) - {\"containers\", \"maxRetries\", \"serviceAccountName\", \"timeoutSeconds\", \"volumes\"}:\n        raise ValueError(\"unexpected task capability\")\n    if (actual.get(\"serviceAccountName\") != OWNER_SA or actual.get(\"volumes\", [])\n            or type(actual.get(\"maxRetries\")) is not int or actual[\"maxRetries\"] != 0\n            or str(actual.get(\"timeoutSeconds\")) != \"600\" or len(actual.get(\"containers\", [])) != 1):\n        raise ValueError(\"diagnostic task identity/resources/volumes differ\")\n    container = actual[\"containers\"][0]\n    wanted = expected[\"containers\"][0]\n    if (set(container) != set(wanted)\n            or any(container[k] != wanted[k] for k in (\"image\", \"command\", \"args\"))\n            or container[\"resources\"] not in ({\"limits\": {\"cpu\": \"1\", \"memory\": \"1Gi\"}},\n                                               {\"limits\": {\"cpu\": \"1000m\", \"memory\": \"1Gi\"}})):\n        raise ValueError(\"whole diagnostic container/profile differs\")\n    rows = container[\"env\"]\n    if (len(rows) != len(wanted[\"env\"]) or len({r[\"name\"] for r in rows}) != len(rows)\n            or {r[\"name\"]: r for r in rows} != {r[\"name\"]: r for r in wanted[\"env\"]}):\n        raise ValueError(\"all environment values and exact secret references required\")\n\n\nINFO_ANNOTATIONS = {\"run.googleapis.com/client-name\", \"run.googleapis.com/client-version\"}\n\n\ndef informational_annotations(annotations):\n    values = {k: v for k, v in annotations.items() if k in INFO_ANNOTATIONS}\n    if any(not isinstance(v, str) or not re.fullmatch(r\"[A-Za-z0-9_.:/-]{1,128}\", v) for v in values.values()):\n        raise ValueError(\"invalid informational client provenance\")\n    return values\n\n\ndef provider_labels(labels, *, parent=None):\n    wanted = {\"cloud.googleapis.com/location\": REGION}\n    optional = {\"run.googleapis.com/satisfiesPzs\", \"client.knative.dev/nonce\"}\n    if parent is not None:\n        wanted.update({\"run.googleapis.com/job\": NAME,\n                       \"run.googleapis.com/jobUid\": parent[\"identity\"][\"uid\"],\n                       \"run.googleapis.com/jobGeneration\": \"1\"})\n        optional.add(\"run.googleapis.com/jobResourceVersion\")\n    else:\n        optional.add(\"run.googleapis.com/lastUpdatedTime\")\n    if set(labels) - set(wanted) - optional or any(labels.get(k) != v for k, v in wanted.items()):\n        raise ValueError(\"exact location and immutable parent labels required\")\n    for key, value in labels.items():\n        if key in wanted:\n            continue\n        if key.endswith(\"/satisfiesPzs\"):\n            valid = value in (\"true\", \"false\")\n            if parent and key in parent[\"labels\"]:\n                valid = valid and value == parent[\"labels\"][key]\n        elif key.endswith(\"/nonce\"):\n            valid = isinstance(value, str) and re.fullmatch(r\"[A-Za-z0-9_-]{1,128}\", value)\n            if parent and key in parent[\"template_labels\"]:\n                valid = valid and value == parent[\"template_labels\"][key]\n        elif key.endswith(\"/lastUpdatedTime\"):\n            valid = isinstance(value, str) and re.fullmatch(r\"\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,9})?Z\", value)\n            if valid:\n                datetime.fromisoformat(value.replace(\"Z\", \"+00:00\"))\n        else:\n            # Provider jobResourceVersion is opaque, not an execution override.\n            # Retain it in the original immutable Execution identity, then bind\n            # every subsequent inventory/poll to that exact original value.\n            valid = isinstance(value, str) and 0 < len(value) <= 256 and value.isprintable()\n        if not valid:\n            raise ValueError(\"invalid provider-generated informational label\")\n\n\ndef resource_identity(document, *, namespace, name, kind, prepared=None, parent=None):\n    \"\"\"Reject unapproved metadata capabilities, retain stable provider identity.\n\n    ObjectMeta docs say ownerReferences is unsupported, but actual v1 metadata\n    emits it. If present it must agree with the mandatory parent UID labels.\n    \"\"\"\n    if (set(document) - {\"apiVersion\", \"kind\", \"metadata\", \"spec\", \"status\"}\n            or document.get(\"apiVersion\") != \"run.googleapis.com/v1\"\n            or document.get(\"kind\") != kind):\n        raise ValueError(\"exact resource kind/schema required\")\n    metadata = document[\"metadata\"]\n    allowed = {\"name\", \"namespace\", \"uid\", \"creationTimestamp\", \"generation\",\n               \"resourceVersion\", \"selfLink\", \"labels\", \"annotations\"}\n    if kind == \"Execution\":\n        allowed.add(\"ownerReferences\")\n    if (set(metadata) - allowed or metadata.get(\"name\") != name\n            or metadata.get(\"namespace\") not in (namespace, PROJECT)\n            or not re.fullmatch(r\"[a-z0-9][a-z0-9-]{15,127}\", metadata.get(\"uid\", \"\"))\n            or isinstance(metadata.get(\"generation\"), bool)\n            or str(metadata.get(\"generation\")) != \"1\"):\n        raise ValueError(\"new exact provider resource identity required\")\n    created = metadata.get(\"creationTimestamp\", \"\")\n    if not re.fullmatch(r\"\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,9})?Z\", created):\n        raise ValueError(\"provider UTC creation timestamp required\")\n    datetime.fromisoformat(created.replace(\"Z\", \"+00:00\"))\n    if \"selfLink\" in metadata:\n        plural = \"jobs\" if kind == \"Job\" else \"executions\"\n        if metadata[\"selfLink\"] != f\"/apis/run.googleapis.com/v1/namespaces/{metadata['namespace']}/{plural}/{name}\":\n            raise ValueError(\"resource selfLink differs from sealed identity\")\n    annotations = metadata.get(\"annotations\", {})\n    generated = {\"run.googleapis.com/creator\", \"run.googleapis.com/lastModifier\",\n                 \"run.googleapis.com/operation-id\"} | INFO_ANNOTATIONS\n    informational_annotations(annotations)\n    expected = prepared[\"annotations\"] if kind == \"Execution\" else {}\n    if (set(annotations) - generated - set(expected)\n            or any(annotations.get(k) != v for k, v in expected.items())\n            or annotations.get(\"run.googleapis.com/creator\") != ACCOUNT\n            or (\"run.googleapis.com/lastModifier\" in annotations\n                and annotations[\"run.googleapis.com/lastModifier\"] != ACCOUNT)):\n        raise ValueError(\"unapproved resource annotation/creator capability\")\n    operation = annotations.get(\"run.googleapis.com/operation-id\")\n    if operation is not None and not re.fullmatch(r\"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\", operation):\n        raise ValueError(\"unexpected provider operation identity\")\n    labels = metadata.get(\"labels\", {})\n    provider_labels(labels, parent=parent if kind == \"Execution\" else None)\n    identity = {k: metadata[k] for k in (\"name\", \"namespace\", \"uid\", \"creationTimestamp\", \"generation\")}\n    if kind == \"Execution\":\n        owners = metadata.get(\"ownerReferences\", [])\n        expected_owner = {\"apiVersion\": \"serving.knative.dev/v1\", \"kind\": \"Job\", \"name\": NAME,\n                          \"uid\": parent[\"identity\"][\"uid\"], \"controller\": True, \"blockOwnerDeletion\": True}\n        if (owners not in ([], [expected_owner])\n                or any(type(owner.get(k)) is not bool for owner in owners\n                       for k in (\"controller\", \"blockOwnerDeletion\"))):\n            raise ValueError(\"provider ownerReference differs from sealed parent UID\")\n        if informational_annotations(annotations) != parent[\"template_provider_annotations\"]:\n            raise ValueError(\"execution client provenance differs from sealed template\")\n        identity.update({\"labels\": labels, \"annotations\": annotations, \"ownerReferences\": owners})\n    return deepcopy(identity)\n\n\ndef deployed(job, prepared, *, namespace):\n    identity = resource_identity(job, namespace=namespace, name=NAME, kind=\"Job\")\n    if set(job[\"spec\"]) != {\"template\"}:\n        raise ValueError(\"template-only JobSpec required; execution tokens forbidden\")\n    if str(job[\"metadata\"][\"generation\"]) != \"1\":\n        raise ValueError(\"new exact first-generation diagnostic job required\")\n    template = job[\"spec\"][\"template\"]\n    if (set(template) != {\"metadata\", \"spec\"}\n            or set(template[\"metadata\"]) - {\"annotations\", \"labels\"}\n            or \"annotations\" not in template[\"metadata\"]):\n        raise ValueError(\"whole approved execution template metadata required\")\n    spec = template[\"spec\"]\n    if (set(spec) != {\"taskCount\", \"parallelism\", \"template\"}\n            or any(type(spec.get(k)) is not int or spec[k] != 1 for k in (\"taskCount\", \"parallelism\"))\n            or set(spec[\"template\"]) != {\"spec\"}):\n        raise ValueError(\"exact one task and parallelism required\")\n    annotations = template[\"metadata\"][\"annotations\"]\n    client = informational_annotations(annotations)\n    labels = template[\"metadata\"].get(\"labels\", {})\n    if (set(labels) - {\"client.knative.dev/nonce\"}\n            or any(not isinstance(v, str) or not re.fullmatch(r\"[A-Za-z0-9_-]{1,128}\", v) for v in labels.values())):\n        raise ValueError(\"unapproved template label\")\n    verify_network(annotations)\n    if annotations != {**prepared[\"annotations\"], **client}:\n        raise ValueError(\"WHOLE exact approved annotations required; no extra capabilities\")\n    task = spec[\"template\"][\"spec\"]\n    validate_task(task, prepared[\"task\"])\n    return deepcopy({\"task\": task, \"task_hash\": fingerprint(task),\n            \"network\": annotations, \"whole_spec\": spec, \"whole_job_spec\": job[\"spec\"],\n            \"template_labels\": labels, \"template_provider_annotations\": client,\n            \"identity\": identity, \"labels\": job[\"metadata\"][\"labels\"],\n            \"provider_annotations\": {k: v for k, v in job[\"metadata\"][\"annotations\"].items()\n                                     if k != \"run.googleapis.com/operation-id\"},\n            \"before_execute\": True})\n\n\ndef validated_image_resolution(proof, prepared):\n    \"\"\"Validate the narrow fresh backend receipt, never a caller child override.\"\"\"\n    keys = {\"image\", \"resolved_image\", \"config_digest\", \"git_sha\", \"platform\", \"layers_downloaded\"}\n    image = prepared[\"task\"][\"containers\"][0][\"image\"]\n    repository = image.rsplit(\"@\", 1)[0]\n    if (type(proof) is not dict or set(proof) != keys\n            or proof[\"image\"] != image\n            or proof[\"git_sha\"] != prepared[\"environment\"][\"DEPLOYMENT_GIT_SHA\"]\n            or proof[\"platform\"] != \"linux/amd64\"\n            or type(proof[\"layers_downloaded\"]) is not int or proof[\"layers_downloaded\"] != 0\n            or not isinstance(proof[\"resolved_image\"], str)\n            or not re.fullmatch(re.escape(repository) + r\"@sha256:[0-9a-f]{64}\", proof[\"resolved_image\"])\n            or not isinstance(proof[\"config_digest\"], str)\n            or not re.fullmatch(r\"sha256:[0-9a-f]{64}\", proof[\"config_digest\"])):\n        raise ValueError(\"exact authenticated image resolution receipt required\")\n    return deepcopy(proof)\n\n\ndef immutable_execution(execution, prepared, seal, *, namespace, identity=None):\n    name = execution[\"metadata\"][\"name\"]\n    if not re.fullmatch(re.escape(NAME) + r\"-[a-z0-9]{5,10}\", name):\n        raise ValueError(\"sole execution response identity ambiguous\")\n    actual = resource_identity(execution, namespace=namespace, name=name, kind=\"Execution\",\n                               prepared=prepared, parent=seal)\n    if identity is not None and actual != identity:\n        raise ValueError(\"original immutable execution identity changed\")\n    comparable = execution[\"spec\"]\n    if \"image_resolution\" in prepared:\n        proof = validated_image_resolution(prepared[\"image_resolution\"], prepared)\n        comparable = deepcopy(comparable)\n        container = comparable[\"template\"][\"spec\"][\"containers\"][0]\n        if container[\"image\"] == proof[\"resolved_image\"]:\n            container[\"image\"] = proof[\"image\"]\n    if (comparable != seal[\"whole_spec\"]\n            or actual[\"namespace\"] != seal[\"identity\"][\"namespace\"]\n            or actual[\"uid\"] == seal[\"identity\"][\"uid\"]):\n        raise ValueError(\"WHOLE immutable execution/parent differs from seal\")\n    return actual\n\n\ndef job_execution_status(job, execution=None):\n    status = job.get(\"status\", {})\n    count, latest = status.get(\"executionCount\", 0), status.get(\"latestCreatedExecution\")\n    expected_count = 1 if execution is not None else 0\n    if type(count) is not int or count != expected_count:\n        raise ValueError(\"exact sole job execution count required\")\n    if execution is None:\n        if latest not in (None, {}):\n            raise ValueError(\"job already has a latest-created execution\")\n    else:\n        if (not isinstance(latest, dict) or latest.get(\"name\") != execution[\"name\"]\n                or latest.get(\"creationTimestamp\") != execution[\"creationTimestamp\"]\n                or latest.get(\"deletionTimestamp\")):\n            raise ValueError(\"latest execution does not bind sole run response\")\n\n\ndef execution_inventory(backend, prepared, seal, *, namespace, execution=None):\n    \"\"\"Fail closed on unavailable/lagging/extra executions; never submit a retry.\"\"\"\n    job, executions = backend.job(), backend.executions()\n    if deployed(job, prepared, namespace=namespace) != seal:\n        raise ValueError(\"whole created job identity/profile drift\")\n    job_execution_status(job, execution)\n    expected_count = 1 if execution is not None else 0\n    if not isinstance(executions, list) or len(executions) != expected_count:\n        raise ValueError(\"exact sole execution inventory required\")\n    if execution is not None:\n        immutable_execution(executions[0], prepared, seal, namespace=namespace, identity=execution)\n    return {\"job\": job, \"executions\": executions}\n\n\ndef validate_result(approval, certificate):\n    result = verify_evidence(approval.manifest, STAGE, certificate)\n    permission.validate_result(result)\n    if result[\"worker_binding\"] != {\n        \"packaged_program_sha256\": WORKER_SHA, \"packaged_spec_sha256\": SPEC_SHA,\n        \"packaged_inventory_sha256\": INVENTORY_SHA, \"packaged_controller_sha256\": approval.controller_sha256,\n        \"manifest_image\": approval.manifest.image, \"manifest_git_sha\": approval.manifest.git_sha,\n    }:\n        raise ValueError(\"complete packaged permission worker/spec/Git binding required\")\n    wanted = {\"root\": approval.root,\n              \"approval_sha256\": fingerprint(approval.model_dump(mode=\"json\")),\n              \"request_sha256\": hashlib.sha256(inputs(approval)[\"body\"]).hexdigest(),\n              \"controller_git_sha\": approval.controller_git_sha,\n              \"controller_sha256\": approval.controller_sha256}\n    if result[\"input_binding\"] != wanted:\n        raise ValueError(\"capture approval/request/root binding differs\")\n    return result\n\n\ndef run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.sleep):\n    \"\"\"Backend preflight is READ ONLY; .create/.execute are sole mutations.\n\n    The backend MUST enforce exact request bodies/URLs and explicit account.\n    Every record is create-only, including the global precheck-process guard.\n    \"\"\"\n    root = Path(approval.root)\n    if not root.is_dir() or set(p.name for p in root.iterdir()) != {\"approval.json\"}:\n        raise ValueError(\"fresh root must contain only its approved input\")\n    prepared = inputs(approval)\n    approval_hash = fingerprint(approval.model_dump(mode=\"json\"))\n    claim(START, {\"pid\": os.getpid(), \"approval_hash\": approval_hash, \"root\": str(root)})\n    before = None\n    try:\n        namespace = backend.preflight(approval)  # Verified projectNumber + Git/operator/OCI/absence.\n        if not isinstance(namespace, str) or not re.fullmatch(r\"[0-9]{6,20}\", namespace):\n            raise ValueError(\"verified explicit project namespace required\")\n        prepared[\"image_resolution\"] = validated_image_resolution(backend.image_resolution(), prepared)\n        claim(root / \"image-resolution.json\", prepared[\"image_resolution\"])\n        before = backend.protected()\n        claim(root / \"protected-before.json\", before)\n        if fingerprint(before) != approval.protected_hash:\n            raise ValueError(\"approved protected state differs\")\n        claim(root / \"intent.json\", {\"approval_hash\": approval_hash, \"request\": prepared[\"request\"],\n                                     \"budget\": prepared[\"budget\"], \"request_sha256\": hashlib.sha256(prepared[\"body\"]).hexdigest()})\n        created = backend.create(prepared[\"body\"])\n        claim(root / \"create-response.json\", created)\n        created_seal = deployed(created, prepared, namespace=namespace)\n        job_execution_status(created)\n        claim(root / \"created-identity.json\", created_seal)\n        claim(root / \"created-inventory.json\", execution_inventory(\n            backend, prepared, created_seal, namespace=namespace))\n        deadline = clock() + 300\n        for index in range(31):\n            job = backend.job()\n            claim(root / f\"created-job-{index:02}.json\", job)\n            seal = deployed(job, prepared, namespace=namespace)\n            job_execution_status(job)\n            if seal != created_seal:\n                raise ValueError(\"created Job identity/profile changed during readiness\")\n            ready = [c for c in job.get(\"status\", {}).get(\"conditions\", []) if c[\"type\"] == \"Ready\"]\n            if len(ready) == 1 and ready[0][\"status\"] == \"True\":\n                break\n            if len(ready) != 1 or ready[0][\"status\"] not in (\"Unknown\", \"True\") or clock() >= deadline:\n                raise ValueError(\"diagnostic job creation failed/ambiguous\")\n            sleep(10)\n        else:\n            raise TimeoutError(\"diagnostic readiness inspection exhausted\")\n        claim(root / \"deployed-before-execute.json\", seal)\n        # Recheck current immutable-profile candidate immediately before run.\n        if backend.protected() != before:\n            raise ValueError(\"deployed/protected profile drift before execute\")\n        claim(root / \"inventory-before-execute.json\", execution_inventory(\n            backend, prepared, seal, namespace=namespace))\n        claim(root / \"execute-intent.json\", {\"job\": NAME, \"deployed_hash\": fingerprint(seal), \"body\": {}})\n        execution = backend.execute()\n        claim(root / \"original-execution.json\", execution)\n        execution_id = immutable_execution(execution, prepared, seal, namespace=namespace)\n        name = execution_id[\"name\"]\n        claim(root / \"inventory-after-execute.json\", execution_inventory(\n            backend, prepared, seal, namespace=namespace, execution=execution_id))\n        deadline = clock() + 720\n        for index in range(73):\n            observed = backend.execution(name)\n            claim(root / f\"execution-{index:02}.json\", observed)\n            immutable_execution(observed, prepared, seal, namespace=namespace, identity=execution_id)\n            status = observed[\"status\"]\n            completed = [c for c in status.get(\"conditions\", []) if c[\"type\"] == \"Completed\"]\n            if (len(completed) != 1 or any(status.get(k, 0) for k in (\"failedCount\", \"retriedCount\", \"cancelledCount\"))\n                    or completed[0][\"status\"] == \"False\"):\n                raise ValueError(\"original diagnostic execution failed/ambiguous; never retry\")\n            if completed[0][\"status\"] == \"True\":\n                if status.get(\"succeededCount\") != 1 or status.get(\"runningCount\", 0):\n                    raise ValueError(\"incomplete terminal diagnostic success\")\n                break\n            if completed[0][\"status\"] != \"Unknown\" or clock() >= deadline:\n                raise TimeoutError(\"bounded exact execution inspection exhausted\")\n            sleep(10)\n        else:\n            raise TimeoutError(\"bounded exact execution inspection exhausted\")\n        certificate = backend.certificate(name)  # Bounded log delivery reads only.\n        result = validate_result(approval, certificate)\n    except Exception as error:\n        claim(root / \"failure.json\", {\"error_type\": type(error).__name__, \"acceptance\": False})\n        raise\n    finally:\n        try:\n            after = backend.protected()\n            claim(root / \"protected-after.json\", after)\n            if before is not None and after != before:\n                raise ValueError(\"protected runtime/IAM/schedule drift; diagnostic not accepted\")\n        except Exception as error:\n            claim(root / \"protected-failure.json\", {\n                \"error_type\": type(error).__name__, \"acceptance\": False})\n            raise\n    # No completed diagnostic receipt exists until the final full protected\n    # snapshot succeeds and matches. Even this result is NOT rollout acceptance.\n    try:\n        last_inventory = execution_inventory(backend, prepared, seal, namespace=namespace, execution=execution_id)\n        claim(root / \"inventory-before-result.json\", last_inventory)\n        final_protected = backend.protected()\n        claim(root / \"protected-final.json\", final_protected)\n        if final_protected != before:\n            raise ValueError(\"protected drift during final inventory; no result\")\n    except Exception as error:\n        claim(root / \"failure.json\", {\"error_type\": type(error).__name__, \"acceptance\": False})\n        raise\n    completion = {\"approval\": approval.model_dump(mode=\"json\"), \"namespace\": namespace,\n                  \"execution\": name, \"certificate\": certificate,\n                  \"job\": last_inventory[\"job\"], \"execution_document\": last_inventory[\"executions\"][0],\n                  \"approval_sha256\": approval_hash,\n                  \"request_sha256\": hashlib.sha256(prepared[\"body\"]).hexdigest(),\n                  \"diagnostic_only\": True, \"acceptance\": False}\n    validate_completion(completion)\n    claim(root / \"result.json\", completion)\n    return result\n",
+          "new": "\"\"\"Create-once diagnostic orchestration; no service/data/IAM/schedule mutations.\n\nThe injected backend is a narrow provider adapter, not an arbitrary command\nexecutor. A fixed global start record must be claimed before provider reads.\nFailed or ambiguous create/run requests are NEVER retried.\n\"\"\"\n\nimport hashlib\nfrom copy import deepcopy\nfrom datetime import datetime\nimport os\nfrom pathlib import Path\nimport re\nimport time\n\nfrom pydantic import BaseModel, ConfigDict, Field, StrictStr, model_validator\n\nfrom mfdataindia.review import broad_reader_capture_spec as permission\nfrom mfdataindia.review.certification_input_transport import (\n    MAX_REQUEST_BYTES, submission_budget,\n)\nfrom mfdataindia.review.policy import canonical, fingerprint\nfrom mfdataindia.review.rollout import CONNECTION, Manifest, PROJECT, REGION, verify_evidence\nfrom mfdataindia.review.rollout_cloud import verify_network\n\nACCOUNT = \"trillionlaneassetmanagement@gmail.com\"\nOWNER_SA = \"tlws-mf-data-migrate-dev@trillionlane-dev.iam.gserviceaccount.com\"\nNAME = \"mf-reader-broad-capture-261026r\"\nIDENTITY = \"dev-reader-broad-cap-261026r\"\nWORKER = \"scripts/collect_broad_reader_capture_dev.py\"\nWORKER_SHA = \"ca4d9be5a6a3586645cf23d1b7e725f46c5c4ea2bfc50bedac16fd70450e5cac\"\nSPEC_SHA = \"0062aeffbc5fc3ba230babd0158e13397ac0902cf0b8bd99a4606060cbfbe5b9\"\nINVENTORY_SHA = \"5d6e68f66d54a7117152c1cf5244f9a5f9539438baae385adc30061be71046f1\"\nSTAGE = \"broad-reader-capture-not-write-acceptance\"\nARTIFACTS = Path(\"/Users/deviojha/projects/codex/artifacts\")\nSTART = ARTIFACTS / (NAME + \"-controller-start.json\")\nBASE_URL = f\"https://{REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/{PROJECT}\"\n\n\nclass Approval(BaseModel):\n    model_config = ConfigDict(extra=\"forbid\", frozen=True)\n    manifest: Manifest\n    controller_git_sha: StrictStr = Field(pattern=r\"^[0-9a-f]{40}$\")\n    controller_sha256: StrictStr = Field(pattern=r\"^[0-9a-f]{64}$\")\n    protected_hash: StrictStr = Field(pattern=r\"^[0-9a-f]{64}$\")\n    root: StrictStr\n\n    @model_validator(mode=\"after\")\n    def exact_scope(self):\n        m = self.manifest\n        if (m.rollout_id != IDENTITY or m.cohort != [154117] or m.canary_code != 154117\n                or m.git_sha != self.controller_git_sha):\n            raise ValueError(\"fresh exact diagnostic-only identity/Git/cohort required\")\n        root = Path(self.root)\n        if (root.parent != ARTIFACTS or root.is_symlink() or root.resolve() != root\n                or not re.fullmatch(r\"mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}\", root.name)):\n            raise ValueError(\"fresh diagnostic evidence root required, never a failed rollout root\")\n        return self\n\n\ndef exclusive(path, value):\n    \"\"\"Create-only durable JSON; never overwrite/resume/remove a prior attempt.\"\"\"\n    raw = (canonical(value) + \"\\n\").encode()\n    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)\n    with os.fdopen(fd, \"wb\") as handle:\n        handle.write(raw)\n        handle.flush()\n        os.fsync(handle.fileno())\n\n\ndef inputs(approval):\n    m = approval.manifest\n    environment = {\"DEPLOYMENT_GIT_SHA\": m.git_sha,\n                   \"REVIEW_MANIFEST\": m.model_dump_json(), \"BROAD_READER_CAPTURE_PROGRAM_SHA256\": WORKER_SHA,\n                   \"BROAD_READER_CAPTURE_SPEC_SHA256\": SPEC_SHA,\n                   \"BROAD_READER_CAPTURE_INVENTORY_SHA256\": INVENTORY_SHA}\n    environment[\"BROAD_READER_CAPTURE_APPROVAL\"] = canonical(approval.model_dump(mode=\"json\"))\n    env = [{\"name\": key, \"value\": value} for key, value in environment.items()]\n    env.append({\"name\": \"MFDATAINDIA_DSN\", \"valueFrom\": {\n        \"secretKeyRef\": {\"name\": \"tlws-mf-data-admin-dsn-dev\", \"key\": \"1\"}}})\n    task = {\"serviceAccountName\": OWNER_SA, \"timeoutSeconds\": \"600\", \"maxRetries\": 0,\n            \"containers\": [{\"image\": m.image, \"command\": [\"python\"], \"args\": [WORKER],\n                            \"env\": env, \"resources\": {\"limits\": {\"cpu\": \"1\", \"memory\": \"1Gi\"}}}]}\n    annotations = {\"run.googleapis.com/cloudsql-instances\": CONNECTION,\n                   \"run.googleapis.com/vpc-access-egress\": \"all-traffic\",\n                   \"run.googleapis.com/network-interfaces\": canonical([\n                       {\"network\": \"tl-dev-vpc\", \"subnetwork\": \"tl-dev-mumbai\"}]),\n                   \"run.googleapis.com/execution-environment\": \"gen2\"}\n    request = {\"apiVersion\": \"run.googleapis.com/v1\", \"kind\": \"Job\",\n               \"metadata\": {\"name\": NAME, \"namespace\": PROJECT},\n               \"spec\": {\"template\": {\"metadata\": {\"annotations\": annotations}, \"spec\": {\n                   \"taskCount\": 1, \"parallelism\": 1, \"template\": {\"spec\": task}}}}}\n    body = canonical(request).encode()\n    budget = submission_budget(environment, [\"python\", WORKER])\n    # Count the entire ACTUAL HTTP body, including secret references, profile,\n    # network and metadata. No optimistic approximation of a CLI request.\n    if len(body) > MAX_REQUEST_BYTES:\n        raise ValueError(\"complete diagnostic request exceeds unchanged budget\")\n    return {\"body\": body, \"request\": request, \"task\": task, \"annotations\": annotations,\n            \"environment\": environment, \"budget\": {**budget, \"request_bytes\": len(body)}}\n\n\ndef validate_task(actual, expected):\n    if set(actual) - {\"containers\", \"maxRetries\", \"serviceAccountName\", \"timeoutSeconds\", \"volumes\"}:\n        raise ValueError(\"unexpected task capability\")\n    if (actual.get(\"serviceAccountName\") != OWNER_SA or actual.get(\"volumes\", [])\n            or type(actual.get(\"maxRetries\")) is not int or actual[\"maxRetries\"] != 0\n            or str(actual.get(\"timeoutSeconds\")) != \"600\" or len(actual.get(\"containers\", [])) != 1):\n        raise ValueError(\"diagnostic task identity/resources/volumes differ\")\n    container = actual[\"containers\"][0]\n    wanted = expected[\"containers\"][0]\n    if (set(container) != set(wanted)\n            or any(container[k] != wanted[k] for k in (\"image\", \"command\", \"args\"))\n            or container[\"resources\"] not in ({\"limits\": {\"cpu\": \"1\", \"memory\": \"1Gi\"}},\n                                               {\"limits\": {\"cpu\": \"1000m\", \"memory\": \"1Gi\"}})):\n        raise ValueError(\"whole diagnostic container/profile differs\")\n    rows = container[\"env\"]\n    if (len(rows) != len(wanted[\"env\"]) or len({r[\"name\"] for r in rows}) != len(rows)\n            or {r[\"name\"]: r for r in rows} != {r[\"name\"]: r for r in wanted[\"env\"]}):\n        raise ValueError(\"all environment values and exact secret references required\")\n\n\nINFO_ANNOTATIONS = {\"run.googleapis.com/client-name\", \"run.googleapis.com/client-version\"}\n\n\ndef informational_annotations(annotations):\n    values = {k: v for k, v in annotations.items() if k in INFO_ANNOTATIONS}\n    if any(not isinstance(v, str) or not re.fullmatch(r\"[A-Za-z0-9_.:/-]{1,128}\", v) for v in values.values()):\n        raise ValueError(\"invalid informational client provenance\")\n    return values\n\n\ndef provider_labels(labels, *, parent=None):\n    wanted = {\"cloud.googleapis.com/location\": REGION}\n    optional = {\"run.googleapis.com/satisfiesPzs\", \"client.knative.dev/nonce\"}\n    if parent is not None:\n        wanted.update({\"run.googleapis.com/job\": NAME,\n                       \"run.googleapis.com/jobUid\": parent[\"identity\"][\"uid\"],\n                       \"run.googleapis.com/jobGeneration\": \"1\"})\n        optional.add(\"run.googleapis.com/jobResourceVersion\")\n    else:\n        optional.add(\"run.googleapis.com/lastUpdatedTime\")\n    if set(labels) - set(wanted) - optional or any(labels.get(k) != v for k, v in wanted.items()):\n        raise ValueError(\"exact location and immutable parent labels required\")\n    for key, value in labels.items():\n        if key in wanted:\n            continue\n        if key.endswith(\"/satisfiesPzs\"):\n            valid = value in (\"true\", \"false\")\n            if parent and key in parent[\"labels\"]:\n                valid = valid and value == parent[\"labels\"][key]\n        elif key.endswith(\"/nonce\"):\n            valid = isinstance(value, str) and re.fullmatch(r\"[A-Za-z0-9_-]{1,128}\", value)\n            if parent and key in parent[\"template_labels\"]:\n                valid = valid and value == parent[\"template_labels\"][key]\n        elif key.endswith(\"/lastUpdatedTime\"):\n            valid = isinstance(value, str) and re.fullmatch(r\"\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,9})?Z\", value)\n            if valid:\n                datetime.fromisoformat(value.replace(\"Z\", \"+00:00\"))\n        else:\n            # Provider jobResourceVersion is opaque, not an execution override.\n            # Retain it in the original immutable Execution identity, then bind\n            # every subsequent inventory/poll to that exact original value.\n            valid = isinstance(value, str) and 0 < len(value) <= 256 and value.isprintable()\n        if not valid:\n            raise ValueError(\"invalid provider-generated informational label\")\n\n\ndef resource_identity(document, *, namespace, name, kind, prepared=None, parent=None):\n    \"\"\"Reject unapproved metadata capabilities, retain stable provider identity.\n\n    ObjectMeta docs say ownerReferences is unsupported, but actual v1 metadata\n    emits it. If present it must agree with the mandatory parent UID labels.\n    \"\"\"\n    if (set(document) - {\"apiVersion\", \"kind\", \"metadata\", \"spec\", \"status\"}\n            or document.get(\"apiVersion\") != \"run.googleapis.com/v1\"\n            or document.get(\"kind\") != kind):\n        raise ValueError(\"exact resource kind/schema required\")\n    metadata = document[\"metadata\"]\n    allowed = {\"name\", \"namespace\", \"uid\", \"creationTimestamp\", \"generation\",\n               \"resourceVersion\", \"selfLink\", \"labels\", \"annotations\"}\n    if kind == \"Execution\":\n        allowed.add(\"ownerReferences\")\n    if (set(metadata) - allowed or metadata.get(\"name\") != name\n            or metadata.get(\"namespace\") not in (namespace, PROJECT)\n            or not re.fullmatch(r\"[a-z0-9][a-z0-9-]{15,127}\", metadata.get(\"uid\", \"\"))\n            or isinstance(metadata.get(\"generation\"), bool)\n            or str(metadata.get(\"generation\")) != \"1\"):\n        raise ValueError(\"new exact provider resource identity required\")\n    created = metadata.get(\"creationTimestamp\", \"\")\n    if not re.fullmatch(r\"\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,9})?Z\", created):\n        raise ValueError(\"provider UTC creation timestamp required\")\n    datetime.fromisoformat(created.replace(\"Z\", \"+00:00\"))\n    if \"selfLink\" in metadata:\n        plural = \"jobs\" if kind == \"Job\" else \"executions\"\n        if metadata[\"selfLink\"] != f\"/apis/run.googleapis.com/v1/namespaces/{metadata['namespace']}/{plural}/{name}\":\n            raise ValueError(\"resource selfLink differs from sealed identity\")\n    annotations = metadata.get(\"annotations\", {})\n    generated = {\"run.googleapis.com/creator\", \"run.googleapis.com/lastModifier\",\n                 \"run.googleapis.com/operation-id\"} | INFO_ANNOTATIONS\n    informational_annotations(annotations)\n    expected = prepared[\"annotations\"] if kind == \"Execution\" else {}\n    if (set(annotations) - generated - set(expected)\n            or any(annotations.get(k) != v for k, v in expected.items())\n            or annotations.get(\"run.googleapis.com/creator\") != ACCOUNT\n            or (\"run.googleapis.com/lastModifier\" in annotations\n                and annotations[\"run.googleapis.com/lastModifier\"] != ACCOUNT)):\n        raise ValueError(\"unapproved resource annotation/creator capability\")\n    operation = annotations.get(\"run.googleapis.com/operation-id\")\n    if operation is not None and not re.fullmatch(r\"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\", operation):\n        raise ValueError(\"unexpected provider operation identity\")\n    labels = metadata.get(\"labels\", {})\n    provider_labels(labels, parent=parent if kind == \"Execution\" else None)\n    identity = {k: metadata[k] for k in (\"name\", \"namespace\", \"uid\", \"creationTimestamp\", \"generation\")}\n    if kind == \"Execution\":\n        owners = metadata.get(\"ownerReferences\", [])\n        expected_owner = {\"apiVersion\": \"serving.knative.dev/v1\", \"kind\": \"Job\", \"name\": NAME,\n                          \"uid\": parent[\"identity\"][\"uid\"], \"controller\": True, \"blockOwnerDeletion\": True}\n        if (owners not in ([], [expected_owner])\n                or any(type(owner.get(k)) is not bool for owner in owners\n                       for k in (\"controller\", \"blockOwnerDeletion\"))):\n            raise ValueError(\"provider ownerReference differs from sealed parent UID\")\n        if informational_annotations(annotations) != parent[\"template_provider_annotations\"]:\n            raise ValueError(\"execution client provenance differs from sealed template\")\n        identity.update({\"labels\": labels, \"annotations\": annotations, \"ownerReferences\": owners})\n    return deepcopy(identity)\n\n\ndef deployed(job, prepared, *, namespace):\n    identity = resource_identity(job, namespace=namespace, name=NAME, kind=\"Job\")\n    if set(job[\"spec\"]) != {\"template\"}:\n        raise ValueError(\"template-only JobSpec required; execution tokens forbidden\")\n    if str(job[\"metadata\"][\"generation\"]) != \"1\":\n        raise ValueError(\"new exact first-generation diagnostic job required\")\n    template = job[\"spec\"][\"template\"]\n    if (set(template) != {\"metadata\", \"spec\"}\n            or set(template[\"metadata\"]) - {\"annotations\", \"labels\"}\n            or \"annotations\" not in template[\"metadata\"]):\n        raise ValueError(\"whole approved execution template metadata required\")\n    spec = template[\"spec\"]\n    if (set(spec) != {\"taskCount\", \"parallelism\", \"template\"}\n            or any(type(spec.get(k)) is not int or spec[k] != 1 for k in (\"taskCount\", \"parallelism\"))\n            or set(spec[\"template\"]) != {\"spec\"}):\n        raise ValueError(\"exact one task and parallelism required\")\n    annotations = template[\"metadata\"][\"annotations\"]\n    client = informational_annotations(annotations)\n    labels = template[\"metadata\"].get(\"labels\", {})\n    if (set(labels) - {\"client.knative.dev/nonce\"}\n            or any(not isinstance(v, str) or not re.fullmatch(r\"[A-Za-z0-9_-]{1,128}\", v) for v in labels.values())):\n        raise ValueError(\"unapproved template label\")\n    verify_network(annotations)\n    if annotations != {**prepared[\"annotations\"], **client}:\n        raise ValueError(\"WHOLE exact approved annotations required; no extra capabilities\")\n    task = spec[\"template\"][\"spec\"]\n    validate_task(task, prepared[\"task\"])\n    return deepcopy({\"task\": task, \"task_hash\": fingerprint(task),\n            \"network\": annotations, \"whole_spec\": spec, \"whole_job_spec\": job[\"spec\"],\n            \"template_labels\": labels, \"template_provider_annotations\": client,\n            \"identity\": identity, \"labels\": job[\"metadata\"][\"labels\"],\n            \"provider_annotations\": {k: v for k, v in job[\"metadata\"][\"annotations\"].items()\n                                     if k != \"run.googleapis.com/operation-id\"},\n            \"before_execute\": True})\n\n\ndef validated_image_resolution(proof, prepared):\n    \"\"\"Validate the narrow fresh backend receipt, never a caller child override.\"\"\"\n    keys = {\"image\", \"resolved_image\", \"config_digest\", \"git_sha\", \"platform\", \"layers_downloaded\"}\n    image = prepared[\"task\"][\"containers\"][0][\"image\"]\n    repository = image.rsplit(\"@\", 1)[0]\n    if (type(proof) is not dict or set(proof) != keys\n            or proof[\"image\"] != image\n            or proof[\"git_sha\"] != prepared[\"environment\"][\"DEPLOYMENT_GIT_SHA\"]\n            or proof[\"platform\"] != \"linux/amd64\"\n            or type(proof[\"layers_downloaded\"]) is not int or proof[\"layers_downloaded\"] != 0\n            or not isinstance(proof[\"resolved_image\"], str)\n            or not re.fullmatch(re.escape(repository) + r\"@sha256:[0-9a-f]{64}\", proof[\"resolved_image\"])\n            or not isinstance(proof[\"config_digest\"], str)\n            or not re.fullmatch(r\"sha256:[0-9a-f]{64}\", proof[\"config_digest\"])):\n        raise ValueError(\"exact authenticated image resolution receipt required\")\n    return deepcopy(proof)\n\n\ndef immutable_execution(execution, prepared, seal, *, namespace, identity=None):\n    name = execution[\"metadata\"][\"name\"]\n    if not re.fullmatch(re.escape(NAME) + r\"-[a-z0-9]{5,10}\", name):\n        raise ValueError(\"sole execution response identity ambiguous\")\n    actual = resource_identity(execution, namespace=namespace, name=name, kind=\"Execution\",\n                               prepared=prepared, parent=seal)\n    if identity is not None and actual != identity:\n        raise ValueError(\"original immutable execution identity changed\")\n    comparable = execution[\"spec\"]\n    if \"image_resolution\" in prepared:\n        proof = validated_image_resolution(prepared[\"image_resolution\"], prepared)\n        comparable = deepcopy(comparable)\n        container = comparable[\"template\"][\"spec\"][\"containers\"][0]\n        if container[\"image\"] == proof[\"resolved_image\"]:\n            container[\"image\"] = proof[\"image\"]\n    if (comparable != seal[\"whole_spec\"]\n            or actual[\"namespace\"] != seal[\"identity\"][\"namespace\"]\n            or actual[\"uid\"] == seal[\"identity\"][\"uid\"]):\n        raise ValueError(\"WHOLE immutable execution/parent differs from seal\")\n    return actual\n\n\ndef job_execution_status(job, execution=None):\n    status = job.get(\"status\", {})\n    count, latest = status.get(\"executionCount\", 0), status.get(\"latestCreatedExecution\")\n    expected_count = 1 if execution is not None else 0\n    if type(count) is not int or count != expected_count:\n        raise ValueError(\"exact sole job execution count required\")\n    if execution is None:\n        if latest not in (None, {}):\n            raise ValueError(\"job already has a latest-created execution\")\n    else:\n        if (not isinstance(latest, dict) or latest.get(\"name\") != execution[\"name\"]\n                or latest.get(\"creationTimestamp\") != execution[\"creationTimestamp\"]\n                or latest.get(\"deletionTimestamp\")):\n            raise ValueError(\"latest execution does not bind sole run response\")\n\n\ndef execution_inventory(backend, prepared, seal, *, namespace, execution=None):\n    \"\"\"Fail closed on unavailable/lagging/extra executions; never submit a retry.\"\"\"\n    job, executions = backend.job(), backend.executions()\n    if deployed(job, prepared, namespace=namespace) != seal:\n        raise ValueError(\"whole created job identity/profile drift\")\n    job_execution_status(job, execution)\n    expected_count = 1 if execution is not None else 0\n    if not isinstance(executions, list) or len(executions) != expected_count:\n        raise ValueError(\"exact sole execution inventory required\")\n    if execution is not None:\n        immutable_execution(executions[0], prepared, seal, namespace=namespace, identity=execution)\n    return {\"job\": job, \"executions\": executions}\n\n\ndef validate_result(approval, certificate):\n    result = verify_evidence(approval.manifest, STAGE, certificate)\n    permission.validate_result(result)\n    if result[\"worker_binding\"] != {\n        \"packaged_program_sha256\": WORKER_SHA, \"packaged_spec_sha256\": SPEC_SHA,\n        \"packaged_inventory_sha256\": INVENTORY_SHA, \"packaged_controller_sha256\": approval.controller_sha256,\n        \"manifest_image\": approval.manifest.image, \"manifest_git_sha\": approval.manifest.git_sha,\n    }:\n        raise ValueError(\"complete packaged permission worker/spec/Git binding required\")\n    wanted = {\"root\": approval.root,\n              \"approval_sha256\": fingerprint(approval.model_dump(mode=\"json\")),\n              \"request_sha256\": hashlib.sha256(inputs(approval)[\"body\"]).hexdigest(),\n              \"controller_git_sha\": approval.controller_git_sha,\n              \"controller_sha256\": approval.controller_sha256}\n    if result[\"input_binding\"] != wanted:\n        raise ValueError(\"capture approval/request/root binding differs\")\n    return result\n\n\ndef run(approval, backend, *, claim=exclusive, clock=time.monotonic, sleep=time.sleep):\n    \"\"\"Backend preflight is READ ONLY; .create/.execute are sole mutations.\n\n    The backend MUST enforce exact request bodies/URLs and explicit account.\n    Every record is create-only, including the global precheck-process guard.\n    \"\"\"\n    root = Path(approval.root)\n    if not root.is_dir() or set(p.name for p in root.iterdir()) != {\"approval.json\"}:\n        raise ValueError(\"fresh root must contain only its approved input\")\n    prepared = inputs(approval)\n    approval_hash = fingerprint(approval.model_dump(mode=\"json\"))\n    claim(START, {\"pid\": os.getpid(), \"approval_hash\": approval_hash, \"root\": str(root)})\n    before = None\n    try:\n        namespace = backend.preflight(approval)  # Verified projectNumber + Git/operator/OCI/absence.\n        if not isinstance(namespace, str) or not re.fullmatch(r\"[0-9]{6,20}\", namespace):\n            raise ValueError(\"verified explicit project namespace required\")\n        prepared[\"image_resolution\"] = validated_image_resolution(backend.image_resolution(), prepared)\n        claim(root / \"image-resolution.json\", prepared[\"image_resolution\"])\n        before = backend.protected()\n        claim(root / \"protected-before.json\", before)\n        if fingerprint(before) != approval.protected_hash:\n            raise ValueError(\"approved protected state differs\")\n        claim(root / \"intent.json\", {\"approval_hash\": approval_hash, \"request\": prepared[\"request\"],\n                                     \"budget\": prepared[\"budget\"], \"request_sha256\": hashlib.sha256(prepared[\"body\"]).hexdigest()})\n        created = backend.create(prepared[\"body\"])\n        claim(root / \"create-response.json\", created)\n        created_seal = deployed(created, prepared, namespace=namespace)\n        job_execution_status(created)\n        claim(root / \"created-identity.json\", created_seal)\n        claim(root / \"created-inventory.json\", execution_inventory(\n            backend, prepared, created_seal, namespace=namespace))\n        deadline = clock() + 300\n        for index in range(31):\n            job = backend.job()\n            claim(root / f\"created-job-{index:02}.json\", job)\n            seal = deployed(job, prepared, namespace=namespace)\n            job_execution_status(job)\n            if seal != created_seal:\n                raise ValueError(\"created Job identity/profile changed during readiness\")\n            ready = [c for c in job.get(\"status\", {}).get(\"conditions\", []) if c[\"type\"] == \"Ready\"]\n            if len(ready) == 1 and ready[0][\"status\"] == \"True\":\n                break\n            if len(ready) != 1 or ready[0][\"status\"] not in (\"Unknown\", \"True\") or clock() >= deadline:\n                raise ValueError(\"diagnostic job creation failed/ambiguous\")\n            sleep(10)\n        else:\n            raise TimeoutError(\"diagnostic readiness inspection exhausted\")\n        claim(root / \"deployed-before-execute.json\", seal)\n        # Recheck current immutable-profile candidate immediately before run.\n        if backend.protected() != before:\n            raise ValueError(\"deployed/protected profile drift before execute\")\n        claim(root / \"inventory-before-execute.json\", execution_inventory(\n            backend, prepared, seal, namespace=namespace))\n        claim(root / \"execute-intent.json\", {\"job\": NAME, \"deployed_hash\": fingerprint(seal), \"body\": {}})\n        execution = backend.execute()\n        claim(root / \"original-execution.json\", execution)\n        execution_id = immutable_execution(execution, prepared, seal, namespace=namespace)\n        name = execution_id[\"name\"]\n        claim(root / \"inventory-after-execute.json\", execution_inventory(\n            backend, prepared, seal, namespace=namespace, execution=execution_id))\n        deadline = clock() + 720\n        for index in range(73):\n            observed = backend.execution(name)\n            claim(root / f\"execution-{index:02}.json\", observed)\n            immutable_execution(observed, prepared, seal, namespace=namespace, identity=execution_id)\n            status = observed[\"status\"]\n            completed = [c for c in status.get(\"conditions\", []) if c[\"type\"] == \"Completed\"]\n            if (len(completed) != 1 or any(status.get(k, 0) for k in (\"failedCount\", \"retriedCount\", \"cancelledCount\"))\n                    or completed[0][\"status\"] == \"False\"):\n                raise ValueError(\"original diagnostic execution failed/ambiguous; never retry\")\n            if completed[0][\"status\"] == \"True\":\n                if status.get(\"succeededCount\") != 1 or status.get(\"runningCount\", 0):\n                    raise ValueError(\"incomplete terminal diagnostic success\")\n                break\n            if completed[0][\"status\"] != \"Unknown\" or clock() >= deadline:\n                raise TimeoutError(\"bounded exact execution inspection exhausted\")\n            sleep(10)\n        else:\n            raise TimeoutError(\"bounded exact execution inspection exhausted\")\n        certificate = backend.certificate(name)  # Bounded log delivery reads only.\n        result = validate_result(approval, certificate)\n    except Exception as error:\n        claim(root / \"failure.json\", {\"error_type\": type(error).__name__, \"acceptance\": False})\n        raise\n    finally:\n        try:\n            after = backend.protected()\n            claim(root / \"protected-after.json\", after)\n            if before is not None and after != before:\n                raise ValueError(\"protected runtime/IAM/schedule drift; diagnostic not accepted\")\n        except Exception as error:\n            claim(root / \"protected-failure.json\", {\n                \"error_type\": type(error).__name__, \"acceptance\": False})\n            raise\n    # No completed diagnostic receipt exists until the final full protected\n    # snapshot succeeds and matches. Even this result is NOT rollout acceptance.\n    try:\n        last_inventory = execution_inventory(backend, prepared, seal, namespace=namespace, execution=execution_id)\n        claim(root / \"inventory-before-result.json\", last_inventory)\n        final_protected = backend.protected()\n        claim(root / \"protected-final.json\", final_protected)\n        if final_protected != before:\n            raise ValueError(\"protected drift during final inventory; no result\")\n    except Exception as error:\n        claim(root / \"failure.json\", {\"error_type\": type(error).__name__, \"acceptance\": False})\n        raise\n    completion = {\"approval\": approval.model_dump(mode=\"json\"), \"namespace\": namespace,\n                  \"execution\": name, \"certificate\": certificate,\n                  \"job\": last_inventory[\"job\"], \"execution_document\": last_inventory[\"executions\"][0],\n                  \"approval_sha256\": approval_hash,\n                  \"request_sha256\": hashlib.sha256(prepared[\"body\"]).hexdigest(),\n                  \"diagnostic_only\": True, \"acceptance\": False}\n    validate_completion(completion)\n    claim(root / \"result.json\", completion)\n    return result\n\ndef validate_completion(value):\n    \"\"\"Full fixed capture package. Hashes bind bytes, never authenticate a human.\"\"\"\n    permission.keys(value, (\"approval\", \"namespace\", \"execution\", \"certificate\", \"job\",\n                            \"execution_document\", \"approval_sha256\", \"request_sha256\",\n                            \"diagnostic_only\", \"acceptance\"))\n    approval = Approval.model_validate(value[\"approval\"])\n    if canonical(value[\"approval\"]) != canonical(approval.model_dump(mode=\"json\")):\n        raise ValueError(\"capture approval normalization forbidden\")\n    if value[\"approval_sha256\"] != fingerprint(value[\"approval\"]):\n        raise ValueError(\"capture approval seal differs\")\n    prepared = inputs(approval)\n    if value[\"request_sha256\"] != hashlib.sha256(prepared[\"body\"]).hexdigest():\n        raise ValueError(\"capture request seal differs\")\n    namespace = value[\"namespace\"]\n    if type(namespace) is not str or not re.fullmatch(r\"[0-9]{6,20}\", namespace):\n        raise ValueError(\"capture projectNumber required\")\n    seal = deployed(value[\"job\"], prepared, namespace=namespace)\n    document = value[\"execution_document\"]\n    identity = immutable_execution(document, prepared, seal, namespace=namespace)\n    job_execution_status(value[\"job\"], identity)\n    status = document[\"status\"]\n    completed = [c for c in status.get(\"conditions\", []) if c.get(\"type\") == \"Completed\"]\n    if (len(completed) != 1 or completed[0].get(\"status\") != \"True\"\n            or status.get(\"succeededCount\") != 1 or type(status.get(\"succeededCount\")) is not int\n            or any(status.get(k, 0) for k in (\"runningCount\", \"failedCount\", \"retriedCount\", \"cancelledCount\"))\n            or value[\"execution\"] != identity[\"name\"]\n            or value[\"diagnostic_only\"] is not True or value[\"acceptance\"] is not False):\n        raise ValueError(\"sole original successful capture completion required\")\n    result = validate_result(approval, value[\"certificate\"])\n    return deepcopy(result)\n",
+          "count": 1,
+          "whole_new_file_refinement": true
+        },
+        {
+          "old": "    environment[\"BROAD_READER_CAPTURE_APPROVAL\"] = canonical(approval.model_dump(mode=\"json\"))",
+          "new": "    environment[\"BROAD_READER_CAPTURE_APPROVAL\"] = canonical(approval.model_dump(mode=\"json\"))\n    environment[\"BROAD_READER_CAPTURE_CONTROLLER_SHA256\"] = approval.controller_sha256",
+          "count": 1
+        },
+        {
+          "old": "\"job\": last_inventory[\"job\"], \"execution_document\": last_inventory[\"executions\"][0],",
+          "new": "\"job\": last_inventory[\"job\"], \"execution_document\": last_inventory[\"executions\"][0],\n                  \"image_resolution\": prepared[\"image_resolution\"],",
+          "count": 1
+        },
+        {
+          "old": "\"diagnostic_only\", \"acceptance\"))",
+          "new": "\"diagnostic_only\", \"acceptance\", \"image_resolution\"))",
+          "count": 1
+        },
+        {
+          "old": "    namespace = value[\"namespace\"]",
+          "new": "    prepared[\"image_resolution\"] = validated_image_resolution(value[\"image_resolution\"], prepared)\n    namespace = value[\"namespace\"]",
+          "count": 1
+        },
+        {
+          "old": "0062aeffbc5fc3ba230babd0158e13397ac0902cf0b8bd99a4606060cbfbe5b9",
+          "new": "1b849bbd49b0fc07d6140f2174a93b3d3ed967dae278212c2eee94140202a037",
+          "count": 1
+        },
+        {
+          "old": "dev-reader-broad-cap-261026r",
+          "new": "dev-bread-cap-261026r",
+          "count": 1
+        },
+        {
+          "old": "SPEC_SHA = \"1b849bbd49b0fc07d6140f2174a93b3d3ed967dae278212c2eee94140202a037\"",
+          "new": "SPEC_SHA = \"6d757dfd7d4c0a78f5cb9d314d7026f57a704b0d71c7bb855966c7a27015a958\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_permission_capture_backend.py",
+      "new_path": "src/mfdataindia/review/broad_reader_capture_backend.py",
+      "substitutions": [
+        {
+          "old": "reader_permission_capture_controller",
+          "new": "broad_reader_capture_controller",
+          "count": 2
+        },
+        {
+          "old": "reader_permission_capture_inventory",
+          "new": "broad_reader_capture_inventory",
+          "count": 2
+        },
+        {
+          "old": "reader_permission_capture_backend.py",
+          "new": "broad_reader_capture_backend.py",
+          "count": 1
+        },
+        {
+          "old": "reader_permission_capture_spec.py",
+          "new": "broad_reader_capture_spec.py",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "old_path": "scripts/operate_reader_permission_capture_dev.py",
+      "new_path": "scripts/operate_broad_reader_capture_dev.py",
+      "substitutions": [
+        {
+          "old": "reader_permission_capture_backend",
+          "new": "broad_reader_capture_backend",
+          "count": 1
+        },
+        {
+          "old": "reader_permission_capture_controller",
+          "new": "broad_reader_capture_controller",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_access_transport_spec.py",
+      "new_path": "src/mfdataindia/review/broad_reader_transport_spec.py",
+      "substitutions": [
+        {
+          "old": "reader_access_correction as engine",
+          "new": "broad_reader_policy as engine",
+          "count": 1
+        },
+        {
+          "old": "from mfdataindia.review.rollout import Manifest",
+          "new": "from mfdataindia.review.rollout import Manifest\nfrom mfdataindia.review import broad_reader_capture_controller as capture_core\nfrom mfdataindia.review import broad_reader_capture_spec as capture_spec\nfrom psycopg import sql",
+          "count": 1
+        },
+        {
+          "old": "dev-reader-acl-261025a",
+          "new": "dev-reader-broad-261026w",
+          "count": 1
+        },
+        {
+          "old": "mf-reader-access-correction-261025a",
+          "new": "mf-reader-broad-access-261026w",
+          "count": 1
+        },
+        {
+          "old": "reader-column-grant-not-fs13-acceptance",
+          "new": "broad-reader-grant-not-fs13-acceptance",
+          "count": 1
+        },
+        {
+          "old": "863fd37dfa45be74642cf731f44bbd7cc182e263c95309a7d48a4c91af315d00",
+          "new": "eec850a112b39b5fb147653dba2e17c8452d29592dcd4042d4dfe36de3267653",
+          "count": 1
+        },
+        {
+          "old": "5d54dbee9631c806b039306599ad0de0e07533fe4be54e93c6d9a817bcf5fdb9",
+          "new": "5519d0af8782e18d9a3ef81494d2fec4c002f43a2f079a1310f0770f6dc15edf",
+          "count": 1
+        },
+        {
+          "old": "READER_ACCESS_",
+          "new": "BROAD_READER_ACCESS_",
+          "count": 4
+        },
+        {
+          "old": "mf-reader-access-correction-20261025-",
+          "new": "mf-reader-broad-access-20261026-",
+          "count": 1
+        },
+        {
+          "old": "reader-owner-input-v1",
+          "new": "broad-reader-owner-input-v1",
+          "count": 2
+        },
+        {
+          "old": "    engine._validate_acl_atoms(state)\n    engine._validate_settings_seals(state)",
+          "new": "    engine.catalogue(state)",
+          "count": 1
+        },
+        {
+          "old": "\"exclusive_admin\", \"recursive_availability_approved\"))",
+          "new": "\"exclusive_admin\", \"recursive_availability_approved\", \"data_schema_custody\", \"future_owner_provisioning\"))",
+          "count": 1
+        },
+        {
+          "old": "require(window[\"exclusive_admin\"] is True and window[\"recursive_availability_approved\"] is True)",
+          "new": "require(all(window[k] is True for k in (\"exclusive_admin\", \"recursive_availability_approved\",\n                                           \"data_schema_custody\", \"future_owner_provisioning\")))",
+          "count": 1
+        },
+        {
+          "old": "def witness_shape(rows, before):\n    require(type(rows) is list and len(rows) >= 2)\n    for row in rows:\n        keys(row, (\"oid\", \"nspname\", \"relname\", \"relkind\", \"owner\", \"definition\"))\n        require(type(row[\"oid\"]) is int and 0 < row[\"oid\"] <= 4294967295)\n        require(type(row[\"owner\"]) is int and 0 < row[\"owner\"] <= 4294967295)\n        require(all(type(row[k]) is str and bool(row[k]) for k in (\"nspname\", \"relname\")))\n        require(row[\"relkind\"] in (\"r\", \"p\", \"v\"))\n        seal(row[\"definition\"])\n        require(row[\"definition\"][\"is_null\"] is (row[\"relkind\"] != \"v\"))\n    require([r[\"oid\"] for r in rows] == sorted({r[\"oid\"] for r in rows}))\n    for root in before[\"relations\"]:\n        if root[\"nspname\"] == \"mf\" and root[\"relname\"] in engine.TARGETS:\n            expected = {k: root[k] for k in rows[0]}\n            require(expected in rows)\n\n\ndef proposal(before, lock_witness, window):\n    state_shape(before)\n    validate_window(window)\n    change = engine.prepare_change(before, window_reference=window[\"reference\"])\n    require(change[\"engine_sha256\"] == ENGINE_SHA)\n    witness_shape(lock_witness, before)\n    require(bool(change[\"delta\"]))\n    return {\"format\": \"reader-owner-grant-proposal-v1\", \"proposal_only\": True,\n            \"change\": change, \"lock_witness\": deepcopy(lock_witness), \"window\": deepcopy(window),\n            \"reversal_template\": {\"not_executable\": True, \"operation\": \"REVOKE_SELECT_COLUMNS_RESTRICT\",\n                \"original_change_sha256\": fingerprint(change), \"expected_before_sha256\": fingerprint(change[\"after\"]),\n                \"expected_after_sha256\": fingerprint(change[\"before\"]), \"delta\": deepcopy(change[\"delta\"]),\n                \"owner\": engine.OWNER, \"reader\": engine.READER, \"separate_exact_approval_required\": True}}\n\n\ndef validate_proposal(value):\n    keys(value, (\"format\", \"proposal_only\", \"change\", \"lock_witness\", \"window\", \"reversal_template\"))\n    expected = proposal(value[\"change\"][\"before\"], value[\"lock_witness\"], value[\"window\"])\n    require(canonical(value) == canonical(expected))\n    return deepcopy(expected)\n",
+          "new": "def witness_shape(rows, before):\n    require(type(rows) is list)\n    wanted = [{k: r[k] for k in capture_spec.frozen.CANDIDATE_COLUMNS}\n              for r in before[\"relations\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\")]\n    require(rows == sorted(wanted, key=lambda r: r[\"oid\"]))\n\n\ndef engine_document(proposal):\n    w = proposal[\"window\"]\n    window = {\"starts_at\": timestamp(w[\"starts_at\"]).isoformat(),\n              \"ends_at\": timestamp(w[\"ends_at\"]).isoformat(),\n              \"exclusive_administration\": w[\"exclusive_admin\"],\n              \"data_schema_custody\": w[\"data_schema_custody\"],\n              \"future_owner_provisioning\": w[\"future_owner_provisioning\"]}\n    return engine.approval_document(proposal[\"change\"], window=window)\n\n\ndef reversal(change):\n    commands = []\n    for item in reversed(change[\"delta\"][\"defaults\"]):\n        commands.append(sql.SQL(\n            \"ALTER DEFAULT PRIVILEGES FOR ROLE {} IN SCHEMA {} REVOKE SELECT ON TABLES FROM {} RESTRICT\"\n        ).format(sql.Identifier(engine.OWNER), sql.Identifier(item[\"schema\"]), sql.Identifier(engine.READER)).as_string())\n    for item in reversed(change[\"delta\"][\"relations\"]):\n        commands.append(sql.SQL(\"REVOKE SELECT ON TABLE {}.{} FROM {} RESTRICT\").format(\n            sql.Identifier(item[\"schema\"]), sql.Identifier(item[\"name\"]), sql.Identifier(engine.READER)).as_string())\n    for item in reversed(change[\"delta\"][\"schemas\"]):\n        commands.append(sql.SQL(\"REVOKE USAGE ON SCHEMA {} FROM {} RESTRICT\").format(\n            sql.Identifier(item[\"schema\"]), sql.Identifier(engine.READER)).as_string())\n    return {\"not_executable\": True, \"separate_exact_approval_required\": True,\n            \"original_change_sha256\": fingerprint(change), \"delta\": deepcopy(change[\"delta\"]),\n            \"expected_before_sha256\": change[\"after_sha256\"],\n            \"expected_after_sha256\": change[\"before_sha256\"], \"sql_template\": commands,\n            \"defaults_reversal_does_not_revoke_inherited_object_grants\": True}\n\n\ndef proposal(capture_completion, window):\n    capture = capture_core.validate_completion(capture_completion)\n    validate_window(window)\n    require(timestamp(window[\"captured_at\"]) == datetime.fromisoformat(\n        capture[\"context\"][\"transaction_started_at\"].replace(\"Z\", \"+00:00\")).replace(microsecond=0))\n    before = capture[\"state\"]\n    state_shape(before)\n    change = engine.prepare(before)\n    require(change[\"profile_sha256\"] == PROFILE_SHA and bool(change[\"sql\"]))\n    locks = [deepcopy(r) for r in capture[\"candidate\"] if r[\"relkind\"] in (\"r\", \"p\", \"v\")]\n    witness_shape(locks, change[\"before\"])\n    materialized = [deepcopy(r) for r in capture[\"candidate\"] if r[\"relkind\"] == \"m\"]\n    return {\"format\": \"broad-reader-owner-grant-proposal-v1\", \"proposal_only\": True,\n            \"capture_completion\": deepcopy(capture_completion), \"change\": change,\n            \"lock_witness\": locks, \"materialized_unlocked\": materialized,\n            \"window\": deepcopy(window), \"reversal_template\": reversal(change)}\n\n\ndef validate_proposal(value):\n    keys(value, (\"format\", \"proposal_only\", \"capture_completion\", \"change\", \"lock_witness\",\n                 \"materialized_unlocked\", \"window\", \"reversal_template\"))\n    expected = proposal(value[\"capture_completion\"], value[\"window\"])\n    require(canonical(value) == canonical(expected))\n    engine_document(value)\n    return deepcopy(expected)\n",
+          "count": 1
+        },
+        {
+          "old": "    validate_proposal(value[\"grant_proposal\"])\n    return deepcopy(value)",
+          "new": "    p = validate_proposal(value[\"grant_proposal\"])\n    captured = capture_core.Approval.model_validate(p[\"capture_completion\"][\"approval\"])\n    require(captured.manifest.git_sha == m.git_sha and captured.manifest.image == m.image)\n    require(captured.controller_sha256 == CAPTURE_CONTROLLER_SHA)\n    return deepcopy(value)",
+          "count": 1
+        },
+        {
+          "old": "def expected_engine_receipt(payload):\n    p = validate_payload(payload)[\"grant_proposal\"]\n    result = {\"stage\": \"COMMITTED_VERIFIED\", \"change\": deepcopy(p[\"change\"]),\n              \"administrative_window_is_external_trust_boundary\": True,\n              \"postcommit_permanence_guarantee\": False, \"performance_or_FS13_acceptance\": False}\n    result[\"receipt_sha256\"] = fingerprint(result)\n    return result\n",
+          "new": "def expected_engine_receipt(payload):\n    p = validate_payload(payload)[\"grant_proposal\"]\n    document = engine_document(p)\n    change = p[\"change\"]\n    result = {\"stage\": \"COMMITTED_VERIFIED\", \"profile_sha256\": PROFILE_SHA,\n              \"inputs_sha256\": engine.fingerprint(document), \"plan_sha256\": engine.fingerprint(change),\n              \"before_sha256\": change[\"before_sha256\"], \"after_sha256\": change[\"after_sha256\"],\n              \"delta\": deepcopy(change[\"delta\"]), \"coverage\": deepcopy(change[\"coverage\"]),\n              \"defaults_reversal_does_not_revoke_inherited_object_grants\": True,\n              \"administrative_and_data_schema_custody_are_external_trust\": True,\n              \"postcommit_permanence_guarantee\": False, \"performance_or_FS13_acceptance\": False}\n    result[\"receipt_sha256\"] = engine.fingerprint(result)\n    return result\n",
+          "count": 1
+        },
+        {
+          "old": "PROFILE_SHA = \"5519d0af8782e18d9a3ef81494d2fec4c002f43a2f079a1310f0770f6dc15edf\"",
+          "new": "PROFILE_SHA = \"5519d0af8782e18d9a3ef81494d2fec4c002f43a2f079a1310f0770f6dc15edf\"\nCAPTURE_CONTROLLER_SHA = \"a2ddbf6a4f7d4db16a189379ec715a4078537f9994dc4065c75d637b9c9ceeaa\"",
+          "count": 1
+        },
+        {
+          "old": "a2ddbf6a4f7d4db16a189379ec715a4078537f9994dc4065c75d637b9c9ceeaa",
+          "new": "7e7bf8966e026262bb9eaf951659333aec9f8cd1adf02e4ae608d3e6a8c07b03",
+          "count": 1
+        },
+        {
+          "old": "CAPTURE_CONTROLLER_SHA = \"7e7bf8966e026262bb9eaf951659333aec9f8cd1adf02e4ae608d3e6a8c07b03\"",
+          "new": "CAPTURE_CONTROLLER_SHA = \"75bb5e95cbaee1a3849f5df6b34addaaff3ba96d895428d0e4f2e3f5cff77979\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "scripts/apply_reader_access_correction_dev.py",
+      "new_path": "scripts/apply_broad_reader_access_dev.py",
+      "substitutions": [
+        {
+          "old": "reader_access_correction as engine",
+          "new": "broad_reader_policy as engine",
+          "count": 1
+        },
+        {
+          "old": "from mfdataindia.review import broad_reader_policy as engine\nfrom mfdataindia.review import reader_access_profile_v1 as profile\n",
+          "new": "from mfdataindia.review import broad_reader_policy as engine\n",
+          "count": 1
+        },
+        {
+          "old": "reader_access_transport_spec",
+          "new": "broad_reader_transport_spec",
+          "count": 1
+        },
+        {
+          "old": "reader_access_owner_connection",
+          "new": "broad_reader_owner_connection",
+          "count": 1
+        },
+        {
+          "old": "reader_access_transport_controller",
+          "new": "broad_reader_transport_controller",
+          "count": 1
+        },
+        {
+          "old": "\"engine\": Path(engine.__file__).resolve(), \"profile\": Path(profile.__file__).resolve()",
+          "new": "\"engine\": Path(engine.__file__).resolve(), \"capture_controller\": Path(spec.capture_core.__file__).resolve()",
+          "count": 1
+        },
+        {
+          "old": "spec.require(actual[\"engine\"] == spec.ENGINE_SHA and actual[\"profile\"] == spec.PROFILE_SHA)",
+          "new": "spec.require(actual[\"engine\"] == spec.ENGINE_SHA and engine.PROFILE_SHA256 == spec.PROFILE_SHA)\n    spec.require(actual[\"capture_controller\"] == spec.CAPTURE_CONTROLLER_SHA)",
+          "count": 1
+        },
+        {
+          "old": "return {\"packaged_\" + k + \"_sha256\": v for k, v in actual.items()} | {",
+          "new": "return {\"packaged_\" + k + \"_sha256\": v for k, v in actual.items()} | {\n        \"profile_sha256\": engine.PROFILE_SHA256,",
+          "count": 1
+        },
+        {
+          "old": "\"approval_sha256\": fingerprint(approval), \"lock_witness\": payload[\"grant_proposal\"][\"lock_witness\"],",
+          "new": "\"approval_sha256\": fingerprint(approval), \"lock_witness\": payload[\"grant_proposal\"][\"lock_witness\"],\n            \"materialized_unlocked\": payload[\"grant_proposal\"][\"materialized_unlocked\"],\n            \"capture_completion_sha256\": fingerprint(payload[\"grant_proposal\"][\"capture_completion\"]),",
+          "count": 1
+        },
+        {
+          "old": "permit = engine.Permit(payload[\"grant_proposal\"][\"change\"], fingerprint(payload[\"grant_proposal\"][\"change\"]))\n        result = engine.run_change(transport, permit)",
+          "new": "document = spec.engine_document(payload[\"grant_proposal\"])\n        permit = engine.Permit(document, engine.fingerprint(document))\n        result = engine.apply(transport, permit)",
+          "count": 1
+        },
+        {
+          "old": "engine.ChangeFailure",
+          "new": "engine.PolicyError",
+          "count": 3
+        },
+        {
+          "old": "\"PRECOMMIT_ABORT_UNCONFIRMED_WALL_TIMEOUT_NO_RETRY\", \"PRECOMMIT_ROLLBACK_UNCONFIRMED\"",
+          "new": "\"WALL_ABORT_UNCONFIRMED_NO_FURTHER_IO\", \"ABORT_UNCONFIRMED_NO_RETRY\", \"BEFORE_BEGIN_REJECTED_NO_IO\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_access_transport_controller.py",
+      "new_path": "src/mfdataindia/review/broad_reader_transport_controller.py",
+      "substitutions": [
+        {
+          "old": "reader_access_transport_spec",
+          "new": "broad_reader_transport_spec",
+          "count": 1
+        },
+        {
+          "old": "mf-reader-access-correction-261025a",
+          "new": "mf-reader-broad-access-261026w",
+          "count": 1
+        },
+        {
+          "old": "dev-reader-acl-261025a",
+          "new": "dev-reader-broad-261026w",
+          "count": 1
+        },
+        {
+          "old": "apply_reader_access_correction_dev.py",
+          "new": "apply_broad_reader_access_dev.py",
+          "count": 1
+        },
+        {
+          "old": "5e3e13b7c848897558798060fd3c3cc5572cbbd72efc90d95cfba62056d2878c",
+          "new": "53ea5854bdd9aba13f8ab96a1b99be6ea6e9d1e30def5a30e386b95f62c522a7",
+          "count": 1
+        },
+        {
+          "old": "9cc349a6e5ae38a97e752c6e50d303056e472b3ad87da3e66c56717fde263c3e",
+          "new": "7e3ca43358dc9af2b22daddd9d54e30cf83f5dc176c0081e9bf64a9ee3daf188",
+          "count": 1
+        },
+        {
+          "old": "fe5e888bd737d7e3f38408d7c9c652ceb604dfbadeb58e1af56bd9faa4c02336",
+          "new": "74e92bd243ba99390bea720378a4ca748389527a5c534d8f7ae7c29f394dc4a4",
+          "count": 1
+        },
+        {
+          "old": "\"packaged_engine_sha256\": ENGINE_SHA, \"packaged_profile_sha256\": PROFILE_SHA,",
+          "new": "\"packaged_engine_sha256\": ENGINE_SHA, \"profile_sha256\": PROFILE_SHA,\n               \"packaged_capture_controller_sha256\": permission.CAPTURE_CONTROLLER_SHA,",
+          "count": 1
+        },
+        {
+          "old": "\"lock_witness\": approval.payload[\"grant_proposal\"][\"lock_witness\"],",
+          "new": "\"lock_witness\": approval.payload[\"grant_proposal\"][\"lock_witness\"],\n                \"materialized_unlocked\": approval.payload[\"grant_proposal\"][\"materialized_unlocked\"],\n                \"capture_completion_sha256\": fingerprint(approval.payload[\"grant_proposal\"][\"capture_completion\"]),",
+          "count": 1
+        },
+        {
+          "old": "\"exact_column_grant_only\": True",
+          "new": "\"exact_broad_grant_only\": True",
+          "count": 1
+        },
+        {
+          "old": "7e3ca43358dc9af2b22daddd9d54e30cf83f5dc176c0081e9bf64a9ee3daf188",
+          "new": "4e59728c6784694769a8c98caab65b333d10fb0b7db25d5cbce147091e4aebe7",
+          "count": 1
+        },
+        {
+          "old": "SPEC_SHA = \"4e59728c6784694769a8c98caab65b333d10fb0b7db25d5cbce147091e4aebe7\"",
+          "new": "SPEC_SHA = \"399e7e083c1503419a16741e1faa140b7047121179f19db93048551db0cb7fe9\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/reader_access_transport_backend.py",
+      "new_path": "src/mfdataindia/review/broad_reader_transport_backend.py",
+      "substitutions": [
+        {
+          "old": "reader_access_transport_controller",
+          "new": "broad_reader_transport_controller",
+          "count": 2
+        },
+        {
+          "old": "reader_access_correction as engine",
+          "new": "broad_reader_policy as engine",
+          "count": 1
+        },
+        {
+          "old": "from mfdataindia.review import broad_reader_policy as engine\nfrom mfdataindia.review import reader_access_profile_v1 as profile\n",
+          "new": "from mfdataindia.review import broad_reader_policy as engine\n",
+          "count": 1
+        },
+        {
+          "old": "reader_access_owner_connection",
+          "new": "broad_reader_owner_connection",
+          "count": 2
+        },
+        {
+          "old": "reader_access_transport_backend.py",
+          "new": "broad_reader_transport_backend.py",
+          "count": 1
+        },
+        {
+          "old": "reader_access_transport_spec.py",
+          "new": "broad_reader_transport_spec.py",
+          "count": 2
+        },
+        {
+          "old": "or Path(engine.__file__).resolve() != self.repo / \"src/mfdataindia/review/reader_access_correction.py\"",
+          "new": "or Path(engine.__file__).resolve() != self.repo / \"src/mfdataindia/review/broad_reader_policy.py\"",
+          "count": 1
+        },
+        {
+          "old": "                or Path(profile.__file__).resolve() != self.repo / \"src/mfdataindia/review/reader_access_profile_v1.py\"\n                or hashlib.sha256(Path(profile.__file__).read_bytes()).hexdigest() != core.PROFILE_SHA",
+          "new": "                or engine.PROFILE_SHA256 != core.PROFILE_SHA",
+          "count": 1
+        },
+        {
+          "old": "        return str(project[\"projectNumber\"])",
+          "new": "        self.verify_capture_source()\n        return str(project[\"projectNumber\"])",
+          "count": 1
+        },
+        {
+          "old": "from mfdataindia.review import broad_reader_owner_connection as guarded",
+          "new": "from mfdataindia.review import broad_reader_owner_connection as guarded\nfrom mfdataindia.review import broad_reader_capture_backend as capture_backend",
+          "count": 1
+        },
+        {
+          "old": "    if kind == \"auth\" and name is None:",
+          "new": "    capture_kinds = {\"capture-job\": \"job\", \"capture-executions\": \"executions\",\n                     \"capture-execution\": \"execution\", \"capture-logs\": \"logs\"}\n    if kind in capture_kinds:\n        if kind == \"capture-job\":\n            if name is not None:\n                raise ValueError(\"fixed capture job only\")\n            name = core.permission.capture_core.NAME\n        return capture_backend.metadata_arguments(capture_kinds[kind], name)\n    if kind == \"auth\" and name is None:",
+          "count": 1
+        },
+        {
+          "old": "        auth = self.metadata(\"auth\")",
+          "new": "        cap = core.permission.capture_core\n        if (Path(cap.__file__).resolve() != self.repo / \"src/mfdataindia/review/broad_reader_capture_controller.py\"\n                or hashlib.sha256(Path(cap.__file__).read_bytes()).hexdigest() != core.permission.CAPTURE_CONTROLLER_SHA\n                or Path(cap.permission.__file__).resolve() != self.repo / \"src/mfdataindia/review/broad_reader_capture_spec.py\"\n                or hashlib.sha256(Path(cap.permission.__file__).read_bytes()).hexdigest() != cap.SPEC_SHA\n                or hashlib.sha256((self.repo / cap.WORKER).read_bytes()).hexdigest() != cap.WORKER_SHA):\n            raise ValueError(\"capture source/profile provenance differs\")\n        for name, digest in cap.permission.SOURCE_HASHES.items():\n            if hashlib.sha256((self.repo / name).read_bytes()).hexdigest() != digest:\n                raise ValueError(\"capture dependencies differ\")\n        auth = self.metadata(\"auth\")",
+          "count": 1
+        },
+        {
+          "old": "    def image_resolution(self):",
+          "new": "    def verify_capture_source(self):\n        \"\"\"Future G5 preflight: actual fixed provider capture, never local shape alone.\"\"\"\n        cap = core.permission.capture_core\n        approved = self.approval.payload[\"grant_proposal\"][\"capture_completion\"]\n        cap.validate_completion(approved)\n        capture_approval = cap.Approval.model_validate(approved[\"approval\"])\n        prepared = cap.inputs(capture_approval)\n        namespace = approved[\"namespace\"]\n        wanted_seal = cap.deployed(approved[\"job\"], prepared, namespace=namespace)\n        wanted_id = cap.immutable_execution(approved[\"execution_document\"], prepared,\n                                          wanted_seal, namespace=namespace)\n        job = self.metadata(\"capture-job\")\n        executions = self.metadata(\"capture-executions\")\n        if type(executions) is not list or len(executions) != 1:\n            raise ValueError(\"sole actual capture execution required\")\n        if cap.deployed(job, prepared, namespace=namespace) != wanted_seal:\n            raise ValueError(\"capture job identity/profile drift\")\n        cap.immutable_execution(executions[0], prepared, wanted_seal,\n                                namespace=namespace, identity=wanted_id)\n        observed = self.metadata(\"capture-execution\", approved[\"execution\"])\n        cap.immutable_execution(observed, prepared, wanted_seal,\n                                namespace=namespace, identity=wanted_id)\n        certificate = None\n        for attempt in range(6):\n            try:\n                certificate = execution_evidence(self.metadata(\"capture-logs\", approved[\"execution\"]))\n                break\n            except ExecutionEvidenceNotDelivered:\n                if attempt == 5:\n                    raise\n                time.sleep(5)  # Bounded delivery reads only, never execute/retry.\n        if canonical(certificate) != canonical(approved[\"certificate\"]):\n            raise ValueError(\"actual capture certificate differs from approved package\")\n        actual = deepcopy(approved)\n        actual.update(job=job, execution_document=observed, certificate=certificate)\n        cap.validate_completion(actual)\n        cap.job_execution_status(job, wanted_id)\n\n    def image_resolution(self):",
+          "count": 1
+        },
+        {
+          "old": "        prepared = cap.inputs(capture_approval)",
+          "new": "        prepared = cap.inputs(capture_approval)\n        prepared[\"image_resolution\"] = cap.validated_image_resolution(approved[\"image_resolution\"], prepared)\n        if prepared[\"image_resolution\"] != self._image_resolution:\n            raise ValueError(\"capture child/config proof differs from fresh authenticated resolution\")",
+          "count": 1
+        },
+        {
+          "old": "        self.verify_capture_source()\n        return str(project[\"projectNumber\"])",
+          "new": "        self._namespace = str(project[\"projectNumber\"])\n        self.verify_capture_source()\n        return self._namespace",
+          "count": 1
+        },
+        {
+          "old": "        namespace = approved[\"namespace\"]",
+          "new": "        namespace = approved[\"namespace\"]\n        if namespace != getattr(self, \"_namespace\", None):\n            raise ValueError(\"capture namespace differs from fresh explicit projectNumber\")",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "scripts/operate_reader_access_correction_dev.py",
+      "new_path": "scripts/operate_broad_reader_access_dev.py",
+      "substitutions": [
+        {
+          "old": "reader_access_transport_backend",
+          "new": "broad_reader_transport_backend",
+          "count": 1
+        },
+        {
+          "old": "reader_access_transport_controller",
+          "new": "broad_reader_transport_controller",
+          "count": 1
+        },
+        {
+          "old": "exact column grant verified",
+          "new": "exact broad read grant verified",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
