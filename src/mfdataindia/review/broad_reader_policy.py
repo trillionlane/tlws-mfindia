@@ -245,6 +245,14 @@ def catalogue(document):
             )
             require(not unsafe, "FUTURE_WRITE_OR_GRANT_OPTION_NOT_ALLOWED")
     for default in value["defaults"]:
+        if default["defaclnamespace"] in domain_oids and default["defaclobjtype"] == "r":
+            require(
+                not any(
+                    grantee == 0 and privilege == "SELECT"
+                    for _, grantee, privilege, _ in default["acl"]
+                ),
+                "PUBLIC_FUTURE_DATA_READ_NOT_ALLOWED",
+            )
         if default["defaclnamespace"] == 0 and default["defaclobjtype"] == "r":
             require(
                 not any(

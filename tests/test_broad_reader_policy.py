@@ -15,6 +15,22 @@ def state():
     return frozen_state()  # Synthetic complete catalogue; never live evidence.
 
 
+@pytest.mark.parametrize("creator", [16587, 49999])
+def test_schema_local_public_future_read_is_not_authenticated_only(creator):
+    s = state()
+    s["defaults"] = [
+        dict(
+            oid=992,
+            defaclrole=creator,
+            defaclnamespace=16595,
+            defaclobjtype="r",
+            acl=[[creator, 0, "SELECT", False]],
+        )
+    ]
+    with pytest.raises(p.PolicyError, match="PUBLIC_FUTURE_DATA_READ"):
+        p.prepare(s)
+
+
 @pytest.mark.parametrize("grantee", [0, 40032])
 @pytest.mark.parametrize("creator", [16587, 49999])
 def test_global_select_cannot_claim_fixed_domain_future_coverage(grantee, creator):

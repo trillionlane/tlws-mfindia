@@ -41,6 +41,18 @@ def reader(dsn):
     )
 
 
+@pytest.mark.parametrize("creator", ["owner", "other"])
+def test_native_schema_local_public_future_read_rejects_without_changes(fixture_db, creator):
+    with (
+        owner(fixture_db) if creator == "owner" else psycopg.connect(fixture_db, autocommit=True)
+    ) as conn:
+        conn.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA mf GRANT SELECT ON TABLES TO PUBLIC")
+    before, original = state(fixture_db), rows(fixture_db)
+    with pytest.raises(p.PolicyError, match="PUBLIC_FUTURE_DATA_READ"):
+        p.prepare(before)
+    assert state(fixture_db) == before and rows(fixture_db) == original
+
+
 @pytest.mark.parametrize("grantee", [p.READER, "PUBLIC"])
 def test_native_global_future_read_rejects_before_changes_and_preserves_state(fixture_db, grantee):
     with owner(fixture_db) as conn:

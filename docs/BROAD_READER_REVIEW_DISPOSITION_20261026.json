@@ -7,5 +7,12 @@
   "P1_global_default": "Existing non-grantable global table SELECT to reader or PUBLIC survives admission despite the fixed-domain future-coverage claim. Reject global table SELECT for either audience, regardless of creator, before planning; do not revoke unrelated/default grants automatically.",
   "P1_current_public": "Existing non-grantable PUBLIC SELECT on target relations or live columns contradicts authenticated/shared-reader-only policy. Reject these current PUBLIC read atoms before planning; do not auto-revoke or treat an ACL hash as human repair authority.",
   "disposition_before_corrective_code": "Add pure regressions and disposable native-PG fixtures, first demonstrate pure admission failures under the exact reviewed implementation, then correct only the new module/tests/docs and repeat full local/exact review/native CI. Existing full parent bytes, broad private read scope, bounds, old engine/profile/controllers, dependencies and workflows remain unchanged.",
-  "no_live_calls_or_existing_ACL_changes": true
+  "no_live_calls_or_existing_ACL_changes": true,
+  "second_exact_review": {
+    "head": "658624766212cb444fd6e3af6ed5220842878f59",
+    "turn": "01a176bd-f4ee-7203-ac5a-5693c35b539d",
+    "final": "CHANGES_REQUIRED",
+    "sole_P1": "Schema-local default table SELECT TO PUBLIC remains admitted for both fixed owner and another creator; original two P1 reproducers corrected.",
+    "disposition_before_second_correction": "Reject PUBLIC table SELECT defaults in every present domain schema for any creator, in addition to existing global default rejection. Do not reject or modify unrelated private grantees. Add two pure creator cases that first fail under this exact reviewed head and two native disposable fixtures. No automatic revokes or runtime authority."
+  }
 }
