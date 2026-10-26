@@ -167,7 +167,21 @@ jobs:
       - name: 'CI policy admitted: ${{ needs.plan.outputs.mode }}'
         if: ${{ always() }}
         env:
-          CI_STEPS: ${{ toJSON(steps) }}
+          CI_STEPS: >-
+            {
+              "original_0": ${{ toJSON(steps.original_0) }},
+              "original_1": ${{ toJSON(steps.original_1) }},
+              "original_2": ${{ toJSON(steps.original_2) }},
+              "original_3": ${{ toJSON(steps.original_3) }},
+              "original_4": ${{ toJSON(steps.original_4) }},
+              "original_5": ${{ toJSON(steps.original_5) }},
+              "original_6": ${{ toJSON(steps.original_6) }},
+              "original_7": ${{ toJSON(steps.original_7) }},
+              "original_8": ${{ toJSON(steps.original_8) }},
+              "original_9": ${{ toJSON(steps.original_9) }},
+              "policy": ${{ toJSON(steps.policy) }},
+              "reduced": ${{ toJSON(steps.reduced) }}
+            }
         run: python scripts/ci_risk_policy.py gate --job tests
 
   verify:
@@ -659,5 +673,51 @@ jobs:
       - name: 'CI policy admitted: ${{ needs.plan.outputs.mode }}'
         if: ${{ always() }}
         env:
-          CI_STEPS: ${{ toJSON(steps) }}
+          CI_STEPS: >-
+            {
+              "original_0": ${{ toJSON(steps.original_0) }},
+              "original_1": ${{ toJSON(steps.original_1) }},
+              "original_2": ${{ toJSON(steps.original_2) }},
+              "original_3": ${{ toJSON(steps.original_3) }},
+              "original_4": ${{ toJSON(steps.original_4) }},
+              "original_5": ${{ toJSON(steps.original_5) }},
+              "original_6": ${{ toJSON(steps.original_6) }},
+              "original_7": ${{ toJSON(steps.original_7) }},
+              "original_8": ${{ toJSON(steps.original_8) }},
+              "original_9": ${{ toJSON(steps.original_9) }},
+              "original_10": ${{ toJSON(steps.original_10) }},
+              "original_11": ${{ toJSON(steps.original_11) }},
+              "original_12": ${{ toJSON(steps.original_12) }},
+              "original_13": ${{ toJSON(steps.original_13) }},
+              "original_14": ${{ toJSON(steps.original_14) }},
+              "original_15": ${{ toJSON(steps.original_15) }},
+              "original_16": ${{ toJSON(steps.original_16) }},
+              "original_17": ${{ toJSON(steps.original_17) }},
+              "original_18": ${{ toJSON(steps.original_18) }},
+              "original_19": ${{ toJSON(steps.original_19) }},
+              "original_20": ${{ toJSON(steps.original_20) }},
+              "original_21": ${{ toJSON(steps.original_21) }},
+              "original_22": ${{ toJSON(steps.original_22) }},
+              "original_23": ${{ toJSON(steps.original_23) }},
+              "original_24": ${{ toJSON(steps.original_24) }},
+              "original_25": ${{ toJSON(steps.original_25) }},
+              "original_26": ${{ toJSON(steps.original_26) }},
+              "original_27": ${{ toJSON(steps.original_27) }},
+              "original_28": ${{ toJSON(steps.original_28) }},
+              "original_29": ${{ toJSON(steps.original_29) }},
+              "original_30": ${{ toJSON(steps.original_30) }},
+              "original_31": ${{ toJSON(steps.original_31) }},
+              "original_32": ${{ toJSON(steps.original_32) }},
+              "original_33": ${{ toJSON(steps.original_33) }},
+              "original_34": ${{ toJSON(steps.original_34) }},
+              "original_35": ${{ toJSON(steps.original_35) }},
+              "original_36": ${{ toJSON(steps.original_36) }},
+              "original_37": ${{ toJSON(steps.original_37) }},
+              "original_38": ${{ toJSON(steps.original_38) }},
+              "original_39": ${{ toJSON(steps.original_39) }},
+              "original_40": ${{ toJSON(steps.original_40) }},
+              "original_41": ${{ toJSON(steps.original_41) }},
+              "policy": ${{ toJSON(steps.policy) }},
+              "reduced": ${{ toJSON(steps.reduced) }}
+            }
         run: python scripts/ci_risk_policy.py gate --job verify

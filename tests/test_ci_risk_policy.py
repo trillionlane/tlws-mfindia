@@ -221,6 +221,47 @@ def load_workflow():
     return yaml.load((ROOT / '.github/workflows/verify.yml').read_text(), Loader=yaml.BaseLoader)
 
 
+def render_authored_gate_projection(job, context):
+    """Evaluate only the two exact JSON expression shapes used by our workflow."""
+    template = load_workflow()['jobs'][job]['steps'][-1]['env']['CI_STEPS']
+    if template == '${{ toJSON(steps) }}':
+        return json.loads(json.dumps(context))
+    for key in [*[row['id'] for row in MANIFEST[job]], 'policy', 'reduced']:
+        expression = '${{ toJSON(steps.' + key + ') }}'
+        assert template.count(expression) == 1
+        template = template.replace(expression, json.dumps(context.get(key)))
+    assert '${{' not in template
+    return json.loads(template)
+
+
+@pytest.mark.parametrize('job', ['tests', 'verify'])
+@pytest.mark.parametrize('mode', ['full', 'targeted', 'docs'])
+def test_real_service_context_projects_every_authored_step_and_keeps_gate_strict(job, mode):
+    authored = outcomes(job, mode)
+    authored['original_0']['outputs'] = {'escaped': '"quoted"\nnot JSON injection'}
+    # The retained failed native run has this runner-generated service entry.
+    # Its opaque ID is deliberately NOT a validator allowlist or predicate.
+    context = {'223532dba0f241a2b61aa9707550efbb': {
+        'outputs': {}, 'outcome': 'success', 'conclusion': 'success'}, **deepcopy(authored)}
+    projected = render_authored_gate_projection(job, context)
+    policy.gate(job, mode, projected, MANIFEST)
+    assert projected == authored
+    for key in authored:
+        missing = deepcopy(context)
+        del missing[key]
+        with pytest.raises((ValueError, AttributeError)):
+            policy.gate(job, mode, render_authored_gate_projection(job, missing), MANIFEST)
+        for field in ('outcome', 'conclusion'):
+            for bad in ('failure', 'cancelled', 'unknown'):
+                wrong = deepcopy(context)
+                wrong[key][field] = bad
+                with pytest.raises(ValueError):
+                    policy.gate(job, mode, render_authored_gate_projection(job, wrong), MANIFEST)
+    # gate() itself still rejects every unaccounted projected authored entry.
+    with pytest.raises(ValueError):
+        policy.gate(job, mode, {**projected, 'unreviewed_authored_step': authored['policy']}, MANIFEST)
+
+
 def test_actual_workflow_preserves_names_full_sequence_and_main_policy_without_pg_cap():
     wf = load_workflow()
     assert set(wf['jobs']) == {'plan', 'tests', 'verify'}
@@ -234,8 +275,15 @@ def test_actual_workflow_preserves_names_full_sequence_and_main_policy_without_p
         assert job['needs'] == 'plan' and job['if'] == '${{ always() }}'
         assert job['steps'][-1]['if'] == '${{ always() }}'
         assert job['steps'][-1]['run'] == 'python scripts/ci_risk_policy.py gate --job ' + key
-        assert job['steps'][-1]['env']['CI_STEPS'] == '${{ toJSON(steps) }}'
+        authored_ids = [*[row['id'] for row in MANIFEST[key]], 'policy', 'reduced']
+        projection = '{\n' + ',\n'.join(
+            '  ' + json.dumps(step_id) + ': ${{ toJSON(steps.' + step_id + ') }}'
+            for step_id in authored_ids) + '\n}'
+        assert job['steps'][-1]['env']['CI_STEPS'] == projection
         by_id = {step['id']: step for step in job['steps'] if 'id' in step}
+        assert set(by_id) == set(authored_ids)
+        assert len(job['steps']) == len(authored_ids) + 1
+        assert all('id' in step for step in job['steps'][:-1])
         assert by_id['policy']['run'] == 'python scripts/ci_risk_policy.py validate'
         for row in MANIFEST[key]:
             step = by_id[row['id']]
@@ -261,6 +309,19 @@ def synthetic_full_jobs():
                       for name in [*[r['label'] for r in MANIFEST[job]], 'Validate CI plan',
                                    'Run reduced PR checks', 'CI policy admitted: full']]})
     return result
+
+
+@pytest.mark.parametrize('label', [
+    'Initialize containers', 'Stop containers', 'Post Run actions/setup-python@v5'])
+@pytest.mark.parametrize('conclusion', ['success', 'failure', 'cancelled', 'skipped'])
+def test_full_admission_checks_every_runner_service_lifecycle_step(label, conclusion):
+    jobs = synthetic_full_jobs()
+    jobs[1]['steps'].append({'name': label, 'status': 'completed', 'conclusion': conclusion})
+    if conclusion == 'success':
+        assert policy.require_full_policy_jobs(jobs)['policy'] == 'full'
+    else:
+        with pytest.raises(ValueError):
+            policy.require_full_policy_jobs(jobs)
 
 
 @pytest.mark.parametrize('defect', ['none', 'planner_fail', 'docs', 'duplicate', 'missing',

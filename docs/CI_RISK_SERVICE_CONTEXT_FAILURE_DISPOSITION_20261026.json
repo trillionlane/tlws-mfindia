@@ -1,0 +1,11 @@
+{
+  "kind": "ACTUAL_CI_FAILURE_DISPOSITION_BEFORE_CORRECTIVE_CODE",
+  "head": "ebd226275a9ece518dc421af904930ec3a15976a",
+  "run": 40412085610,
+  "cause": "Retained native CI proves all4361tests completed (4360PASS1oldskip) and both images passed; final PostgreSQL gate received implicit runner service-startup context entry plus all12authored steps, so strict whole-context key comparison rejected unknownentry. Realcontext reproduction exits1 against unchanged exacthead. No testfailure or wholeacceptance inferred.",
+  "design_before_code": "CI_RISK_SERVICE_CONTEXT_CORRECTION_DESIGN_20261026_v1.json in preparation; named READONLY review turn01a17a7c-67f2-7b42-a678-31e860f24e50 NO_REMAINING_P1_P2_DESIGN_ONLY beforecode, raw independent-service-context-design-v1-clear-raw.json",
+  "fix": "BOTH original job gate env CI_STEPS becomes explicit typed JSON projection of EVERY authored originalID pluspolicyandreduced using toJSON(steps.EXACT_ID). Validator gate() UNCHANGED, no arbitraryunknown success allowance or ephemeral-ID regex. Actual full-run admission still checks EVERY actual lifecycle step/cleanup and rejects failed service lifecycle.",
+  "regression": "Six providerfree job2 x mode3 actualworkflow projection cases firstFAILoldworkflow dueimplicit servicecontext, thenPASS. Exact authored-ID coverage assertion forbids unaccounted authoredsteps. Every projected missing/failed/cancelled/malformed step remainsrejected; unknownprojectedentry remainsrejected. No testIDs/skips/xfail/assertions removed or weakened.",
+  "preservation": "ONLYworkflow CI_STEPS values change; all original commandbodies/order/IDs/names/ifmodes/resources/timecaps and policycode unchanged. Refresh existing exactworkflow newfullSHA in same6-file inverseplan and helperplanSHApin; same038completeoriginalbytes/hash independentlyrestored. Full884parent sourceauthority retained. No runtime/data/SQL/API/ACL/source/PDF/engine/controller/deps changes.",
+  "delivery": "Fullstablelocal26checks/all21contracts/ownfullcollection/all4361oldIDs+485PG retained; newexactheadnamedreview; normalfreshCIpush/wholeHEAD/readadmission/normalexactmatchmerge/independentMAIN/admission/safeFF. Failedrunconsumedimmutable/no rerun/refetch/admission/merge. No live authority expansion."
+}
