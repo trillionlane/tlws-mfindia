@@ -1,0 +1,7 @@
+{
+  "format": "MF_BROAD_READER_PRIVILEGED_FUNCTION_CORRECTNESS_DISPOSITION_V1",
+  "found_before_PR": "Granting schema USAGE can unlock an already EXECUTE-granted SECURITY DEFINER function even when no new EXECUTE atom is added. Original new-module check covered mf only, not the other 15 fund/research schemas.",
+  "regression_before_fix": "The same pure fixture in all 16 fixed schemas: existing mf check rejects, other 15 fail because unsafe admission did not raise. No live calls occurred.",
+  "disposition_before_fix": "Apply the existing privileged-function admission to ALL fixed schemas. Do not revoke or change any function, narrow the user's read scope, modify the old engine or add a new permission. Native disposable-CI proof must cover blocked schema-USAGE escalation and then successful read-only policy after the unsafe existing EXECUTE grant is removed in the fixture.",
+  "scope": "Correct implementation of the already approved no-admin-review-mutation boundary, not additional runtime authority. Existing privileged functions require separate explicit disposition before any live application."
+}
