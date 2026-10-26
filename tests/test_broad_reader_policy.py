@@ -15,6 +15,31 @@ def state():
     return frozen_state()  # Synthetic complete catalogue; never live evidence.
 
 
+@pytest.mark.parametrize("grantee", [0, 40032])
+@pytest.mark.parametrize("creator", [16587, 49999])
+def test_global_select_cannot_claim_fixed_domain_future_coverage(grantee, creator):
+    s = state()
+    s["defaults"] = [
+        dict(
+            oid=991,
+            defaclrole=creator,
+            defaclnamespace=0,
+            defaclobjtype="r",
+            acl=[[creator, grantee, "SELECT", False]],
+        )
+    ]
+    with pytest.raises(p.PolicyError, match="GLOBAL_TABLE_READ"):
+        p.prepare(s)
+
+
+@pytest.mark.parametrize("group", ["relations", "columns"])
+def test_existing_public_current_read_is_not_authenticated_only(group):
+    s = state()
+    s[group][0]["acl"] = [[16587, 0, "SELECT", False]]
+    with pytest.raises(p.PolicyError, match="PUBLIC_DATA_READ"):
+        p.prepare(s)
+
+
 @pytest.mark.parametrize("schema", p.SCHEMAS)
 def test_schema_usage_must_not_unlock_a_preexisting_privileged_function(schema):
     s = state()

@@ -244,6 +244,22 @@ def catalogue(document):
                 or (kind == "n" and (privilege == "CREATE" or grant_option))
             )
             require(not unsafe, "FUTURE_WRITE_OR_GRANT_OPTION_NOT_ALLOWED")
+    for default in value["defaults"]:
+        if default["defaclnamespace"] == 0 and default["defaclobjtype"] == "r":
+            require(
+                not any(
+                    grantee in {0, reader["oid"]} and privilege == "SELECT"
+                    for _, grantee, privilege, _ in default["acl"]
+                ),
+                "GLOBAL_TABLE_READ_OUTSIDE_DOMAIN_NOT_ALLOWED",
+            )
+    for row in value["relations"] + value["columns"]:
+        require(
+            not any(
+                grantee == 0 and privilege == "SELECT" for _, grantee, privilege, _ in row["acl"]
+            ),
+            "PUBLIC_DATA_READ_NOT_ALLOWED",
+        )
     for ns in namespaces.values():
         require(not ns["create_allowed"], "READER_SCHEMA_CREATE_NOT_ALLOWED")
         if ns["nspname"] in SCHEMAS:

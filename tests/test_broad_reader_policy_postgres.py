@@ -41,6 +41,34 @@ def reader(dsn):
     )
 
 
+@pytest.mark.parametrize("grantee", [p.READER, "PUBLIC"])
+def test_native_global_future_read_rejects_before_changes_and_preserves_state(fixture_db, grantee):
+    with owner(fixture_db) as conn:
+        conn.execute(
+            sql.SQL("ALTER DEFAULT PRIVILEGES GRANT SELECT ON TABLES TO {}").format(
+                sql.Identifier(grantee) if grantee != "PUBLIC" else sql.SQL("PUBLIC")
+            )
+        )
+    before, original = state(fixture_db), rows(fixture_db)
+    with pytest.raises(p.PolicyError, match="GLOBAL_TABLE_READ"):
+        p.prepare(before)
+    assert state(fixture_db) == before and rows(fixture_db) == original
+
+
+@pytest.mark.parametrize("column", [False, True])
+def test_native_public_current_read_rejects_before_changes_and_preserves_state(fixture_db, column):
+    with owner(fixture_db) as conn:
+        conn.execute(
+            "GRANT SELECT"
+            + ("(amfi_scheme_code)" if column else "")
+            + " ON mf.fund_variants TO PUBLIC"
+        )
+    before, original = state(fixture_db), rows(fixture_db)
+    with pytest.raises(p.PolicyError, match="PUBLIC_DATA_READ"):
+        p.prepare(before)
+    assert state(fixture_db) == before and rows(fixture_db) == original
+
+
 def test_native_schema_usage_cannot_unlock_existing_security_definer_mutation(fixture_db):
     original = rows(fixture_db)
     with owner(fixture_db) as conn:

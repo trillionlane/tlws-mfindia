@@ -1,0 +1,11 @@
+{
+  "format": "MF_BROAD_READER_EXACT_REVIEW_DISPOSITION_V1",
+  "reviewed_head": "1f34e0c95902274acad6a544e96119421b71ca28",
+  "reviewer": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "review_turn": "01a176b8-2f54-7f30-a342-7143cdc1b73a",
+  "final": "CHANGES_REQUIRED",
+  "P1_global_default": "Existing non-grantable global table SELECT to reader or PUBLIC survives admission despite the fixed-domain future-coverage claim. Reject global table SELECT for either audience, regardless of creator, before planning; do not revoke unrelated/default grants automatically.",
+  "P1_current_public": "Existing non-grantable PUBLIC SELECT on target relations or live columns contradicts authenticated/shared-reader-only policy. Reject these current PUBLIC read atoms before planning; do not auto-revoke or treat an ACL hash as human repair authority.",
+  "disposition_before_corrective_code": "Add pure regressions and disposable native-PG fixtures, first demonstrate pure admission failures under the exact reviewed implementation, then correct only the new module/tests/docs and repeat full local/exact review/native CI. Existing full parent bytes, broad private read scope, bounds, old engine/profile/controllers, dependencies and workflows remain unchanged.",
+  "no_live_calls_or_existing_ACL_changes": true
+}
