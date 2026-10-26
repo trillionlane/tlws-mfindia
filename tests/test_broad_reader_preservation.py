@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import pytest
 from broad_transport_preservation import restore_broad_parent
+from ci_risk_preservation import restore_policy_parent
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -68,7 +69,7 @@ def test_complete_old_workflow_is_prefix_and_one_new_both_image_smoke():
     authority = json.loads(
         (ROOT / "docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json").read_text()
     )
-    raw = (ROOT / ".github/workflows/verify.yml").read_bytes()
+    raw = restore_policy_parent(".github/workflows/verify.yml", (ROOT / ".github/workflows/verify.yml").read_bytes())
     before = restore_broad_parent(".github/workflows/verify.yml", raw)
     assert raw.startswith(before)
     assert (

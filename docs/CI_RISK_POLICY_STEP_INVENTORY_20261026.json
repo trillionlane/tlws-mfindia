@@ -1,0 +1,477 @@
+{
+  "tests": [
+    {
+      "id": "original_0",
+      "label": "Run actions/checkout@v4",
+      "modes": [
+        "docs",
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "c2eff39554277c5997b69fa9a37253a887e06edb2936a649f65896949d3cfa83"
+    },
+    {
+      "id": "original_1",
+      "label": "Run actions/setup-python@v5",
+      "modes": [
+        "docs",
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "f100008840711e2aeada85c5a06faed565c3051f2e2934d0c62ac4e0a458f458"
+    },
+    {
+      "id": "original_2",
+      "label": "Install locked dependencies",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "37985844b999086d51836d00722e62fc15f893a7aebcc975d85182e53095a9c6"
+    },
+    {
+      "id": "original_3",
+      "label": "Lint",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "d27d95a714ccb4091d790590e60d7f6e86ae907646d881d787a17d6780007551"
+    },
+    {
+      "id": "original_4",
+      "label": "Verify versioned OpenAPI contracts",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "0b2f521cb1dc06f232ecfad287e7810b2e82aea6f04a289ab2b8d806eb98f1b2"
+    },
+    {
+      "id": "original_5",
+      "label": "Verify UTI method-upgrade PostgreSQL boundaries first",
+      "modes": [
+        "full"
+      ],
+      "original_step_sha256": "b9779d5c50f0807abb106e09831fa1641ad4c54396e27172dfd7f466ad6b5de9"
+    },
+    {
+      "id": "original_6",
+      "label": "Complete full test collection against PostgreSQL 18",
+      "modes": [
+        "full"
+      ],
+      "original_step_sha256": "ab694a43b83e7ab37ea3a281a132b0a5cbbb8e70ae4433fe95a391fe1f1bf248"
+    },
+    {
+      "id": "original_7",
+      "label": "Verify read-only facts process tools",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "d1f6024bf19d5c698f59cf2ae58a4c49e0c2a5191f3f33d4265d9a51952b7599"
+    },
+    {
+      "id": "original_8",
+      "label": "Audit Python dependencies",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "ab29c6854cf4d931ee4edeab53e0f1f6d5bd3caf5d3b00e3fb953843406c8160"
+    },
+    {
+      "id": "original_9",
+      "label": "Scan tracked files for credential material",
+      "modes": [
+        "docs",
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "32c63caa55e98bb75162b6afbc2c7dc9db03aa5330ed8ea0b6143e5d02bda665"
+    }
+  ],
+  "verify": [
+    {
+      "id": "original_0",
+      "label": "Run actions/checkout@v4",
+      "modes": [
+        "docs",
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "c2eff39554277c5997b69fa9a37253a887e06edb2936a649f65896949d3cfa83"
+    },
+    {
+      "id": "original_1",
+      "label": "Run actions/setup-python@v5",
+      "modes": [
+        "docs",
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "f100008840711e2aeada85c5a06faed565c3051f2e2934d0c62ac4e0a458f458"
+    },
+    {
+      "id": "original_2",
+      "label": "Install locked dependencies",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "37985844b999086d51836d00722e62fc15f893a7aebcc975d85182e53095a9c6"
+    },
+    {
+      "id": "original_3",
+      "label": "Build production image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "c05e73bcf25d304f20628b91f50336b3993f1aa929d2e9e852ee8f94f43d5da9"
+    },
+    {
+      "id": "original_4",
+      "label": "Verify production image contents and user",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "be649fbcad00d2f070d949c2bbb6a2152e3947a17a930243b55708ecc45a1ff1"
+    },
+    {
+      "id": "original_5",
+      "label": "Verify dormant preservation-first rollout tools in the image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "096816362a999fe5ebcd49e39ccde5619026a8ffc4022ed4baf4dfb60aecd4e7"
+    },
+    {
+      "id": "original_6",
+      "label": "Verify dormant DATA-02 operator tools in the image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "f7a7d3c3aa154dd9e5087276a79c0f749ce245036ee4e57242903024ac9c11b2"
+    },
+    {
+      "id": "original_7",
+      "label": "Verify dormant complete portfolio profile and workers",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "846a76e2af35d933e5574a5bc2eaaed2817fbb301a2c29f116f87ded9d6b557d"
+    },
+    {
+      "id": "original_8",
+      "label": "Verify dormant weighted overlap profile and workers",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "5dc6804aca26495712d0bb7007e44bff4a288264c610404a5c14fe2d10bbde38"
+    },
+    {
+      "id": "original_9",
+      "label": "Verify private read access guard in the image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "091f71bd862ee92238d4891abedec86445738a00d06705a26c346c7994904d1a"
+    },
+    {
+      "id": "original_10",
+      "label": "Verify offline IDCW discovery tools, not a publication profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "b76d120d82fdbc70fc504cd1efdbfafd0cf11d1990e86bcf1b43e4542a02c248"
+    },
+    {
+      "id": "original_11",
+      "label": "Verify internal IDCW research engine, not publication",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "6a30f07d70f321c7cfbe41d7a0bb0cc69837bb7e55b570e1f2f43417fb21830c"
+    },
+    {
+      "id": "original_12",
+      "label": "Verify dormant private reported-observation profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "39814329c85c3b2b9442170cdaab82bd42000c53511e0eeef47ef27cfc91d284"
+    },
+    {
+      "id": "original_13",
+      "label": "Verify dormant multi-fund IDCW catalog profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "5a3922f88d053906928f78d688164f11cb1aba6b645470b5c36bab3a0a4b4baf"
+    },
+    {
+      "id": "original_14",
+      "label": "Verify current official facts profile and workers",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "87bcc92b51205cf84657c9e3c45100962f1cdda149a49ea8b002b7b77da26f98"
+    },
+    {
+      "id": "original_15",
+      "label": "Verify bounded monthly facts profile and workers",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "d0be34679ad2afe585b9006b2f420667b33a5324b89443d6534578c5031fcf50"
+    },
+    {
+      "id": "original_16",
+      "label": "Verify bounded official monthly refresh profile and workers",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "23df41e98c2c5977de48ca5f8f201f2da0d1f81be1b295e4a07cfc6c7d28aefe"
+    },
+    {
+      "id": "original_17",
+      "label": "Verify private official-facts history and human-verification backend",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "bc9c74772e3cc5f8902a011787d9e3b76c1ed2ee8b905f28b56acdbe08575a45"
+    },
+    {
+      "id": "original_18",
+      "label": "Verify dormant all-AMC coverage profile and source register",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "6d1ee6c7fe891d1606c0650be8fc7b841b965e04e6889248007e688b8a6a9b81"
+    },
+    {
+      "id": "original_19",
+      "label": "Verify dormant registered multi-AMC profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "3147cb7f324c7d758feeefa4188ebc1b817c54e01a57aca1b505f79ef9d14c88"
+    },
+    {
+      "id": "original_20",
+      "label": "Build and verify PostgreSQL 18 restore image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "1baa6050194e2caf4d0aafa2806bc6047e412a061adbde00348344a9b3fa2a4b"
+    },
+    {
+      "id": "original_21",
+      "label": "Verify dormant DATA-03/04 operator tools in the image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "74d330848c8a5054c81cd4a6d7cc3a3ac4d280409d8a9118f3d84298fbca738d"
+    },
+    {
+      "id": "original_22",
+      "label": "Verify dormant verified-review feature in the image",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "9c20c95ee38d1f9311359c91919379ac954883fb79f15d07ee551638b50d7208"
+    },
+    {
+      "id": "original_23",
+      "label": "Verify dormant additive research-publication profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "15e03d38b38510342410f2c83c19844fdc06587fb6d0bde96806d0e5c0c9c8d3"
+    },
+    {
+      "id": "original_24",
+      "label": "Verify dormant additive calendar-analytics profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "bd68d389350153646964a0e4b223f7632e6943d590daa62b204acf3829f52909"
+    },
+    {
+      "id": "original_25",
+      "label": "Verify dormant additive rolling-analytics profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "5a3c57d515cf9a111a361b0168ed4a0fecdd1665ecea13c867a0b06e585c6f3e"
+    },
+    {
+      "id": "original_26",
+      "label": "Verify dormant additive forward-calculator profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "9ddc9ade925e70de0e21e1722c013690730f1c90a43363042ff8e7cdfaef0ddd"
+    },
+    {
+      "id": "original_27",
+      "label": "Verify dormant additive historical-calculator profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "65a018c622768818e076317c0db190d2ca8b0a8ddbaeae1609e90a3fe39d579b"
+    },
+    {
+      "id": "original_28",
+      "label": "Verify dormant official-enrichment evidence profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "d8ce13f219fdfd28492b61202b5f83b0edf7f044ee131887ac805bec83d861c5"
+    },
+    {
+      "id": "original_29",
+      "label": "Verify dormant official-fund-facts profile",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "4f98570bb4a5ce1ae729d31cdf1a2fc8e97aa5b1146b8ea8575729da0a64c1b7"
+    },
+    {
+      "id": "original_30",
+      "label": "Build and verify dormant PostgreSQL 18 review-backup tools",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "d68eb32da3d04da200c88a168d29d0744f75d8e2668c3fdf9598ae6c3e50935a"
+    },
+    {
+      "id": "original_31",
+      "label": "Verify dormant complete-AMC book profile and bounded decoder",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "bfbc07f1f6b5d8a30d1e660cd8753344f6de6014d27288e2653e338c679ec6eb"
+    },
+    {
+      "id": "original_32",
+      "label": "Verify isolated English UTI physical-column decoder",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "11412b8963aeb704ab4e8aa25f8f7429214985d3b75df89cd9eb91b8df05dfab"
+    },
+    {
+      "id": "original_33",
+      "label": "Verify bounded certification input native exec in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "60142b505bf0b5884af42c3597a6726d0a175e806e8fd62533b9d2d73644941c"
+    },
+    {
+      "id": "original_34",
+      "label": "Verify patched PDF workers and dormant source guards in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "7c20ed11b600e0ac8f68bbe000174f1741e16fc9749bfc67a3ecf9fcdc024c68"
+    },
+    {
+      "id": "original_35",
+      "label": "Verify packaged read-only core plan worker binding",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "f7e4d3c2efda588b55c608aa60a16dcd5488e4697ecd982583152b02b5f89739"
+    },
+    {
+      "id": "original_36",
+      "label": "Verify packaged catalogue-permission worker and specification in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "2f8d87a8f8f9884fdc297ebf675da69fe7ba615153980ebd5de1896fc66ea71a"
+    },
+    {
+      "id": "original_37",
+      "label": "Verify packaged two-root metadata collector and specification in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "42831818ffa1a5671abfd7a94a3563ed7bde0570f7573e9685e0cb91a66cd549"
+    },
+    {
+      "id": "original_38",
+      "label": "Verify packaged fixed successor metadata collector in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "244101e33d7ea804950b4f9efb1e78e7513197ed2f6342fbe7c615fe99e4ed4e"
+    },
+    {
+      "id": "original_39",
+      "label": "Verify packaged fixed owner grant transport in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "9ad40d4f18d6bb4079d76602697eecd4073a589d2898534270aa27b87673c1f1"
+    },
+    {
+      "id": "original_40",
+      "label": "Verify packaged read-only owner permission capture in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "087ae063dac0357980716b76ac85d0f2bc85ca3478b70da22c91af777a040d7b"
+    },
+    {
+      "id": "original_41",
+      "label": "Verify packaged broad-reader capture and owner transport in both images",
+      "modes": [
+        "targeted",
+        "full"
+      ],
+      "original_step_sha256": "797a5a803a677f7888ff048c10acfff85b84c842be3c6a8bbd4e1f1db24902f0"
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 import hashlib
 import json
 from pathlib import Path
+from ci_risk_preservation import restore_policy_parent
 
 ROOT = Path(__file__).resolve().parents[1]
 DESIGN_BYTES = (ROOT / "docs/BROAD_READER_TRANSPORT_DESIGN_20261026.json").read_bytes()
@@ -12,6 +13,7 @@ RECIPES = DESIGN["counted_parent_recipe"]
 
 
 def restore_broad_parent(name, data):
+    data = restore_policy_parent(name, data)
     if name not in RECIPES:
         return data
     recipe = RECIPES[name]

@@ -64,6 +64,13 @@ def require_whole_verify(document, *, run_id, head_sha):
             or document.get("conclusion") != "success"):
         raise ValueError("whole exact-head Verify must complete successfully")
     jobs = document.get("jobs")
+    if isinstance(jobs, list) and len(jobs) == 3:
+        from importlib.util import module_from_spec, spec_from_file_location
+        spec = spec_from_file_location("ci_policy_full_admission", ROOT / "scripts/ci_risk_policy.py")
+        policy = module_from_spec(spec)
+        spec.loader.exec_module(policy)
+        return {"run": run_id, "head_sha": head_sha, "read_only": True,
+                "merge_or_deployment_started": False, **policy.require_full_policy_jobs(jobs)}
     if (not isinstance(jobs, list) or len(jobs) != 2
             or {j.get("name") for j in jobs} != JOBS):
         raise ValueError("BOTH distinct original jobs required")
