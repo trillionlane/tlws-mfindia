@@ -30,6 +30,84 @@ from broad_reader_fixtures import (
 ERRORS = (ValueError, policy.PolicyError)
 
 
+def test_native_private_setting_fixture_uses_admin_setup_but_owner_capture(monkeypatch):
+    from contextlib import contextmanager
+    import test_broad_reader_transport_postgres as native
+
+    calls = []
+
+    class Connection:
+        def __init__(self, principal):
+            self.principal = principal
+
+        def execute(self, statement):
+            calls.append((self.principal, statement))
+            if statement.startswith("ALTER FUNCTION") and self.principal != "fixture-admin":
+                raise native.psycopg.errors.InsufficientPrivilege("synthetic fixture setup denied")
+
+    @contextmanager
+    def connect(dsn, *, autocommit=True):
+        assert dsn == "SYNTHETIC_NO_CONNECTION" and autocommit is True
+        yield Connection("fixture-admin")
+
+    @contextmanager
+    def restricted(dsn):
+        assert dsn == "SYNTHETIC_NO_CONNECTION"
+        yield Connection(policy.OWNER)
+
+    def sealed(value):
+        raw = json.dumps([value]).encode()
+        return dict(is_null=False, sha256=hashlib.sha256(raw).hexdigest(), utf8_bytes=len(raw))
+
+    state = dict(
+        namespaces=[dict(oid=10, nspname="mf_analytics")],
+        roles=[
+            dict(
+                rolname=policy.READER,
+                rolconfig=sealed("private.broad_password=SYNTHETIC_ROLE_MARKER"),
+            )
+        ],
+        functions=[
+            dict(
+                pronamespace=10,
+                proname="private_broad",
+                proconfig=sealed("private.broad_password=SYNTHETIC_FUNCTION_MARKER"),
+            )
+        ],
+    )
+
+    captures = []
+
+    class OwnerCapture:
+        def run(self, connection):
+            assert connection.principal == policy.OWNER
+            assert calls == [
+                (
+                    "fixture-admin",
+                    "ALTER ROLE mfdata_verified_reader SET private.broad_password='SYNTHETIC_ROLE_MARKER'",
+                ),
+                (
+                    policy.OWNER,
+                    "CREATE FUNCTION mf_analytics.private_broad() RETURNS int LANGUAGE SQL AS 'SELECT 1'",
+                ),
+                (
+                    "fixture-admin",
+                    "ALTER FUNCTION mf_analytics.private_broad() SET private.broad_password='SYNTHETIC_FUNCTION_MARKER'",
+                ),
+            ]
+            captures.append(connection.principal)
+            return dict(state=deepcopy(state))
+
+    monkeypatch.setattr(native.psycopg, "connect", connect)
+    monkeypatch.setattr(native, "owner", restricted)
+    monkeypatch.setattr(native.capture, "Capture", OwnerCapture)
+    monkeypatch.setattr(native, "state", lambda _: deepcopy(state))
+    native.test_native_private_settings_in_new_domain_are_sealed_before_connection_boundary(
+        "SYNTHETIC_NO_CONNECTION"
+    )
+    assert captures == [policy.OWNER]
+
+
 def test_public_candidate_preserves_independent_materialized_definition_seal():
     value = sample()
     row = next(r for r in value["candidate"] if r["relkind"] == "m")

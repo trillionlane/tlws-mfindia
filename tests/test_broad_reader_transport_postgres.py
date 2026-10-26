@@ -313,10 +313,13 @@ def test_native_private_settings_in_new_domain_are_sealed_before_connection_boun
         conn.execute(
             "CREATE FUNCTION mf_analytics.private_broad() RETURNS int LANGUAGE SQL AS 'SELECT 1'"
         )
-        conn.execute(
+    with psycopg.connect(broad_db, autocommit=True) as admin:
+        admin.execute(
             "ALTER FUNCTION mf_analytics.private_broad() SET private.broad_password='SYNTHETIC_FUNCTION_MARKER'"
         )
+    before = state(broad_db)
     value = read_capture(broad_db)
+    assert value["state"] == before == state(broad_db)
     raw = cs.canonical(value)
     assert "SYNTHETIC_ROLE_MARKER" not in raw and "SYNTHETIC_FUNCTION_MARKER" not in raw
     assert (
@@ -324,4 +327,16 @@ def test_native_private_settings_in_new_domain_are_sealed_before_connection_boun
             "is_null"
         ]
         is False
+    )
+    namespace = next(
+        r["oid"] for r in value["state"]["namespaces"] if r["nspname"] == "mf_analytics"
+    )
+    function = next(
+        r
+        for r in value["state"]["functions"]
+        if r["pronamespace"] == namespace and r["proname"] == "private_broad"
+    )
+    expected = b'["private.broad_password=SYNTHETIC_FUNCTION_MARKER"]'
+    assert function["proconfig"] == dict(
+        is_null=False, sha256=hashlib.sha256(expected).hexdigest(), utf8_bytes=len(expected)
     )
