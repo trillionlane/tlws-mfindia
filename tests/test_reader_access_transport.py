@@ -351,13 +351,14 @@ def test_all_old_files_fullbytes_and_workflow_fullprefix_preserved():
                     actual = actual.replace(addition, b"", 1)
             assert hashlib.sha256(actual).hexdigest() == sha, name
     old = gzip.decompress(base64.b64decode(a["workflow_full_prior_bytes"]["gzip_base64"]))
-    actual = (ROOT / ".github/workflows/verify.yml").read_bytes()
+    from test_reader_permission_capture_preservation import original_parent_bytes
+    actual = original_parent_bytes(".github/workflows/verify.yml")
     assert (
         actual.startswith(old)
         and hashlib.sha256(old).hexdigest() == a["files"][".github/workflows/verify.yml"]
     )
     plan = json.loads((ROOT / "docs/READER_ACCESS_TRANSPORT_CI_LITERAL_PLAN_20261025.json").read_text())
-    restored = (ROOT / plan["path"]).read_text()
+    restored = original_parent_bytes(plan["path"]).decode()
     for sub in reversed(plan["substitutions"]):
         assert restored.count(sub["new"]) == sub["count"] == 1
         restored = restored.replace(sub["new"], sub["old"])

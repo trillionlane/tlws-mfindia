@@ -1,0 +1,184 @@
+{
+  "base": "21f337ea0dcefc210827118e66fdd821dadd6025",
+  "copies": [
+    {
+      "old_path": "src/mfdataindia/review/core_access_metadata_controller_v2.py",
+      "new_path": "src/mfdataindia/review/reader_permission_capture_controller.py",
+      "parent_sha256": "accf80c6befc5b9b1f9f420b31d8aec68bbd27b8cc0417be8c51bcb18dd7cd0d",
+      "substitutions": [
+        {
+          "old": "core_access_metadata_spec_v2",
+          "new": "reader_permission_capture_spec",
+          "count": 1
+        },
+        {
+          "old": "collect_core_access_metadata_dev_v2",
+          "new": "collect_reader_permission_capture_dev",
+          "count": 1
+        },
+        {
+          "old": "mf-core-access-metadata-261024b",
+          "new": "mf-reader-permission-capture-261025b",
+          "count": 1
+        },
+        {
+          "old": "dev-core-aclmeta-261024b",
+          "new": "dev-reader-cap-261025b",
+          "count": 1
+        },
+        {
+          "old": "mf-core-access-metadata-20261024",
+          "new": "mf-reader-permission-capture-20261025",
+          "count": 1
+        },
+        {
+          "old": "CORE_ACCESS_METADATA_",
+          "new": "READER_PERMISSION_CAPTURE_",
+          "count": 3
+        },
+        {
+          "old": "core-access-metadata-not-acceptance",
+          "new": "reader-permission-capture-not-write-acceptance",
+          "count": 1
+        },
+        {
+          "old": "tlws-mf-review-read-dsn-dev",
+          "new": "tlws-mf-data-admin-dsn-dev",
+          "count": 1
+        },
+        {
+          "old": "from mfdataindia.review.rollout import CALLER_SA, CONNECTION",
+          "new": "from mfdataindia.review.rollout import CONNECTION",
+          "count": 1
+        },
+        {
+          "old": "ACCOUNT = \"trillionlaneassetmanagement@gmail.com\"",
+          "new": "ACCOUNT = \"trillionlaneassetmanagement@gmail.com\"\nOWNER_SA = \"tlws-mf-data-migrate-dev@trillionlane-dev.iam.gserviceaccount.com\"",
+          "count": 1
+        },
+        {
+          "old": "\"serviceAccountName\": CALLER_SA",
+          "new": "\"serviceAccountName\": OWNER_SA",
+          "count": 1
+        },
+        {
+          "old": "!= CALLER_SA",
+          "new": "!= OWNER_SA",
+          "count": 1
+        },
+        {
+          "old": "WORKER_SHA = \"ebe6c3521c92f0ff5c4d3de1a2f8eec362f18d8756353b603ab42e5043c0060b\"",
+          "new": "WORKER_SHA = \"fc8456818d2a1f74b5cc7bb06f0439a55ea7341d634f2c0d57b7062d6bafaa66\"",
+          "count": 1
+        },
+        {
+          "old": "SPEC_SHA = \"fa48bc8eff625d18de0609decd3665f8aafd60427cb343ff54d7f8ccb93bec74\"",
+          "new": "SPEC_SHA = \"6f1c2e300f8021e321f2556535aadf42e0aefb4daf205f6851c45333cae4a65f\"",
+          "count": 1
+        },
+        {
+          "old": "INVENTORY_SHA = \"abbdfa18ed7923669447dd077e30b91c89ab8da542a0cfe64582b8948c059eb1\"",
+          "new": "INVENTORY_SHA = \"3eb03171e72f18f2791630db0c91f20a8784e8e6ccdf1e947797cd97b7edf77a\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "old_path": "src/mfdataindia/review/core_access_metadata_backend_v2.py",
+      "new_path": "src/mfdataindia/review/reader_permission_capture_backend.py",
+      "parent_sha256": "8288aaa58259246d7529a0c4974583609faa0dad21e70db84d664ef0c1f9d15e",
+      "substitutions": [
+        {
+          "old": "core_access_metadata_controller_v2",
+          "new": "reader_permission_capture_controller",
+          "count": 2
+        },
+        {
+          "old": "core_access_metadata_backend_v2",
+          "new": "reader_permission_capture_backend",
+          "count": 1
+        },
+        {
+          "old": "core_access_metadata_spec_v2",
+          "new": "reader_permission_capture_spec",
+          "count": 2
+        },
+        {
+          "old": "core_access_metadata_inventory",
+          "new": "reader_permission_capture_inventory",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "old_path": "scripts/operate_core_access_metadata_dev_v2.py",
+      "new_path": "scripts/operate_reader_permission_capture_dev.py",
+      "parent_sha256": "484093d51cd4bf01a5607a5f711c3b37c8eedff33f4355294358c98500dab854",
+      "substitutions": [
+        {
+          "old": "core_access_metadata_controller_v2",
+          "new": "reader_permission_capture_controller",
+          "count": 1
+        },
+        {
+          "old": "core_access_metadata_backend_v2",
+          "new": "reader_permission_capture_backend",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "old_test_substitutions": [
+    {
+      "path": "tests/test_ci_verify_sequence.py",
+      "substitutions": [
+        {
+          "old": "second[-7:]",
+          "new": "second[-8:]",
+          "count": 1
+        },
+        {
+          "old": "\"- name: Verify packaged fixed owner grant transport in both images\"]",
+          "new": "\"- name: Verify packaged fixed owner grant transport in both images\", \"- name: Verify packaged read-only owner permission capture in both images\"]",
+          "count": 1
+        },
+        {
+          "old": "second[3:-7]",
+          "new": "second[3:-8]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tests/test_reader_access_transport.py",
+      "substitutions": [
+        {
+          "old": "actual = (ROOT / \".github/workflows/verify.yml\").read_bytes()",
+          "new": "from test_reader_permission_capture_preservation import original_parent_bytes\n    actual = original_parent_bytes(\".github/workflows/verify.yml\")",
+          "count": 1
+        },
+        {
+          "old": "restored = (ROOT / plan[\"path\"]).read_text()",
+          "new": "restored = original_parent_bytes(plan[\"path\"]).decode()",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tests/test_image_preparation_revision_guard.py",
+      "substitutions": [
+        {
+          "old": "if hashlib.sha256((ROOT / path).read_bytes()).hexdigest() != expected:",
+          "new": "from test_reader_permission_capture_preservation import original_parent_bytes\n        if hashlib.sha256(original_parent_bytes(path)).hexdigest() != expected:",
+          "count": 1
+        },
+        {
+          "old": "current = (ROOT / substitution[\"path\"]).read_text()",
+          "new": "from test_reader_permission_capture_preservation import original_parent_bytes\n    current = original_parent_bytes(substitution[\"path\"]).decode()",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "workflow_append": "\n      - name: Verify packaged read-only owner permission capture in both images\n        run: |\n          set -euo pipefail\n          image=\"tlws-mf-data:$GITHUB_SHA\"\n          tools_image=\"tlws-mf-review-tools:$GITHUB_SHA\"\n          for target in \"$image\" \"$tools_image\"; do\n            docker run --rm --entrypoint python \"$target\" /app/scripts/collect_reader_permission_capture_dev.py --help\n            docker run --rm --entrypoint python \"$target\" /app/scripts/operate_reader_permission_capture_dev.py --help\n            docker run --rm --entrypoint python --env \"DEPLOYMENT_GIT_SHA=$GITHUB_SHA\" \"$target\" /app/scripts/smoke_reader_permission_capture_binding.py\n          done\n"
+}

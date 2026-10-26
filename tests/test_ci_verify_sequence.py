@@ -61,8 +61,8 @@ def test_every_original_step_body_and_order_is_preserved():
     successor = "- name: Verify packaged fixed successor metadata collector in both images"
     # Preserve all frozen original bodies/order byte-for-byte. All later
     # mandatory steps are additive, after every original gate, in the same job.
-    assert [s["label"] for s in second[-7:]] == [addition, security, worker, permission, metadata, successor, "- name: Verify packaged fixed owner grant transport in both images"]
-    assert first + second[3:-7] == expected
+    assert [s["label"] for s in second[-8:]] == [addition, security, worker, permission, metadata, successor, "- name: Verify packaged fixed owner grant transport in both images", "- name: Verify packaged read-only owner permission capture in both images"]
+    assert first + second[3:-8] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
     assert sum(s["label"] == worker for s in first + second) == 1
     assert sum(s["label"] == security for s in first + second) == 1
