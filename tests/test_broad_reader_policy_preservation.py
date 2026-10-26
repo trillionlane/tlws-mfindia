@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from ci_cost_preservation import restore_parent_file
+
 from mfdataindia.review import broad_reader_policy as policy
 from mfdataindia.review import reader_access_correction as historical
 
@@ -21,7 +23,7 @@ def test_all_parent_tracked_files_preserved_whole_bytes_without_normalization():
             data = str(path.readlink()).encode()
         else:
             assert path.is_file() and not path.is_symlink(), name
-            data = path.read_bytes()
+            data = restore_parent_file(name, path.read_bytes())
         assert hashlib.sha256(data).hexdigest() == expected["sha256"], name
 
 

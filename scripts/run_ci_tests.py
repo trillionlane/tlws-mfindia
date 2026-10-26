@@ -72,7 +72,7 @@ def main() -> int:
         except (OSError, ValueError):
             parser.error("focused evidence is unavailable or invalid")
     plugin = Partition(args.phase, previous)
-    result = int(pytest.main(["tests/", "-q"], plugins=[plugin]))
+    result = int(pytest.main(["tests/", "-q", "--durations=50", "--durations-min=0.1"], plugins=[plugin]))
     if args.phase == "focused" and result == 0 and plugin.inventory is not None:
         with args.evidence.open("x") as stream:
             json.dump({"exit_code": result, "inventory": plugin.inventory}, stream)

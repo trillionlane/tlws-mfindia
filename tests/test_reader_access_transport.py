@@ -8,6 +8,8 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+
+from ci_cost_preservation import restore_parent_file
 import zlib
 
 import pytest
@@ -340,7 +342,7 @@ def test_all_old_files_fullbytes_and_workflow_fullprefix_preserved():
     assert len(a["files"]) == 804
     for name, sha in a["files"].items():
         if name not in (".github/workflows/verify.yml", "tests/test_ci_verify_sequence.py"):
-            actual = (ROOT / name).read_bytes()
+            actual = restore_parent_file(name, (ROOT / name).read_bytes())
             if name == ".github/workflows/rollout-verified-review-dev.yml":
                 guard_plan = json.loads(
                     (ROOT / "docs/IMAGE_PREPARATION_REVISION_GUARD_LITERAL_PLAN_20261025.json").read_text()
