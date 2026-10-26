@@ -364,7 +364,7 @@ def test_all_884_baseline_files_restore_whole_bytes_including_all_five_changed_g
     assert authority['tracked_file_count'] == len(authority['files']) == 884
     assert set(RECIPES) == {'.github/workflows/verify.yml', 'scripts/prepush_fs13.py',
         'tests/broad_transport_preservation.py', 'tests/test_ci_verify_sequence.py',
-        'tests/test_broad_reader_preservation.py'}
+        'tests/test_broad_reader_preservation.py', 'tests/test_prepush_fs13.py'}
     for name, expected in authority['files'].items():
         path = ROOT / name
         assert path.is_symlink() == (expected['kind'] == 'symlink')
@@ -482,3 +482,24 @@ def test_even_frozen_argument_cannot_hide_dirty_presentation_disk(git_repo, monk
     (git_repo / 'README.md').write_bytes(b'uncommitted data\n')
     with pytest.raises(AssertionError):
         restore_policy_parent('README.md', old)
+
+
+@pytest.mark.parametrize('head', ['d05ee537d38a0c3afbd93719c7dce119f8be28f8', 'b' * 40])
+def test_current_and_future_heads_never_admit_legacy_two_job_metadata(head):
+    spec = spec_from_file_location('strict_current_admission', ROOT / 'scripts/prepush_fs13.py')
+    pre = module_from_spec(spec)
+    spec.loader.exec_module(pre)
+    doc = {'databaseId': 123, 'headSha': head, 'name': 'Verify', 'status': 'completed',
+           'conclusion': 'success', 'jobs': [
+               {'name': name, 'status': 'completed', 'conclusion': 'success',
+                'steps': [{'name': 'synthetic', 'status': 'completed', 'conclusion': 'success'}]}
+               for name in sorted(pre.JOBS)]}
+    with pytest.raises(ValueError):
+        pre.require_whole_verify(doc, run_id=123, head_sha=head)
+
+
+@pytest.mark.parametrize('jobs', [None, {}, 'invalid', [None, None, None],
+                                  [{'name': 'Plan CI coverage'}]])
+def test_malformed_job_inventory_is_never_admitted(jobs):
+    with pytest.raises(ValueError):
+        policy.require_full_policy_jobs(jobs)

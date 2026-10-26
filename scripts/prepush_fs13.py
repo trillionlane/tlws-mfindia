@@ -3,7 +3,7 @@
 
 Use --full-local once the candidate is stable. Neither local mode replaces full
 native PostgreSQL/image CI. No local PostgreSQL, Docker or source calls occur.
---verify-run requires complete success of BOTH jobs/steps at one exact SHA; it
+--verify-run requires the planner and BOTH original jobs at one exact SHA; it
 does not merge or change repository protection/settings.
 """
 
@@ -63,27 +63,15 @@ def require_whole_verify(document, *, run_id, head_sha):
             or document.get("name") != "Verify" or document.get("status") != "completed"
             or document.get("conclusion") != "success"):
         raise ValueError("whole exact-head Verify must complete successfully")
-    jobs = document.get("jobs")
-    if isinstance(jobs, list) and len(jobs) == 3:
-        from importlib.util import module_from_spec, spec_from_file_location
-        spec = spec_from_file_location("ci_policy_full_admission", ROOT / "scripts/ci_risk_policy.py")
-        policy = module_from_spec(spec)
-        spec.loader.exec_module(policy)
-        return {"run": run_id, "head_sha": head_sha, "read_only": True,
-                "merge_or_deployment_started": False, **policy.require_full_policy_jobs(jobs)}
-    if (not isinstance(jobs, list) or len(jobs) != 2
-            or {j.get("name") for j in jobs} != JOBS):
-        raise ValueError("BOTH distinct original jobs required")
-    for job in jobs:
-        if job.get("status") != "completed" or job.get("conclusion") != "success":
-            raise ValueError("BOTH jobs must complete successfully")
-        steps = job.get("steps")
-        if (not isinstance(steps, list) or not steps
-                or any(s.get("status") != "completed" or s.get("conclusion") != "success"
-                       for s in steps)):
-            raise ValueError("every job step and cleanup must succeed; no partial or skipped proof")
-    return {"run": run_id, "head_sha": head_sha, "both_jobs_all_steps": "PASS",
-            "read_only": True, "merge_or_deployment_started": False}
+    from importlib.util import module_from_spec, spec_from_file_location
+    spec = spec_from_file_location("ci_policy_full_admission", ROOT / "scripts/ci_risk_policy.py")
+    policy = module_from_spec(spec)
+    spec.loader.exec_module(policy)
+    # All historical admissions are complete. No legacy-shape fallback is
+    # permitted at a current or future head, even with successful old jobs.
+    return {"run": run_id, "head_sha": head_sha, "read_only": True,
+            "merge_or_deployment_started": False,
+            **policy.require_full_policy_jobs(document.get("jobs"))}
 
 
 def inspect_verify(run_id, head_sha):

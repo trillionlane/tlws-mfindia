@@ -9,7 +9,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_BYTES = (ROOT / 'docs/CI_RISK_POLICY_LITERAL_PLAN_20261026.json').read_bytes()
-assert hashlib.sha256(PLAN_BYTES).hexdigest() == 'a2facf3cdedc07bfdf3544dd670de87b781de8ab4176ecefb001002ab05be6df'
+assert hashlib.sha256(PLAN_BYTES).hexdigest() == 'e68eadfd84b2d866953a6a131e7f4f89da4e8d27348a2c59c76afffc1d7870d3'
 PLAN = json.loads(PLAN_BYTES)
 RECIPES = PLAN['exact_changed_old_files']
 PRESENTATION_BYTES = (ROOT / 'docs/CI_RISK_POLICY_PRESENTATION_AUTHORITY_20261026.json').read_bytes()

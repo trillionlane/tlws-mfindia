@@ -17,17 +17,27 @@ SHA = "a" * 40
 
 
 def fixture():
+    inventory = json.loads((Path(__file__).resolve().parents[1]
+        / "docs/CI_RISK_POLICY_STEP_INVENTORY_20261026.json").read_text())
+    jobs = [{"name": "Plan CI coverage", "status": "completed", "conclusion": "success",
+             "steps": [{"name": name, "status": "completed", "conclusion": "success"}
+                       for name in ("Classify exact change", "CI plan: full")]}]
+    for key, name in (("tests", "PostgreSQL tests, contracts, and audit"),
+                      ("verify", "Test, audit, and build")):
+        names = [row["label"] for row in inventory[key]] + [
+            "Validate CI plan", "Run reduced PR checks", "CI policy admitted: full"]
+        jobs.append({"name": name, "status": "completed", "conclusion": "success",
+                     "steps": [{"name": label, "status": "completed",
+                                "conclusion": "skipped" if label == "Run reduced PR checks" else "success"}
+                               for label in names]})
     return {"databaseId": 123, "headSha": SHA, "name": "Verify", "status": "completed",
-            "conclusion": "success", "jobs": [
-                {"name": name, "status": "completed", "conclusion": "success",
-                 "steps": [{"name": "synthetic", "status": "completed", "conclusion": "success"}]}
-                for name in sorted(pre.JOBS)]}
+            "conclusion": "success", "jobs": jobs}
 
 
 def test_both_complete_jobs_are_required_even_when_images_finish_first():
     doc = fixture()
-    assert pre.require_whole_verify(doc, run_id=123, head_sha=SHA)["both_jobs_all_steps"] == "PASS"
-    for index in (0, 1):
+    assert pre.require_whole_verify(doc, run_id=123, head_sha=SHA)["both_jobs_all_required_steps"] == "PASS"
+    for index in (1, 2):
         changed = deepcopy(doc)
         changed["jobs"][index]["status"] = "in_progress"
         with pytest.raises(ValueError):

@@ -36,6 +36,10 @@ full-native admission command. Full `main` regression remains a prerequisite
 to the existing release process; this policy does not deploy or activate data
 access.
 
+Full-native admission requires all three jobs, including the successful coverage
+planner and explicit full-mode markers. The old two-job result shape is no
+longer accepted; historical admissions are complete and are not replayed.
+
 The policy is covered by classification, temporary-Git, workflow, step-outcome,
 collection, exit-code and complete historical-byte preservation tests. It does
 not claim immunity against administrators or a malicious future workflow.

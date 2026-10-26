@@ -175,7 +175,9 @@ def require_full_policy_jobs(jobs):
     inventory = json.loads(INVENTORY.read_text())
     names = {'plan': 'Plan CI coverage', 'tests': 'PostgreSQL tests, contracts, and audit',
              'verify': 'Test, audit, and build'}
-    if len(jobs) != 3 or {j.get('name') for j in jobs} != set(names.values()):
+    if (not isinstance(jobs, list) or len(jobs) != 3
+            or any(not isinstance(j, dict) for j in jobs)
+            or {j.get('name') for j in jobs} != set(names.values())):
         raise ValueError('all three distinct CI jobs required')
     by_name = {job['name']: job for job in jobs}
     for key, label in names.items():
@@ -183,7 +185,8 @@ def require_full_policy_jobs(jobs):
         if job.get('status') != 'completed' or job.get('conclusion') != 'success':
             raise ValueError('all CI jobs must succeed')
         steps = job.get('steps')
-        if not isinstance(steps, list) or not steps or len({s.get('name') for s in steps}) != len(steps):
+        if (not isinstance(steps, list) or not steps or any(not isinstance(s, dict) for s in steps)
+                or len({s.get('name') for s in steps}) != len(steps)):
             raise ValueError('complete unique steps required')
         for step in steps:
             desired = 'skipped' if key != 'plan' and step.get('name') == 'Run reduced PR checks' else 'success'
