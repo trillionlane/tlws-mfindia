@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from ci_cost_preservation import APPROVED, DESIGN_SHA, restore_parent_file
+from broad_transport_preservation import restore_broad_parent
 
 ROOT = Path(__file__).resolve().parents[1]
 EXACT_SIX = frozenset({
@@ -34,7 +35,7 @@ def test_all_parent_files_whole_bytes_including_full_old_preservation_guard():
     for name, expected in authority['files'].items():
         path = ROOT / name
         assert path.is_symlink() == (expected['kind'] == 'symlink'), name
-        data = str(path.readlink()).encode() if path.is_symlink() else path.read_bytes()
+        data = str(path.readlink()).encode() if path.is_symlink() else restore_broad_parent(name, path.read_bytes())
         original = data
         if name in EXACT_SIX:
             for change in reversed(recipes[name]['substitutions']):

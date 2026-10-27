@@ -1,0 +1,117 @@
+{
+  "format": "MF_BROAD_READER_CAPTURE_TRANSPORT_DESIGN_BEFORE_CODE_V4",
+  "authority": "Direct human Approved code-only connection of capture and owner transport to already approved broad16authenticatedread; usualdesign/tests/push/namedexactreview/fixrereview/normalmatchingheadmerge/ownindependentMAIN/admission/safeFF. No live capture/deploy/images/root/START/job/execution/ownerDSNsecret/grants/defaultACL/G5G7/IAM/source/schedule/gate/PROD.",
+  "base": "fd69b4ce355e91e5b77b98393b7f066a0bb17e28",
+  "tree": "894cdd20e967772d1bfc6babacc426d0346a2d7c",
+  "prep": "/Users/deviojha/projects/codex/artifacts/mf-broad-reader-transport-preparation-20261026-lobIer",
+  "worktree": "/Users/deviojha/projects/codex/worktrees/mf-broad-reader-transport-20261026",
+  "new_modules": "Add broad_reader_capture_inventory/spec/collector/controller/backend; broad_reader_transport_spec/controller/backend/owner_connection; fixed worker/operator/smoke scripts, tests/docs. Allnewpublicruntimeentrypoints bindfixedidentities andfinalsources. Captureproviderverificationpurecompletionvalidation sharedpublic function, no oldmodulealias/privatefixture bypass.",
+  "fixed_identities": {
+    "capture": {
+      "identity": "dev-bread-cap-261026r",
+      "job": "mf-reader-broad-capture-261026r",
+      "root_pattern": "mf-reader-broad-capture-20261026-[A-Za-z0-9]{6,16}"
+    },
+    "write": {
+      "identity": "dev-reader-broad-261026w",
+      "job": "mf-reader-broad-access-261026w",
+      "root_pattern": "mf-reader-broad-access-20261026-[A-Za-z0-9]{6,16}"
+    }
+  },
+  "frozen_policy": {
+    "engine": "src/mfdataindia/review/broad_reader_policy.py",
+    "sha256": "eec850a112b39b5fb147653dba2e17c8452d29592dcd4042d4dfe36de3267653",
+    "profile_sha256": "5519d0af8782e18d9a3ef81494d2fec4c002f43a2f079a1310f0770f6dc15edf",
+    "unchanged": true
+  },
+  "capture": "One directownerconnection/RR/READONLY/same6context-state-candidate-state-candidate-context SELECTs/confirmedROLLBACK. StateSQL exactly public broadpolicy.STATE_SQL. Complete rawmetadata strictshape+publiccatalogue, retainrawdefaultrowOIDs while publicplan normalizes ONLY documenteddefaultrowOIDs. Candidate roots ALLcurrent r/p/v/m in16schemas, recurse viewdependencies/inheritance WITHOUT finalkind/schemafilter hiding rows. Strict candidatevalidation rejects anyoutside/unsupported row and demands allcurrentr/p/v/m rootrows presentexactly. Materialized rows stay in completecandidate; proposedactual lockwitness ONLY r/p/v projection. No explicitlocks/businessqueries duringcapture. Preserve serversealed privatebody/settings, strict command/driver/columns completion, 15swall+confirmedROLLBACK/abortunconfirmedSTOP; RR equality NOTconcurrentexclusion/futurefreshness.",
+  "write": "A=fullfreshcapture+publicbroadplan+exactexpectedlockrows+window/reversal+manifest/source/protected/root/G5ref; finiteA->E->B->L requestseal outsideembeddedA. Existing chunks/raw/envargv/request/certificate limits unchanged. Before DSN: immutable packagedplatformGit/source/profile checks, same public policy, exact G5-bound payload and fullsuccesscertificatecapacity. Ownerexecutor only public broadpolicy.apply/Permit; no private execution bypass.",
+  "owner_adapter": "Closed fixed SQL set from public plan + originalcontrol/context/state/commit/rollback. Immediately BEFORE first STATE_SQL, within originalengine15swall, acquire deterministic LOCK TABLE ONLY schema.name ACCESS EXCLUSIVE NOWAIT for all approved current r/p/v; read exact actualownAccessExclusive witness after ALLlocks and comparefullmetadata/OIDs/definitions to approved completecandidate r/p/v projection BEFORE anyGRANT/defaultACL statement. Then fresh STATE_SQL comparison in frozenengine; consumeeachorderedgrant beforewireIO. No newcallerSQL/profile or repeatedlocks aftercommit. Materializedviews are NOT explicitlylocked (PostgreSQL18lockcmds excludesm); their exactbeforeafterstate and externalexclusiveadmin/schema-custody window remaintrust. Explicit materialized-unlocked coverage inproposal/receipt, nofalseall-object-lock claim. Actual recursiveavailabilityeffects mayalreadyoccur before mismatchabort; nofuture/adminimmunity/permanence claim.",
+  "window": "Fixed same max600s outerwindow,20sminimum/start<=capture<=now/end>=remaining; exclusive_admin+recursive_availability_approved+data_schema_custody+future_owner_provisioning alltrue. Translate only to existing public broadengine window shape/UTC+00:00. Recheck aftertoken/beforePOST and firstBEGIN inside15safterfullplanvalidation. No resource/time cap raise.",
+  "reversal": "Nonexecutable exactdelta RESTRICT schemaUSAGE/relationSELECT/schema-localdefaultSELECT proposal only; separateapproval mandatory. Removingfuturedefaults does NOTrevokeSELECT inherited by objects created aftercommit; state explicitly, no automaticreversal/execution.",
+  "controller_backend": "Copy existing complete fixedcapture and ownertransport guards with explicitfinite identities/modulepaths/sourcehash/receiptfield substitutions only; full-byte inverses for guardcopies. Same createonly durable globalclaim/intents/wholeJobExecutionUIDtime/allenvsecretrefs/network/volumes/resources1CPU1Gi600s/task1parallel1maxretry0/freshOCIindex->child/config exactGit twice/existingSAsecret1/accountregionproject/finalinventory THEN protectedLASTread. No change to oldcopies/oldconsumedruns. New fixed names design-only, no allocations. Capture inputs gains canonicalA env and completion binds A/B/fullJobseal/ExecutionUIDtime; actualwrite preflight verifies this fixedcaptureprovider source. Counted insertions/replacements in newcopies explicitly recorded, oldpredecessors untouched.",
+  "failures": "UnknownCOMMIT/committedunverified/rollbackfailure/wallspent/transportpermissiondenial ambiguity STOP preserve/no retry/reconnect/autoreversal/rolefallback/capraise. Narrowfallback and oldimages forbidden.",
+  "preservation": "ALLparentfilesfullbytesunchanged except exactly6 files in countedrecipe below (workflow+5testguards). EntireworkflowOLDprefix plusonefinal both-imagespackagednewbindingsmoke; ALL40oldbodies/order and everyoldaddedstep unchanged. Existingguardimports/reads get exactnewfullbyteinverse BEFORE existingCI/historical inverses and SAMEoldSHA assertions. New guard independently restores ALLsix originals includingtheguards themselves; no ASTregexignoredranges/hashupdates/assertweakening. No deps/PDF/source/businessSQL/math/activepolicy/oldengine changes.",
+  "counted_parent_recipe": {
+    "tests/test_broad_reader_policy_preservation.py": {
+      "substitutions": [
+        {
+          "old": "from ci_cost_preservation import restore_parent_file",
+          "new": "from broad_transport_preservation import restore_ci_parent_file as restore_parent_file",
+          "count": 1
+        }
+      ],
+      "old_full_sha256": "e6be11682d0d1a0c60a6805548cd6530e2799b9f0bd73585af1aa96a19dc15c1"
+    },
+    "tests/test_reader_permission_capture_preservation.py": {
+      "substitutions": [
+        {
+          "old": "from ci_cost_preservation import restore_parent_file",
+          "new": "from broad_transport_preservation import restore_ci_parent_file as restore_parent_file",
+          "count": 1
+        }
+      ],
+      "old_full_sha256": "de97ab1229088513244a3e7a21189f6f12fe857f14273fc9c727e487ccd7ec90"
+    },
+    "tests/test_reader_access_transport.py": {
+      "substitutions": [
+        {
+          "old": "from ci_cost_preservation import restore_parent_file",
+          "new": "from broad_transport_preservation import restore_ci_parent_file as restore_parent_file",
+          "count": 1
+        }
+      ],
+      "old_full_sha256": "4928f2616c4403fdcc579cacfe889758b436e3f63832b37ce74ad97a1be60d49"
+    },
+    "tests/test_ci_cost_preservation.py": {
+      "substitutions": [
+        {
+          "old": "from ci_cost_preservation import APPROVED, DESIGN_SHA, restore_parent_file",
+          "new": "from ci_cost_preservation import APPROVED, DESIGN_SHA, restore_parent_file\nfrom broad_transport_preservation import restore_broad_parent",
+          "count": 1
+        },
+        {
+          "old": "data = str(path.readlink()).encode() if path.is_symlink() else path.read_bytes()",
+          "new": "data = str(path.readlink()).encode() if path.is_symlink() else restore_broad_parent(name, path.read_bytes())",
+          "count": 1
+        }
+      ],
+      "old_full_sha256": "9b61eaaafac10123271df60ba98ffcb13a9c1302674c10683331488744d29f87"
+    },
+    "tests/test_ci_verify_sequence.py": {
+      "substitutions": [
+        {
+          "old": "second[-8:]",
+          "new": "second[-9:]",
+          "count": 1
+        },
+        {
+          "old": "\"- name: Verify packaged read-only owner permission capture in both images\"]",
+          "new": "\"- name: Verify packaged read-only owner permission capture in both images\", \"- name: Verify packaged broad-reader capture and owner transport in both images\"]",
+          "count": 1
+        },
+        {
+          "old": "second[3:-8]",
+          "new": "second[3:-9]",
+          "count": 1
+        }
+      ],
+      "old_full_sha256": "b21d3b7b7be1c7c49e3ac0ec4f1e992f7e09914e86bd6be4352ac9bcd0c56b5e"
+    },
+    ".github/workflows/verify.yml": {
+      "append": "\n      - name: Verify packaged broad-reader capture and owner transport in both images\n        run: |\n          set -euo pipefail\n          image=\"tlws-mf-data:$GITHUB_SHA\"\n          tools_image=\"tlws-mf-review-tools:$GITHUB_SHA\"\n          for target in \"$image\" \"$tools_image\"; do\n            docker run --rm --entrypoint python \"$target\" /app/scripts/collect_broad_reader_capture_dev.py --help\n            docker run --rm --entrypoint python \"$target\" /app/scripts/operate_broad_reader_capture_dev.py --help\n            docker run --rm --entrypoint python \"$target\" /app/scripts/apply_broad_reader_access_dev.py --help\n            docker run --rm --entrypoint python \"$target\" /app/scripts/operate_broad_reader_access_dev.py --help\n            docker run --rm --entrypoint python --env \"DEPLOYMENT_GIT_SHA=$GITHUB_SHA\" \"$target\" /app/scripts/smoke_broad_reader_binding.py\n          done\n",
+      "old_full_sha256": "cc65b9632377dc4ff02cbfae2c5fcaa334f17bacdabf0140d50463ca59ec1001"
+    }
+  },
+  "tests": "All4080oldIDs/472oldPG retained EXACT. New providerfree all16schema capture/strictmetadata/private-seals/delta/window/closure/materialized/finitechunks/wholeproviderprofiles/consumedintent/ambiguity/error/reportcapacity tests; actual disposableCI native full16schemas/materialized/views/inheritance/outsideclosure/rollback/witness_beforegrant/exactwholeACL/defaults/rows-preserved/currentfutureauthenticatedread/forbiddenwrites. BothAPPTOOLS actualpackagedworker/spec/inventory/engine/controller/profilebinding via oneappendedsmoke BEFORE DSN. No localPG/Docker/provider/DB calls; samefullHEADandownMAINproof/local26checks21contracts/securityaudit. No benchmark/reruns/coverage reduction.",
+  "evidence_sources": [
+    "https://www.postgresql.org/docs/18/sql-lock.html",
+    "https://raw.githubusercontent.com/postgres/postgres/REL_18_STABLE/src/backend/commands/lockcmds.c"
+  ],
+  "remaining_live_gate": "Even deliveredcode requires separatelyapproved finalimages/readiness/exactcaptureinputs; THEN separateG5exactwritepackage. This turn only code. Currentfd69imagesDONE neverrepeat/substitute fornewGit. Insightsimplementsconsumer; noInsightsedits.",
+  "capture_provenance": "Proposal input ONLY complete capture completion package (captureApprovalA + fullterminalreceipt/certificate + Jobseal + immutableExecutionidentity), not rawstate. Newcapture request embeds canonicalcaptureApprovalA in env BEFORE computingrequestBhash (no B/hash(B) embeddedinA); worker validates A fixedidentity/root/Git/controllerbytes + coreinputs exactrequest, emits input_binding{root,approvalSHA,requestSHA,controllerGit/controllerSHA} alongside completecapturebody. Workerbinds actualpackagedcontroller/worker/spec/inventory/engine/sourcebytes. Controller validates exact inputbinding and persists fullapprovalSHA/requestSHA/immutableexecutionidentity/createdJobseal/fullcert in createonly completion. Pure proposal revalidates exact A/request/fullcert/sourcebindings/Jobwholeprofile/UIDtime/parent and executionidentity; windowcaptured_at exactservertransactionstart truncatedsecond; captureGit/image match writeGit/image. ALL boundinA/G5 and terminalwrite receipt.",
+  "materialized_explicit_semantics": "Candidateincludesm; materialized_unlocked exactmetadata list is computedfromcompletecapturecatalogue, boundproposal/terminalreport/G5; never claim m locked. Any outside/unsupported dependencies remain visibleandfailclosed, notfiltered. All r/p/v are separatelockroots; recurse actualviewlocks onlywitnessedafteracquisition. m state/provisioning/DDL/externaladmincustody assumptions remainexplicit, and nativefixtures musttest mcoverage without issuing invalidLOCKm.",
+  "disposition_before_code": "V1 namedreview CHANGES_REQUIRED_DESIGN_ONLY/2P2: complete materialized dependency enumeration; actualcapture certificate+approval/root/execution/source binding. Both addressed here BEFORE repositorycode. No P1.",
+  "capture_live_source_recheck": "Future owner Backend.preflight adds fixed READONLY capture-job/execution/log queries for only dev-bread-cap-261026r/name/job/executionregex; no arbitrarytarget/env/sourceSQL. Before anywrite-jobPOST, compare actual currentcapturejob/sealedJobprofile/UIDtime, exactlyonesucceedednonretriedexecution/fullimmutableprofile/parent/identity and provider-deliveredcertificate to fullapprovedcapturecompletion. Logevidence envelopefullbytes mustequal approvedcert. Also require actual captureapproval/requesthashes/sourcebinding/root to match. Thus locally manufacturedbody/hash cannot substitute when provideractualprovenancediffers. No claim hashes authenticatehuman; exactG5package approval is still separate. Everyreadbounded60s/no retry/inventorynotavailablefailclosed; sameexisting6 bounded log-delivery reads allowed only if evidence notdelivered, nevertaskretry.",
+  "implementation_disposition_before_fix": "Provider-free real Manifest admission rejected V2 capture rollout_id because it exceeds the frozen 24-character maximum. Shorten ONLY the fixed new capture identity to dev-bread-cap-261026r; job/root/START/worker/program/SQL/bounds/caps/architecture unchanged. Never raise Manifest limit or alias old identity. V4 fixes the one stale descriptive reference in capture_live_source_recheck; every active capture identity reference now dev-bread-cap-261026r. No other changes."
+}

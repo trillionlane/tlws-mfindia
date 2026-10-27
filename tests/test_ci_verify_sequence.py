@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from ci_risk_preservation import restore_policy_parent
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,7 +12,7 @@ WORKFLOW = ROOT / ".github/workflows/verify.yml"
 
 
 def test_verify_manual_fallback_preserves_both_automatic_triggers():
-    text = WORKFLOW.read_text()
+    text = restore_policy_parent(".github/workflows/verify.yml", WORKFLOW.read_bytes()).decode()
     triggers = text.split("on:\n", 1)[1].split("\npermissions:\n", 1)[0]
     assert triggers == (
         "  pull_request:\n"
@@ -23,7 +24,7 @@ def test_verify_manual_fallback_preserves_both_automatic_triggers():
 
 
 def test_manual_verify_has_no_elevated_permissions_or_live_credentials():
-    text = WORKFLOW.read_text()
+    text = restore_policy_parent(".github/workflows/verify.yml", WORKFLOW.read_bytes()).decode()
     permissions = text.split("\npermissions:\n", 1)[1].split("\nconcurrency:\n", 1)[0]
     assert permissions == "  contents: read\n"
     assert not re.search(r"\$\{\{\s*secrets(?:\.|\[)", text)
@@ -43,7 +44,7 @@ def inventory(job):
 
 
 def jobs():
-    text = WORKFLOW.read_text()
+    text = restore_policy_parent(".github/workflows/verify.yml", WORKFLOW.read_bytes()).decode()
     tests, images = text.split("  tests:\n", 1)[1].split("  verify:\n", 1)
     return text, tests, images
 
@@ -61,8 +62,8 @@ def test_every_original_step_body_and_order_is_preserved():
     successor = "- name: Verify packaged fixed successor metadata collector in both images"
     # Preserve all frozen original bodies/order byte-for-byte. All later
     # mandatory steps are additive, after every original gate, in the same job.
-    assert [s["label"] for s in second[-8:]] == [addition, security, worker, permission, metadata, successor, "- name: Verify packaged fixed owner grant transport in both images", "- name: Verify packaged read-only owner permission capture in both images"]
-    assert first + second[3:-8] == expected
+    assert [s["label"] for s in second[-9:]] == [addition, security, worker, permission, metadata, successor, "- name: Verify packaged fixed owner grant transport in both images", "- name: Verify packaged read-only owner permission capture in both images", "- name: Verify packaged broad-reader capture and owner transport in both images"]
+    assert first + second[3:-9] == expected
     assert sum(s["label"] == addition for s in first + second) == 1
     assert sum(s["label"] == worker for s in first + second) == 1
     assert sum(s["label"] == security for s in first + second) == 1

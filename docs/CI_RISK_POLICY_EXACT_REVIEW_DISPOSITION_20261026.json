@@ -1,0 +1,11 @@
+{
+  "kind": "P2_DISPOSITION_BEFORE_CORRECTIVE_CODE",
+  "reviewed_head": "d05ee537d38a0c3afbd93719c7dce119f8be28f8",
+  "reviewer": "01a15fe3-b5d6-7030-8cc4-dd6837cb193f",
+  "review_turn": "01a17a46-a13e-7c41-99e2-4f0c8afa6d9a",
+  "finding": "P2: current policy head can still accept legacy two-job metadata through prepush_fs13 fallback, bypassing required planner/fullmarkers/exactstepinventory.",
+  "regression_before_fix": "Exactd05ee537 localproviderfree test_current_head_cannot_admit_only_two_legacy_jobs firstFAILED(DIDNOTRAISEValueError). Fulloriginalrawretained beforeformatting in prep/two-job-current-head-before-fix-regression-raw.json. No GitHub/DB/provider call.",
+  "planned_correction": "Remove legacy two-job admission ENTIRELY. No historical compatibility entrypoint or rolefallback: all oldadmissions are DONE and mustnotreplay. require_whole_verify keeps exactpositiveID/SHA/name/status/conclusion checks then always calls strictthree-job/fullmarker/completeoriginalstepinventory policyadmission. Reject malformed/missing/two/duplicate/partial jobs. Update oldunitfixture to actualmodernthree-job metadata, preserve all oldtestIDs and negativeassertions; point BOTH-original-jobs loop at their actualpositions1/2 and use explicit all-required-steps resultkey. Add exactcurrent/future-head two-job regression. No native/full inventory reduction or authority expansion.",
+  "preservation_recipe_delta": "Add SIXTH exact whole-file inverse for tests/test_prepush_fs13.py using complete038ec40 originalbytes/SHA. Refresh exactpost-editSHA for prepush_fs13.py. SamefivepreviousCIrecipe paths otherwiseunchanged; no historicalhash replacement. Independently restore884baselinefiles/all sixeditedoldfiles inclwholeupdatedtest to originalbytes; newplanhashpinned. Permanentpresentationexception still EXACThumanapprovedten only.",
+  "validation": "Before-fixregressionFAIL alreadyretained; thenPASS. Fullstablelocal26checks/all21contracts/all old4350IDs plus4350priorPG485 exactlyretained/additiveunitcasesonly; namednewexactheadreview; normalfreshfullHEADCIafterstable(nooldrunretry), normalexactheadmerge/independentownfullMAIN/admission/safeFF. No live DB/provider/Dockerlocal/secrets/images/runtime/ACL/settings/source/schedule/gate authority. No newhumanquestionneeded for this stricter CI-only correction."
+}

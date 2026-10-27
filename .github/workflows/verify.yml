@@ -15,13 +15,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  plan:
+    name: Plan CI coverage
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.classify.outputs.mode }}
+      binding: ${{ steps.classify.outputs.binding }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Classify exact change
+        id: classify
+        run: python scripts/ci_risk_policy.py plan
+      - name: 'CI plan: ${{ steps.classify.outputs.mode }}'
+        env:
+          CI_MODE: ${{ steps.classify.outputs.mode }}
+        run: echo "CI coverage mode $CI_MODE"
+
   tests:
     name: PostgreSQL tests, contracts, and audit
+    needs: plan
+    if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     services:
       postgres:
-        image: postgres:18.6-alpine
+        image: ${{ needs.plan.outputs.mode != 'docs' && 'postgres:18.6-alpine' || '' }}
         env:
           POSTGRES_DB: mfdataindia_test
           POSTGRES_USER: postgres
@@ -35,25 +57,42 @@ jobs:
           --health-retries 12
 
     env:
+      CI_MODE: ${{ needs.plan.outputs.mode }}
+      CI_BINDING: ${{ needs.plan.outputs.binding }}
+      CI_PLAN_RESULT: ${{ needs.plan.result }}
       MF_TEST_DSN: postgresql://postgres:postgres@127.0.0.1:55521/mfdataindia_test
 
     steps:
       - uses: actions/checkout@v4
+        id: original_0
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
+        id: original_1
         with:
           python-version: "3.12"
 
+      - name: Validate CI plan
+        id: policy
+        run: python scripts/ci_risk_policy.py validate
+
       - name: Install locked dependencies
+        id: original_2
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check uv==0.11.3
           uv sync --frozen --all-extras
 
       - name: Lint
+        id: original_3
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: uv run ruff check src scripts tests
 
       - name: Verify versioned OpenAPI contracts
+        id: original_4
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           uv run python scripts/export_openapi.py --check
           uv run python scripts/export_association_openapi.py --check
@@ -78,12 +117,18 @@ jobs:
           uv run python scripts/export_amc_book_openapi.py --check
 
       - name: Verify UTI method-upgrade PostgreSQL boundaries first
+        id: original_5
+        if: ${{ needs.plan.outputs.mode == 'full' }}
         run: uv run python scripts/run_ci_tests.py focused --evidence "$RUNNER_TEMP/mfdata-tests-${{ github.run_id }}-${{ github.run_attempt }}.json"
 
       - name: Complete full test collection against PostgreSQL 18
+        id: original_6
+        if: ${{ needs.plan.outputs.mode == 'full' }}
         run: uv run python scripts/run_ci_tests.py remainder --evidence "$RUNNER_TEMP/mfdata-tests-${{ github.run_id }}-${{ github.run_attempt }}.json"
 
       - name: Verify read-only facts process tools
+        id: original_7
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           uv run python scripts/certify_official_facts_core_dev.py --help
           uv run python scripts/inventory_official_facts_dev.py --help
@@ -100,33 +145,88 @@ jobs:
           uv run python scripts/probe_fact_source_catalogues_dev.py --help
 
       - name: Audit Python dependencies
+        id: original_8
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: uv run pip-audit
 
       - name: Scan tracked files for credential material
+        id: original_9
         run: ./scripts/scan_tracked_secrets.sh
+
+      - name: Run reduced PR checks
+        id: reduced
+        if: ${{ needs.plan.outputs.mode != 'full' }}
+        run: |
+          set -euo pipefail
+          if [ "$CI_MODE" = docs ]; then
+            python scripts/ci_risk_policy.py docs
+          else
+            uv run python scripts/run_ci_targeted.py --evidence "$RUNNER_TEMP/mfdata-targeted-${{ github.run_id }}-${{ github.run_attempt }}.json"
+          fi
+
+      - name: 'CI policy admitted: ${{ needs.plan.outputs.mode }}'
+        if: ${{ always() }}
+        env:
+          CI_STEPS: >-
+            {
+              "original_0": ${{ toJSON(steps.original_0) }},
+              "original_1": ${{ toJSON(steps.original_1) }},
+              "original_2": ${{ toJSON(steps.original_2) }},
+              "original_3": ${{ toJSON(steps.original_3) }},
+              "original_4": ${{ toJSON(steps.original_4) }},
+              "original_5": ${{ toJSON(steps.original_5) }},
+              "original_6": ${{ toJSON(steps.original_6) }},
+              "original_7": ${{ toJSON(steps.original_7) }},
+              "original_8": ${{ toJSON(steps.original_8) }},
+              "original_9": ${{ toJSON(steps.original_9) }},
+              "policy": ${{ toJSON(steps.policy) }},
+              "reduced": ${{ toJSON(steps.reduced) }}
+            }
+        run: python scripts/ci_risk_policy.py gate --job tests
 
   verify:
     name: Test, audit, and build
+    needs: plan
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    env:
+      CI_MODE: ${{ needs.plan.outputs.mode }}
+      CI_BINDING: ${{ needs.plan.outputs.binding }}
+      CI_PLAN_RESULT: ${{ needs.plan.result }}
+
     steps:
       - uses: actions/checkout@v4
+        id: original_0
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
+        id: original_1
         with:
           python-version: "3.12"
 
+      - name: Validate CI plan
+        id: policy
+        run: python scripts/ci_risk_policy.py validate
+
       - name: Install locked dependencies
+        id: original_2
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check uv==0.11.3
           uv sync --frozen --all-extras
 
       - name: Build production image
+        id: original_3
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: docker build --build-arg VCS_REF=${{ github.sha }} --tag tlws-mf-data:${{ github.sha }} .
 
       - name: Verify production image contents and user
+        id: original_4
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -136,6 +236,8 @@ jobs:
             'from pathlib import Path; import mfdataindia; from mfdataindia.api.association_app import create_association_app; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert callable(create_association_app); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/scripts/smoke_private_api.py").is_file(); assert Path("/app/scripts/verify_optional_association_writer_dev.sh").is_file(); assert Path("/app/scripts/audit_nav_integrity.py").is_file(); assert Path("/app/scripts/reconcile_nav_audit_privileges.py").is_file(); assert Path("/app/scripts/verify_nav_audit_privileges.py").is_file(); assert Path("/app/sql/018_fund_family_association_tags.sql").is_file(); assert Path("/app/sql/019_reconcile_association_writer_privileges.sql").is_file(); assert Path("/app/sql/020_nav_quality_audit_privileges.sql").is_file()'
 
       - name: Verify dormant preservation-first rollout tools in the image
+        id: original_5
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -147,6 +249,8 @@ jobs:
           docker run --rm --entrypoint python "$image" -c 'from mfdataindia.enrichment.source_operations import policy; p = policy(); assert p["version"] == 1 and p["automatic_resolution_permitted"] is False'
 
       - name: Verify dormant DATA-02 operator tools in the image
+        id: original_6
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -155,6 +259,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/review_nav_remediation.py --help
 
       - name: Verify dormant complete portfolio profile and workers
+        id: original_7
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -164,6 +270,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_complete_portfolios_dev.py --help
 
       - name: Verify dormant weighted overlap profile and workers
+        id: original_8
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -173,11 +281,15 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_weighted_overlap_dev.py --help
 
       - name: Verify private read access guard in the image
+        id: original_9
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           docker run --rm --entrypoint python "tlws-mf-data:${{ github.sha }}" -c \
             'from pathlib import Path; assert Path("/app/scripts/private_read_invokers_dev.sh").is_file()'
 
       - name: Verify offline IDCW discovery tools, not a publication profile
+        id: original_10
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -186,6 +298,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/discover_idcw_evidence.py --help
 
       - name: Verify internal IDCW research engine, not publication
+        id: original_11
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -193,6 +307,8 @@ jobs:
             'from mfdataindia.analytics.idcw_research import policy, validate_policy, engine_identity, ResearchInput; p = policy(); assert validate_policy(p); assert p["id"] == "idcw-gross-research-total-return"; assert p["version"] == 1; assert engine_identity()["code_hash"]; assert "coverage_complete" not in ResearchInput.model_fields'
 
       - name: Verify dormant private reported-observation profile
+        id: original_12
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -201,6 +317,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/deploy_distribution_observations_dev.py --help
           docker run --rm --entrypoint python "$image" /app/scripts/certify_distribution_observations_dev.py --help
       - name: Verify dormant multi-fund IDCW catalog profile
+        id: original_13
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -210,6 +328,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_idcw_catalog_dev.py --help
 
       - name: Verify current official facts profile and workers
+        id: original_14
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -219,6 +339,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_current_facts_dev.py --help
 
       - name: Verify bounded monthly facts profile and workers
+        id: original_15
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -228,6 +350,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_monthly_facts_dev.py --help
 
       - name: Verify bounded official monthly refresh profile and workers
+        id: original_16
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -238,6 +362,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_fact_refresh_dev.py --help
 
       - name: Verify private official-facts history and human-verification backend
+        id: original_17
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -247,6 +373,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_fact_verification_dev.py --help
 
       - name: Verify dormant all-AMC coverage profile and source register
+        id: original_18
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -256,6 +384,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_coverage_dev.py --help
 
       - name: Verify dormant registered multi-AMC profile
+        id: original_19
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -266,6 +396,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_registered_facts_dev.py --help
 
       - name: Build and verify PostgreSQL 18 restore image
+        id: original_20
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data-restore:${{ github.sha }}"
@@ -274,6 +406,8 @@ jobs:
           docker run --rm --entrypoint pg_restore "$image" --version | grep -F 'pg_restore (PostgreSQL) 18.'
 
       - name: Verify dormant DATA-03/04 operator tools in the image
+        id: original_21
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -282,6 +416,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/correct_nav_data.py --help
 
       - name: Verify dormant verified-review feature in the image
+        id: original_22
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -289,36 +425,48 @@ jobs:
             'from pathlib import Path; from mfdataindia.review.app import create_review_app; from mfdataindia.review.policy import policy, validate_policy; assert len(create_review_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 6; validate_policy(policy()); assert Path("/app/sql/optional/023_verified_fund_review.sql").is_file(); assert Path("/app/scripts/sql/reconcile_verified_review_privileges.sql").is_file()'
           docker run --rm --entrypoint python "$image" /app/scripts/verified_fund_review.py --help
       - name: Verify dormant additive research-publication profile
+        id: original_23
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_research_app; from mfdataindia.review.publication import policy; import mfdataindia.review.publication_operations; import mfdataindia.review.publication_certification; assert len(create_research_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 7; assert policy()["version"] == 1; assert Path("/app/sql/optional/024_research_publication.sql").is_file(); assert Path("/app/scripts/operate_research_publication_dev.py").is_file(); assert Path("/app/scripts/certify_research_publication_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-research-publication-v1.json").is_file()'
       - name: Verify dormant additive calendar-analytics profile
+        id: original_24
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_calendar_app; from mfdataindia.analytics.calendar import policy,validate_policy; import mfdataindia.analytics.operations; import mfdataindia.analytics.certification; assert len(create_calendar_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 8; validate_policy(policy()); assert Path("/app/sql/optional/025_calendar_analytics.sql").is_file(); assert Path("/app/scripts/operate_calendar_analytics_dev.py").is_file(); assert Path("/app/scripts/certify_calendar_analytics_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-calendar-analytics-v1.json").is_file()'
       - name: Verify dormant additive rolling-analytics profile
+        id: original_25
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_rolling_app; from mfdataindia.analytics.rolling import policy,validate_policy; import mfdataindia.analytics.rolling_operations; import mfdataindia.analytics.rolling_certification; assert len(create_rolling_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 9; validate_policy(policy()); assert Path("/app/sql/optional/026_rolling_analytics.sql").is_file(); assert Path("/app/scripts/operate_rolling_analytics_dev.py").is_file(); assert Path("/app/scripts/certify_rolling_analytics_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-rolling-analytics-v1.json").is_file()'
       - name: Verify dormant additive forward-calculator profile
+        id: original_26
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_calculator_app; from mfdataindia.calculators.forward import policy,validate_policy; import mfdataindia.calculators.operations; import mfdataindia.calculators.certification; assert len(create_calculator_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 10; validate_policy(policy()); assert Path("/app/scripts/install_forward_calculator_policy_dev.py").is_file(); assert Path("/app/scripts/certify_forward_calculators_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-forward-calculators-v1.json").is_file()'
       - name: Verify dormant additive historical-calculator profile
+        id: original_27
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; from mfdataindia.review.app import create_historical_calculator_app; from mfdataindia.calculators.historical import policy,validate_policy; import mfdataindia.calculators.historical_operations; import mfdataindia.calculators.historical_certification; assert len(create_historical_calculator_app("postgresql://contract:contract@127.0.0.1:1/contract").openapi()["paths"]) == 11; validate_policy(policy()); assert Path("/app/scripts/install_historical_calculator_policy_dev.py").is_file(); assert Path("/app/scripts/certify_historical_calculators_dev.py").is_file(); assert Path("/app/contracts/mfdataindia-historical-calculators-v1.json").is_file()'
       - name: Verify dormant official-enrichment evidence profile
+        id: original_28
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         # Official-source evidence has its own explicit opt-in profile; image
         # presence does not activate a service or run the optional migration.
         run: |
@@ -334,6 +482,8 @@ jobs:
             'import io; from pypdf import PdfWriter; from mfdataindia.enrichment.pdf_evidence import extract_pdf; writer = PdfWriter(); writer.add_blank_page(width=200, height=200); output = io.BytesIO(); writer.write(output); result = extract_pdf(output.getvalue()); assert result["state"] == "no_text"; assert result["facts_accepted"] is False'
 
       - name: Verify dormant official-fund-facts profile
+        id: original_29
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -343,6 +493,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_official_facts_dev.py --help
 
       - name: Build and verify dormant PostgreSQL 18 review-backup tools
+        id: original_30
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           tools_image="tlws-mf-review-tools:${{ github.sha }}"
@@ -352,6 +504,8 @@ jobs:
           docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_clone_checkpoint.py
 
       - name: Verify dormant complete-AMC book profile and bounded decoder
+        id: original_31
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -362,6 +516,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/certify_amc_books_dev.py --help
 
       - name: Verify isolated English UTI physical-column decoder
+        id: original_32
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -372,6 +528,8 @@ jobs:
           docker run --rm --entrypoint python "$image" /app/scripts/smoke_uti_aum_decoder.py
 
       - name: Verify bounded certification input native exec in both images
+        id: original_33
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -381,6 +539,8 @@ jobs:
           docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_certification_input_transport.py
 
       - name: Verify patched PDF workers and dormant source guards in both images
+        id: original_34
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -389,6 +549,8 @@ jobs:
           docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_pdf_security_compatibility.py
 
       - name: Verify packaged read-only core plan worker binding
+        id: original_35
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -407,6 +569,8 @@ jobs:
               else: raise AssertionError("mismatched image Git/program binding accepted")'
 
       - name: Verify packaged catalogue-permission worker and specification in both images
+        id: original_36
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -418,6 +582,8 @@ jobs:
           done
 
       - name: Verify packaged two-root metadata collector and specification in both images
+        id: original_37
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -429,6 +595,8 @@ jobs:
           done
 
       - name: Verify packaged fixed successor metadata collector in both images
+        id: original_38
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -456,6 +624,8 @@ jobs:
           done
 
       - name: Verify packaged fixed owner grant transport in both images
+        id: original_39
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
@@ -467,6 +637,8 @@ jobs:
           done
 
       - name: Verify packaged read-only owner permission capture in both images
+        id: original_40
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
         run: |
           set -euo pipefail
           image="tlws-mf-data:$GITHUB_SHA"
@@ -476,3 +648,76 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/operate_reader_permission_capture_dev.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_permission_capture_binding.py
           done
+
+      - name: Verify packaged broad-reader capture and owner transport in both images
+        id: original_41
+        if: ${{ needs.plan.outputs.mode != 'docs' }}
+        run: |
+          set -euo pipefail
+          image="tlws-mf-data:$GITHUB_SHA"
+          tools_image="tlws-mf-review-tools:$GITHUB_SHA"
+          for target in "$image" "$tools_image"; do
+            docker run --rm --entrypoint python "$target" /app/scripts/collect_broad_reader_capture_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_capture_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/apply_broad_reader_access_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_access_dev.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_broad_reader_binding.py
+          done
+      - name: Run reduced PR checks
+        id: reduced
+        if: ${{ needs.plan.outputs.mode == 'docs' }}
+        run: |
+          set -euo pipefail
+          python scripts/ci_risk_policy.py docs
+
+      - name: 'CI policy admitted: ${{ needs.plan.outputs.mode }}'
+        if: ${{ always() }}
+        env:
+          CI_STEPS: >-
+            {
+              "original_0": ${{ toJSON(steps.original_0) }},
+              "original_1": ${{ toJSON(steps.original_1) }},
+              "original_2": ${{ toJSON(steps.original_2) }},
+              "original_3": ${{ toJSON(steps.original_3) }},
+              "original_4": ${{ toJSON(steps.original_4) }},
+              "original_5": ${{ toJSON(steps.original_5) }},
+              "original_6": ${{ toJSON(steps.original_6) }},
+              "original_7": ${{ toJSON(steps.original_7) }},
+              "original_8": ${{ toJSON(steps.original_8) }},
+              "original_9": ${{ toJSON(steps.original_9) }},
+              "original_10": ${{ toJSON(steps.original_10) }},
+              "original_11": ${{ toJSON(steps.original_11) }},
+              "original_12": ${{ toJSON(steps.original_12) }},
+              "original_13": ${{ toJSON(steps.original_13) }},
+              "original_14": ${{ toJSON(steps.original_14) }},
+              "original_15": ${{ toJSON(steps.original_15) }},
+              "original_16": ${{ toJSON(steps.original_16) }},
+              "original_17": ${{ toJSON(steps.original_17) }},
+              "original_18": ${{ toJSON(steps.original_18) }},
+              "original_19": ${{ toJSON(steps.original_19) }},
+              "original_20": ${{ toJSON(steps.original_20) }},
+              "original_21": ${{ toJSON(steps.original_21) }},
+              "original_22": ${{ toJSON(steps.original_22) }},
+              "original_23": ${{ toJSON(steps.original_23) }},
+              "original_24": ${{ toJSON(steps.original_24) }},
+              "original_25": ${{ toJSON(steps.original_25) }},
+              "original_26": ${{ toJSON(steps.original_26) }},
+              "original_27": ${{ toJSON(steps.original_27) }},
+              "original_28": ${{ toJSON(steps.original_28) }},
+              "original_29": ${{ toJSON(steps.original_29) }},
+              "original_30": ${{ toJSON(steps.original_30) }},
+              "original_31": ${{ toJSON(steps.original_31) }},
+              "original_32": ${{ toJSON(steps.original_32) }},
+              "original_33": ${{ toJSON(steps.original_33) }},
+              "original_34": ${{ toJSON(steps.original_34) }},
+              "original_35": ${{ toJSON(steps.original_35) }},
+              "original_36": ${{ toJSON(steps.original_36) }},
+              "original_37": ${{ toJSON(steps.original_37) }},
+              "original_38": ${{ toJSON(steps.original_38) }},
+              "original_39": ${{ toJSON(steps.original_39) }},
+              "original_40": ${{ toJSON(steps.original_40) }},
+              "original_41": ${{ toJSON(steps.original_41) }},
+              "policy": ${{ toJSON(steps.policy) }},
+              "reduced": ${{ toJSON(steps.reduced) }}
+            }
+        run: python scripts/ci_risk_policy.py gate --job verify

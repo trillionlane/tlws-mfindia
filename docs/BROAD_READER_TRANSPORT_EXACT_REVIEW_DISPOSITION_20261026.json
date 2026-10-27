@@ -1,0 +1,21 @@
+{
+  "format": "MF_BROAD_READER_TRANSPORT_EXACT_REVIEW_DISPOSITION_V1",
+  "recorded_at": "2026-10-26T19:10:00Z",
+  "reviewed_head": "31e83d0c2c28edad3701b6dd5b4dd927b1c987f4",
+  "review_outcome": "CHANGES_REQUIRED",
+  "scope": "CODE_ONLY; no live/capture/images/ownersecret/DB/SQLwrite authority",
+  "findings": [
+    {
+      "priority": "P2",
+      "id": "materialized-root-dependency-seal",
+      "disposition": "Recurse and server-seal both v and m; validate independent m candidate definition separately from unchanged frozen STATE_SQL null m definition. Exact common metadata/root OID coverage remains mandatory. Carry m seal through full candidate/proposal/receipt; no LOCK m."
+    },
+    {
+      "priority": "P2",
+      "id": "root-inheritance-closure",
+      "disposition": "Mark all current r/p/v/m roots for conservative inheritance descent, retaining all outside/unsupported dependencies for fail-closed validation. Native regressions for partitioned/inherited roots with outside children; no final query filter hiding them."
+    }
+  ],
+  "tests": "Reproduce provider-free failures on exact old head before correction; add normal unit and disposable native fixtures, retain all old IDs, full stable local/new collection/changed-head exact review/full own HEAD and independent MAIN proofs.",
+  "preservation": "Frozen V4 design and 857 parent files preserved under existing exact six inverses; no old policy/SQL/dependency/source/limits change. Update only new source hash bindings and exact copy recipes."
+}

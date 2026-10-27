@@ -1,0 +1,11 @@
+{
+  "format": "MF_BROAD_READER_TRANSPORT_NATIVE_FIXTURE_DISPOSITION_V1",
+  "recorded_utc": "2026-10-26T19:51:43Z",
+  "actual_failed_head": "d3e5c1a28d24dd947477b1fc7bb24f38571758a7",
+  "actual_run": 40384815451,
+  "actual_failure": "test_native_private_settings_in_new_domain_are_sealed_before_connection_boundary: restricted owner ALTER FUNCTION private.broad_password denied before capture executes",
+  "raw_lossless_sha256": "7d11288e58816e8e55a6356fda6fb0d02172fb095590393e44e9559c78cde1fc",
+  "design_before_fix": "Keep function creation as restricted owner. Set only synthetic private function test setting through existing disposable fixture admin connection, consistent with old native fixtures. Capture remains restricted owner and production code unchanged. Add provider-free setup-context regression, first fail old code, retain/strengthen role/function server-seal assertions and unchanged state. No GRANT/role/resource/time/budget/capture or runtime changes.",
+  "validation": "Fresh stable full local/complete collection/all old IDs retained/named changed-head review/normal fresh native HEAD+independent MAIN all required. No blind rerun/skips/xfails/assert weakening. Failedrun retained immutable; no admission/merge.",
+  "scope": "CODE_ONLY disposable normalCI setup; no liveadmin/secret/DB/provider authority."
+}
