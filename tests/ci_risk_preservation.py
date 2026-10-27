@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import stat
 import subprocess
+from broad_capture_successor_preservation import restore_successor_parent
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_BYTES = (ROOT / 'docs/CI_RISK_POLICY_LITERAL_PLAN_20261026.json').read_bytes()
@@ -41,6 +42,7 @@ def restore_presentation(name, data):
 
 
 def restore_policy_parent(name, data):
+    data = restore_successor_parent(name, data)
     if name in PRESENTATION:
         return restore_presentation(name, data)
     if name not in RECIPES:
