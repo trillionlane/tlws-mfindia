@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from broad_reader_paired_preservation import restore_paired_parent
+
 ROOT = Path(__file__).resolve().parents[1]
 RAW = (ROOT / "docs/BROAD_CAPTURE_SUCCESSOR_FROZEN_PLAN_20261027.json").read_bytes()
 assert (
@@ -14,6 +16,7 @@ PLAN = json.loads(RAW)
 
 
 def restore_successor_parent(name, data):
+    data = restore_paired_parent(name, data)
     if name not in PLAN["parent_recipes"]:
         return data
     row = PLAN["parent_recipes"][name]

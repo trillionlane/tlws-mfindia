@@ -1,0 +1,216 @@
+{
+  "format": "MF_BROAD_READER_PAIRED_CAPTURE_T_GRANT_V2_DESIGN_BEFORE_CODE",
+  "base": "cda143a1778218eb401388e7e7ddd450f2a4e927",
+  "phase": "CODE_ONLY_DESIGN_NO_REPOSITORY_IMPLEMENTATION_YET",
+  "literal_plan": "PAIRED_LITERAL_PLAN_20261027_v3.json",
+  "source_authority": {
+    "parent_count": 907,
+    "full_byte_mode_type_sha_authority": "649b17f573582f15c2bad3ab7c0ae98e6805a542823e23b5824cfad9b7fb6d18",
+    "copies": [
+      {
+        "old": "src/mfdataindia/review/broad_reader_capture_spec_v2.py",
+        "new": "src/mfdataindia/review/broad_reader_capture_spec_v3.py",
+        "old_sha": "1047296fe3d1d8a9b75b1bb6e0f701d013a937f028c1de75613bc1e7da56516d",
+        "new_sha": "6fb008a86aae30ee44b5d7b367ec97eb192107761dfcd347f65e33747809cb04"
+      },
+      {
+        "old": "scripts/collect_broad_reader_capture_dev_v2.py",
+        "new": "scripts/collect_broad_reader_capture_dev_v3.py",
+        "old_sha": "7eaf6ec6bcfdbe98d2f0c80aca09aacfd13dd09870450b1fa4fd9fb018433867",
+        "new_sha": "73b2d99fd75c980faed8aa3bffe4e15a7997042c995109daa9f6949b98f858e8"
+      },
+      {
+        "old": "src/mfdataindia/review/broad_reader_capture_controller_v2.py",
+        "new": "src/mfdataindia/review/broad_reader_capture_controller_v3.py",
+        "old_sha": "3a6f66bc4efcd8dc41c3786757ae99ef9d95bba23b3cd07b756b2e54f44a99b1",
+        "new_sha": "37dd6114da176da359a0dbeefc4c476328898c2279fb84efa5158297d43d2df6"
+      },
+      {
+        "old": "src/mfdataindia/review/broad_reader_capture_backend_v2.py",
+        "new": "src/mfdataindia/review/broad_reader_capture_backend_v3.py",
+        "old_sha": "ccf9e4d48f3585f8b4cc31b3ce18e6a42fbd6b3f98cafb75eaa2166d4328ec04",
+        "new_sha": "d302e7062cf0a6770e8d15289bf8eaeb3c8dd7c22ca0f652b26cf489952c9ff4"
+      },
+      {
+        "old": "scripts/operate_broad_reader_capture_dev_v2.py",
+        "new": "scripts/operate_broad_reader_capture_dev_v3.py",
+        "old_sha": "667ad0fabaf811d4a7bbadbdd11d283fe2ca7de4284bcbbe6a8a11d46522c9ab",
+        "new_sha": "b60b5360ca8b318308bee838a39840d316a89db6484f47aa55bb61909947e1a2"
+      },
+      {
+        "old": "src/mfdataindia/review/broad_reader_transport_spec.py",
+        "new": "src/mfdataindia/review/broad_reader_transport_spec_v2.py",
+        "old_sha": "42c9309b28bd51db00f2b3595b743cbbcf6425abc9275f2f1e059a3fe2fce56e",
+        "new_sha": "0e02d4366797d637af355f9c735f1e9a5b41ae05a167494971a5e853bd718829"
+      },
+      {
+        "old": "src/mfdataindia/review/broad_reader_owner_connection.py",
+        "new": "src/mfdataindia/review/broad_reader_owner_connection_v2.py",
+        "old_sha": "74e92bd243ba99390bea720378a4ca748389527a5c534d8f7ae7c29f394dc4a4",
+        "new_sha": "c6e56cda55b73b6c6220d473910840d5e49238c621820385eaabfa61f824af32"
+      },
+      {
+        "old": "scripts/apply_broad_reader_access_dev.py",
+        "new": "scripts/apply_broad_reader_access_dev_v2.py",
+        "old_sha": "53ea5854bdd9aba13f8ab96a1b99be6ea6e9d1e30def5a30e386b95f62c522a7",
+        "new_sha": "1410d8421ef4a7ff625d5d910fd5d00dac2a7206a24dd6e1da802d6074e05f47"
+      },
+      {
+        "old": "src/mfdataindia/review/broad_reader_transport_controller.py",
+        "new": "src/mfdataindia/review/broad_reader_transport_controller_v2.py",
+        "old_sha": "bd9b5d22befca7ef5db72b10bde7b984ba2b2fac9c25e301e8a90d98668e2fb0",
+        "new_sha": "bbf1a18ef8b64097e226069fd4ecd1c284dd8a11712863f2b09d09a3de4decd0"
+      },
+      {
+        "old": "src/mfdataindia/review/broad_reader_transport_backend.py",
+        "new": "src/mfdataindia/review/broad_reader_transport_backend_v2.py",
+        "old_sha": "699db9dd938b9ecc576c74021284b58b68cd9a7eb9c640868f1f03ad61ebf54e",
+        "new_sha": "35439b56025feefb49afecea98fe21fec68407ca301ea1cab74133ae12000294"
+      },
+      {
+        "old": "scripts/operate_broad_reader_access_dev.py",
+        "new": "scripts/operate_broad_reader_access_dev_v2.py",
+        "old_sha": "2e7fc81bf1155a4b95ae34ead84d95d3570e4a33c4c56d4f6507a3a5bb739fdf",
+        "new_sha": "119f3bd44bb4645be2268e218dfc2f5715444e45136544c4d070981c3b7af0af"
+      },
+      {
+        "old": "tests/broad_reader_fixtures.py",
+        "new": "tests/broad_reader_fixtures_v2.py",
+        "old_sha": "44750057bfb94333e91e98259a13bc0be80680d448fa2afcbd7d2183698b6e5c",
+        "new_sha": "8d061734248127b704a9408a4bea4fb2be88e433e0adbb69e543f587b5adbb9b"
+      },
+      {
+        "old": "tests/test_broad_reader_transport.py",
+        "new": "tests/test_broad_reader_transport_v2.py",
+        "old_sha": "9a4196d2efda4cdd4d95903d96c2ec073ff89000a2d4b4279fec9c086e62d051",
+        "new_sha": "be7a911a5baf72c053120cfd729fa42bb07ee65fede84c81df785b086606fc12"
+      },
+      {
+        "old": "tests/test_broad_reader_transport_controller.py",
+        "new": "tests/test_broad_reader_transport_controller_v2.py",
+        "old_sha": "0e1fbb720096d0628b15110703e9b4c0fecb0d6c0f3f46fe4d8c39ee4880293a",
+        "new_sha": "0639734aa769ea8a1361870bfae5996df9b397c36b3e6533e0dcc6c54c4bf7e8"
+      },
+      {
+        "old": "tests/test_broad_reader_transport_postgres.py",
+        "new": "tests/test_broad_reader_transport_postgres_v2.py",
+        "old_sha": "7793f87230ac925ec9995433be4ce90e3e106a13ad3c4ac6af54f0e306aa25eb",
+        "new_sha": "dcfa10b15a91da1adb50b336985098cc9800c81433730a282453ee3c4b68fcf5"
+      },
+      {
+        "old": "scripts/smoke_broad_reader_binding.py",
+        "new": "scripts/smoke_broad_reader_paired_binding.py",
+        "old_sha": "393bb6975618efd1d3540c3506b71760c01a81c71a3563a0f39b65d0f90b051f",
+        "new_sha": "78d0d0de06da169692c09adedb5915569205a6b997e3eee98ba84b45c3a566c6"
+      },
+      {
+        "old": "scripts/smoke_broad_reader_capture_v2_binding.py",
+        "new": "scripts/smoke_broad_reader_capture_v3_binding.py",
+        "old_sha": "dff3d70948396f3cf09dab8f81739b5fd75b22f875fa61d56c926a88164af284",
+        "new_sha": "cd878099572e9feb2893615d28f47073de511bb0edc4fe845bfc27410fd354df"
+      },
+      {
+        "old": "tests/test_broad_capture_successor_entrypoint.py",
+        "new": "tests/test_broad_capture_paired_entrypoint.py",
+        "old_sha": "cd2f0580bbc9f05e0a437fec67b537ebc93a0e3ae1910200d5aec4b4af1cb824",
+        "new_sha": "a23a213d74cf6a3c6c3a27381b2f86a089e3d4d82ed0d2d9c8841d794b02bab9"
+      }
+    ],
+    "parent_changes": [
+      ".github/workflows/verify.yml",
+      "tests/broad_capture_successor_preservation.py"
+    ]
+  },
+  "human_scope": "Latest direct All right lets proceed and sort these 3 items out approved exact S capture858c7f45 and compatibility code. Future live T and grant inputs require NEW distinct canonical approvals. No G5 writes approved.",
+  "actual_failure": {
+    "capture": "261027s",
+    "job": "mf-reader-broad-capture-261027s",
+    "execution": "mf-reader-broad-capture-261027s-zws5v",
+    "controller_pid": 83001,
+    "exit_code": 1,
+    "error": "PolicyError;STOP_NO_RETRY",
+    "stage": "UNKNOWN_NOT_POSTGRES_PERMISSION_DENIED",
+    "result": "ABSENT",
+    "final_provider_read": "2026-10-27T15:16:29.149738Z",
+    "disposition": "CONSUMED_IMMUTABLE_NO_FURTHER_PROVIDER_READS_NO_RETRY_NO_ACCEPTANCE"
+  },
+  "problem": "Old grant transport imports captureV1 fixed identity and controller SHA; cannot admit correct captureV2 S. S failed so cannot be proposal evidence. Future capture and grant must share final Git/image without stale cross-commit reuse or extending600s window.",
+  "design": {
+    "capture_T": {
+      "identity": "dev-bread-cap-261027t",
+      "job": "mf-reader-broad-capture-261027t",
+      "root": "mf-reader-broad-capture-20261027-[A-Za-z0-9]{6,16}",
+      "modules": "spec/controller/backend V3 and collect/operate V3 copied FULL from correct V2; strict parse+canonical equality retained",
+      "stage_reporting": "Outermost worker handler only: recognize broad_reader_policy.PolicyError and emit str(error) ONLY if exact in frozen20-label allowlist, else POLICY_STAGE_UNRECOGNIZED; other errors TYPE only. Exactly one bounded stderr line, EXIT1, STOP_NO_RETRY. No repr/traceback/chains/catalogue/SQL/schema/table/function/OID/count/hash/DSN/provider/error-body data. Reporting occurs AFTER original Capture rollback-or-abort path. AbortUnconfirmed/WallAbortUnconfirmed type takes precedence; close errors do not mask prior failure. No new diagnostic I/O.",
+      "allowlist": [
+        "INVALID_BROAD_READER_INPUT",
+        "DUPLICATE_CATALOGUE_IDENTITY",
+        "RESTRICTED_SHARED_READER_REQUIRED",
+        "READER_MEMBERSHIPS_NOT_ALLOWED",
+        "CORE_DOMAIN_SCHEMA_REQUIRED",
+        "FUTURE_WRITE_OR_GRANT_OPTION_NOT_ALLOWED",
+        "PUBLIC_FUTURE_DATA_READ_NOT_ALLOWED",
+        "GLOBAL_TABLE_READ_OUTSIDE_DOMAIN_NOT_ALLOWED",
+        "PUBLIC_DATA_READ_NOT_ALLOWED",
+        "READER_SCHEMA_CREATE_NOT_ALLOWED",
+        "DIRECT_DOMAIN_OWNER_REQUIRED",
+        "FOREIGN_OR_UNSUPPORTED_RELATION",
+        "SOURCE_SEQUENCE_MUTATION_NOT_ALLOWED",
+        "DIRECT_OBJECT_OWNER_REQUIRED",
+        "RLS_REQUIRES_SEPARATE_DISPOSITION",
+        "WRITE_OR_GRANT_OPTION_NOT_ALLOWED",
+        "COMPLETE_PHYSICAL_COLUMNS_REQUIRED",
+        "COLUMN_WRITE_OR_GRANT_OPTION_NOT_ALLOWED",
+        "PRIVILEGED_DOMAIN_FUNCTION_NOT_ALLOWED",
+        "CANONICAL_CATALOGUE_REQUIRED"
+      ]
+    },
+    "grant_V2": {
+      "identity": "dev-reader-broad-261027t",
+      "job": "mf-reader-broad-access-261027t",
+      "root": "mf-reader-broad-access-20261027-[A-Za-z0-9]{6,16}",
+      "copies": "Original spec/controller/backend/guardedowneradapter/worker/operator FULL copies under counted literals only; TcaptureV3 imports and derived full SHA pins. Guarded adapter MUST import new transport spec. No engine/profile/SQL edits.",
+      "binding": "Full original capture approval, successcertificate, immutable created job and execution UID/profile/task/env/secret/network/timing/provenance/source verification retained; capture final Git and immutable image MUST equal grant final Git and image; old R/S identities/failed completions rejected. Finite A->E->B->L payload and hashes remain acyclic. Hash/review is not human approval.",
+      "window": "Unchanged20..600 seconds and remaining20/15 checks before token/POST/BEGIN; no expiry extension/backdate/late approval. If exact write review cannot fit the live window, STOP and seek new scoped capture authority; never recapture or widen automatically."
+    },
+    "unchanged": "ALL existing engines/profiles/STATE_SQL/candidate inventory/policy/private seals/source data/PDF/dependencies/controllers/workers preserved FULL bytes. 5s connect/statement/lock,15s transaction/wholewall and rollback ambiguity,HTTP30/metadata60,600stask,1CPU1Gi1taskparallel1max0,original ownerSAsecret1/UID/time/taskenv/network/fullrequestbounds/consume-before-ambiguousIO/finalinventoryTHENprotectedLASTread all remain.",
+    "preservation": "907 current parent full bytes/mode/type authority; only workflow6extra commands inside existing BOTH-image original41 step, and exactly2 literals in outer prior preservation helper. Full new inverse strips ONLY counted approved additions BEFORE unchanged prior inverses and SAME historical SHA assertions. Exact historical workflow wholehashes enumerated, not ignored regions. ExactexistingREADME+9web presentation exception uses SAME prior committed-mode/type guard only. New test independently reverses changed guard WHOLE bytes too; all18 copied full bytes have reversible counted recipes. No AST/regex/whitespace normalization, hash updates, assertion weakening, skip/xfail.",
+    "tests": "Retain ALL4444oldIDs/485PG and all21contracts/security/credentials/lint/audit/builds/nativecluster3/sharedsnapshot/tamper/concurrentwriter/coldHTTP/headroom/kerneldecode/PDF/source/bindings. Add copied full paired unit/controller/native suite (native13oldtransportcases now newidentity), actual T worker entrypoint suite and BOTHimage T+pairedbinding smokes, plus genuine paired staleGit/image/identity rejection and failurestage tests.",
+    "regressions": "Before new production files: execute exact oldS worker outerhandler on fixedPolicyError and demonstrate it omits safe enum; demonstrate oldgrant imports cannot bind S or T. New tests cover ALL20enum values, unknown-private redaction/nonpolicytype-only, ordinarypolicyfailure ONE rollback+EXIT1/nocert, rollbackfailure ambiguity overridespolicylabel/nosecondSQL/reconnect, actualpublicCapture path/fullroundtrip, allsourcepins/oldfilecopies/inverses/unknownfields/strictcanonicalboolint/duplicateJSON unchanged.",
+    "delivery": "Formal named design CLEAR before code. Exact full local validation and full collection lossless old+delta. Push/PR/named exact review/fix-rereview/wholeHEAD/native/readadmission/normalmatchingheadsquash/independentautomaticMAIN ownlogproof/readadmission/freshgenericSKIPautofalse/currentremote/noconflicts/safeFF. No admin bypass or duplicate proof fetch.",
+    "after_delivery": "Do not allocate T root/approval/START/job/execution under CODE authority. Final paired Git images/readiness/package require scoped preparation and NEW canonical exact capture approval before Toperator. Only successful T may produce exact grant proposal; NEW separate canonical EXACTWRITE approval before grantoperator/START. FailedS immutable. No oldimage reuse/newGit relabel/privatehelperbypass."
+  },
+  "trust_boundaries": [
+    "Materialized views explicitly unlocked; conservative dependency candidate is NOT actual lock witness.",
+    "Recursive availability may already be affected before rejection; external exclusiveadmin/data-schema/futurecreator custody is NOT universaladmin/concurrency/freshness/permanence guarantee.",
+    "Unknown COMMIT or committed-unverified STOP noSQLretry/reconnect/autoreversal.",
+    "RuntimeFS13K/masterprotectedprojection/consumed evidence/userbranches/dirty084 unchanged; S1NOTcomplete, no live access or financial performance acceptance from Git."
+  ],
+  "review_request": "Return APPROVED NO_REMAINING_P1_P2_DESIGN_ONLY or precise P1/P2 findings. READONLY no edits/newagents/providercloudDBsecrets/fullCIlogfetch/dispatchmerge.",
+  "runtime_or_write_authority": false,
+  "correction_before_code": {
+    "finding": "Prospective frozenset20positionalargs import blocker independently reproduced during plan replay; no repository source created",
+    "fix": "exact frozenset((20 labels)) tuple constructor, all dependent full SHA pins regenerated, no new scope",
+    "checks": {
+      "chunk_id": "bf1924",
+      "wall_time_seconds": 0.322369375,
+      "exit_code": 0,
+      "original_token_count": 37,
+      "output": "Prospective source compile, all full-byte copy inverses,20 fixed labels and unknown redaction PASS; no repo files written/no IO products executed\n"
+    },
+    "regressions": "exact cda2FAILED raw preimplementation-exact-cda-two-regressions-FAILED-terminal-raw.json"
+  },
+  "additional_correction_before_code": "Copied paired smoke now targets collect_broad_reader_capture_dev_v3.py through one extra counted literal; original synthetic smoke FULL bytes invert exactly. No production pins/scope changes from v2.",
+  "supplemental_complete_additions_plan": "PAIRED_ADDITIONS_COMPLETE_PLAN_20261027_v5.json",
+  "design_v4_disposition_before_code": {
+    "P1_frozenset": "Exact single iterable corrected and prospective runtime checked, all dependentpins cascaded",
+    "P1_missing_helper": "FULL new helper source and SHA/mode/bytes/gzip now in supplemental plan; pins separate immutable COREplanV3 to avoidcycle",
+    "P2_missing_reporting_tests": "FULL two additive test modules now in supplemental plan: all20 labels actualouterhandler, unknown redaction/driver/nonpolicytypeonly, actualpublicCapture oneRollback+failureoverride, nocert, strictpairbindings/staleGitimage/failedsource/oldS/expired601window, all907parent/copyinverses/guardmutations/bothsmokes/workflow6commandprefix."
+  },
+  "design_v5_test_fixture_disposition_before_correction": {
+    "first_run": "180PASS1FAIL35.95s; soleimage negative was identical b64fixture already, no production failure",
+    "fix": "Flipfirsthex char from actualfixture digest and assertdistinct beforeSAME rejectionassertion",
+    "source": "prospective_test_broad_reader_paired_reporting.py fullbytes frozen in supplementalV5",
+    "unchanged": "CORE2c52ee6a/ALLproductionpins/oldparents/source/SQL/bounds/expectedraises/coverage unchanged"
+  }
+}
