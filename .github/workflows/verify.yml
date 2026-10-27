@@ -665,6 +665,12 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/collect_broad_reader_capture_dev_v2.py --help
             docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_capture_dev_v2.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_broad_reader_capture_v2_binding.py
+            docker run --rm --entrypoint python "$target" /app/scripts/collect_broad_reader_capture_dev_v3.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_capture_dev_v3.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/apply_broad_reader_access_dev_v2.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_broad_reader_access_dev_v2.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_broad_reader_capture_v3_binding.py
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_broad_reader_paired_binding.py
           done
       - name: Run reduced PR checks
         id: reduced
