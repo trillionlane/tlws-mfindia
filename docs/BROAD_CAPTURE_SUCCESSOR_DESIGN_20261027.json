@@ -1,0 +1,96 @@
+{
+  "S1_complete": false,
+  "base": "ded578a363a00584aaa5cc655aed3dfe05de8b3d",
+  "before_implementation_artifacts": [
+    "COMPLETE as frozen_literal_plan, generated and whole-file inverses checked BEFORE any repo edits"
+  ],
+  "compatibility_disposition": {
+    "authority": "Existing direct human finite README plus9existingweb source-stasis exception, not a new exemption. Narrow parser fix must not reintroduce a broad stasis constraint.",
+    "base": "ded578a363a00584aaa5cc655aed3dfe05de8b3d",
+    "frozen_v3_plan_sha256_unchanged": "452ba5de320f48b8f41f8fe1d3bc0d45fdbbedd96a976bef384fd0a3a202f780",
+    "no_extra_parent_file_edits": true,
+    "no_new_live_authority": true,
+    "pinned_existing_authority": {
+      "file": "docs/CI_RISK_POLICY_PRESENTATION_AUTHORITY_20261026.json",
+      "sha256": "7f60c64c1b8bd9f3c9239d7ffa184e5c17b3eb5241b5c7330517a62d284cb7d9"
+    },
+    "regression": "Add provider-free prospective committed presentation edit regression using existing disposable git_repo fixture, original regularfile/mode/symlink/currentHEAD checks. Invoke SAME new parent-byte helper used by896test. Firstfails current rawfullparentbyteshelper, thenpasses original10file route. Add unknown README-like/historicaldoc path rejection/noexception and exactset assertion. No real README/web contents edited.",
+    "status": "PROPOSED_TEST_ONLY_PRESERVE_EXISTING_HUMAN_EXCEPTION_REQUIRES_NAMED_CLEAR_BEFORE_EDIT",
+    "test_only_change": "New all896-parent test obtains SAME parent bytes via existing restore_policy_parent(name,data) ONLY for names in original pinned PRESENTATION tenfile set, else new exact twofile inverse. All896 SAME originalSHA/mode/symlink comparisons remain; entire original guard itself restored independently. Full source/body/docs/SQL/policy/runtime/inventory/CI copies/parent recipes unchanged."
+  },
+  "consumed": {
+    "execution": "mf-reader-broad-capture-261026r-xr48h",
+    "identity": "dev-bread-cap-261026r",
+    "job": "mf-reader-broad-capture-261026r",
+    "never_retry_redeploy_rewrite_reaccept": true,
+    "no_further_provider_reads": true,
+    "root": "/Users/deviojha/projects/codex/artifacts/mf-reader-broad-capture-20261026-46502287"
+  },
+  "corrective_disposition": {
+    "authority": "Within approved parser integration regression slice; no new speculative hardening or permission policy expansion",
+    "finding_normalization": "Pydantic accepts allow_canary_events=1 as True; Python dict equality considers 1==True so original equality does not reject normalization. Newly authored negative reaches NoSecret guard and FAILS as intended. Do not weaken/remove assertion. In successor worker ONLY replace that one equality with spec.canonical(document)==spec.canonical(approval.model_dump(mode=json)); type-sensitive JSON equality rejects 1/1.0 vs true. Same original canonical encoder already used by spec/request, no new parser/serializer/dependency. Recompute worker/controller source pins and copy inverses. Old consumed modules unchanged.",
+    "finding_preservation": "Original test calls restore_policy_parent then restore_broad_parent which calls restore_policy_parent again with exactly historical pre-policy workflow bytes. New outer helper only admitted new/current-parent hashes, so rejected legitimate historical full-byte input. Admit ONLY frozen exact pre-policy workflow full SHA from original pinned policy literal plan; return those exact whole bytes unchanged into unchanged historical layers. No ignored region/hash update/regex/general fallback. Add exact original historical-stage pass plus append/drop/duplicate/change rejection tests, while entire 896 parent proof still compares only original parent hashes.",
+    "frozen_v3_plan": "FROZEN_FULL_LITERAL_PLAN_20261027_v3.json generated BEFORE corrective repository changes; five literal full inverses, all896 unchanged parent authority, exact same two parent edits, added exact historical workflow stageSHA",
+    "original_targeted_result": "219PASS2FAIL: exact new normalization-negative and original double-inverse workflow preservation test",
+    "parse_reproduction": "New complete actual capture-worker entrypoint FIRST failed exact old ded worker at missing spec.parse; passes initial successor. No provider/DB/secret/live operations.",
+    "status": "PROPOSED_REQUIRES_NAMED_V3_DESIGN_CLEAR_BEFORE_CORRECTION",
+    "unchanged": "Identity261027s, fixedone-shot bounds/SQL/policy/oldproduction/inventory/collector/approval gates, no live authority. Oldgranttransport remains independently unmodified/not successor-compatible."
+  },
+  "defect": "collect_broad_reader_capture_dev.py calls spec.parse, but broad_reader_capture_spec exports no parse; deterministic AttributeError before worker DSN access/connect/SQL, not a database permission denial",
+  "downstream_boundary": "Existing old grant transport remains byte-exact and tied to old capture version; do not bypass its provenance validator or claim successor evidence is admitted for G5. Later write transport compatibility/readiness requires separate explicit reviewed scope and exact WRITE approval; no grants now.",
+  "existing_human_presentation_exception_preserved": {
+    "authority_path": "docs/CI_RISK_POLICY_PRESENTATION_AUTHORITY_20261026.json",
+    "authority_sha256": "7f60c64c1b8bd9f3c9239d7ffa184e5c17b3eb5241b5c7330517a62d284cb7d9",
+    "files": {
+      "README.md": "e4f743d0e94744795572b789f3cf9eeba8d663cdd75d90d3546b6b0f4b78a0e6",
+      "src/mfdataindia/web/compare-cart.js": "cc0cae323c28eb607ca1579e3b9f63cb678e0d02da2a40151315383a1b4a8177",
+      "src/mfdataindia/web/compare.html": "2f3707797ae631e029f56132acf7c2618f1eca197d68568397dd18f603abbf87",
+      "src/mfdataindia/web/compare.js": "bef6e28d35c6a23cfc8ffdacebce5f79ee3d7414f6601e83e638271afe283783",
+      "src/mfdataindia/web/fund.html": "27946fbd1012a309499a5d106586a9678f614e9d5cd446dbcd9f041db4770ced",
+      "src/mfdataindia/web/fund.js": "4b01bedd86a28ef0521cc95afc3ba8da048ccb9ecdd8c31185308f238ec6875f",
+      "src/mfdataindia/web/index.html": "566b66465e3cfeafd68e6bfdf8b8b64a7187095531695bd27225f8bafd00dab0",
+      "src/mfdataindia/web/index.js": "d614f0c5535044744b2ef6e2076ba242a1a24bd4dfbe1b4433090e14d13425ec",
+      "src/mfdataindia/web/style.css": "de0b43c7572053699ba42dcdce15088780e9b452ad432e964bc47149bb6d2c4c",
+      "src/mfdataindia/web/theme.js": "e4d31c5a170993d8a5de5f6015fe02f1e2afb9d4356792d2984c11e7cb834b7a"
+    },
+    "route": "original restore_policy_parent ONLY for exact existing PRESENTATION set; SAME frozen full SHA/type/mode/committed checks; all other parent paths unchanged"
+  },
+  "fixed_successor_design_only": {
+    "allocated": false,
+    "global_start": "mf-reader-broad-capture-261027s-controller-start.json",
+    "identity": "dev-bread-cap-261027s",
+    "job": "mf-reader-broad-capture-261027s",
+    "root_pattern": "mf-reader-broad-capture-20261027-[A-Za-z0-9]{6,16}"
+  },
+  "frozen": "No policy/SQL/schema/private evidence algorithm/DSN/account/secret ref/SA/network/resource/HTTP/request/envargv/15s wall/5s limits changes, no source data/performance queries. No runtime allocation or cloud/provider/DB reads during code slice. Materialized views remain unlocked; candidate not actual lock witness or concurrency/future assurance.",
+  "frozen_literal_plan": {
+    "all896_parent_paths_modes_hashes_and5copies2parent_edits_exactcounts_derivedpins": true,
+    "path": "/Users/deviojha/projects/codex/artifacts/mf-s1-broad-capture-parser-successor-20261027-8Kjcdc/FROZEN_FULL_LITERAL_PLAN_20261027_v4.json",
+    "sha256": "2b7f341df9f0a58df88552ab5874f7da703c929839279e5449563c9e05916782"
+  },
+  "global_runtime_sha256": "c0c2f502c274f73cd9f659e3da2db37d180c64fb31007e0e115c123daf414d20",
+  "human_scope": "Approved narrow parser fix, actual capture-worker entrypoint regressions, usual code delivery and fresh image/capture package preparation; NO new live execution until fresh canonical exact-input approval",
+  "new_regressions": [
+    "Actual capture script loaded by explicit path, run_worker invoked with source-verified full synthetic manifest/approval/platform env, real strict parser, real Approval/inputs/bindings, real original Capture.run with recording fake psycopg connection executing exact complete controls/context-state-candidate-state-candidate-context/confirmedROLLBACK. Decode complete evidence and exact validate_result; one connect/close, no DSN/private marker disclosure, second use rejected before connect. Test first fails exact old worker at missing parse, then passes successor.",
+    "Malformed JSON, duplicate keys at top/nested levels, NaN/Infinity, nonobject, unknown approval field, normalized/coerced approval values rejected before DSN lookup/connect. Tracking env refuses secret access on these negatives. No replacement/mock of parse, worker_binding, Approval or Capture.run.",
+    "Missing/wrong old identity/job/root/source/hash/platform bindings rejected before DSN/connect. One-shot consumed-on-error, connect and capture/rollback/close ambiguity never retried. Preserve private marker handling and exact original teardown semantics.",
+    "New BOTH-image provider-free smoke loads actual new worker, verifies packaged source bindings and fixed identity, parses a complete synthetic canonical approval through run_worker, then intentionally missing DSN KeyError proves it passed real parser/input checks without connect. Patch only psycopg.connect as deny guard; no parser or binding monkeypatch. Old consumed identity negative. This is packaged entrypoint integration, not native runtime acceptance.",
+    "Literal copy inverse and all parent byte preservation proofs, exact parser-object identity, frozen SQL/inventory/old collector/policy/engine equality, source pins, profile/request unchanged except fixed identity/path/hash bytes. No old test IDs removed or assertions weakened."
+  ],
+  "production_changes": [
+    "Add broad_reader_capture_spec_v2.py as full literal copy: fixed identity/job/rootdate substitutions and append explicit parse as parse re-export to existing reader_access_transport_spec import. Exact same strict parser object, duplicate keys/nonfinite/top-level nonobject rejected; no new parser implementation or permissive fallback.",
+    "Add broad_reader_capture_controller_v2.py: only permission import to spec_v2, fixed identity/job/rootdate, new worker path, derived actual spec and worker SHA pins. All full request, limits, seals, create-only, no-retry, inventory/protected LAST logic unchanged.",
+    "Add broad_reader_capture_backend_v2.py: only controller import and three exact controller/backend/spec source paths changed. Existing frozen inventory reused; same provider allowlist, budgets, no retries and final protected-read ordering.",
+    "Add collect_broad_reader_capture_dev_v2.py: only spec and controller imports changed. Missing parse resolved by new spec exact re-export; old collector and original SQL inventory reused unchanged. No alternate worker route, monkeypatch, alias of old operational modules, caller identity, generalization or private helper bypass. Additionally one counted equality literal uses spec.canonical on both original document and model_dump to reject bool/int/float normalization BEFORE DSN, same canonical encoder already imported by spec.",
+    "Add operate_broad_reader_capture_dev_v2.py: only backend/controller imports changed. No old identity reuse or existing START bypass."
+  ],
+  "protected_master_sha256": "954d72f20fba2658de149f7e6f0035662f37127b1921365f4ca2c66351da2580",
+  "status": "FINAL_V4_EXISTING_PRESENTATION_COMPATIBILITY_BEFORE_TEST_EDIT",
+  "supersedes": "V2 initial implementation has219PASS2FAIL and is NOT accepted; do not push before correction/review/fullvalidation",
+  "tree": "caa45c26f169e22ab4b80b6f09c5edacedb4f95a",
+  "two_changed_parent_files_only": {
+    ".github/workflows/verify.yml": "Within original_41 existing BOTH-image loop append --help for new worker/operator and new smoke_broad_reader_capture_v2_binding.py invocation immediately after unchanged old broad smoke line. Existing step count/IDs/auth/resources/gate projection and every old command/order unchanged; remove only exact counted additive literal to restore whole parent bytes.",
+    "tests/ci_risk_preservation.py": "Add import of new test-only successor preservation helper and one first-line restore_successor_parent(name,data) call in restore_policy_parent. Entire original bytes recover by exactly reversing both literals; original policy/hash comparisons and all historical inverses unchanged. New helper permits only exact frozen old/new hashes and the exact workflow append inverse, idempotent old-byte pass, rejects append/drop/duplicate/unapproved bytes. Full independent 896-parent proof includes this edited guard, not ignored regions. The new helper also admits EXACT known historical pre-policy workflow whole SHA solely for original nested inverse idempotence, from original pinned literalplan; no partial input or ignored region."
+  },
+  "validation_delivery": "All4379oldIDs/485PG retained exactly plus new cases; full local26checks/21contracts/lint/security/credentials; named exact code review; high-risk full3job automatic HEAD and independent MAIN own retained full raw reconciliation and read-only admission; normal exact-head squash; fresh generic SKIP/autodeployfalse/currentremote then safeFF. No healthy run cancel/rerun/manualdispatch or reduced proof. Later image-only prep final Git twice and fresh capture package, stop before operator/globalSTART pending NEW direct canonical exact-input approval."
+}
