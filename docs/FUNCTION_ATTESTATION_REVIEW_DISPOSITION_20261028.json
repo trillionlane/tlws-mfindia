@@ -1,0 +1,12 @@
+{
+  "authored_UTC": "2026-10-28T17:52:53Z",
+  "exact_reviewed_head": "279d16440035c60d840b8933ceab8adb80db23ab",
+  "review_turn": "01a183a3-524a-7910-9540-af0a25760ddf",
+  "verdict": "CHANGES_REQUIRED_CODE_PREPARATION_ONLY",
+  "P1": 0,
+  "P2": 1,
+  "finding": "Python equality permits numeric substitutes for all5 reference_comparison booleans; explicit type-schema required before value equality.",
+  "resolution_before_corrective_code": "Add regression parameterization for every5comparisonfield x8nonbooleanvalue, prove original code rejects insufficiently, then exact-key dict and type(value)isbool check BEFORE comparison equality. Keep comparison nonaccepting, no new field/scope/limit/policy/runtime changes. Repin specSHA in controller plus full11-copy plan/helperhash; all951parent proof exact and all4976oldIDs534PG retained.",
+  "validation": "Fresh complete local26checks, exactrereview at newimmutablehead, newnormalnativeCI ownproof, usualnormalmerge/ownMAINproof/admission/safeFF mandatory. No oldCIresult reuse; no manualcancel/retry.",
+  "authority": "Existing human code-only Approved/usualfix-rereview cycle; no livepermission/DB/provider/source/images/IAM/runtimeauthority."
+}

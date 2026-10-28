@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+from reader_function_attestation_preservation import restore_attestation_parent
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = (ROOT / "docs/FUNCTION_IDENTIFICATION_FROZEN_PLAN_20261028.json").read_bytes()
@@ -10,6 +11,7 @@ PLAN = json.loads(RAW)
 
 
 def restore_identification_parent(name, data):
+    data = restore_attestation_parent(name, data)
     if name not in PLAN["parent_recipes"]:
         return data
     row = PLAN["parent_recipes"][name]

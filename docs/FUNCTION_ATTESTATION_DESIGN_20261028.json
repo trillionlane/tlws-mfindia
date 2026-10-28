@@ -1,0 +1,75 @@
+{
+  "format": "SINGLE_FUNCTION_ATTESTATION_CODE_DESIGN_V2",
+  "authored_UTC": "2026-10-28T17:38:00Z",
+  "authority": {
+    "direct_human": "Approved",
+    "question_approved": "Code-only preparation of a read-only check of this one function's live definition/settings under the same review cycle. No live run or permission changes yet.",
+    "scope": "Design-before-code; implement/test/push/named exact review/findings-fix-rereview/native normal HEAD CI/normal exact-head squash/independent automatic MAIN proof/admission/safeFF. No actual images/preparation/readiness/runtime roots/START/provider/live DB/owner DSN/secrets/jobs/executions/GRANT/REVOKE/default ACL/G5/G7/IAM/source/schedule/gate/PROD.",
+    "review_destination": "Existing MFData reviewer thread01a15fe3-b5d6-7030-8cc4-dd6837cb193f; human previously explicitly approved sharing this exact routine identity and access-route evidence, and now approves this code-review cycle.",
+    "no_new_agents_UI_Insights_edits_or_G1_repeat": true
+  },
+  "baseline": {
+    "Git": "67bdd1fbf8ef7cee11b79a24bd300d32eab1845d",
+    "tree": "f5e1635e3ed002c10e2ba0d32d4ff71b272fbe85",
+    "clean_operational_and_remote_main_verified": true,
+    "old_test_inventory": {
+      "total": 4783,
+      "focused": 13,
+      "postgres": 517
+    },
+    "worktree": "/Users/deviojha/projects/codex/worktrees/mf-reader-function-attestation-20261028",
+    "branch": "codex/reader-function-attestation-20261028",
+    "tracked_files": 951
+  },
+  "reason": "Successful immutable metadata identification found exactly mf_fact_review.dependencies(integer) OID41849 owner16587 reader40032 existing direct EXECUTE. Independent offline audit clear. Broad policy rejects existing effective SECURITY DEFINER before full catalogue proposal. Source036 intentionally defines/grants this STABLE read helper; live body/settings equality NOT attested. This slice gathers only that missing evidence; it does NOT add a policy exception.",
+  "new_fixed_identity_design_only": {
+    "identity": "dev-reader-fa-261028a",
+    "job": "mf-reader-function-attest-261028a",
+    "root_pattern": "mf-reader-function-attestation-20261028-[A-Za-z0-9]{6,16}",
+    "START": "mf-reader-function-attest-261028a-controller-start.json",
+    "stage": "reader-function-attestation-not-permission-acceptance",
+    "no_allocations": true,
+    "old_FN_SRT_identities_consumed_never_reused": true
+  },
+  "SQL": {
+    "sequence": "Same context/attestation/attestation/context under exact original controls/read-only RR/confirmed ROLLBACK/whole15s; one connection; SELECT catalogue metadata only. No function call to target, business rows, transitive call execution or SQL provided by caller.",
+    "fixed_scope": "Literal exact mf_fact_review.dependencies with prokind=f, proargtypes::text='23', namespace/reader resolved by fixed names; all16 namespace identity rows retained as old evidence format. Fixed reader metadata and complete existing EXECUTE atoms same as prior SQL; public validator additionally pins observed functionOID41849/name/schema/arg23/return3802/owner16587/name, readerOID40032. No volatileOID-only authorization. Native exact SQL uses actual ephemeralOIDs, public validation rejects those unchanged.",
+    "source": "New sql literal based on complete prior IDENTIFICATION_SQL with counted exact replacements: add one fixed target predicate and explicit pg_language join in matching; add declared pg_proc flags and seals; extend resultformat. Retain full old SQL inverse proof, never mutate old module/file.",
+    "output": "Strict ONE-function reader/schemas/functions document, original metadata/ACL projected to unchanged old validator then strict new exact access profile. Additional exhaustive declaration fields: language name/trust; procost/prorows as bounded canonical PGtext decimals; provariadic/prosupport OIDs; prokind/prosecdef/proleakproof/proisstrict/proretset/provolatile/proparallel/pronargs/pronargdefaults; prorettype/proargtypes; proallargtypes and protrftypes nullable numericOIDarrays; proargmodes nullable fixed mode-chararray; sealed argument_names(array_to_json(proargnames)::text) nullness/SHA/UTF8bytes; sealed prosrc bodySHA/bytes; sealed probin and prosqlbody::text nullness/SHA/bytes; exact pg_get_expr(p.proargdefaults,0,false) sealednullness/SHA/bytes; sealed array_to_json(proconfig)::text nullness/SHA/bytes +fixedexactsearchpathbool; complete pg_get_functiondef SHA/bytes. Identity namespaces/name/owner exact. No raw body/names/defaults/config/binary/SQLAST across boundary.",
+    "expected_reference": "Immutable new reference embeds full unchanged migrationSHA, exact single bodySHA/bytes, and EXPECTED_DECLARATION for ALL declaration-bearing fields listedabove: plpgsql/trusted, cost100/rows0, variadic0/support0, f/SECURITYDEFINERtrue/leakprooffalse/strictfalse/retsetfalse/STABLEs/PARALLEL UNSAFEu/argc1/defaultc0/ret3802/args[23], allargsNULL/modesNULL/transformsNULL, argumentnames sealed from exact ['p_code'], probinNULL/SQLbodyNULL/defaultsNULL, exact configuration sealed from ['search_path=pg_catalog'], bodyseal from full exact SQL literal. prolang compared by pg_catalog language name+trust notvolatileOID. Every one of these compares actual toexpected; argumentrename/costrows drift yields false. No expected functiondef digest needed under exhaustive-field alternative. Definitiondigest remains independentlyretained, NOTaloneclaimedmatch. All rawprivateexpressions stayserver-side.",
+    "mismatches": "Access/identity/shape/size/privatekey failure REJECTS with confirmed rollback or ambiguity-dominant stop. If exact accessprofile retained, actual declaration seals/flags may differ; comparison is computed pure for body/settings/ALLdeclfields and only false/true diagnostic correlations—not safety/policy acceptance. Tampered recomputed comparisons rejected by spec. One document cannot become G5input. Public native ephemeralIDs rejected; rawmechanics retainrealIDs.",
+    "privacy": "No raw function body/private configuration/default text, role config, DSN/password/token in result/errors. Server-side seal and lengths before boundary. Null versus []/empty distinct. Unknown JSON keys/digest lengths/numeric atoms/duplicate keys/NaN rejected. Whole evidence <=original131000 before render; no partial evidence/truncation."
+  },
+  "modules": {
+    "reference": "reader_function_attestation_reference.py (new sealed exact committed reference and comparison, no DB/provider imports)",
+    "validator": "reader_function_attestation_validation.py extends strict prior validation by projecting only named original fields to old unchanged validator; exact one fixed identity plus strict declared seal/flag fields and pure recomputed report. Full old validator remains byte-exact; no oldtype/coercion weakening.",
+    "inventory": "reader_function_attestation_inventory.py fixed new SQL from docs/function_attestation_seed/fixed-function-attestation.sql, same original CONTROLS/CONTEXT/TERMINAL imported.",
+    "collector": "Whole reader_function_identification.py literal-copy replacing module/identification labels with attestation; all one-use/mainthread/noexistingtimer/15s/rollbackambiguity/spentwallnoIO and public validation serialization under SAMEwall unchanged.",
+    "spec": "Whole old identification spec literal-copy with new modules/identity/job/stage/formats/bodykey/hashpins. Original strict parser reexport intact, exact PGversion180006/context/directowner etc same. Add pure reference comparison in result shape (or embedded document) without new grants/full catalogue policy. Newformat cannot feed old grant proposal.",
+    "worker_controller_backend_operator_smoke": "Whole complete old identification copies with only finite module/path/identity/root/env-prefix/stage/hash-literal updates and new report text. No worker alias/globalpatch/helper bypass. Original full request/budget/UIDtime/deployed/sealed inventories/zero duplicates/consume-beforeambiguouscreate-run/image-childconfig-twice/protected before-after-final/finalinventoryTHENprotectedLAST/strictcompletion all retained. New backend metadata only fixed newtarget and existing protectedtargets, explicitaccount.",
+    "hash_DAG": "reference+validator -> inventory -> collector -> spec SOURCE_HASHES (all required foundation plus reference and validator/inventory/collector) -> worker -> controller worker/spec/inventory pins -> backend/operator/smoke. No self-hash/request cycle; controllerSHA external laterapproval only."
+  },
+  "tests": {
+    "providerfree": "New reference/secrecy/stricttypes/limits/null-v-empty/config/default/bodyhash/false-comparison/unknownfields/private-leak tests; whole copied recording collector/worker/controller tests adapted only newtarget/doc/imports and assertions. Exact original SQL/control sequence/rollbackdualfail/wall/noextraIO/reuse/mainthread/noexistingtimer/strictsource/approval beforeDSN/DSNconstraints/fulloriginalcontroller guards. Real worker entrypoint smoke before absentDSN with connect denied, bothimages. Exhaustive single-field mutations for argumentnames, allargtypes/modes, transforms, cost/rows, probin, SQLbody, defaults, body, config, everyflag/language; all strict ACL/profile drift(superuser/inherit/schemaUSAGE/PUBLIC/alternative/directlost/grantoption/grantor) rejects. Unknown/private material neverechoed. NEW capacitycase explicit wholeblock correction as disposition above.",
+    "native": "New pytest.postgres tests use fresh existing fixture_db/owner (no local PG or Docker). Create fixed function signature from exact committed CREATEFUNCTION statement without invoking it; actual matching row and builtin language flags/sealed body/functiondef/config/defaults independently compared directly via admin/owner catalogue. Private body/config/default sentinel must never appear in returned document. Test changed body, config null versus empty versus exactsafe versus extra/private/reordered, volatility/strict/parallel/securitydefiner/direct route/overload/outside/missingtarget, zero write-tripwire, all old STATE_SQL catalogue+source rows preserved and IDLE after rollback. Exact new SQL bytes, no native SQL rewriting, fake production OIDs or normalization. Public native admission rejects actual ephemeral identities. CIonly migration/admin fixture authority same as old tests. Exact pg_get_expr(...,0,false) independently checked for added default. Native actual renamedarg p_code->other and COST/ROWS changes retain matching bodyseal but false full-declaration comparison. NULL/emptyarrays/defaultnull/emptytextdeparse and sentinelconfigs remain distinctly sealed; no native normalization.",
+    "CI": "Normal full backend risk marker/planner+PG+image3jobs. ALL4783 old IDs517PG retained, additive tests, same focused13/exactcomplement. All21contracts/securityaudit/credentials/builds/alloldnative+oldimage/PDF/paired/functionentrypoint proofs unchanged. Add exactly3 new BOTH-image-loop commands: newworker--help,newoperator--help,newentrypointbinding. No newsteps/jobs/resources/timeouts/dependencies/settings/fulltest waiver."
+  },
+  "preservation": {
+    "parent_count": "Read full tracked baseline count/modes/hashes immediately before code; immutable compressed full authority in new FROZEN_PLAN.",
+    "only_old_files": [
+      ".github/workflows/verify.yml",
+      "tests/reader_function_identification_preservation.py"
+    ],
+    "workflow": "One counted literal insertion of3new dockercommands after all3oldfunctionidentificationcommands before existing done. Entire old workflow restores to SHA442e6c216f750d1c65d81c6bb4c250f34497b700dc73c64dd2a1d40ddee816c3. Same old step bodies/order/gate projections and all old commands exact.",
+    "old_guard": "Only exact import of restore_attestation_parent from new preservation helper plus one call at top of restore_identification_parent(name,data) BEFORE original strict old/new hash checks. Newhelper accepts only finite declared exact historical workflow stages + new/old exact file hashes, reverses only approved literals, then same oldSHA. New independent test reverses full guard too and compares ALLoldtracked fullbytes+modes. No regex/AST/whitespace/ignoredregions/hashchanges/assertweakening. All earlier helpers/controllers/policy/SQL/API/PDF/deps untouched.",
+    "copies": "New frozen plan records whole old/new hashes/counts/substitutions for7executionfile copies, adapted fixtures/controller/collector tests and fixed SQL source. Every inverse must restore exact whole parent bytes. New originals tested directly. Any extra oldfile change requires amended nameddesign before code."
+  },
+  "next_gate": "Only code delivery now. After final independentMAINadmission stop at separately authorized fresh finalimages/readiness/canonical EXACTINPUT package before live single-function attestation. No policy exception until independently reviewed actual attestation. No G5exactwrite orG7 inferred.",
+  "preservation_runtime": "FS13Kc0c2f502... and protectedmasterexcludingstate-delivery954d72... unchanged. All consumed function261028a/SRT/olderdiagnostics/A-K/userbranches/dirty084 remain immutable/no further provider reads. Full original FS13/NSE/EXP/PDF/NAV/security scope mandatory; S1NOTcomplete/no live read enablement/no generic hardening.",
+  "design_v1_findings_disposition": {
+    "P1_full_declaration_comparator": "Resolved BEFOREcode: exhaustive pg_proc declaration-bearing coverage against exact committed reference, not opaque functiondef hash alone. Add all below fields and independent mutation tests. pg_get_functiondef hash retained informational; claim only complete declared pg_proc reference comparison, not invocation/callee safety.",
+    "P2_access_profile": "Resolved BEFOREcode: public reader EXACT{oid40032,name mfdata_verified_reader,rolsuperfalse,rolinheritfalse}; schema_usage=true; targetidentityOID41849/ns41816/name/signature/owner16587; ACL_is_null=false and exactly observed3 stored ACL atoms (owner16587,reader40032,verifiedadmin40033; grantor16587; only reader immediate/member/set true; no PUBLIC, alternatives or grantoptions). Any drift rejects. Entire atoms sealed/included, no role privileges broadened.",
+    "P2_argument_defaults": "Resolved BEFOREcode: exact SQL pg_catalog.pg_get_expr(p.proargdefaults, 0, false). NULL retains is_null=true/hashNULL/bytes0; added or empty expression sealed with correct nullness/length/SHA and compared false, never invoked/deparsed with functionOID as relationcontext.",
+    "new_capacity_test": "Single-function profile cannot reuse old many-function capacity fixture. New copied collector test replaces that WHOLE old test block by count1 recipe with one exact target, malformed oversize/duplicate targets rejected and rolledback, complete bound certificate verified. Exact3 ACL atoms imply finite tiny declaration document; no needinvent10000functions to reach capacity. Separate parse rawoversize gate tests unchanged bound131000. This only changes NEW copied tests, all original IDs/assertions unchanged."
+  }
+}
