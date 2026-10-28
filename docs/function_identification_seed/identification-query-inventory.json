@@ -1,0 +1,87 @@
+{
+  "format": "ARTIFACT_ONLY_FUNCTION_IDENTIFICATION_INVENTORY_NOT_LIVE_APPROVAL_V1",
+  "design_sha256": "e80269417c5a551ce867a484446bbae40d890f6e88cee2bc0c8ce395567c719e",
+  "source_git": "bec953339af734e452a557df7cc0c775b5b43772",
+  "source_tree": "5801aad3835f0837b34e11008c8153faeda146c7",
+  "controls": [
+    "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY",
+    "SET LOCAL statement_timeout='5s'",
+    "SET LOCAL lock_timeout='5s'",
+    "SET LOCAL transaction_timeout='15s'",
+    "SET LOCAL search_path=pg_catalog",
+    "SET LOCAL TimeZone='UTC'"
+  ],
+  "terminal": "ROLLBACK",
+  "sequence": [
+    "context",
+    "function_identification",
+    "function_identification",
+    "context"
+  ],
+  "queries": [
+    {
+      "id": "context",
+      "sql": "SELECT q.*,pg_backend_pid()::int AS pid,pg_current_snapshot()::text AS snapshot,to_char(transaction_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS transaction_started_at FROM (SELECT current_database() AS database,current_user AS principal,\n session_user AS session, current_setting('server_version_num')::int AS version,\n current_setting('transaction_isolation') AS isolation,\n current_setting('transaction_read_only') AS readonly,\n current_setting('statement_timeout') AS statement_timeout,\n current_setting('lock_timeout') AS lock_timeout,\n current_setting('transaction_timeout') AS transaction_timeout,\n current_setting('search_path') AS search_path,current_setting('TimeZone') AS timezone) q",
+      "columns": [
+        "database",
+        "principal",
+        "session",
+        "version",
+        "isolation",
+        "readonly",
+        "statement_timeout",
+        "lock_timeout",
+        "transaction_timeout",
+        "search_path",
+        "timezone",
+        "pid",
+        "snapshot",
+        "transaction_started_at"
+      ]
+    },
+    {
+      "id": "function_identification",
+      "file": "fixed-function-identification.sql",
+      "sha256": "9c1c9c4f9681c407d7e76d4fca272957ce3c5a069b025c97b6095716a33678ed",
+      "columns": [
+        "value"
+      ]
+    }
+  ],
+  "fixed_identity": {
+    "project": "trillionlane-dev",
+    "region": "asia-south1",
+    "account": "trillionlaneassetmanagement@gmail.com",
+    "database": "mfdataindia",
+    "session_and_current_role": "mfdata_admin",
+    "reader": "mfdata_verified_reader",
+    "reader_oid": 40032,
+    "server_version_num": 180006,
+    "schemas": [
+      "mf",
+      "mf_analytics",
+      "mf_book_facts",
+      "mf_distributions",
+      "mf_enrichment",
+      "mf_fact_refresh",
+      "mf_fact_review",
+      "mf_idcw",
+      "mf_live_facts",
+      "mf_monthly_facts",
+      "mf_multi_facts",
+      "mf_official_facts",
+      "mf_overlap",
+      "mf_portfolios",
+      "mf_review",
+      "mf_rolling"
+    ]
+  },
+  "application_wall_seconds": 15,
+  "statement_lock_connect_seconds": 5,
+  "format_label": "mf-reader-privileged-function-identification-v1",
+  "native_SQL_validated": false,
+  "production_transport_implemented": false,
+  "live_execution_authorized": false,
+  "permission_writes_authorized": false,
+  "not_a_reusable_execution_approval": true
+}
