@@ -674,6 +674,9 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/collect_reader_function_identification_dev.py --help
             docker run --rm --entrypoint python "$target" /app/scripts/operate_reader_function_identification_dev.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_function_identification_binding.py
+            docker run --rm --entrypoint python "$target" /app/scripts/collect_reader_function_attestation_dev.py --help
+            docker run --rm --entrypoint python "$target" /app/scripts/operate_reader_function_attestation_dev.py --help
+            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_function_attestation_binding.py
           done
       - name: Run reduced PR checks
         id: reduced
