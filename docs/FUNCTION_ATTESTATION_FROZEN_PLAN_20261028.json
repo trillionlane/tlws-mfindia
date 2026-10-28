@@ -93,10 +93,15 @@
           "old": "        \"format\": \"reader-function-attestation-capture-v1\",\n",
           "new": "        \"format\": \"reader-function-attestation-capture-v1\",\n        \"reference_comparison\": reference.comparison(captured[\"attestation\"][\"functions\"][0]),\n",
           "count": 1
+        },
+        {
+          "old": "    require(value[\"reference_comparison\"] == reference.comparison(value[\"attestation\"][\"functions\"][0]))\n",
+          "new": "    comparison = value[\"reference_comparison\"]\n    expected = reference.comparison(value[\"attestation\"][\"functions\"][0])\n    keys(comparison, tuple(expected))\n    require(all(type(item) is bool for item in comparison.values()))\n    require(comparison == expected)\n",
+          "count": 1
         }
       ],
       "old_sha256": "6b51f6e70fb4ef4a3811c6fa0775456672fd59307f50dbbe1f7313d9eaa2528d",
-      "new_sha256": "0456c8bb5f4642c083663e2569856503aabbc35b0b9c88cf4cd331feda28d523"
+      "new_sha256": "948b6c36f6d6158e248e8a027e7361abe8f490e97a76071a4ae52d3fc24e0184"
     },
     {
       "source_kind": "repo",
@@ -156,10 +161,15 @@
           "old": "1d7688207bd6395b084c788b274fe741cfef900a198294fc9b11ffadab38db38",
           "new": "bfb0513c883c780994f96476d481c6d2d8623d61692cde3e8a5f6da58b6b230b",
           "count": 1
+        },
+        {
+          "old": "0456c8bb5f4642c083663e2569856503aabbc35b0b9c88cf4cd331feda28d523",
+          "new": "948b6c36f6d6158e248e8a027e7361abe8f490e97a76071a4ae52d3fc24e0184",
+          "count": 1
         }
       ],
       "old_sha256": "14dd22c51c2ab55001eebb360264c53b84ff7c5e9b0fef52d88681602d9c781f",
-      "new_sha256": "e7aad1462ce299835b2cc42851f7b09ee609afa7162c43fffe98b3668b6da6ea"
+      "new_sha256": "555894fb040cf80e0be9f1d4b33cd85c6acef201f2a8cf421b4f753be93ea8e5"
     },
     {
       "source_kind": "repo",

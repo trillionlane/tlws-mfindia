@@ -38,7 +38,11 @@ def validate_capture_result(value):
     context_shape(value["context"])
     require(value["context"]["version"] == 180006)
     validation.validate_document(value["attestation"])
-    require(value["reference_comparison"] == reference.comparison(value["attestation"]["functions"][0]))
+    comparison = value["reference_comparison"]
+    expected = reference.comparison(value["attestation"]["functions"][0])
+    keys(comparison, tuple(expected))
+    require(all(type(item) is bool for item in comparison.values()))
+    require(comparison == expected)
     require(value["inventory_sha256"] == fingerprint(frozen.inventory()))
     require(value["source_hashes"] == SOURCE_HASHES)
     require(all(value[k] is False for k in DENIALS))

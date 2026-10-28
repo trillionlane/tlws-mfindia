@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = (ROOT / "docs/FUNCTION_ATTESTATION_FROZEN_PLAN_20261028.json").read_bytes()
-assert hashlib.sha256(RAW).hexdigest() == "9f5411ca4255729dfb7e87a65f0171a4ea619ac477aba3ba23b679768ff5a999"
+assert hashlib.sha256(RAW).hexdigest() == "1ef8927536bf1bf644f8a7b1b442b3c2756637cdb8a3ee20100e9337d093ade7"
 PLAN = json.loads(RAW)
 
 

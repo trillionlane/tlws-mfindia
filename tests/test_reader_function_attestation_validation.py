@@ -219,3 +219,18 @@ def test_fixed_SQL_exact_source_and_server_sealing_not_routine_invocation():
     assert "t.type_oid::bigint" in raw
     assert "mf_fact_review.dependencies(" not in raw
     assert ";" not in raw
+
+
+@pytest.mark.parametrize("field", [
+    "body_matches_committed_reference", "settings_match_committed_reference",
+    "declaration_matches_committed_reference", "function_invoked", "permission_acceptance",
+])
+@pytest.mark.parametrize("bad", [1, 0, None, "true", [], {}, 0.0, 1.0])
+def test_public_result_rejects_nonboolean_comparison_fields(field, bad):
+    from function_attestation_fixtures import Connection
+    from mfdataindia.review import reader_function_attestation as collector
+    from mfdataindia.review import reader_function_attestation_spec as spec
+    value = collector.Capture().run(Connection())
+    value["reference_comparison"][field] = bad
+    with pytest.raises(ValueError):
+        spec.validate_capture_result(value)
