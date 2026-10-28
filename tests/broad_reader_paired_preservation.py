@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+from reader_function_identification_preservation import restore_identification_parent
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = (ROOT / "docs/BROAD_READER_PAIRED_FROZEN_PLAN_20261027.json").read_bytes()
@@ -10,6 +11,7 @@ PLAN = json.loads(RAW)
 
 
 def restore_paired_parent(name, data):
+    data = restore_identification_parent(name, data)
     if name not in PLAN["parent_recipes"]:
         return data
     row = PLAN["parent_recipes"][name]

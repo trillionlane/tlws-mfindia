@@ -1,0 +1,71 @@
+{
+  "format": "FUNCTION_IDENTIFICATION_EXECUTION_TOOL_CODE_DESIGN_V2",
+  "created_UTC": "2026-10-28 14:12 UTC",
+  "authority": {
+    "direct_human": "Cool let’s plan and proceed for next action and follow the defined cycle",
+    "scope": "Narrow CODE delivery: design before code, implement/native disposable CI tests/push/named exact review/findings-fix-rereview/normal exact-head squash/independent automatic MAIN admission/safeFF. No actual GCP/provider/DB/DSN/secret/image preparation/runtimeRoot/START/job/execution/readiness/ACL/G5/G7/IAM/source/schedule/PROD authority.",
+    "no_repeat_G1": true,
+    "no_new_agents_or_Insights_edits": true
+  },
+  "baseline": {
+    "Git": "bec953339af734e452a557df7cc0c775b5b43772",
+    "tree": "5801aad3835f0837b34e11008c8153faeda146c7",
+    "tracked_files": 930,
+    "remote_main_verified": "2026-10-28 14:08 UTC",
+    "open_PRs": [],
+    "source_preparation": "/Users/deviojha/projects/codex/artifacts/mf-reader-function-identification-preparation-20261028-a055b477",
+    "artifact_manifest_sha256": "1b97897ef17c2a4e385d4372665ef1fd7e475082a7e3f965411146deb3a401e7",
+    "artifact_SQL_sha256": "9ed77c234669c6608e68c3b6adb3cf830239912238af7adc1b6a5ff6e287b74f",
+    "prior_diagnostic_failure_checkpoint_sha256": "e0a65ff2dd38014586b78ee02ee44f7282401aa59ed40b3fb2090fc558c167f8"
+  },
+  "material_design_correction_before_code": {
+    "reason": "Draft SQL hard-pins readerOID40032 inside query. Disposable native roles have ephemeral OIDs, so that SQL can only exercise missing-reader branch and cannot prove positive ACL routes. Resolve fixed role name in SQL; retain strict exact40032 in public result validation before any successful evidence. This is no production OID waiver.",
+    "exact_one_counted_inverse": {
+      "old": "WHERE r.oid = 40032::oid AND r.rolname = 'mfdata_verified_reader'",
+      "new": "WHERE r.rolname = 'mfdata_verified_reader'",
+      "count": 1
+    },
+    "full_SQL_inverse_SHA_required": "9ed77c234669c6608e68c3b6adb3cf830239912238af7adc1b6a5ff6e287b74f",
+    "all_other_SQL_bytes_exact": true,
+    "native_tests": "Execute the EXACT production SELECT without fixture substitutions. Compare native OIDs/ACLs directly as returned. Production validator deliberately rejects ephemeralOID; native mechanics helper is private and has no runtime flag/profile override. Real worker roundtrip uses synthetic exact40032 recording connection, not a mocked collector. No ephemeral data normalized into production evidence."
+  },
+  "new_fixed_identity_design_only": {
+    "job": "mf-reader-function-identify-261028a",
+    "identity": "dev-reader-fn-261028a",
+    "root_pattern": "mf-reader-function-identification-20261028-[A-Za-z0-9]{6,16}",
+    "START": "mf-reader-function-identify-261028a-controller-start.json",
+    "stage": "reader-function-identification-not-permission-acceptance",
+    "not_allocated": true,
+    "old_S_R_T_jobs_logs_START_input_results_never_read_at_provider_or_reused": true
+  },
+  "modules": {
+    "pure_validator": "src/mfdataindia/review/reader_function_identification_validation.py: whole exact 7286-byte reviewed artifact validator (SHA1c6a356e29884e9019727a07bc22adfa781f27be2d6bbd890bb78802e2199978); productionOID40032 unchanged.",
+    "inventory": "reader_function_identification_inventory.py: unchanged imported original controls/context/columns; full fixed new SQL literal matching delivered docs SQL; sequence context/identification/identification/context. No business or full catalogue query, no function invocation/bodies/settings.",
+    "collector": "reader_function_identification.py: whole original broad_reader_capture.py adaptation by explicit counted import and one fixed read/assembly block replacement; same one-use/mainthread/no-existingtimer/5s/15s/BEGIN/ROLLBACK/rollback-ambiguity-dominates/no-more-I/O-after-spent mechanics. No caller SQL/schema/identity parameters. Public run validates full exact result inside original wall before confirmedrollback. Private _capture only fixed mechanical query native tests, not production admission.",
+    "spec": "reader_function_identification_spec.py: strict parse reexport unchanged, exact context version180006/principal/session/mode/timeouts; body {format,context,identification,completions,inventory_sha256,source_hashes,capture_sha256,original7DENIALSfalse}; fullworker/inputbindings unchanged shape. Identification uses exact reviewed validator and fixedOID. No policy.prepare/state_shape because this is diagnostic, not successful permission capture. It must never be consumable as grant proposal; distinct format/stage/identity.",
+    "controller": "reader_function_identification_controller.py: full old V3controller literal copy replacing only new module/identity/path/env-prefix/stage/hash constants. All approval strictness/fullrequestbudget/exclusiveSTART/durableintents/fulltaskresources+envsecretrefs+network/wholeUIDtimeinventory/ownoriginalrun/no retry/image-childconfig/protectedbeforeafter/finalinventoryTHENprotectedLASTread/completion validation unchanged.",
+    "backend": "reader_function_identification_backend.py: full V3backend literal copy with only new modules and source paths; no new cloud API family/target/command/secret read/capability. Checkout/sourcepath/hash/image twice/zero jobexecution guards remain. Existing exactownerSA/secretREFERENCE1/account/project/region/resources same.",
+    "worker_operator": "collect_reader_function_identification_dev.py and operate_reader_function_identification_dev.py: complete source-bound fresh copies of V3 capture worker/operator, new modules/envprefix/stage/identity only and safe type-only failure labels for new ValueError; no old grantworker reuse/alias/globalpatch. Exact approval parser/bindings before DSN lookup/connect, one owner connection + close, no reconnect. No errors contain values. Backend constructor/operator are dormant.",
+    "binding_smoke": "smoke_reader_function_identification_binding.py: full old real-V3entrypoint smoke copy with new modules/paths/fixedtarget/reportkey, patches psycopg.connect only to deny; real parser/binding/input reaches missing-DSN then reuse rejects. Packaged bothimages proof; no provider/SQL."
+  },
+  "source_hash_DAG": "validator + original fixed context foundation -> inventory -> fixedcollector text -> spec SHA dict (includes validator/inventory/collector + original context foundation/strict parser) -> worker text -> controller embeds worker/spec/inventory SHA -> backend/operator/smoke. Controller SHA lives in external laterapproval, not selftext; no cycle or mutated published manifests.",
+  "tests": {
+    "providerfree": "Retain all37 artifact cases by full literal-copy adaptation with explicit import/path/parent-proof glue recipes before whole original SHA; source authority930 original entries preserved, relative repo root instead of machine path. Add fixed public collector/recorded SQL controls/status/rowcounts/repeatedcontext+doc/strictresult/bounds/serialization/deepcopy/concurrentmutation rejection/rollbackerrors-spentwall/no second SQL/workerDSN boundary/fullbinding/newonlytarget/consumedidentitydenial cases. Original repository test IDs all remain.",
+    "native": "New postgres-marked cases use existing disposable function-scoped fixture_db and owner, create all16schemas in this freshCI DB, no local/DEV/PROD DB. Exact unchanged new SQL enumerates PUBLIC default+stored, direct, actual INHERIT true versus MEMBER/SET-only, several grantors/routes, owner-lostEXECUTE, non-security-definer/outside excluded, schemaUSAGEfalse, trigger/event_trigger-return/procedure identities, private body/config sentinel absent, bigint OID JSON numeric types, zero matches/missingreader/schema failure and catalogue/rows preservation/transactionrollback. Compare raw ephemeral IDs to actual native catalogue/has_function_privilege/pg_has_role, never normalize them into production evidence. Public strict run must reject ephemeralOID and rollback; real-worker exactprofile done recording fakeconnection, never claim nativeproductionadmission.",
+    "CI": "Use only normal full risk-classified Verify for backend changes, same planner/PG/imagejobs, all old tests/fullnative/21contracts/securityaudit/credentials/smokes/resources/caps retained. No localPGDocker, benchmarkdispatch, sharedmutableDB/newrunner/timeout/coverage waiver. Full own terminal HEAD proof/admission, namedexactclear, normalmerge, independentwholeMAIN proof/admission+genericSKIP/autofalse before safeFF. Derived own counts/times, no inherited4638PASSclaim."
+  },
+  "preservation": {
+    "old_files": "All930 parent full bytes/modes preserve exactly except .github/workflows/verify.yml and tests/broad_reader_paired_preservation.py, each finite counted full-byte inverse to unchanged oldSHA. All928 others EXACT. Query old artifact preserved immutable with the one-literal inverse proof. Any additional necessary oldfile change requires BEFOREcode design amendment/review.",
+    "workflow": "Exactly3 new docker commands appended inside existing original_41 BOTH-image loop after all14 oldcommands: newcollector--help,newoperator--help,newbinding. Every old step/name/id/command/order/condition/resources/deps/nativeprogram and CI gate unchanged; no newjob/step/projectionfields/settings. Whole file restores oldSHA by one counted old->old+3literal recipe.",
+    "old_guard": "Only import new tests/reader_function_identification_preservation.py and call its restore_identification_parent(name,data) before current guard logic; newhelper finite oldhistorical hash set and own old/new hash checks; all prior inverse/hashassertions unchanged. Independent newwhole930parent test includes entire guard, source mode and oldcopy reconstruction; adversarial append/drop/duplicate/bit mutations reject.",
+    "copy_proofs": "New FROZEN_PLAN JSON stores full930 authority, all exact-copy old/new hashes and counted literals; everycopy inverse restores wholeoriginalbytes including newtests/smoke/control/backend/operator. Newwritten collector/spec/inventory tested directly. Original oldcopy hashes not rewritten or ignored."
+  },
+  "limits_and_future_gates": "Existing only1CPU1Gi600s/task1parallel1retry0/HTTP30metadata60/connectstatementlock5s/wholetransactionwall15s/standalone identification-document131000, original complete-certificate8388608/log80000/chunk60000/max64, and original program/physicalheadroom unchanged. Full certificate including bindings/denials fits originalcap before rendering or failclosed; no partial-as-complete. Materialized/futurecreator/lock/G5 grants not touched or approved; this tool cannot emit accepted full catalogue/write proposal. Source deployment final images twice+freshprotectedreadiness+newcanonicalexactinputapproval needed before live run. No images/readiness preparation inferred in this CODE slice.",
+  "unchanged_original_scope": "FS13K runtime and master protected projection remain unchanged. All A-K backups/checkpoints/receipts/secrets/consumeddiagnostics/dirty084/userbranches/worktrees preserved. FullFS13/NSE/EXP/PDF/NAV scope remains. No hardening diversion/Insights implementation/G1 repeat/approvalpolling.",
+  "capacity_correction_before_test_change": {
+    "finding": "New test wrongly equated standalone metadata cap131000 with complete certificate cap. Actual unchanged evidence_transport.MAX_RAW_BYTES is8388608, MAX_LOG_BYTES80000, CHUNK_BODY_BYTES60000, MAX_CHUNKS64. The131000 program/physicalheadroom proof is unrelated to certificate raw limit.",
+    "no_production_code_or_limit_change": true,
+    "exact_test_disposition": "Replace wrong negative expectation for valid ~130k metadata with positive standalone<=131000/body+certificate<8MiB proof, then add one-more-row/identifier padding to make document>131000 and require original validator fail+confirmedROLLBACK, no truncation. No assertion removed about limits/retry/rollback/native proof. Preserve failed raw and old testcase source.",
+    "native_Scope_unchanged": true
+  }
+}
