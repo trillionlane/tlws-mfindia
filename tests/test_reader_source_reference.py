@@ -407,3 +407,24 @@ def test_cyclic_domain_reference_rejects_instead_of_guessing_a_conversion():
     with pytest.raises(ValueError):
         r.io_conversion_records({("pg_type", 50001): domain,
                                  ("pg_type", 50002): {**domain, "typbasetype": 50001}})
+
+
+@pytest.mark.parametrize("catalogue_override", [False, True])
+def test_internal_is_not_an_IO_path_even_with_a_catalogue_override(catalogue_override):
+    scalar = dict(typtype="b", typcategory="S", typbasetype=0, typtypmod=-1,
+                  typinput=0, typoutput=0, typelem=0, typsubscript=0, typnotnull=False)
+    objects = {("pg_type", 25): scalar,
+               ("pg_type", 2281): {**scalar, "typtype": "p", "typcategory": "P"}}
+    if catalogue_override:
+        objects[("pg_cast", 50000)] = dict(oid=50000, castsource=2281, casttarget=25,
+                                           castfunc=0, castcontext="i", castmethod="b")
+    values = r.io_conversion_records(objects)
+    assert all(value["source"] != 2281 and value["target"] != 2281 for value in values)
+
+
+def test_domain_over_internal_is_invalid_metadata_not_a_relabel_path():
+    internal = dict(typtype="p", typcategory="P", typbasetype=0, typtypmod=-1,
+                    typinput=0, typoutput=0, typelem=0, typsubscript=0, typnotnull=False)
+    with pytest.raises(ValueError):
+        r.io_conversion_records({("pg_type", 2281): internal,
+                                 ("pg_type", 50001): {**internal, "typtype": "d", "typbasetype": 2281}})

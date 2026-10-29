@@ -265,6 +265,8 @@ def io_conversion_records(objects):
             chain.append(oid)
             oid = types[oid]["typbasetype"]
             require(oid in types)
+        if chain:
+            require(types[oid]["typtype"] != "p")
         return oid, chain
 
     def array(row):
@@ -286,6 +288,10 @@ def io_conversion_records(objects):
             source_base, source_chain = base(oid)
             target_base, target_chain = base(target)
             s, t = types[source_base], types[target_base]
+            # PG18 find_coercion_pathway refuses internal before pg_cast and
+            # generic I/O. Support-state declarations remain in raw metadata.
+            if source_base == 2281 or target_base == 2281:
+                continue
             if source_base == target_base or (s["typcategory"] != "S" and t["typcategory"] != "S"):
                 continue
             override = casts.get((source_base, target_base))
