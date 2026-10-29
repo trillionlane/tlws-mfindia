@@ -453,7 +453,7 @@ def collect(conn):
             # pg_identify_object is metadata deparsing, never target invocation.
             identity_rows = rows(conn,
                 "SELECT pair.id::bigint AS oid,pair.sub AS subid,pg_catalog.to_jsonb(i) AS value "
-                "FROM pg_catalog.unnest(%s::oid[],%s::int[]) AS pair(id,sub) "
+                "FROM ROWS FROM (pg_catalog.unnest(%s::oid[]),pg_catalog.unnest(%s::int[])) AS pair(id,sub) "
                 "CROSS JOIN LATERAL pg_catalog.pg_identify_object(%s::oid,pair.id,pair.sub) i "
                 "ORDER BY pair.id,pair.sub", ([n[1] for n in nodes], [n[2] for n in nodes], classes[catalog]))
             require(len(identity_rows) == len(nodes))

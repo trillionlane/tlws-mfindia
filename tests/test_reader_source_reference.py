@@ -428,3 +428,27 @@ def test_domain_over_internal_is_invalid_metadata_not_a_relabel_path():
     with pytest.raises(ValueError):
         r.io_conversion_records({("pg_type", 2281): internal,
                                  ("pg_type", 50001): {**internal, "typtype": "d", "typbasetype": 2281}})
+
+
+@pytest.mark.parametrize("catalog", ["pg_authid", "pg_type"])
+def test_real_compiler_pairs_identity_arrays_with_qualified_rows_from(monkeypatch, catalog):
+    class_ids = {name: 1000 + i for i, name in enumerate(sorted(r.FIELDS))}
+    witnessed = []
+
+    class Inspect:
+        def setattr(self, target, name, value):
+            assert target is r and name == "rows"
+
+            def checked(conn, query, parameters=()):
+                if "pg_catalog.pg_identify_object" in query and parameters[2] == class_ids[catalog]:
+                    assert "FROM ROWS FROM (pg_catalog.unnest(%s::oid[]),pg_catalog.unnest(%s::int[])) AS pair(id,sub) " in query
+                    assert len(parameters[0]) == len(parameters[1]) > 0
+                    assert len(set(zip(parameters[0], parameters[1], strict=True))) == len(parameters[0])
+                    assert "ORDER BY pair.id,pair.sub" in query
+                    witnessed.append(True)
+                return value(conn, query, parameters)
+
+            monkeypatch.setattr(target, name, checked)
+
+    mock_catalogue(Inspect())
+    assert witnessed
