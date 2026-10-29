@@ -9,7 +9,6 @@ from psycopg.rows import dict_row
 import pytest
 
 import reader_source_packets as packets
-import reader_source_reference as legacy
 import reader_source_variants as variants
 import reader_source_view_locks as view_locks
 from test_reader_source_variants_postgres import observe
@@ -26,26 +25,19 @@ def test_native_pristine_target_observer_complete_view_locks(source_variant_db, 
     ).strip()
     base, _ = observe(dsn, authority, variants.PROFILES[0])
     base_record = view_locks.observe_profile(
-        dsn, variants.PROFILES[0], base["raw"]["legacy"],
-        legacy.AUTHORITY_SHA, expected_git=expected_git)
+        dsn, base, expected_git=expected_git)
     with psycopg.connect(dsn, autocommit=True, connect_timeout=5,
                          row_factory=dict_row) as owner:
         variants.install_book_variant(owner, ROOT)
     book, _ = observe(dsn, authority, variants.PROFILES[1])
     book_record = view_locks.observe_profile(
-        dsn, variants.PROFILES[1], book["raw"]["legacy"],
-        legacy.AUTHORITY_SHA, expected_git=expected_git)
+        dsn, book, expected_git=expected_git)
     bundle = packets.normal_ci_bundle(expected_git)
     for record in (base_record, book_record):
         assert record["ordinary_views"] == 15 and record["materialized_views"] == 0
         assert all(item["classification_complete"] is False and item["rollback_confirmed"]
                    for item in record["observations"])
         record["bundle"] = bundle
-    with capsys.disabled():
-        for record in (base_record, book_record):
-            print(view_locks.MARKER + json.dumps(record, sort_keys=True,
-                                               separators=(",", ":")), flush=True)
-
     # Changed source view with a real outside user relation: its actual lock
     # appears and the reviewed catalog-only outside classification rejects it.
     with psycopg.connect(dsn, autocommit=True, connect_timeout=5,
@@ -79,6 +71,13 @@ def test_native_pristine_target_observer_complete_view_locks(source_variant_db, 
                 owner.execute("DROP VIEW mf.ci_outside_view")
         finally:
             owner.execute("DROP SCHEMA ci_outside CASCADE")
+
+    # No apparently usable marker may escape before the adversarial outside
+    # relation has been rejected and its disposable mutation fully cleaned up.
+    with capsys.disabled():
+        for record in (base_record, book_record):
+            print(view_locks.MARKER + json.dumps(record, sort_keys=True,
+                                               separators=(",", ":")), flush=True)
 
 
 def test_source_outside_gate_rejects_an_unreviewed_relation():

@@ -8,12 +8,15 @@ the target's implicit recursive locks on pinned system relations.
 from copy import deepcopy
 import hashlib
 import json
+from pathlib import Path
 
 import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
 from mfdataindia.review import broad_reader_policy
+import reader_source_reference as legacy
+import reader_source_variants as variants
 
 
 MARKER = "SOURCE_VIEW_LOCK_CANDIDATE_V1:"
@@ -87,7 +90,8 @@ def observe_view(dsn, observer, *, database_oid, view, expected_seal):
     """One new pristine target backend, one NOWAIT view lock, confirmed ROLLBACK."""
     _require(type(view) is dict and set(view) == {"oid", "nspname", "relname", "relkind"})
     _require(view["relkind"] in ("v", "m") and type(view["oid"]) is int)
-    _require(_view_seal(observer, view["oid"]) == expected_seal)
+    observed_seal = _view_seal(observer, view["oid"])
+    _require(observed_seal == expected_seal)
     target = psycopg.connect(dsn, autocommit=True, connect_timeout=5,
                              row_factory=dict_row)
     rolled_back = False
@@ -112,6 +116,8 @@ def observe_view(dsn, observer, *, database_oid, view, expected_seal):
         target.close()
     _require(rolled_back)
     return {"target_view": deepcopy(view),
+            "expected_view_definition_seal": deepcopy(expected_seal),
+            "observed_view_definition_seal": observed_seal,
             "target_backend_pid": pid,
             "target_database_oid": database_oid,
             "target_prelock_relation_baseline": baseline,
@@ -122,10 +128,26 @@ def observe_view(dsn, observer, *, database_oid, view, expected_seal):
             "rollback_confirmed": True}
 
 
-def observe_profile(dsn, profile, raw, source_authority_sha256, *, expected_git):
+def observe_profile(dsn, payload, *, expected_git):
     """Observe every exact source-profile view, preserving CI OIDs as evidence."""
-    _require(type(raw) is dict and type(expected_git) is str and len(expected_git) == 40)
+    _require(type(payload) is dict and type(expected_git) is str and len(expected_git) == 40)
+    profile = payload.get("profile")
     _require(profile in ("BASE44_EXTENDED", "BASE44_BOOK_V2_SINGLE_PASS"))
+    _require(payload.get("compiler_git") == expected_git)
+    _require(payload.get("base_authority_sha256") == legacy.AUTHORITY_SHA)
+    _require(payload.get("variant_authority_sha256") == variants.AUTHORITY_SHA)
+    _require(payload.get("authority") == variants.variant_authority(Path(__file__).resolve().parents[1]))
+    _require(payload.get("runtime_authority") is payload.get("permission_acceptance") is False)
+    _require(type(payload.get("raw")) is dict and type(payload["raw"].get("legacy")) is dict)
+    _require(payload.get("raw_sha256") == legacy.digest(legacy.canonical(payload["raw"]).encode()))
+    raw = payload["raw"]["legacy"]
+    authority = payload["authority"]
+    migration_pins = [{"path": row["path"], "sha256": row["sha256"]}
+                      for row in authority["base"]["files"]]
+    _require(len(migration_pins) == 44)
+    variant_pins = [{"path": row["path"], "sha256": row["sha256"]}
+                    for row in authority["variant"]["files"]]
+    _require(len(variant_pins) == 9)
     namespaces = {o["oid"]: o["row"]["nspname"] for o in raw["objects"]
                   if o["catalog"] == "pg_namespace"}
     views = []
@@ -154,7 +176,15 @@ def observe_profile(dsn, profile, raw, source_authority_sha256, *, expected_git)
             row, partition_health=(target["nspname"], target["relname"])
             == ("mf", "v_partition_health"))
     result = {"format": FORMAT, "profile": profile, "compiler_git": expected_git,
-              "source_authority_sha256": source_authority_sha256,
+              "source_reference_sha256": legacy.digest(legacy.canonical(payload).encode()),
+              "source_reference_raw_sha256": payload["raw_sha256"],
+              "base_authority_sha256": payload["base_authority_sha256"],
+              "variant_authority_sha256": payload["variant_authority_sha256"],
+              "compiler_sources": deepcopy(payload["compiler_sources"]),
+              "migration_source_pins": migration_pins,
+              "migration_source_pins_sha256": legacy.digest(legacy.canonical(migration_pins).encode()),
+              "variant_source_pins": variant_pins,
+              "variant_source_pins_sha256": legacy.digest(legacy.canonical(variant_pins).encode()),
               "database_oid": database_oid,
               "ordinary_views": len(results), "materialized_views": 0,
               "observations": results, "source_only": True,
