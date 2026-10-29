@@ -1,0 +1,179 @@
+{
+  "format": "PHASE_A_SOURCE_REFERENCE_EXTENSION_DESIGN_ONLY_V3",
+  "implementation_parent": "016e63afb7b82aa1369b97bfdc63a729524d0c1d",
+  "phase": "CI_ONLY_CALIBRATION_NOT_MERGEABLE_NOT_PHASE_B_OR_LIVE_ADMISSION",
+  "reason": "Independent analyses identified raw ACL arrays/instance AST seals are not portable comparators, and BASE44 alone is not the active-book source view shape. Complete the CI-only reference needed for exact PhaseB design without changing any existing source, workflow, test or operational code.",
+  "authority": {
+    "human_mode_aware_lock_adjustment": "DIRECT_HUMAN_MODE_AWARE_VIEW_LOCK_APPROVAL_20261029.json, accepted2026-10-29T06:32:14Z; actual mode-aware operational implementation remains later PhaseB, not this extension.",
+    "standing_bounded_DEV_read_enablement": true,
+    "technical_bounds_unchanged": true,
+    "no_live_or_provider_or_permissions_from_this_extension": true
+  },
+  "prior": {
+    "v3_design": "BROAD_READ_SEALED_HELPER_SUCCESSOR_DESIGN_20261029_v3.json",
+    "v3_sha256": "63ceb5714a26697c8533e0683df88ce0fa53c734cc4a8daddb3342387c809663",
+    "base44_authority_sha256": "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372",
+    "source_core_base": "c550e3c21482f45684a1b63b7c70fc84b8a62b50",
+    "original_ccea_failed_query": "Corrected in exact016e only ROWS FROM positional array pairing; originalfailedrun40796880047 retainedonce/notreadmitted. CurrentownCI40830523961 stillrunning; no PASS/reference inferred."
+  },
+  "preservation": {
+    "all_981_parent_tracked_bytes_modes": "EXACT including all existing PhaseA compiler/native/unit/preservation files; all972 original parent files/workflows/SQL/production/PDF/deps/resources likewise exact. ADDITIVE files only.",
+    "new_files": [
+      "docs/CI_SOURCE_REFERENCE_PORTABILITY_BOOK_VARIANT_DESIGN_20261029.json",
+      "docs/CI_SOURCE_REFERENCE_BOOK_VARIANT_AUTHORITY_20261029.json",
+      "tests/reader_source_variants.py",
+      "tests/test_reader_source_variants.py",
+      "tests/test_reader_source_variants_postgres.py",
+      "tests/test_reader_source_variants_preservation.py"
+    ],
+    "old_IDs": "Retain all5086 current IDs535PG EXACT; additive only, no skip/xfail/assert weakening. Existing source-reference native test and v1 marker/envelope stay unchanged.",
+    "old_collector": "New tests-only module composes existing tests.reader_source_reference.collect/reference_transaction/semantic_reference and literal CANDIDATE_SQL solely inside disposable normalCI. No production worker/import/entrypoint, no mutable module alias/globals monkeypatch/private operational helper bypass. Existing collector context admits only mfdata_reference_* DB/directmfdata_admin/PG18/read-onlyRR/exact15swall."
+  },
+  "exact_variant_authority": {
+    "verify_before_any_connection_or_role_database_allocation": "Existing base44 authority unchanged plus new pure verifier for the eight fixed variant source/selection files below. Strict exact path/SHA/bytecount, nonsymlink containment, count8 total76406. No wildcard discovery or arbitrary installer/source/policy.",
+    "files": [
+      {
+        "path": "sql/optional/amc_book_current_projection_v2.sql.inc",
+        "bytes": 5055,
+        "sha256": "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376"
+      },
+      {
+        "path": "sql/optional/amc_book_core_projection_v1.sql.inc",
+        "bytes": 2886,
+        "sha256": "222f81c25672e66a35bbe3c17be6723ca65495d55a6af571c15bafa00f5aa4f8"
+      },
+      {
+        "path": "src/mfdataindia/enrichment/book_core_projection.py",
+        "bytes": 1381,
+        "sha256": "da324f8db06b4c93335177f1d83e1a61b4d1a811e54ef569c63fbf7542e4ce64"
+      },
+      {
+        "path": "src/mfdataindia/enrichment/current_facts_store.py",
+        "bytes": 17936,
+        "sha256": "380f656f5d70a4870c9c86d2f821cc14c418128a1ffb51cf9124c5e3b8b5afc0"
+      },
+      {
+        "path": "src/mfdataindia/enrichment/book_projection.py",
+        "bytes": 12822,
+        "sha256": "d3e7cd5a167dcbf7d47896624bb5f064808859f2d1e706dc5e2d5af171810dec"
+      },
+      {
+        "path": "src/mfdataindia/enrichment/book_sources.py",
+        "bytes": 17843,
+        "sha256": "dcde01497a93ce867f475f8c707e9caf7683d0785636d03a34c2677dc64e0e12"
+      },
+      {
+        "path": "config/official-book-sources-v5-aum-row.json",
+        "bytes": 6656,
+        "sha256": "1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec"
+      },
+      {
+        "path": "src/mfdataindia/enrichment/book_activation.py",
+        "bytes": 11827,
+        "sha256": "35fd4f51893cfe0e998717ee646b90c4748a4e89a348c6205875f43dd708864e"
+      }
+    ],
+    "allowed_names": [
+      "BASE44_EXTENDED",
+      "BASE44_BOOK_V2_SINGLE_PASS"
+    ],
+    "execution": "Fresh isolated source DB and same four fixed roles/fail-if-preexisting/cleanup pattern, function-scoped. Run base44 via exact existing store migration APIs. Observe base in one read-onlyRR transaction. After confirmedROLLBACK, execute ONLY unchanged v2 projection SQL then unchanged book_core_projection.install(conn,ROOT) in fixture setup, then observe book shape in a NEW read-onlyRR transaction. No activation/switch/install-config workflow or business-row insertion/provider.",
+    "not_allowed": "No historical v1 fallback, no core-only hybrid, no operational book_projection.activate/book_activation.activate/current_facts_store.install/switch, no invented policies/configuration/receipt/source rows. This is source-shape compilation only, not evidence of actual protected live variant."
+  },
+  "extended_inventory": {
+    "top": "Exact keys format,legacy,acl_rows,relation_candidate,inheritance_rows. legacy is whole actual old raw reference unchanged (all real ephemeral OIDs); no omission/normalization. Newgroups sorted strictly, unknown/missing fields/duplicates reject. No actual business rows except original empty-disposable-fixture assertions.",
+    "ACL_population": "Every reached pg_proc/pg_type/pg_language/pg_namespace object from legacy.objects, exact rowcount and OID set. Fixed fields rawACL/owner and acldefault kind f/T/l/n. Four batched serverSELECTs, not per-object I/O. Each row exact keys catalog,oid,raw_acl_is_null,atoms,reader_execute. raw NULL and empty[] distinct; COALESCE only NULL to pg_catalog.acldefault(kind,actualownerOID). aclexplode returns sorted [grantorOID,granteeOID,privilege_type,is_grantable] atoms. Positive role IDs map to exactly one complete legacy role identity, PUBLICgrantee0 explicit separate identity, grantor0 rejected. Unknown atom/privilege/grant-option type/duplicate rejects. reader_execute is exact has_function_privilege(actualCIreaderOID,actualroutineOID,'EXECUTE') BOOLEAN for pg_proc only, NULL for others; no function invocation. Exact per-catalog allowed privilege strings enumerated in ACL_allowed_privileges; reject every other string before symbolic projection.",
+    "relation_candidate": "Execute unchanged fixed CANDIDATE_SQL under same transaction; retain exact CANDIDATE_COLUMNS including all outside leaves, not filtered/relabeled/admitted. Every relation/OID identity resolves in legacy pg_class graph; retain source metadata only. Separate from grant roots and actual lock witness. No outside schema grant.",
+    "inheritance_rows": "Fixed SELECT inhrelid::bigint,inhparent::bigint,inhseqno,inhdetachpending FROM pg_catalog.pg_inherits WHERE inhparent=ANY(all reached legacy pg_class OIDs) OR inhrelid=ANY(same OIDs), ordered parent/child/seq. Every returned positive child/parent identity must exist in legacy graph or reject; require positive sequence/exact bool/no duplicate. Complete relation metadata, no system/business data scans beyond catalog.",
+    "execution_bounds": "Each base/book observation keeps original same15s wholewall,5sconnect/statement/lock,15stransaction, direct owner oneconnection/read-onlyRR/context/metadata twice equality/confirmedROLLBACK/ambiguitydominates/spentwallnoIO. Build/validate/serialize extended raw and portable reference inside SAME observation wall. No timeout/resource/SQL cap increase. Native fixture DDL setup outside read-only observation is normal disposableCI only, not live/runtime authority.",
+    "ACL_allowed_privileges": {
+      "pg_proc": [
+        "EXECUTE"
+      ],
+      "pg_type": [
+        "USAGE"
+      ],
+      "pg_language": [
+        "USAGE"
+      ],
+      "pg_namespace": [
+        "CREATE",
+        "USAGE"
+      ]
+    }
+  },
+  "portable_projection": {
+    "no_live_consumer": "Pure tests-only portable_source_reference(extended); format explicit source-expectation-NOT-live-admission. Retain entire original numeric/opaque legacy and extended document separately. No public/runtimeOID substitutions.",
+    "OID_mapping": "Use complete exact legacy symbolic pg_identify_object identity map for all old declaration refs/edges/memberships/columns/casts/ranges/aggregates/conversions. Keep all metadata scalars except finite named instance-only seals below; no aliases/name folding/overload tolerance/unknownrole/provider normalization. Raw reference SHA is provenance outside the portable comparison payload, not included in portable semantic hash.",
+    "finite_opaque_table": {
+      "pg_proc": [
+        "sql_body_seal"
+      ],
+      "pg_type": [
+        "default_binary_seal"
+      ],
+      "pg_rewrite": [
+        "qualification_seal",
+        "action_seal"
+      ],
+      "pg_constraint": [
+        "expression_seal"
+      ],
+      "pg_attrdef": [
+        "expression_seal"
+      ]
+    },
+    "required_deparse": "For any nonNULL excluded opaque seal require its full deparsed counterpart exists/nonNULL (pg_proc definition_seal; pg_type default_text_seal; pg_rewrite definition_seal; pg_constraint definition_seal; pg_attrdef definition_seal). Keep explicit NULL/nonNULL shape for each opaque field in portable declaration. Keep actual SHA/bytecount opaque values in unchanged legacy raw for same-instance drift/provenance. No opaque hash accepted as portable. No whole-value/ignored-region/whitespace normalization.",
+    "canonical_ACL": "Replace only raw textual ACL declaration fields proacl/typacl/lanacl/nspacl with exact canonical symbolic atoms from new server-derived ACLgroup; preserve raw NULL flag and actual effective reader_execute. Require one ACLgroup per corresponding object, no missing/extra ACLgroup or role map. Raw ACL array remains in legacy provenance. Changes of owner/grantor/grantee/privilege/grantoption/default state/effective execution alter portable hash.",
+    "environment": "Keep exact server version/encoding/locale provider/collate/ctype/locale/ICUrules/declared+actual versions from old semantic reference; exclude only actual DBname/OID as already source-only labelled. All bootstrap/governed role names/flags/config/member routes remain exact. No CloudSQL provider role alias/variant is admitted by this extension; actual runtime profiles remain a later exact PhaseB reviewed gate.",
+    "candidate": "Portable candidate and inheritance map every relation/owner to explicit symbolic identity and keep full metadata/definition seals/kinds/names/detach flags. Full raw actual candidate retained; source closure does not become actual lock evidence."
+  },
+  "native_plan": {
+    "fixture": "New independent fresh function-scoped CI-only source fixture following literal original role/database migration/cleanup pattern; all base+variant source authority verified before even admin connect. Existing fixture is NOT modified/reused mutably.",
+    "sequence": "Collect extendedBASE twice/equal under one15s read-onlyRR; validate+serialize portable semantics insidewall then confirmedROLLBACK. Assert only empty source tables. Apply v2 SQL then unchanged book_core_projection.install once. Collect extendedBOOK twice/equal under separate sameboundedreadonlywall; serialize portable beforeconfirmedROLLBACK. Verify source tables still empty and migration ledger unchanged. DDL must follow atomic_variant_DDL and commit-confirmedIDLE before any BOOK observation/output.",
+    "known_view_changes": [
+      "mf_live_facts.field_versions",
+      "mf_live_facts.current_values",
+      "mf_live_facts.resolved",
+      "mf.current_fund_facts"
+    ],
+    "assertions": "Only these four source view-definition seals change. Compare facade ordered column names, symbolic types, typmods, collations to originalBASE44 facade, not historical84hardcode. Require current_fund_facts deparseddefinition equals resolved; whole raw OIDs stayactual. No claims about live currentvariant. Every canonicalACL row must match server result, readerroute included; require candidate includes exact known three catalog leaves for partition-health source and source grant roots unchanged. Perprofile complete opaque/raw+portablehash emitted.",
+    "protocol": "Keep old existing v1 native output untouched. New extendedBASE and BOOK each emit one separate strict numbered envelope with exact unique fixed marker perprofile, original MAX_RAW8MiB/CHUNK60000/MAX64 bounds perdocument, exact compilerGit/currentold+newhelperSHA/baseauthority+variantauthority pins/profileid. Full extended raw carried once plus portable canonicalSHA/version; the complete portable document is deterministically reconstructed and verified offline from retained raw and exact helper, avoiding duplicate semanticbody bloat without omitting metadata. No runtime response/cap change. Strict named extractor ignores only other explicitly named known source profile markers, rejects duplicate/mixed/unknown/truncated envelopes and verifies exact profile/pins. Old transportheadercount/hash/compression/EOF/canonical checks retained via test-only composition, no monkeypatching oldmodule constants.",
+    "atomic_variant_DDL": {
+      "transaction": "One explicitly bounded direct mfdata_admin owner connection/IDLE/autocommit/expected disposableDB prefix. BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE, SET LOCAL search_path=pg_catalog/timezoneUTC/statement5s/lock5s/transaction15s; same mainthread/noexistingtimer/15swholewall.",
+      "sequence": "Within the sole transaction execute exact v2 SQL once, unchanged book_core_projection.install once (whole pinned core SQL then exact deparsed facade copy), COMMIT once, require driverIDLE before opening new separate readonly observation. Consume complete actual command results for both fixed multi-statement DDL batches, not just first result, retaining expected authored CREATE VIEW/DO tags and rejecting any error/unexpected result. Existing helper source stays unmodified; tests-only bounded wrapper drains known DDL resultsets, lets exact expected metadataSELECT fetch complete normally.",
+      "failure": "Any statement/commit ambiguity produces noBOOK envelope, no retry/reconnect/secondcommit. Before COMMIT only and with remainingwall, sole confirmedROLLBACK permitted; rollbackambiguity dominates. Spentwall or COMMIT_OUTCOME_UNKNOWN permits transportclose only/no furtherSQL. Allnewatomicity/dual-failure/IDLE/spentwall tests; old read-only helper/worker rules unchanged."
+    }
+  },
+  "unit_plan": [
+    "Exact8sourcepins preallocation: count8,total76406, exact fixed order/paths/bytes/SHA for every file, explicitly including omission/order/byte-count/SHA drift of selection-only book_activation.py. Reject before admin connect/allocation.",
+    "No operational/source/provider APIs or arbitraryvariant SQL",
+    "Full schema/unknown/missing/duplicates/OID bool/typedACL/public/grantor/effective-execute checks",
+    "Every excluded opaque field keepsrawhash and exactnullshape, requiresdeparse; changing deparse/declaration/reference/owner/ACL/membership changes portable hash; changing ONLY opaquehash does not change portablehash but always changes retained raw hash",
+    "No opaque field accidentally included as portable; unknown nonopaque declaration field is rejected by old semantic schema",
+    "Wrong variant/marker/hash/role map/NULL-empty/mixedprofile/envelope gap rejection, all original transportcases retained",
+    "Fake recorder tests actual fixed newSQL/populations/completions under old Boundedsamewall; no missingcolumns or cardinality accepted",
+    "New independent all981parentfullbytes+modes proof; all5086IDs535PG retained; fullnormalHEAD/main gates unchanged",
+    "Opaque mutation tests independently mutate SHA256 and utf8_bytes for every finite opaque field; both excluded from portablehash but change retainedrawhash, while changing NULLshape affectsportablehash. All deparse mutations still affectportablehash."
+  ],
+  "cycle": "Named exact design CLEAR before this additive PhaseA extension. Implement only allowed six newfiles, fullstablelocal/inventory/exactcode review before normalpush. Do not manuallycancel/rerun/dispatch currenthealthy40830523961; prefer retain its complete source reference if it finishes before subsequent normalpush. No admission/merge/deploy from any calibration head. Extract all actual named references from final normalCI independently review/pin them and amend exactPhaseBdesign BEFORE operational successor code. Then final fullcycle under standing authorization and approved modeaware view lock model.",
+  "read_enabled": false,
+  "S1_complete": false,
+  "prior_design": {
+    "path": "CI_SOURCE_REFERENCE_PORTABILITY_BOOK_VARIANT_AMENDMENT_20261029_v1.json",
+    "sha256": "34d5be5fb58929967b38e92047811b6d8511a874bf917661632d779dc1c3c755",
+    "review": "CHANGES_REQUIRED_DESIGN_ONLY_3P2_NO_P1",
+    "turn": "01a18668-2f49-7e22-9d08-7aa854e155d6"
+  },
+  "review_disposition_before_code": {
+    "P2_selection_pin": "Added exact eighth book_activation.py pin/count8/total76406, only selection proof not operational invocation.",
+    "P2_privileges": "Finite per-catalog EXECUTE/USAGE/CREATE map, unknownstringsreject, and SHA plus bytes mutations explicit.",
+    "P2_DDL_completion": "One original-bounded atomicwritefixture transaction, complete multi-resultdrain, sole confirmedCOMMIT+IDLE before newreadonly observation; noBOOK on ambiguous outcome/no retries."
+  },
+  "prior_design_v2": {
+    "path": "CI_SOURCE_REFERENCE_PORTABILITY_BOOK_VARIANT_AMENDMENT_20261029_v2.json",
+    "sha256": "c432921abd88beff98569528065880cb2e62fc1c2e60ca684b8779f298817fc3",
+    "review": "CHANGES_REQUIRED_DESIGN_ONLY_SOLE_P2_EXACT7_TEST_LITERAL",
+    "turn": "01a1866b-b6da-7c43-982f-381126452985"
+  }
+}
