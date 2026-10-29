@@ -35,7 +35,8 @@ OPAQUE = {
     "pg_constraint": ("expression_seal",),
     "pg_attrdef": ("expression_seal",),
 }
-DEPARSE = {cat: "definition_seal" for cat in OPAQUE} | {"pg_type": "default_text_seal"}
+TRIGGER_OPAQUE = ("arguments_seal", "qualification_seal")
+DEPARSE = {cat: "definition_seal" for cat in OPAQUE} | {"pg_type": "default_text_seal", "pg_trigger": "definition_seal"}
 LEGACY_KEYS = set(
     "format base_git authority_sha256 context database objects identities edges aggregates ranges columns memberships conversions runtime_authority permission_acceptance".split()
 )
@@ -305,7 +306,7 @@ def portable_source_reference(value):
             declaration.pop(ACL[cat][0])
             declaration["canonical_ACL"] = acl[(cat, canonical(obj["identity"]))]
         shapes = {}
-        for field in OPAQUE.get(cat, ()):
+        for field in (TRIGGER_OPAQUE if cat == "pg_trigger" else OPAQUE.get(cat, ())):
             item = declaration.pop(field)
             seal(item)
             counterpart = declaration[DEPARSE[cat]]

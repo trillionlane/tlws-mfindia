@@ -106,6 +106,7 @@ FIELDS = {
     "pg_authid": "oid rolname rolsuper rolinherit rolcreaterole rolcreatedb rolcanlogin rolreplication rolbypassrls rolconfig".split(),
     "pg_rewrite": "oid rulename ev_class ev_type ev_enabled is_instead".split(),
     "pg_constraint": "oid conname connamespace contype conrelid contypid conindid conparentid confrelid condeferrable condeferred conenforced convalidated conkey confkey conpfeqop conppeqop conffeqop confupdtype confdeltype confmatchtype conislocal coninhcount connoinherit".split(),
+    "pg_trigger": "oid tgrelid tgparentid tgname tgfoid tgtype tgenabled tgisinternal tgconstrrelid tgconstrindid tgconstraint tgdeferrable tginitdeferred tgnargs tgattr tgoldtable tgnewtable".split(),
     "pg_attrdef": "oid adrelid adnum".split(),
     "pg_extension": "oid extname extowner extnamespace extrelocatable extversion extconfig".split(),
 }
@@ -125,6 +126,9 @@ PRIVATE = {
                    "definition": "pg_catalog.pg_get_ruledef(r.oid,false)"},
     "pg_constraint": {"expression": "r.conbin::text",
                       "definition": "pg_catalog.pg_get_constraintdef(r.oid,false)"},
+    "pg_trigger": {"arguments": "pg_catalog.encode(r.tgargs,'hex')",
+                   "qualification": "r.tgqual::text",
+                   "definition": "pg_catalog.pg_get_triggerdef(r.oid,false)"},
     "pg_attrdef": {"expression": "r.adbin::text",
                    "definition": "pg_catalog.pg_get_expr(r.adbin,r.adrelid,false)"},
     "pg_extension": {"conditions": "pg_catalog.array_to_json(r.extcondition)::text"},
@@ -147,6 +151,7 @@ REFS = {
     "pg_namespace": {"nspowner": "pg_authid"}, "pg_authid": {},
     "pg_rewrite": {"ev_class": "pg_class"},
     "pg_constraint": {"connamespace": "pg_namespace", "conrelid": "pg_class", "contypid": "pg_type", "conindid": "pg_class", "conparentid": "pg_constraint", "confrelid": "pg_class", **{n: "pg_operator" for n in "conpfeqop conppeqop conffeqop".split()}},
+    "pg_trigger": {"tgrelid": "pg_class", "tgparentid": "pg_trigger", "tgfoid": "pg_proc", "tgconstrrelid": "pg_class", "tgconstrindid": "pg_class", "tgconstraint": "pg_constraint"},
     "pg_attrdef": {"adrelid": "pg_class"},
     "pg_extension": {"extowner": "pg_authid", "extnamespace": "pg_namespace", "extconfig": "pg_class"},
 }
@@ -324,6 +329,8 @@ def projection(catalog):
         value = "r." + name
         if name in ARRAY_REFS:
             value += "::oid[]::bigint[]"
+        elif catalog == "pg_trigger" and name == "tgattr":
+            value += "::int2[]"
         elif name in REFS[catalog] or name == "oid" or name in REG_REFS:
             value += "::oid::bigint"
         expressions.extend(("'" + name + "'", value))
@@ -335,6 +342,23 @@ def projection(catalog):
         expressions.extend(("'config_count'", "pg_catalog.cardinality(r.extconfig)",
                             "'condition_count'", "pg_catalog.cardinality(r.extcondition)"))
     return "pg_catalog.jsonb_build_object(" + ",".join(expressions) + ")"
+
+
+def trigger_columns(relid, numbers, columns, identities):
+    """Bind ordered trigger attnums to exact non-dropped column identities."""
+    require(type(relid) is int and relid > 0 and type(numbers) is list)
+    seen, result = set(), []
+    for number in numbers:
+        require(type(number) is int and number > 0 and number not in seen)
+        seen.add(number)
+        key = ("pg_class", relid, number)
+        column = columns.get((relid, number))
+        identity = identities.get(key)
+        require(column is not None and column["attisdropped"] is False)
+        require(type(identity) is dict and type(identity.get("identity")) is str
+                and bool(identity["identity"]))
+        result.append(deepcopy(identity))
+    return result
 
 
 def rows(conn, query, parameters=()):
@@ -584,7 +608,8 @@ def collect(conn):
                 add("pg_authid", dep["refobjid"])
                 edges.add((catalog, dep["objid"], dep["objsubid"], "pg_authid", dep["refobjid"], 0, "shared:" + dep["deptype"]))
             if catalog == "pg_class":
-                for child, field in (("pg_rewrite", "ev_class"), ("pg_constraint", "conrelid"), ("pg_attrdef", "adrelid")):
+                for child, field in (("pg_rewrite", "ev_class"), ("pg_constraint", "conrelid"),
+                                     ("pg_attrdef", "adrelid"), ("pg_trigger", "tgrelid")):
                     for r in rows(conn, "SELECT oid::bigint AS oid," + field + "::bigint AS parent FROM pg_catalog." + child + " WHERE " + field + "=ANY(%s::oid[])", (ids,)):
                         add(child, r["oid"], origin=(catalog, r["parent"], 0))
                 for r in rows(conn, "SELECT indexrelid::bigint AS oid,indrelid::bigint AS parent FROM pg_catalog.pg_index WHERE indrelid=ANY(%s::oid[])", (ids,)):
@@ -621,6 +646,11 @@ def collect(conn):
                 for r in rows(conn, "SELECT oid::bigint AS oid,contypid::bigint AS parent FROM pg_catalog.pg_constraint WHERE contypid=ANY(%s::oid[])", (ids,)):
                     add("pg_constraint", r["oid"], origin=(catalog, r["parent"], 0))
     require(pending == expanded)
+    for (catalog, oid), row in sorted(objects.items()):
+        if catalog == "pg_trigger":
+            trigger_columns(row["tgrelid"], row["tgattr"], columns, identities)
+            for attnum in row["tgattr"]:
+                edges.add((catalog, oid, 0, "pg_class", row["tgrelid"], attnum, "declared"))
     memberships = [member_rows[k] for k in sorted(member_rows)]
     conversions = io_conversion_records(objects)
     database = rows(conn, "SELECT oid::bigint,datname,encoding,datlocprovider::text,datcollate,datctype,datlocale,datcollversion,pg_catalog.pg_database_collation_actual_version(oid) AS actual_collation_version," + seal_sql("daticurules") + " AS icu_rules_seal FROM pg_catalog.pg_database WHERE datname=current_database()")[0]
@@ -726,6 +756,11 @@ def semantic_reference(raw):
         extra = {"actual_version"} if cat == "pg_collation" else {"config_count", "condition_count"} if cat == "pg_extension" else set()
         require(set(row) == (set(FIELDS[cat]) - {"rolconfig"}) | {k + "_seal" for k in PRIVATE.get(cat, {})} | extra)
         row.pop("oid")
+        if cat == "pg_trigger":
+            relation = row["tgrelid"]
+            columns = {(column["attrelid"], column["attnum"]): column
+                       for column in raw["columns"]}
+            row["tgattr"] = trigger_columns(relation, row["tgattr"], columns, names)
         for field, target in REFS[cat].items():
             values = row[field]
             row[field] = [name(target, v) for v in values] if field in ARRAY_REFS and values is not None else None if values is None else name(target, values)
