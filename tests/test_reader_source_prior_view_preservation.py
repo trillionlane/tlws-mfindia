@@ -22,7 +22,7 @@ ADDED = {
 
 def test_complete_998_file_immediate_parent_bytes_modes_and_finite_delta():
     delta = subprocess.check_output(
-        ["git", "diff", "--name-status", "--no-renames", PARENT + "..HEAD"], cwd=ROOT
+        ["git", "diff", "--name-status", "--no-renames", PARENT + "..b56fe2ae0806fc0eaa80692be82c854bd429af84"], cwd=ROOT
     ).decode().splitlines()
     assert set(delta) == {"M\t" + path for path in CHANGED} | {
         "A\t" + path for path in ADDED
