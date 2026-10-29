@@ -1,0 +1,14 @@
+{
+  "phase": "CI_SOURCE_CALIBRATION_ONLY_NOT_MERGEABLE_OR_OPERATIONAL",
+  "base": "c550e3c21482f45684a1b63b7c70fc84b8a62b50",
+  "design_v3_sha256": "63ceb5714a26697c8533e0683df88ce0fa53c734cc4a8daddb3342387c809663",
+  "source_authority_v2_sha256": "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372",
+  "named_design_review": "01a18507-c54c-72a3-a901-0aa6fba80644 CLEAR/DESIGN_ONLY_PHASE_A_ONLY",
+  "finite_graph_adjustment_review": "01a1850d-205a-7ca2-a981-2978222725a9 FINITE_PHASE_A_GRAPH_ADJUSTMENT_CLEAR/DESIGN_ONLY; context and PG18 constraint findings corrected before normal CI",
+  "implementation": "Seven new compiler/test/document files. Every one of the972existingtracked parent fullbytes/modes remains unchanged. No new production module, workflow edit, controller, capture/grant worker, image, runtime root or live job.",
+  "graph_adjustments": "pg_extension exact fields/owner/namespace/config relations/sealed aligned conditions; pg_range type-associated support rows with every subtype/multirange/collation/opclass/canonical/difference reference; PG18 conperiod/confdelsetcols/conexclop and all operator edges.",
+  "transaction": "One owner connection; READONLY RR; 5sconnect/statement/lock;15s wholewall and transaction_timeout; UTC/search_path; full current_user/session_user context validation; metadata twice+completevalidation+serialization under samewall; confirmed soleROLLBACK; ambiguitydominates; spentwallnoSQL/retry/reconnect; only transportclose after ambiguity.",
+  "compiler_io": "Metadata SELECTs only after installing exact44unchanged source migrations into one NEW disposable normalCI database. No normal localPG/Docker/DEV/provider/secret/sourceHTTP or businessdata access. No old consumed diagnostics.",
+  "reference": "Real ephemeral IDs remain in raw CI evidence. Separately labelled symbolic source expectation is NOT runtime evidence. Opaque pg_node_tree seals are instance-bound, not automatically portable across databases; exact deparsed declaration/view/reference fields and all populations require independent review before phaseB. No raw function bodies/private configuration/default/nodeexpressions are emitted.",
+  "future_gate": "No merge, image preparation or live use at the calibration head. Retain whole actual CI raw once, extract strict complete numbered reference, independent source-reference review and amended exact design CLEAR before phaseB implementation. Final actual HEAD+MAIN proofs required again after final source changes. No relaxed permission guard or live-read enabled claim."
+}
