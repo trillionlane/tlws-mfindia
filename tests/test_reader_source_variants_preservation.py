@@ -7,6 +7,8 @@ from pathlib import Path
 import stat
 import subprocess
 
+from test_reader_source_trigger import TRIGGER_RECIPE_SHA
+
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "016e63afb7b82aa1369b97bfdc63a729524d0c1d"
 TRIGGER_PARENT = "c7c1b1f62ddb54af926907537ecbbd7055a38053"
@@ -15,9 +17,20 @@ TRIGGER_PATHS = {"tests/reader_source_reference.py", "tests/reader_source_varian
 
 
 def restore_trigger_source(raw, path):
-    plan = json.loads((ROOT / "docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json").read_bytes())
+    recipe = (ROOT / "docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json").read_bytes()
+    assert hashlib.sha256(recipe).hexdigest() == TRIGGER_RECIPE_SHA
+    plan = json.loads(recipe)
+    assert set(plan) == {"format", "parent", "files"}
     assert plan["format"] == "EXACT_COUNTED_TEST_ONLY_PG_TRIGGER_LITERAL_INVERSES"
     assert plan["parent"] == TRIGGER_PARENT and set(plan["files"]) == TRIGGER_PATHS
+    assert {name: len(pairs) for name, pairs in plan["files"].items()} == {
+        "tests/reader_source_reference.py": 8,
+        "tests/reader_source_variants.py": 2,
+        "tests/test_reader_source_variants_preservation.py": 4,
+    }
+    assert all(type(pair) is dict and set(pair) == {"old", "new"}
+               and type(pair["old"]) is str and type(pair["new"]) is str
+               and pair["new"] for pairs in plan["files"].values() for pair in pairs)
     assert path in TRIGGER_PATHS
     for pair in reversed(plan["files"][path]):
         old, new = pair["old"].encode(), pair["new"].encode()
@@ -79,6 +92,16 @@ def test_exact_three_dependency_inverses_restore_entire_original_compiler():
 
 
 def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
+    delta = subprocess.check_output(
+        ["git", "diff", "--name-status", TRIGGER_PARENT + "..HEAD"], cwd=ROOT
+    ).decode().splitlines()
+    assert set(delta) == {
+        "A\tdocs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json",
+        "M\ttests/reader_source_reference.py",
+        "M\ttests/reader_source_variants.py",
+        "A\ttests/test_reader_source_trigger.py",
+        "M\ttests/test_reader_source_variants_preservation.py",
+    } and len(delta) == 5
     records = subprocess.check_output(["git", "ls-tree", "-r", "-z", TRIGGER_PARENT], cwd=ROOT).split(b"\0")
     records = [r for r in records if r]
     assert len(records) == 990

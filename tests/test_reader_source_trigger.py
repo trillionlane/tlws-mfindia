@@ -7,6 +7,8 @@ import reader_source_variants as variants
 from test_reader_source_reference import mock_catalogue
 from test_reader_source_variants import synthetic
 
+TRIGGER_RECIPE_SHA = "502af4fc714848ac9aa82edbd0f7586cf51377af9221747c60305d72317887fa"
+
 
 def test_constraint_internal_trigger_dependency_has_an_explicit_catalogue():
     assert "pg_trigger" in ref.FIELDS
