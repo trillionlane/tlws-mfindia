@@ -657,6 +657,17 @@ def verify_prior_view_fixture(conn):
     ]
     require(actual_acl == sorted(expected_acl, key=lambda x:
             (x["grantor"], x["grantee"], x["privilege_type"], x["is_grantable"])))
+    column_acl = query(
+        conn,
+        "SELECT a.attnum,a.attname,x.grantor,x.grantee,x.privilege_type,x.is_grantable "
+        "FROM pg_attribute a CROSS JOIN LATERAL aclexplode(a.attacl) x "
+        "WHERE a.attrelid=to_regclass('mf_book_facts.prior_field_versions') "
+        "AND a.attnum>0 AND NOT a.attisdropped "
+        "ORDER BY a.attnum,x.grantor,x.grantee,x.privilege_type,x.is_grantable",
+        (),
+        ("attnum", "attname", "grantor", "grantee", "privilege_type", "is_grantable"),
+    )
+    require(column_acl == [])
     counts = query(
         conn, "SELECT count(*) AS n FROM mf_book_facts.prior_field_versions", (), ("n",)
     )

@@ -213,6 +213,26 @@ def test_native_prior_view_fixture_rejects_unrelated_role_acl(source_variant_db,
                         )
                     )
                 variants.verify_prior_view_fixture(owner)
+                column = owner.execute(
+                    "SELECT attname FROM pg_attribute "
+                    "WHERE attrelid='mf_book_facts.prior_field_versions'::regclass "
+                    "AND attnum>0 AND NOT attisdropped ORDER BY attnum LIMIT 1"
+                ).fetchone()
+                assert column and type(column["attname"]) is str
+                for grantee in (sql.Identifier(unrelated), sql.SQL("PUBLIC")):
+                    owner.execute(
+                        sql.SQL("GRANT SELECT ({}) ON mf_book_facts.prior_field_versions TO {}")
+                        .format(sql.Identifier(column["attname"]), grantee)
+                    )
+                    try:
+                        with pytest.raises(ValueError):
+                            variants.verify_prior_view_fixture(owner)
+                    finally:
+                        owner.execute(
+                            sql.SQL("REVOKE SELECT ({}) ON mf_book_facts.prior_field_versions FROM {}")
+                            .format(sql.Identifier(column["attname"]), grantee)
+                        )
+                    variants.verify_prior_view_fixture(owner)
         finally:
             admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(unrelated)))
 

@@ -130,6 +130,15 @@ def synthetic():
     }
 
 
+def test_exact_eight_source_pins_and_selection_only_activation():
+    authority = v.variant_authority(ROOT)
+    rows = authority["variant"]["files"][:8]
+    assert len(rows) == 8 and sum(r["bytes"] for r in rows) == 76406
+    assert rows[-1]["path"] == "src/mfdataindia/enrichment/book_activation.py"
+    assert rows[-1]["bytes"] == 11827
+    assert "book_activation" not in authority["variant"]["execution_order"]
+
+
 def test_exact_nine_source_pins_and_source_classification():
     authority = v.variant_authority(ROOT)
     rows = authority["variant"]["files"]
@@ -142,9 +151,7 @@ def test_exact_nine_source_pins_and_source_classification():
     assert "book_activation" not in authority["variant"]["execution_order"]
 
 
-@pytest.mark.parametrize("mutation", ["omission", "order", "bytes", "sha", "source_bytes",
-                                       "execution_omission", "execution_order", "selection_overlap"])
-def test_ninth_pin_or_classification_drift_rejects_before_any_connection(tmp_path, mutation):
+def copy_authority_and_sources(tmp_path):
     paths = [old.AUTHORITY_PATH, v.AUTHORITY_PATH]
     for authority_path in paths:
         raw = (ROOT / authority_path).read_bytes()
@@ -155,6 +162,34 @@ def test_ninth_pin_or_classification_drift_rejects_before_any_connection(tmp_pat
             target = tmp_path / row["path"]
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((ROOT / row["path"]).read_bytes())
+
+
+@pytest.mark.parametrize("mutation", ["omission", "order", "bytes", "sha", "source_bytes"])
+def test_eighth_pin_drift_rejects_before_any_connection(tmp_path, mutation):
+    copy_authority_and_sources(tmp_path)
+    authority_path = tmp_path / v.AUTHORITY_PATH
+    value = json.loads(authority_path.read_text())
+    if mutation == "omission":
+        value["files"].pop(-2)
+    elif mutation == "order":
+        value["files"][-3:-1] = reversed(value["files"][-3:-1])
+    elif mutation in ("bytes", "sha"):
+        value["files"][-2]["bytes" if mutation == "bytes" else "sha256"] = (
+            1 if mutation == "bytes" else "0" * 64
+        )
+    else:
+        target = tmp_path / value["files"][-2]["path"]
+        target.write_bytes(target.read_bytes() + b"\n")
+    if mutation != "source_bytes":
+        authority_path.write_text(json.dumps(value))
+    with pytest.raises(ValueError):
+        v.variant_authority(tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["omission", "order", "bytes", "sha", "source_bytes",
+                                       "execution_omission", "execution_order", "selection_overlap"])
+def test_ninth_pin_or_classification_drift_rejects_before_any_connection(tmp_path, mutation):
+    copy_authority_and_sources(tmp_path)
     authority_path = tmp_path / v.AUTHORITY_PATH
     value = json.loads(authority_path.read_text())
     if mutation == "omission":
