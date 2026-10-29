@@ -13,10 +13,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PARENT = "fb8129decd1ff7ba32e960140426b0b112c04275"
 PACKET_PATHS = {
     "tests/test_reader_source_reference_postgres.py": (
-        "6d46bea61bcc225dd0c5c88ca58bd6bbf1259e26e599c8be98ac129513620e7a",
+        "7aeb7a0e095e19ec59d8cf04872990795bfc3f784df2c0a011db5950248160b7",
         "405d5e1a22a8bf05437274e421072d6cee6cf0788d333a709c11a62d53c9d236"),
     "tests/test_reader_source_variants_postgres.py": (
-        "54edfd729bc86e525aa1047045ac7136322681ce1cb202f6133d7a9e12e57ce5",
+        "0b85cab3884febf3e7e8408dddc40457e8e3c79bc8d279b1b5a124ef8832d9a4",
         "42a8564a5c8f70225285aed7967cb41a34469b57760a773a568ae280169fe5cc"),
     "tests/test_reader_source_variants_preservation.py": (
         "580f855e2b106046fdd9e18d63f27e2f2c36245aa867c7594ca78c08a7f856d9",

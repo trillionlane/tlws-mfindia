@@ -6,9 +6,14 @@ neither part, nor a partial set of profiles, is admissible by itself.
 """
 
 from copy import deepcopy
+import base64
+import gzip
+import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import zlib
 
 import reader_source_reference as old
 import reader_source_variants as variants
@@ -16,13 +21,17 @@ import reader_source_variants_v2 as variants_v2
 
 PROFILES = ("LEGACY_BASE44", *variants.PROFILES)
 PARTS = ("A", "B")
-MARKERS = {(profile, part): f"SOURCE_REFERENCE_{profile}_{part}_V2:"
+MARKERS = {(profile, part): f"SOURCE_REFERENCE_{profile}_{part}_V4:"
            for profile in PROFILES for part in PARTS}
 MAX_PACKETS = 6
 MAX_RAW_TOTAL = MAX_PACKETS * old.MAX_RAW
 MAX_CHUNKS_TOTAL = MAX_PACKETS * old.MAX_CHUNKS
 MAX_ENCODED_CHARS = MAX_CHUNKS_TOTAL * old.CHUNK
-FORMAT = "source-reference-fixed-packet-v2"
+MAX_PART = 32 * 1024 * 1024
+MAX_PROFILE = 40 * 1024 * 1024
+MAX_LOGICAL_TOTAL = 128 * 1024 * 1024
+FORMAT = "source-reference-compressed-fixed-packet-v4"
+BODY_FORMAT = "bounded-gzip-canonical-json-v1"
 
 
 def require(condition):
@@ -31,6 +40,60 @@ def require(condition):
 
 def sha(value):
     return old.digest(old.canonical(value).encode())
+
+
+def require_bundle(bundle, *, expected_git):
+    require(type(bundle) is dict and set(bundle) == {"run_id", "attempt", "head"})
+    require(type(bundle["run_id"]) is int and bundle["run_id"] > 0)
+    require(type(bundle["attempt"]) is int and bundle["attempt"] == 1)
+    require(type(bundle["head"]) is str and bundle["head"] == expected_git
+            and re.fullmatch(r"[0-9a-f]{40}", bundle["head"]))
+
+
+def normal_ci_bundle(head):
+    """Native source markers require the actual normal CI run context."""
+    require(os.environ.get("GITHUB_ACTIONS") == "true"
+            and os.environ.get("GITHUB_REPOSITORY") == "trillionlane/tlws-mfindia"
+            and os.environ.get("GITHUB_EVENT_NAME") in ("pull_request", "push"))
+    run = os.environ.get("GITHUB_RUN_ID", "")
+    attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    require(run.isdecimal() and attempt == "1")
+    bundle = {"run_id": int(run), "attempt": 1, "head": head}
+    require_bundle(bundle, expected_git=head)
+    return bundle
+
+
+def _encode_body(value):
+    raw = old.canonical(value).encode()
+    require(0 < len(raw) <= MAX_PART)
+    compressed = gzip.compress(raw, mtime=0)
+    return {"format": BODY_FORMAT, "raw_bytes": len(raw),
+            "raw_sha256": hashlib.sha256(raw).hexdigest(),
+            "compressed_bytes": len(compressed),
+            "compressed_sha256": hashlib.sha256(compressed).hexdigest(),
+            "gzip_base64": base64.b64encode(compressed).decode("ascii")}
+
+
+def _decode_body(value):
+    require(type(value) is dict and set(value) == {"format", "raw_bytes", "raw_sha256",
+                                                  "compressed_bytes", "compressed_sha256",
+                                                  "gzip_base64"})
+    require(value["format"] == BODY_FORMAT and type(value["raw_bytes"]) is int
+            and 0 < value["raw_bytes"] <= MAX_PART
+            and type(value["compressed_bytes"]) is int
+            and 0 < value["compressed_bytes"] <= old.MAX_RAW)
+    require(type(value["gzip_base64"]) is str)
+    compressed = base64.b64decode(value["gzip_base64"], validate=True)
+    require(len(compressed) == value["compressed_bytes"]
+            and hashlib.sha256(compressed).hexdigest() == value["compressed_sha256"])
+    decoder = zlib.decompressobj(wbits=31)
+    raw = decoder.decompress(compressed, MAX_PART + 1)
+    require(len(raw) == value["raw_bytes"] and decoder.eof
+            and not decoder.unused_data and not decoder.unconsumed_tail
+            and hashlib.sha256(raw).hexdigest() == value["raw_sha256"])
+    decoded = json.loads(raw, object_pairs_hook=old.unique)
+    require(old.canonical(decoded).encode() == raw)
+    return decoded
 
 
 def _compiler_pin(payload, profile):
@@ -101,18 +164,22 @@ def _validate(payload, profile, *, expected_git):
         variants_v2.validate_payload(payload, profile, expected_git=expected_git)
 
 
-def pair(payload, profile, *, identity):
+def pair(payload, profile, *, identity, bundle):
     require(profile in PROFILES and type(identity) is str
             and re.fullmatch(r"[0-9a-f]{32}", identity))
+    require_bundle(bundle, expected_git=payload["compiler_git"])
     first, second = _split(payload, profile)
     require(len(old.canonical(first).encode()) + len(old.canonical(second).encode()) <=
-            2 * old.MAX_RAW)
+            MAX_PROFILE)
     common = {"format": FORMAT, "profile": profile, "identity": identity,
               "git": payload["compiler_git"], "authority_sha256": old.AUTHORITY_SHA,
-              "compiler_pin_sha256": _compiler_pin(payload, profile)}
+              "compiler_pin_sha256": _compiler_pin(payload, profile),
+              "bundle": deepcopy(bundle)}
     packets = {
-        "A": {**common, "part": "A", "body": first, "peer_sha256": sha(second)},
-        "B": {**common, "part": "B", "body": second, "peer_sha256": sha(first)},
+        "A": {**common, "part": "A", "body": _encode_body(first),
+              "peer_sha256": sha(second)},
+        "B": {**common, "part": "B", "body": _encode_body(second),
+              "peer_sha256": sha(first)},
     }
     lines = []
     for part in PARTS:
@@ -122,8 +189,9 @@ def pair(payload, profile, *, identity):
     return lines
 
 
-def extract_pair(lines, profile, *, expected_git):
+def extract_pair(lines, profile, *, expected_git, bundle):
     require(profile in PROFILES)
+    require_bundle(bundle, expected_git=expected_git)
     selected = {}
     for part in PARTS:
         marker = MARKERS[profile, part]
@@ -137,29 +205,37 @@ def extract_pair(lines, profile, *, expected_git):
     for part, packet in selected.items():
         require(type(packet) is dict and set(packet) ==
                 {"format", "profile", "identity", "git", "authority_sha256",
-                 "compiler_pin_sha256", "part", "body", "peer_sha256"})
+                 "compiler_pin_sha256", "part", "body", "peer_sha256", "bundle"})
         require(packet["format"] == FORMAT and packet["profile"] == profile
                 and packet["part"] == part and packet["git"] == expected_git
-                and packet["authority_sha256"] == old.AUTHORITY_SHA)
+                and packet["authority_sha256"] == old.AUTHORITY_SHA
+                and packet["bundle"] == bundle)
         require(type(packet["identity"]) is str
                 and re.fullmatch(r"[0-9a-f]{32}", packet["identity"]))
-    require(a["identity"] == b["identity"] and a["peer_sha256"] == sha(b["body"])
-            and b["peer_sha256"] == sha(a["body"])
+    first, second = _decode_body(a["body"]), _decode_body(b["body"])
+    require(len(old.canonical(first).encode()) + len(old.canonical(second).encode()) <=
+            MAX_PROFILE)
+    require(a["identity"] == b["identity"] and a["peer_sha256"] == sha(second)
+            and b["peer_sha256"] == sha(first)
             and a["compiler_pin_sha256"] == b["compiler_pin_sha256"])
-    payload = _join(a["body"], b["body"], profile)
+    payload = _join(first, second, profile)
     require(a["compiler_pin_sha256"] == _compiler_pin(payload, profile))
     _validate(payload, profile, expected_git=expected_git)
     return payload
 
 
-def extract_bundle(lines, *, expected_git):
+def extract_bundle(lines, *, expected_git, bundle):
     """Require the complete three-profile, six-packet set from one run."""
     require(type(lines) is list)
+    require_bundle(bundle, expected_git=expected_git)
     markers = tuple(MARKERS.values())
     selected = [line for line in lines if "SOURCE_REFERENCE_" in line
                 or "SOURCE_SEMANTIC_REFERENCE_" in line]
     require(all(sum(marker in line for marker in markers) == 1 for line in selected))
     require(len(selected) <= MAX_PACKETS * (old.MAX_CHUNKS + 2))
+    order = [next(index for index, marker in enumerate(markers) if marker in line)
+             for line in selected]
+    require(order == sorted(order) and set(order) == set(range(MAX_PACKETS)))
     chunk_count = encoded_chars = 0
     for line in selected:
         marker = next(marker for marker in markers if marker in line)
@@ -168,8 +244,12 @@ def extract_bundle(lines, *, expected_git):
             chunk_count += 1
             encoded_chars += record["chunk"]["chars"]
     require(chunk_count <= MAX_CHUNKS_TOTAL and encoded_chars <= MAX_ENCODED_CHARS)
-    result = {profile: extract_pair(selected, profile, expected_git=expected_git)
+    result = {profile: extract_pair(selected, profile, expected_git=expected_git,
+                                    bundle=bundle)
               for profile in PROFILES}
+    require(sum(len(old.canonical(body).encode())
+                for profile, payload in result.items()
+                for body in _split(payload, profile)) <= MAX_LOGICAL_TOTAL)
     variants.assert_source_only_transition(result[variants.PROFILES[0]],
                                            result[variants.PROFILES[1]])
     return result

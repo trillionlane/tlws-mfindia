@@ -86,10 +86,13 @@ def test_native_complete_committed_source_reference_and_numbered_lossless_output
                        (ROOT / "tests/reader_source_reference.py").read_bytes()),
                    "raw": first, "semantic_reference": semantic,
                    "permission_acceptance": False, "runtime_authority": False}
-        import reader_source_packets as packets
-        lines = packets.pair(payload, "LEGACY_BASE44", identity=uuid4().hex)
-        assert packets.extract_pair(lines, "LEGACY_BASE44",
-                                    expected_git=payload["compiler_git"]) == payload
+    import reader_source_packets as packets
+    bundle = packets.normal_ci_bundle(payload["compiler_git"])
+    lines = packets.pair(payload, "LEGACY_BASE44", identity=uuid4().hex,
+                         bundle=bundle)
+    assert packets.extract_pair(lines, "LEGACY_BASE44",
+                                expected_git=payload["compiler_git"],
+                                bundle=bundle) == payload
     assert semantic["runtime_authority"] is semantic["permission_acceptance"] is False
     assert semantic["raw_document_must_be_retained"] is True
     funcs = [o for o in first["objects"] if o["catalog"] == "pg_proc"]

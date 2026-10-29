@@ -89,59 +89,70 @@ def observe(dsn, authority, profile):
         path: legacy.digest((ROOT / path).read_bytes())
         for path in ("tests/reader_source_reference.py", "tests/reader_source_variants.py")
     }
+    import reader_source_variants_v2 as variants_v2
+
+    def complete_observation(bounded):
+        raw = variants_v2.collect_extended(bounded)
+        state_rows = variants.query(
+            bounded, variants.inventory.engine.STATE_SQL, (), ("value",)
+        )
+        assert len(state_rows) == 1
+        grant_state = state_rows[0]["value"]
+        variants.state_shape(grant_state)
+        empty_counts = []
+        for table in EMPTY:
+            names = [sql.Identifier(p) for p in table.split(".")]
+            with bounded.execute(
+                sql.SQL("SELECT count(*) AS n FROM {}.{}").format(*names), prepare=False
+            ) as cursor:
+                rows = cursor.fetchall()
+                assert cursor.statusmessage == "SELECT 1" and cursor.rowcount == len(rows) == 1
+                assert rows[0]["n"] == 0
+                empty_counts.append([table, rows[0]["n"]])
+        ledger = variants.query(
+            bounded,
+            "SELECT migration_name,content_sha256 FROM mf.schema_migrations ORDER BY migration_name",
+            (),
+            ("migration_name", "content_sha256"),
+        )
+        assert {r["migration_name"]: r["content_sha256"] for r in ledger} == {
+            Path(r["path"]).name: r["sha256"] for r in authority["base"]["files"]
+        }
+        return {"raw": raw, "grant_state": grant_state,
+                "empty_counts": empty_counts, "ledger": ledger}
+
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=5, row_factory=dict_row)
     try:
         with legacy.reference_transaction(conn) as bounded:
-            import reader_source_variants_v2 as variants_v2
-            first = variants_v2.collect_extended(bounded)
-            assert first == variants_v2.collect_extended(bounded)
-            grant_state = variants.query(
-                bounded, variants.inventory.engine.STATE_SQL, (), ("value",)
-            )
-            assert len(grant_state) == 1
-            grant_state = grant_state[0]["value"]
-            variants.state_shape(grant_state)
-            for table in EMPTY:
-                names = [sql.Identifier(p) for p in table.split(".")]
-                with bounded.execute(
-                    sql.SQL("SELECT count(*) AS n FROM {}.{}").format(*names), prepare=False
-                ) as cursor:
-                    rows = cursor.fetchall()
-                    assert cursor.statusmessage == "SELECT 1" and cursor.rowcount == len(rows) == 1
-                    assert rows[0]["n"] == 0
-            ledger = variants.query(
-                bounded,
-                "SELECT migration_name,content_sha256 FROM mf.schema_migrations ORDER BY migration_name",
-                (),
-                ("migration_name", "content_sha256"),
-            )
-            assert {r["migration_name"]: r["content_sha256"] for r in ledger} == {
-                Path(r["path"]).name: r["sha256"] for r in authority["base"]["files"]
-            }
-            portable = variants.portable_source_reference(first)
-            payload = dict(
-                format="extended-source-calibration-NOT-live-acceptance-v1",
-                profile=profile,
-                compiler_git=compiler_git,
-                compiler_sources=source_pins,
-                base_authority_sha256=legacy.AUTHORITY_SHA,
-                variant_authority_sha256=variants.AUTHORITY_SHA,
-                authority=authority,
-                raw=first,
-                grant_state=grant_state,
-                portable_sha256=legacy.digest(legacy.canonical(portable).encode()),
-                portable_projection_format=portable["format"],
-                raw_sha256=legacy.digest(legacy.canonical(first).encode()),
-                runtime_authority=False,
-                permission_acceptance=False,
-            )
-            import reader_source_packets as packets
-            lines = packets.pair(payload, profile, identity=uuid4().hex)
-            assert packets.extract_pair(lines, profile, expected_git=compiler_git) == payload
-            bounded.remaining()
+            first = complete_observation(bounded)
+        with legacy.reference_transaction(conn) as bounded:
+            second = complete_observation(bounded)
+        assert legacy.canonical(first) == legacy.canonical(second)
+        portable = variants.portable_source_reference(first["raw"])
+        payload = dict(
+            format="extended-source-calibration-NOT-live-acceptance-v1",
+            profile=profile,
+            compiler_git=compiler_git,
+            compiler_sources=source_pins,
+            base_authority_sha256=legacy.AUTHORITY_SHA,
+            variant_authority_sha256=variants.AUTHORITY_SHA,
+            authority=authority,
+            raw=first["raw"],
+            grant_state=first["grant_state"],
+            portable_sha256=legacy.digest(legacy.canonical(portable).encode()),
+            portable_projection_format=portable["format"],
+            raw_sha256=legacy.digest(legacy.canonical(first["raw"]).encode()),
+            runtime_authority=False,
+            permission_acceptance=False,
+        )
         assert conn.info.transaction_status == legacy.TransactionStatus.IDLE
     finally:
         conn.close()  # No context-manager rollback after a spent/ambiguous wall.
+    import reader_source_packets as packets
+    bundle = packets.normal_ci_bundle(compiler_git)
+    lines = packets.pair(payload, profile, identity=uuid4().hex, bundle=bundle)
+    assert packets.extract_pair(lines, profile, expected_git=compiler_git,
+                                bundle=bundle) == payload
     return payload, lines
 
 
@@ -212,10 +223,11 @@ def test_native_exact_book_v2_single_pass_extended_references(source_variant_db,
     import reader_source_packets as packets
     # Validate BOTH complete pairs and source-only transition before emitting
     # even the first of the four profile markers.
+    bundle = packets.normal_ci_bundle(expected_git)
     assert packets.extract_pair(base_lines, variants.PROFILES[0],
-                                expected_git=expected_git) == base
+                                expected_git=expected_git, bundle=bundle) == base
     assert packets.extract_pair(book_lines, variants.PROFILES[1],
-                                expected_git=expected_git) == book
+                                expected_git=expected_git, bundle=bundle) == book
     with capsys.disabled():
         for line in [*base_lines, *book_lines]:
             print(line, flush=True)
