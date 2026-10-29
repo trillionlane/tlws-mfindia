@@ -58,6 +58,36 @@ def require(condition):
         raise ValueError("invalid CI-only source reference")
 
 
+def column_type_invariant(row):
+    """Dropped columns have no type identity; all live columns have one."""
+    dropped, type_oid = row["attisdropped"], row["atttypid"]
+    if (type(dropped) is not bool or type(type_oid) is not int or
+            not 0 <= type_oid <= 4294967295 or
+            (type_oid == 0) != dropped):
+        raise ValueError("invalid CI-only source reference: COLUMN_TYPE_INVARIANT")
+
+
+def require_edge_identities(edges, identities):
+    """Fail before source output, with bounded address-only diagnostics."""
+    absent = []
+    for edge in sorted(edges):
+        for side, endpoint in (("source", edge[:3]), ("target", edge[3:6])):
+            if endpoint not in identities:
+                cat, oid, subid = endpoint
+                require(cat in FIELDS and type(oid) is int and type(subid) is int)
+                dep = edge[6]
+                dependency_type = dep if (type(dep) is str and
+                    (dep == "declared" or re.fullmatch(r"(?:shared:)?[A-Za-z]", dep))) else "OTHER_DEPENDENCY_TYPE"
+                absent.append({"reason": "EDGE_ENDPOINT_WITHOUT_IDENTITY", "side": side,
+                               "catalog": cat, "oid": oid, "subid": subid,
+                               "dependency_type": dependency_type})
+    if absent:
+        absent.sort(key=canonical)
+        evidence = {"count": len(absent), "sha256": digest(canonical(absent).encode()),
+                    "first": absent[:16]}
+        raise ValueError("invalid CI-only source reference: " + canonical(evidence))
+
+
 def authority(root):
     """Call BEFORE fixture allocation. One reviewed authority, no wildcard."""
     root = Path(root).resolve()
@@ -616,8 +646,10 @@ def collect(conn):
                     add("pg_class", r["oid"], origin=(catalog, r["parent"], 0))
                 for r in rows(conn, "SELECT attrelid::bigint,attnum,attname,attisdropped,atttypid::bigint,atttypmod,attcollation::bigint,attnotnull,attgenerated::text,attidentity::text FROM pg_catalog.pg_attribute WHERE attrelid=ANY(%s::oid[]) AND attnum>0 ORDER BY attrelid,attnum", (ids,)):
                     columns[(r["attrelid"], r["attnum"])] = r
-                    add("pg_type", r["atttypid"], origin=(catalog, r["attrelid"], r["attnum"]))
-                    add("pg_collation", r["attcollation"], origin=(catalog, r["attrelid"], r["attnum"]))
+                    column_type_invariant(r)
+                    origin = None if r["attisdropped"] else (catalog, r["attrelid"], r["attnum"])
+                    add("pg_type", r["atttypid"], origin=origin)
+                    add("pg_collation", r["attcollation"], origin=origin)
                     if not r["attisdropped"]:
                         add(catalog, r["attrelid"], r["attnum"])
             elif catalog == "pg_proc":
@@ -651,6 +683,7 @@ def collect(conn):
             trigger_columns(row["tgrelid"], row["tgattr"], columns, identities)
             for attnum in row["tgattr"]:
                 edges.add((catalog, oid, 0, "pg_class", row["tgrelid"], attnum, "declared"))
+    require_edge_identities(edges, identities)
     memberships = [member_rows[k] for k in sorted(member_rows)]
     conversions = io_conversion_records(objects)
     database = rows(conn, "SELECT oid::bigint,datname,encoding,datlocprovider::text,datcollate,datctype,datlocale,datcollversion,pg_catalog.pg_database_collation_actual_version(oid) AS actual_collation_version," + seal_sql("daticurules") + " AS icu_rules_seal FROM pg_catalog.pg_database WHERE datname=current_database()")[0]

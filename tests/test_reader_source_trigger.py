@@ -7,7 +7,7 @@ import reader_source_variants as variants
 from test_reader_source_reference import mock_catalogue
 from test_reader_source_variants import synthetic
 
-TRIGGER_RECIPE_SHA = "502af4fc714848ac9aa82edbd0f7586cf51377af9221747c60305d72317887fa"
+TRIGGER_RECIPE_SHA = "d40fd2fe12e1324966cb5d698cc1024f9743ea2b0ffcaba0f878a84295a34dfe"
 
 
 def test_constraint_internal_trigger_dependency_has_an_explicit_catalogue():
@@ -87,9 +87,14 @@ def test_real_compiler_follows_constraint_trigger_and_exact_column(monkeypatch):
                    qualification_seal=null,
                    definition_seal={"is_null": False, "sha256": "a" * 64,
                                     "utf8_bytes": 10})
+    collation = {field: 0 for field in ref.FIELDS["pg_collation"]}
+    collation.update(oid=54000, collname="synthetic_c", collencoding=-1,
+                     collprovider="c", collisdeterministic=True,
+                     actual_version=None, icu_rules_seal=null)
     records = {("pg_class", 51000): relation,
                ("pg_constraint", 52000): constraint,
-               ("pg_trigger", 53000): trigger}
+               ("pg_trigger", 53000): trigger,
+               ("pg_collation", 54000): collation}
 
     class Proxy:
         def setattr(self, module, name, original):
@@ -100,7 +105,7 @@ def test_real_compiler_follows_constraint_trigger_and_exact_column(monkeypatch):
                     return [{"oid": 51000}]
                 if query.startswith("SELECT pg_catalog.jsonb_build_object(") and " r WHERE r.oid=ANY" in query:
                     cat = query.partition(" FROM pg_catalog.")[2].split()[0]
-                    if cat in ("pg_class", "pg_constraint", "pg_trigger"):
+                    if cat in ("pg_class", "pg_constraint", "pg_trigger", "pg_collation"):
                         return [{"value": records[(cat, oid)]} for oid in params[0]]
                 if "FROM pg_catalog.pg_constraint WHERE contypid=ANY" in query:
                     return [{"oid": 52000, "parent": 23}]
@@ -112,9 +117,14 @@ def test_real_compiler_follows_constraint_trigger_and_exact_column(monkeypatch):
                     return [dict(attrelid=51000, attnum=1, attname="a",
                                  attisdropped=False, atttypid=23, atttypmod=-1,
                                  attcollation=0, attnotnull=False,
+                                 attgenerated="", attidentity=""),
+                            dict(attrelid=51000, attnum=2, attname="........pg.dropped.2........",
+                                 attisdropped=True, atttypid=0, atttypmod=-1,
+                                 attcollation=54000, attnotnull=False,
                                  attgenerated="", attidentity="")]
                 if "pg_catalog.pg_identify_object" in query and params[2] in (
-                    classes["pg_class"], classes["pg_constraint"], classes["pg_trigger"]
+                    classes["pg_class"], classes["pg_constraint"], classes["pg_trigger"],
+                    classes["pg_collation"]
                 ):
                     cat = next(name for name, classid in classes.items() if classid == params[2])
                     return [dict(oid=oid, subid=sub,
@@ -136,8 +146,36 @@ def test_real_compiler_follows_constraint_trigger_and_exact_column(monkeypatch):
                for edge in raw["edges"])
     trigger_row = next(o["row"] for o in raw["objects"] if o["catalog"] == "pg_trigger")
     assert trigger_row["tgattr"] == [1]
+    assert any(row["attisdropped"] and row["attnum"] == 2 and
+               row["attcollation"] == 54000 for row in raw["columns"])
+    assert any(obj["catalog"] == "pg_collation" and obj["oid"] == 54000
+               for obj in raw["objects"])
+    assert not any(edge[:3] == ["pg_class", 51000, 2] for edge in raw["edges"])
     semantic = ref.semantic_reference(raw)
     declaration = next(o["declaration"] for o in semantic["objects"]
                        if o["catalog"] == "pg_trigger")
     assert declaration["tgattr"] == [{"type": "pg_class", "schema": "public",
                                      "name": "pg_class", "identity": "public.example.a"}]
+
+
+@pytest.mark.parametrize("dropped,type_oid,valid", [
+    (True, 0, True), (False, 23, True), (True, 23, False), (False, 0, False),
+])
+def test_column_type_identity_invariant(dropped, type_oid, valid):
+    row = {"attisdropped": dropped, "atttypid": type_oid}
+    if valid:
+        ref.column_type_invariant(row)
+    else:
+        with pytest.raises(ValueError):
+            ref.column_type_invariant(row)
+
+
+def test_missing_edge_identity_is_bounded_numeric_only_diagnostic():
+    identities = {("pg_class", 51000, 0): {"identity": "private.secret"}}
+    edges = {("pg_class", 51000, 2, "pg_type", 23, 0, "declared")}
+    with pytest.raises(ValueError) as error:
+        ref.require_edge_identities(edges, identities)
+    message = str(error.value)
+    assert "private.secret" not in message
+    assert "pg_class" in message and "51000" in message and "2" in message
+    assert "sha256" in message and "count" in message

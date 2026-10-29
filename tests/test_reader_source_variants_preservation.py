@@ -24,7 +24,7 @@ def restore_trigger_source(raw, path):
     assert plan["format"] == "EXACT_COUNTED_TEST_ONLY_PG_TRIGGER_LITERAL_INVERSES"
     assert plan["parent"] == TRIGGER_PARENT and set(plan["files"]) == TRIGGER_PATHS
     assert {name: len(pairs) for name, pairs in plan["files"].items()} == {
-        "tests/reader_source_reference.py": 8,
+        "tests/reader_source_reference.py": 10,
         "tests/reader_source_variants.py": 2,
         "tests/test_reader_source_variants_preservation.py": 4,
     }
