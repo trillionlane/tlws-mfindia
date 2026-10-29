@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import shutil
+from copy import deepcopy
 
 import pytest
 
@@ -19,6 +20,19 @@ def test_exact_repo_source_files_match_reviewed_ledgers():
     assert len(result["migration_ledger"]) == 44
     checked = source.verify_live_ledger(result["migration_ledger"], result)
     assert checked["rows"] == 44 and checked["grant_authorized"] is False
+    assert source.require_packaged_source(result, ROOT) == result
+
+
+def test_matching_forged_package_and_live_ledger_are_not_source_authority():
+    package = source.verify_packaged_source(ROOT)
+    forged = deepcopy(package)
+    forged["migration_ledger"][0]["content_sha256"] = "0" * 64
+    with pytest.raises(source.SourceAuthorityError,
+                       match="UNMATCHED_BROAD_READER_SOURCE_BYTES"):
+        source.verify_live_ledger(deepcopy(forged["migration_ledger"]), forged)
+    with pytest.raises(source.SourceAuthorityError,
+                       match="UNMATCHED_BROAD_READER_SOURCE_BYTES"):
+        source.require_packaged_source(forged, ROOT)
 
 
 def test_final_image_layout_uses_embedded_full_docs_and_installed_python(tmp_path):

@@ -19,6 +19,7 @@ from mfdataindia.review import broad_reader_direct_plan as direct_plan
 from mfdataindia.review import broad_reader_live_snapshot as snapshot
 from mfdataindia.review import broad_reader_lock_witness as witness
 from mfdataindia.review import broad_reader_policy as policy
+from mfdataindia.review import broad_reader_source_authority as source
 from mfdataindia.review import reader_function_attestation as helper_capture
 
 
@@ -73,7 +74,7 @@ class Permit:
     used: bool = False
     _lock: object = field(default_factory=threading.Lock, repr=False, compare=False)
 
-    def consume(self):
+    def consume(self, *, source_root):
         with self._lock:
             policy.require(not self.used, "CONSUMED_BROAD_READER_DIRECT_REQUEST")
             self.used = True
@@ -94,6 +95,7 @@ class Permit:
             policy._window(value["window"])
             policy.require(value["before_snapshot"]["plan"]["permission_acceptance"] is False)
             policy.require(value["before_snapshot"]["permission_enabled"] is False)
+            source.require_packaged_source(value["packaged_source"], source_root)
             return value
 
 
@@ -147,13 +149,14 @@ def _rollback_once(target, *, end):
         raise GrantError("ABORT_UNCONFIRMED_NO_RETRY") from None
 
 
-def capture_before(observer, *, packaged_source):
+def capture_before(observer, *, packaged_source, source_root):
     """Complete read-only input before a writer is even opened.
 
     The existing helper attestation and full catalogue each retain their own
     fixed 15-second read-only transaction wall. The future grant transaction
     separately retains its unchanged 15-second whole wall.
     """
+    source.require_packaged_source(packaged_source, source_root)
     _ensure_idle(observer)
     helper_attestation = helper_capture.Capture().run(observer)
     _ensure_idle(observer)
@@ -184,7 +187,7 @@ def capture_before(observer, *, packaged_source):
             raise GrantError("PREWRITE_CAPTURE_ABORTED_NO_RETRY") from None
 
 
-def run(target, observer, permit):
+def run(target, observer, permit, *, source_root):
     """Apply the exact add-only plan only after complete prewrite proof.
 
     The observer must be an explicitly declared separate direct-owner backend.
@@ -192,7 +195,7 @@ def run(target, observer, permit):
     phases, observer reread, grant, commit and observer postcommit readback.
     Authenticated reader and TI checks remain separate acceptance gates.
     """
-    document = permit.consume()  # Consume before any uncertain owner I/O.
+    document = permit.consume(source_root=source_root)  # Before owner I/O.
     _ensure_idle(target)
     _ensure_idle(observer)
     policy.require(target is not observer

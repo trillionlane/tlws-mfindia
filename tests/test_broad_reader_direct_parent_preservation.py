@@ -31,6 +31,7 @@ ADDED = {
     "src/mfdataindia/review/broad_reader_view_profile.py",
     "tests/test_broad_reader_dependency_scope.py",
     "tests/test_broad_reader_direct_grant.py",
+    "tests/test_broad_reader_direct_grant_postgres.py",
     "tests/test_broad_reader_direct_plan.py",
     "tests/test_broad_reader_direct_reader_check.py",
     "tests/test_broad_reader_function_closure.py",
@@ -84,7 +85,7 @@ def test_every_parent_byte_and_mode_and_exact_finite_delta():
                 raw = restore(raw, name)
         actual = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
         assert actual == blob, name
-    assert len(ADDED) == 24
+    assert len(ADDED) == 25
     for name in ADDED:
         path = ROOT / name
         assert path.is_file() and not path.is_symlink()

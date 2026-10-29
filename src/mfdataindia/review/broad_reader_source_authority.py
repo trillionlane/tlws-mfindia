@@ -134,6 +134,20 @@ def verify_live_ledger(rows, packaged):
              and packaged.get("variant_sha256") == VARIANT_SHA256)
     expected = packaged.get("migration_ledger")
     _require(type(expected) is list and len(expected) == 44)
+    # The package is input supplied by the caller, not an authority. Derive
+    # the whole expected ledger again from the byte-pinned embedded document
+    # so a caller cannot bless changed live rows with a matching forged list.
+    base_raw = embedded.document("base")
+    _require(sha256(base_raw).hexdigest() == BASE_SHA256)
+    base = json.loads(base_raw)
+    _require(type(base) is dict and type(base.get("files")) is list
+             and len(base["files"]) == 44)
+    canonical_expected = [
+        {"migration_name": Path(item["path"]).name,
+         "content_sha256": item["sha256"]}
+        for item in base["files"]
+    ]
+    _require(expected == canonical_expected)
     _require(all(type(row) is dict and set(row) == {"migration_name", "content_sha256"}
                  for row in rows))
     _require(rows == expected)
@@ -143,3 +157,9 @@ def verify_live_ledger(rows, packaged):
                 rows, sort_keys=True, separators=(",", ":"),
                 ensure_ascii=False, allow_nan=False).encode()).hexdigest(),
             "grant_authorized": False}
+
+
+def require_packaged_source(packaged, root):
+    """Re-attest complete installed source bytes before owner connection I/O."""
+    _require(type(packaged) is dict and packaged == verify_packaged_source(root))
+    return packaged

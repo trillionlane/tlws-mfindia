@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from psycopg.pq import TransactionStatus
@@ -9,7 +10,11 @@ from psycopg.pq import TransactionStatus
 from mfdataindia.review import broad_reader_direct_grant as grant
 from mfdataindia.review import broad_reader_direct_plan as direct_plan
 from mfdataindia.review import broad_reader_policy as policy
+from mfdataindia.review import broad_reader_source_authority as source
 from test_broad_reader_live_snapshot import _bundle
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class _Column:
@@ -115,7 +120,7 @@ def _case(monkeypatch, *, drift=False, commit_fails=False):
               "future_owner_provisioning": True}
     document = {"format": "mf-broad-reader-direct-grant-v1", "window": window,
                 "before_snapshot": before, "helper_attestation": {},
-                "packaged_source": {}, "git_sha": "a" * 40,
+                "packaged_source": source.verify_packaged_source(ROOT), "git_sha": "a" * 40,
                 "image_binding": {kind: {
                     "image": ("asia-south1-docker.pkg.dev/trillionlane-dev/"
                               "tlws-mf-data-dev/" + repo + "@sha256:" + "c" * 64),
@@ -137,7 +142,7 @@ def test_exact_two_phase_write_has_separate_observer_and_still_needs_consumer():
     from pytest import MonkeyPatch
     with MonkeyPatch.context() as patch:
         target, observer, permit = _case(patch)
-        receipt = grant.run(target, observer, permit)
+        receipt = grant.run(target, observer, permit, source_root=ROOT)
     sql = [statement for statement, _ in target.statements]
     assert sql.count("ROLLBACK") == 1  # confirmed preflight only
     assert sql.index("LOCK TABLE ONLY mf.t IN ACCESS EXCLUSIVE MODE NOWAIT") < sql.index(
@@ -148,7 +153,7 @@ def test_exact_two_phase_write_has_separate_observer_and_still_needs_consumer():
     assert receipt["permission_enabled"] is receipt["ti_verified"] is False
     assert permit.used is True and observer.lock_rows == []
     with pytest.raises(policy.PolicyError, match="CONSUMED"):
-        grant.run(target, observer, permit)
+        grant.run(target, observer, permit, source_root=ROOT)
 
 
 def test_full_pregrant_drift_aborts_before_grant_and_confirms_rollback():
@@ -156,7 +161,7 @@ def test_full_pregrant_drift_aborts_before_grant_and_confirms_rollback():
     with MonkeyPatch.context() as patch:
         target, observer, permit = _case(patch, drift=True)
         with pytest.raises(grant.GrantError, match="PRECOMMIT_ABORTED"):
-            grant.run(target, observer, permit)
+            grant.run(target, observer, permit, source_root=ROOT)
     sql = [statement for statement, _ in target.statements]
     assert sql.count("ROLLBACK") == 2  # preflight plus sole grant abort
     assert not any(statement.startswith("GRANT ") for statement in sql)
@@ -168,7 +173,7 @@ def test_unknown_commit_never_rolls_back_or_retries():
     with MonkeyPatch.context() as patch:
         target, observer, permit = _case(patch, commit_fails=True)
         with pytest.raises(grant.GrantError, match="COMMIT_OUTCOME_UNKNOWN"):
-            grant.run(target, observer, permit)
+            grant.run(target, observer, permit, source_root=ROOT)
     sql = [statement for statement, _ in target.statements]
     assert sql.count("COMMIT") == 1 and sql.count("ROLLBACK") == 1
     assert observer.info.transaction_status == TransactionStatus.INTRANS
@@ -185,7 +190,9 @@ def test_complete_prewrite_capture_is_readonly_and_closes_before_writer():
         patch.setattr(grant.helper_capture, "Capture", _Capture)
         patch.setattr(grant.snapshot, "read", lambda *_args, **_kwargs: {"complete": True})
         observer = _Connection(200)
-        result = grant.capture_before(observer, packaged_source={"source": "exact"})
+        result = grant.capture_before(
+            observer, packaged_source=source.verify_packaged_source(ROOT),
+            source_root=ROOT)
     assert result["grant_authorized"] is False
     assert result["before_snapshot"] == {"complete": True}
     assert [sql for sql, _ in observer.statements].count("ROLLBACK") == 1
@@ -209,5 +216,19 @@ def test_final_image_binding_fails_before_any_owner_io(defect):
             changed["image_binding"].pop("tools")
         permit = grant.Permit(changed, policy.fingerprint(changed))
         with pytest.raises(policy.PolicyError, match="UNBOUND_BROAD_READER_FINAL_IMAGES"):
-            grant.run(target, observer, permit)
+            grant.run(target, observer, permit, source_root=ROOT)
+    assert target.statements == observer.statements == []
+
+
+def test_forged_matching_source_ledger_cannot_open_owner_connection():
+    from pytest import MonkeyPatch
+    with MonkeyPatch.context() as patch:
+        target, observer, permit = _case(patch)
+        changed = deepcopy(permit.document)
+        changed["packaged_source"]["migration_ledger"][0]["content_sha256"] = "0" * 64
+        permit = grant.Permit(changed, policy.fingerprint(changed))
+        with pytest.raises(source.SourceAuthorityError,
+                           match="UNMATCHED_BROAD_READER_SOURCE_BYTES"):
+            grant.run(target, observer, permit, source_root=ROOT)
+    assert permit.used is True
     assert target.statements == observer.statements == []
