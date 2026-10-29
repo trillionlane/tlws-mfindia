@@ -94,6 +94,12 @@ def observe(dsn, authority, profile):
         with legacy.reference_transaction(conn) as bounded:
             first = variants.collect_extended(bounded)
             assert first == variants.collect_extended(bounded)
+            grant_state = variants.query(
+                bounded, variants.inventory.engine.STATE_SQL, (), ("value",)
+            )
+            assert len(grant_state) == 1
+            grant_state = grant_state[0]["value"]
+            variants.state_shape(grant_state)
             for table in EMPTY:
                 names = [sql.Identifier(p) for p in table.split(".")]
                 with bounded.execute(
@@ -121,6 +127,7 @@ def observe(dsn, authority, profile):
                 variant_authority_sha256=variants.AUTHORITY_SHA,
                 authority=authority,
                 raw=first,
+                grant_state=grant_state,
                 portable_sha256=legacy.digest(legacy.canonical(portable).encode()),
                 portable_projection_format=portable["format"],
                 raw_sha256=legacy.digest(legacy.canonical(first).encode()),
@@ -165,6 +172,9 @@ def facade_columns(raw):
 
 def test_native_exact_book_v2_single_pass_extended_references(source_variant_db, capsys):
     dsn, authority = source_variant_db
+    expected_git = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
     base = observe(dsn, authority, variants.PROFILES[0])
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=5, row_factory=dict_row)
     try:
@@ -173,6 +183,7 @@ def test_native_exact_book_v2_single_pass_extended_references(source_variant_db,
     finally:
         conn.close()
     book = observe(dsn, authority, variants.PROFILES[1])
+    variants.assert_source_only_transition(base, book)
     before, after = base["raw"]["legacy"], book["raw"]["legacy"]
     old_views, new_views = views(before), views(after)
     assert set(old_views) == set(new_views)
@@ -196,7 +207,9 @@ def test_native_exact_book_v2_single_pass_extended_references(source_variant_db,
             ("pg_catalog", "pg_namespace"),
         }
         lines = variants.named_envelope(payload, identity=uuid4().hex)
-        assert variants.extract_named(lines, payload["profile"]) == payload
+        assert (
+            variants.extract_named(lines, payload["profile"], expected_git=expected_git) == payload
+        )
         with capsys.disabled():
             for line in lines:
                 print(line, flush=True)

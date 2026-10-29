@@ -344,6 +344,103 @@ def rows(conn, query, parameters=()):
         return result
 
 
+class RejectedDependency(ValueError):
+    """Queried-batch diagnostic only; never a source reference or admission."""
+
+
+def diagnostic_label(value, known=()):
+    if type(value) is str and value in known:
+        return {"known": value}
+    raw = value.encode("utf8") if type(value) is str else canonical(value).encode("utf8")
+    return {"type": type(value).__name__, "utf8_bytes": len(raw),
+            "hex": raw.hex(), "sha256": digest(raw)}
+
+
+def dependency_batch(conn, values, catalog, classes, *, shared=False):
+    """Validate the complete fetched batch before changing the closure."""
+    require(catalog in classes and type(values) is list)
+    names = {v: k for k, v in classes.items()}
+    local_codes = ("n", "a", "i", "P", "S", "e", "x")
+    shared_codes = ("o", "a", "i", "r")
+    codes = shared_codes if shared else local_codes
+    rejected, extensions = [], set()
+    for dep in values:
+        expected = {"objid", "objsubid", "refclassid", "refobjid", "deptype"}
+        if not shared:
+            expected |= {"classid", "refobjsubid"}
+        require(type(dep) is dict and set(dep) == expected)
+        for key in expected - {"deptype"}:
+            require(type(dep[key]) is int and 0 <= dep[key] <= 4294967295)
+        require(dep["objid"] > 0 and dep["refclassid"] > 0)
+        require(shared or dep["classid"] == classes[catalog])
+        reasons = []
+        if dep["refclassid"] not in names:
+            reasons.append("UNMODELLED_REFERENCE_CATALOGUE")
+        if type(dep["deptype"]) is not str or dep["deptype"] not in codes:
+            reasons.append("UNMODELLED_DEPENDENCY_TYPE")
+        if shared and dep["refclassid"] != classes["pg_authid"]:
+            reasons.append("SHARED_TARGET_NOT_ROLE")
+        if dep["refobjid"] == 0:
+            reasons.append("ZERO_REFERENCE_OBJECT")
+        if not shared and dep["deptype"] in ("e", "x"):
+            if dep["refclassid"] != classes["pg_extension"] or dep["refobjsubid"] != 0:
+                reasons.append("INVALID_EXTENSION_ADDRESS")
+            elif dep["refobjid"] > 0:
+                extensions.add(dep["refobjid"])
+        if reasons:
+            rejected.append((dep, reasons))
+    if rejected:
+        requested = sorted({d["refclassid"] for d, _ in rejected if d["refclassid"] not in names})
+        require(len(requested) <= 20000)
+        labels = {}
+        if requested:
+            found = rows(conn, "SELECT requested.refclassid::bigint AS refclassid,"
+                         "n.nspname AS catalog_schema,c.relname AS catalog_name "
+                         "FROM pg_catalog.unnest(%s::oid[]) AS requested(refclassid) "
+                         "LEFT JOIN pg_catalog.pg_class c ON c.oid=requested.refclassid "
+                         "LEFT JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "
+                         "ORDER BY requested.refclassid", (requested,))
+            require(len(found) == len(requested)
+                    and [r["refclassid"] for r in found] == requested)
+            require(all(set(r) == {"refclassid", "catalog_schema", "catalog_name"} for r in found))
+            labels = {r["refclassid"]: r for r in found}
+        diagnostic = []
+        for dep, reasons in rejected:
+            target = names.get(dep["refclassid"])
+            lookup = labels.get(dep["refclassid"], {})
+            diagnostic.append({
+                **{k: v for k, v in dep.items() if k != "deptype"},
+                "dependent_catalogue": catalog,
+                "dependency_type": diagnostic_label(dep["deptype"], codes),
+                "catalog_schema": diagnostic_label("pg_catalog" if target else lookup.get("catalog_schema"), ("pg_catalog",)),
+                "catalog_name": diagnostic_label(target if target else lookup.get("catalog_name"), tuple(classes) + ("pg_tablespace",)),
+                "reasons": reasons,
+            })
+        diagnostic.sort(key=canonical)  # Preserve duplicates/multiplicity.
+        raise RejectedDependency("CI_SOURCE_REFERENCE_REJECTED_DEPENDENCY_V1:" + canonical({
+            "scope": "QUERIED_BATCH_ONLY_NOT_UNVISITED_GRAPH", "server_major": 18,
+            "shared": shared, "rejected_total": len(diagnostic),
+            "complete_rejected_rows_sha256": digest(canonical(diagnostic).encode()),
+            "rows": diagnostic[:16], "runtime_authority": False, "permission_acceptance": False,
+        }))
+    return sorted(extensions)
+
+
+def prefetch_extensions(conn, ids, objects):
+    if not ids:
+        return
+    values = rows(conn, "SELECT " + projection("pg_extension")
+                  + " AS value FROM pg_catalog.pg_extension r WHERE r.oid=ANY(%s::oid[]) ORDER BY r.oid", (ids,))
+    require(len(values) == len(ids) and [r["value"]["oid"] for r in values] == ids)
+    for item in values:
+        value = item["value"]
+        extension_shape(value)
+        require(set(value) == set(FIELDS["pg_extension"]) | {"conditions_seal", "config_count", "condition_count"})
+        key = ("pg_extension", value["oid"])
+        require(key not in objects or objects[key] == value)
+        objects[key] = value  # A later closure reread must match the full declaration.
+
+
 def collect(conn):
     """Exact committed-source metadata in disposable CI only; no admission.
 
@@ -465,12 +562,14 @@ def collect(conn):
                     identity["encoding"] = objects[(cat, oid)]["collencoding"]
                 identities[(cat, oid, subid)] = identity
                 expanded.add((cat, oid, subid))
-            for dep in rows(conn, "SELECT classid::bigint,objid::bigint,objsubid,refclassid::bigint,"
+            dependencies = rows(conn, "SELECT classid::bigint,objid::bigint,objsubid,refclassid::bigint,"
                             "refobjid::bigint,refobjsubid,deptype::text FROM pg_catalog.pg_depend "
                             "WHERE classid=%s::oid AND objid=ANY(%s::oid[]) "
                             "ORDER BY classid,objid,objsubid,refclassid,refobjid,refobjsubid,deptype",
-                            (classes[catalog], ids)):
-                require(dep["refclassid"] in class_names and dep["deptype"] in ("n", "a", "i", "P", "S", "e"))
+                            (classes[catalog], ids))
+            extension_ids = dependency_batch(conn, dependencies, catalog, classes)
+            prefetch_extensions(conn, extension_ids, objects)
+            for dep in dependencies:
                 src = (catalog, dep["objid"], dep["objsubid"])
                 target = class_names[dep["refclassid"]]
                 add(catalog, dep["objid"], dep["objsubid"])
@@ -478,8 +577,9 @@ def collect(conn):
                 edges.add((*src, target, dep["refobjid"], dep["refobjsubid"], dep["deptype"]))
             # ACL grantors/grantees and owners are shared dependencies, not
             # necessarily pg_depend edges. Restrict to this DB/global objects.
-            for dep in rows(conn, "SELECT objid::bigint,objsubid,refclassid::bigint,refobjid::bigint,deptype::text FROM pg_catalog.pg_shdepend WHERE classid=%s::oid AND objid=ANY(%s::oid[]) AND dbid IN (0,(SELECT oid FROM pg_catalog.pg_database WHERE datname=current_database())) ORDER BY objid,objsubid,refclassid,refobjid,deptype", (classes[catalog], ids)):
-                require(dep["refclassid"] == classes["pg_authid"] and dep["deptype"] in ("o", "a", "i", "r"))
+            shared_dependencies = rows(conn, "SELECT objid::bigint,objsubid,refclassid::bigint,refobjid::bigint,deptype::text FROM pg_catalog.pg_shdepend WHERE classid=%s::oid AND objid=ANY(%s::oid[]) AND dbid IN (0,(SELECT oid FROM pg_catalog.pg_database WHERE datname=current_database())) ORDER BY objid,objsubid,refclassid,refobjid,deptype", (classes[catalog], ids))
+            dependency_batch(conn, shared_dependencies, catalog, classes, shared=True)
+            for dep in shared_dependencies:
                 add(catalog, dep["objid"], dep["objsubid"])
                 add("pg_authid", dep["refobjid"])
                 edges.add((catalog, dep["objid"], dep["objsubid"], "pg_authid", dep["refobjid"], 0, "shared:" + dep["deptype"]))

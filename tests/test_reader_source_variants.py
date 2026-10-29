@@ -329,15 +329,109 @@ def test_portable_security_or_source_semantics_change_hash(mutation):
 
 
 def payload(profile):
+    from mfdataindia.review import reader_access_transport_spec as shape
+
     raw = synthetic()
+    raw["legacy"]["context"]["database"] = "mfdata_reference_synthetic"
+    state = {name: [] for name in shape.SCHEMAS}
+    state["databases"] = [
+        dict(
+            oid=999,
+            datname="mfdata_reference_synthetic",
+            owner=40000,
+            acl=[],
+            connect_allowed=False,
+            create_allowed=False,
+            temporary_allowed=False,
+        )
+    ]
+    state["relations"] = [
+        dict(
+            oid=r["oid"],
+            namespace_oid=22000,
+            nspname=r["nspname"],
+            relname=r["relname"],
+            relkind=r["relkind"],
+            owner=r["owner"],
+            attribute_count=0,
+            row_security=False,
+            force_row_security=False,
+            options=None,
+            definition=r["definition"],
+            acl=[],
+            capabilities=[False] * 4,
+            sequence_capabilities=None,
+        )
+        for r in raw["relation_candidate"]
+    ]
     return dict(
+        format="extended-source-calibration-NOT-live-acceptance-v1",
         profile=profile,
+        compiler_git="e" * 40,
+        compiler_sources={
+            path: old.digest((ROOT / path).read_bytes())
+            for path in ("tests/reader_source_reference.py", "tests/reader_source_variants.py")
+        },
+        base_authority_sha256=old.AUTHORITY_SHA,
         variant_authority_sha256=v.AUTHORITY_SHA,
+        authority=v.variant_authority(ROOT),
         raw=raw,
+        raw_sha256=old.digest(old.canonical(raw).encode()),
+        grant_state=state,
         portable_sha256=old.digest(old.canonical(v.portable_source_reference(raw)).encode()),
+        portable_projection_format="portable-CI-source-expectation-NOT-live-admission-v1",
         runtime_authority=False,
         permission_acceptance=False,
     )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "missing_git",
+        "git",
+        "helper_sha",
+        "missing_helper",
+        "extra_helper",
+        "base_authority",
+        "authority_body",
+        "raw_sha",
+        "projection_format",
+        "format",
+        "unknown_key",
+        "missing_state",
+    ],
+)
+def test_actual_old_named_extractor_rejects_missing_or_false_compiler_provenance(mutation):
+    profile = v.PROFILES[0]
+    doc = payload(profile)
+    if mutation == "missing_git":
+        doc.pop("compiler_git")
+    elif mutation == "git":
+        doc["compiler_git"] = "f" * 40
+    elif mutation == "helper_sha":
+        doc["compiler_sources"]["tests/reader_source_reference.py"] = "0" * 64
+    elif mutation == "missing_helper":
+        doc["compiler_sources"].pop("tests/reader_source_variants.py")
+    elif mutation == "extra_helper":
+        doc["compiler_sources"]["unexpected.py"] = "0" * 64
+    elif mutation == "base_authority":
+        doc["base_authority_sha256"] = "0" * 64
+    elif mutation == "authority_body":
+        doc["authority"]["variant"]["total_bytes"] -= 1
+    elif mutation == "raw_sha":
+        doc["raw_sha256"] = "0" * 64
+    elif mutation == "projection_format":
+        doc["portable_projection_format"] = "unreviewed"
+    elif mutation == "format":
+        doc["format"] = "unreviewed"
+    elif mutation == "unknown_key":
+        doc["unexpected"] = True
+    else:
+        doc.pop("grant_state")
+    lines = v.named_envelope(doc, identity="b" * 32)
+    with pytest.raises((ValueError, KeyError)):
+        v.extract_named(lines, profile, expected_git="e" * 40)
 
 
 def test_named_source_envelopes_are_separate_and_lossless():
@@ -345,7 +439,146 @@ def test_named_source_envelopes_are_separate_and_lossless():
     for profile in v.PROFILES:
         lines += v.named_envelope(payload(profile), identity="b" * 32)
     for profile in v.PROFILES:
-        assert v.extract_named(lines, profile) == payload(profile)
+        assert v.extract_named(lines, profile, expected_git="e" * 40) == payload(profile)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "db_oid",
+        "db_name",
+        "context_database",
+        "grant_root",
+        "state_unknown",
+        "state_missing",
+        "state_acl",
+    ],
+)
+def test_named_source_rejects_grant_state_or_database_inconsistency(mutation):
+    doc = payload(v.PROFILES[0])
+    state = doc["grant_state"]
+    if mutation == "db_oid":
+        state["databases"][0]["oid"] += 1
+    elif mutation == "db_name":
+        state["databases"][0]["datname"] += "_other"
+    elif mutation == "context_database":
+        doc["raw"]["legacy"]["context"]["database"] += "_other"
+        doc["raw_sha256"] = old.digest(old.canonical(doc["raw"]).encode())
+    elif mutation == "grant_root":
+        state["relations"][0]["oid"] += 2
+    elif mutation == "state_unknown":
+        state["unexpected"] = []
+    elif mutation == "state_missing":
+        state.pop("roles")
+    else:
+        # A well-formed but non-list ACL atom must fail the frozen shape guard.
+        state["relations"][0]["acl"] = [{"unexpected": True}]
+    from mfdataindia.review.reader_access_correction import ChangeFailure
+
+    with pytest.raises((ValueError, KeyError, ChangeFailure)):
+        v.extract_named(
+            v.named_envelope(doc, identity="b" * 32), doc["profile"], expected_git="e" * 40
+        )
+
+
+@pytest.mark.parametrize("git", [None, True, "E" * 40, "e" * 39, "f" * 40])
+def test_named_source_requires_independent_exact_git_binding(git):
+    doc = payload(v.PROFILES[0])
+    with pytest.raises(ValueError):
+        v.extract_named(v.named_envelope(doc, identity="b" * 32), doc["profile"], expected_git=git)
+
+
+def transition_pair():
+    base = payload(v.PROFILES[0])
+    for i, (namespace, name) in enumerate(sorted(v.BOOK_VIEW_KEYS)):
+        before = deepcopy(base["grant_state"]["relations"][0])
+        before.update(
+            oid=31000 + i,
+            nspname=namespace,
+            relname=name,
+            relkind="v",
+            definition=dict(is_null=False, sha256="a" * 64, utf8_bytes=10),
+        )
+        base["grant_state"]["relations"].append(before)
+        base["raw"]["relation_candidate"].append(
+            {k: before[k] for k in v.inventory.CANDIDATE_COLUMNS}
+        )
+    book = deepcopy(base)
+    book["profile"] = v.PROFILES[1]
+    for row in book["grant_state"]["relations"]:
+        if (row["nspname"], row["relname"]) in v.BOOK_VIEW_KEYS:
+            row["definition"] = dict(is_null=False, sha256="b" * 64, utf8_bytes=20)
+    return base, book
+
+
+def test_source_only_transition_accepts_only_four_exact_changed_view_seals():
+    base, book = transition_pair()
+    original = deepcopy((base, book))
+    v.assert_source_only_transition(base, book)
+    assert (base, book) == original
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "root",
+        "owner",
+        "relation_acl",
+        "column_acl",
+        "namespace_acl",
+        "database_access",
+        "role",
+        "membership",
+        "default",
+        "policy",
+        "canonical_acl",
+        "missing_view_change",
+        "extra_definition",
+        "attribute",
+        "capabilities",
+        "candidate",
+    ],
+)
+def test_source_only_transition_rejects_any_root_acl_or_other_grant_state_drift(mutation):
+    base, book = transition_pair()
+    state = book["grant_state"]
+    if mutation == "root":
+        state["relations"][0]["relname"] += "_other"
+    elif mutation == "owner":
+        state["relations"][0]["owner"] += 1
+    elif mutation in ("relation_acl", "namespace_acl"):
+        if mutation == "namespace_acl":
+            # A complete schema row is not needed to show a rejected unexpected addition.
+            state["namespaces"].append({"unexpected": True})
+        else:
+            state["relations"][0]["acl"].append([40000, 40002, "SELECT", False])
+    elif mutation == "database_access":
+        state["databases"][0]["connect_allowed"] = True
+    elif mutation == "canonical_acl":
+        book["raw"]["acl_rows"][0]["reader_execute"] = False
+    elif mutation == "missing_view_change":
+        state["relations"][-1]["definition"] = deepcopy(
+            base["grant_state"]["relations"][-1]["definition"]
+        )
+    elif mutation == "extra_definition":
+        state["relations"][0]["definition"] = dict(is_null=False, sha256="c" * 64, utf8_bytes=30)
+    elif mutation == "attribute":
+        state["relations"][0]["attribute_count"] += 1
+    elif mutation == "capabilities":
+        state["relations"][0]["capabilities"][0] = True
+    elif mutation == "candidate":
+        book["raw"]["relation_candidate"][0]["oid"] += 1
+    else:
+        group = {
+            "column_acl": "columns",
+            "role": "roles",
+            "membership": "memberships",
+            "default": "defaults",
+            "policy": "policies",
+        }[mutation]
+        state[group].append({"unexpected": True})
+    with pytest.raises((ValueError, KeyError)):
+        v.assert_source_only_transition(base, book)
 
 
 @pytest.mark.parametrize(
@@ -368,7 +601,7 @@ def test_named_envelope_rejects_mixed_or_incomplete_source_provenance(mutation):
     elif mutation == "mixed":
         lines[1] = lines[1].replace('"identity":"' + "b" * 32, '"identity":"' + "c" * 32)
     with pytest.raises((ValueError, KeyError)):
-        v.extract_named(lines, profile)
+        v.extract_named(lines, profile, expected_git="e" * 40)
 
 
 def test_fixed_ACL_queries_expand_null_defaults_but_not_empty_arrays():

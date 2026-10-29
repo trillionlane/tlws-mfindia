@@ -15,6 +15,7 @@ import time
 
 import reader_source_reference as legacy
 from mfdataindia.review import broad_reader_capture_inventory as inventory
+from mfdataindia.review.reader_access_transport_spec import state_shape
 
 AUTHORITY_PATH = "docs/CI_SOURCE_REFERENCE_BOOK_VARIANT_AUTHORITY_20261029.json"
 AUTHORITY_SHA = "77917a8dda9c41cd3a46c6ee662a13b221d01a7ca9c1eebd6622888c7b6d89ce"
@@ -350,8 +351,9 @@ def named_envelope(payload, *, identity):
     ]
 
 
-def extract_named(lines, profile):
+def extract_named(lines, profile, *, expected_git):
     require(profile in PROFILES)
+    require(type(expected_git) is str and re.fullmatch("[0-9a-f]{40}", expected_git))
     selected = []
     for line in lines:
         if "SOURCE_SEMANTIC_REFERENCE_" in line and legacy.MARKER not in line:
@@ -359,13 +361,88 @@ def extract_named(lines, profile):
         if MARKERS[profile] in line:
             selected.append(line.replace(MARKERS[profile], legacy.MARKER, 1))
     payload = legacy.extract_envelope(selected)
+    require(
+        set(payload)
+        == set(
+            "format profile compiler_git compiler_sources base_authority_sha256 variant_authority_sha256 authority raw raw_sha256 grant_state portable_sha256 portable_projection_format runtime_authority permission_acceptance".split()
+        )
+    )
+    require(payload["format"] == "extended-source-calibration-NOT-live-acceptance-v1")
+    require(payload["compiler_git"] == expected_git)
+    root = Path(__file__).resolve().parents[1]
+    require(
+        payload["compiler_sources"]
+        == {
+            path: digest((root / path).read_bytes())
+            for path in ("tests/reader_source_reference.py", "tests/reader_source_variants.py")
+        }
+    )
+    require(payload["base_authority_sha256"] == legacy.AUTHORITY_SHA)
+    require(payload["authority"] == variant_authority(root))
+    require(payload["raw_sha256"] == digest(canonical(payload["raw"]).encode()))
     require(payload["profile"] == profile and payload["variant_authority_sha256"] == AUTHORITY_SHA)
     require(payload["runtime_authority"] is payload["permission_acceptance"] is False)
+    state_shape(payload["grant_state"])
+    databases = payload["grant_state"]["databases"]
+    require(len(databases) == 1)
+    require(databases[0]["oid"] == payload["raw"]["legacy"]["database"]["oid"])
     require(
-        payload["portable_sha256"]
-        == digest(canonical(portable_source_reference(payload["raw"])).encode())
+        databases[0]["datname"]
+        == payload["raw"]["legacy"]["database"]["datname"]
+        == payload["raw"]["legacy"]["context"]["database"]
     )
+    require(grant_roots(payload["grant_state"]) == candidate_roots(payload["raw"]))
+    portable = portable_source_reference(payload["raw"])
+    require(payload["portable_projection_format"] == portable["format"])
+    require(payload["portable_sha256"] == digest(canonical(portable).encode()))
     return payload
+
+
+BOOK_VIEW_KEYS = frozenset(
+    {
+        ("mf_live_facts", "field_versions"),
+        ("mf_live_facts", "current_values"),
+        ("mf_live_facts", "resolved"),
+        ("mf", "current_fund_facts"),
+    }
+)
+
+
+def grant_roots(state):
+    return [
+        {k: row[k] for k in ("oid", "nspname", "relname", "relkind", "owner")}
+        for row in state["relations"]
+        if row["relkind"] in ("r", "p", "v", "m") and row["nspname"] in legacy.SCHEMAS
+    ]
+
+
+def candidate_roots(raw):
+    return [
+        {k: row[k] for k in ("oid", "nspname", "relname", "relkind", "owner")}
+        for row in raw["relation_candidate"]
+        if row["nspname"] in legacy.SCHEMAS
+    ]
+
+
+def assert_source_only_transition(base, book):
+    """Reject any grant/root drift; only four exact view seals may differ."""
+    require(base["profile"] == PROFILES[0] and book["profile"] == PROFILES[1])
+    for payload in (base, book):
+        state_shape(payload["grant_state"])
+        require(grant_roots(payload["grant_state"]) == candidate_roots(payload["raw"]))
+    require(grant_roots(base["grant_state"]) == grant_roots(book["grant_state"]))
+    require(base["raw"]["acl_rows"] == book["raw"]["acl_rows"])
+    left, right = deepcopy(base["grant_state"]), deepcopy(book["grant_state"])
+    changed = set()
+    require(len(left["relations"]) == len(right["relations"]))
+    for before, after in zip(left["relations"], right["relations"], strict=True):
+        key = (before["nspname"], before["relname"])
+        if before["definition"] != after["definition"]:
+            require(key in BOOK_VIEW_KEYS and before["relkind"] == after["relkind"] == "v")
+            changed.add(key)
+            after["definition"] = deepcopy(before["definition"])
+    require(changed == BOOK_VIEW_KEYS)
+    require(left == right)
 
 
 class DDLAbortUnconfirmed(RuntimeError):
