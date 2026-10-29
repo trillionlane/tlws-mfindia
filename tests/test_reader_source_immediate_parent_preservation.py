@@ -1,4 +1,4 @@
-"""Versioned exact-byte receipt for all five evolved CI files.
+"""Versioned exact-byte receipt for all six evolved CI files.
 
 The recipe is externally pinned by this NEW test, so the changed historical
 preservation helper does not have to hash itself. Older 981-file restoration
@@ -14,7 +14,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE = ROOT / "docs/CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_PRESERVATION_20261029_v5.json"
-RECIPE_SHA256 = "6fc0c82ef54dff031df1703116cc88ed1a3b732c8fa18c6349ce6fefc0907fa7"
+RECIPE_SHA256 = "3105776128e47682f9d1e4331d03cd7f88d8343a54fa02da076092e8f36d947b"
 PARENT = "a8218d7747b6222a55d373c8c4a33bda23eec4e8"
 CHANGED = {
     "tests/reader_source_packets.py",
@@ -22,6 +22,7 @@ CHANGED = {
     "tests/test_reader_source_packets.py",
     "tests/test_reader_source_reference_postgres.py",
     "tests/test_reader_source_variants_postgres.py",
+    "tests/test_reader_source_variants_preservation.py",
 }
 ADDED = {
     "docs/CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_PRESERVATION_20261029_v5.json",

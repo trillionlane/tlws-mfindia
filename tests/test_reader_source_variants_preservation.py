@@ -99,6 +99,7 @@ def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
         ["git", "diff", "--name-status", TRIGGER_PARENT + "..HEAD"], cwd=ROOT
     ).decode().splitlines()
     assert set(delta) == {
+        "A\tdocs/CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_PRESERVATION_20261029_v5.json",
         "A\tdocs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json",
         "A\ttests/reader_source_packets.py",
         "A\ttests/reader_source_packets_preservation.py",
@@ -106,11 +107,12 @@ def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
         "M\ttests/reader_source_variants.py",
         "A\ttests/reader_source_variants_v2.py",
         "A\ttests/test_reader_source_packets.py",
+        "A\ttests/test_reader_source_immediate_parent_preservation.py",
         "M\ttests/test_reader_source_reference_postgres.py",
         "A\ttests/test_reader_source_trigger.py",
         "M\ttests/test_reader_source_variants_postgres.py",
         "M\ttests/test_reader_source_variants_preservation.py",
-    } and len(delta) == 11
+    } and len(delta) == 13
     records = subprocess.check_output(["git", "ls-tree", "-r", "-z", TRIGGER_PARENT], cwd=ROOT).split(b"\0")
     records = [r for r in records if r]
     assert len(records) == 990

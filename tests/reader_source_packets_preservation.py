@@ -19,7 +19,7 @@ PACKET_PATHS = {
         "0b85cab3884febf3e7e8408dddc40457e8e3c79bc8d279b1b5a124ef8832d9a4",
         "42a8564a5c8f70225285aed7967cb41a34469b57760a773a568ae280169fe5cc"),
     "tests/test_reader_source_variants_preservation.py": (
-        "580f855e2b106046fdd9e18d63f27e2f2c36245aa867c7594ca78c08a7f856d9",
+        "219aeccec06e2d52808a3d5829528e1544d237180b8f3323ac36d05346b948dd",
         "0967d540bf5618ada598032dad013e50382e2302ac7bb3e71377e5471ec22da4"),
 }
 
