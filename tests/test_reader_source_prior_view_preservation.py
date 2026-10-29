@@ -15,6 +15,8 @@ ADDED = {
     "docs/CI_SOURCE_REFERENCE_BOOK_PRIOR_VIEW_PRESERVATION_20261029_v7.json",
     "tests/reader_source_prior_view_preservation.py",
     "tests/test_reader_source_prior_view_preservation.py",
+    "tests/reader_source_view_locks.py",
+    "tests/test_reader_source_view_locks_postgres.py",
 }
 
 
