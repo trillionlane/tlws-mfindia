@@ -92,8 +92,9 @@ def observe(dsn, authority, profile):
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=5, row_factory=dict_row)
     try:
         with legacy.reference_transaction(conn) as bounded:
-            first = variants.collect_extended(bounded)
-            assert first == variants.collect_extended(bounded)
+            import reader_source_variants_v2 as variants_v2
+            first = variants_v2.collect_extended(bounded)
+            assert first == variants_v2.collect_extended(bounded)
             grant_state = variants.query(
                 bounded, variants.inventory.engine.STATE_SQL, (), ("value",)
             )
@@ -134,12 +135,14 @@ def observe(dsn, authority, profile):
                 runtime_authority=False,
                 permission_acceptance=False,
             )
-            assert len(legacy.canonical(payload).encode()) <= legacy.MAX_RAW
+            import reader_source_packets as packets
+            lines = packets.pair(payload, profile, identity=uuid4().hex)
+            assert packets.extract_pair(lines, profile, expected_git=compiler_git) == payload
             bounded.remaining()
         assert conn.info.transaction_status == legacy.TransactionStatus.IDLE
     finally:
         conn.close()  # No context-manager rollback after a spent/ambiguous wall.
-    return payload
+    return payload, lines
 
 
 def views(raw):
@@ -175,14 +178,14 @@ def test_native_exact_book_v2_single_pass_extended_references(source_variant_db,
     expected_git = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
     ).strip()
-    base = observe(dsn, authority, variants.PROFILES[0])
+    base, base_lines = observe(dsn, authority, variants.PROFILES[0])
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=5, row_factory=dict_row)
     try:
         variants.install_book_variant(conn, ROOT)
         assert conn.info.transaction_status == legacy.TransactionStatus.IDLE
     finally:
         conn.close()
-    book = observe(dsn, authority, variants.PROFILES[1])
+    book, book_lines = observe(dsn, authority, variants.PROFILES[1])
     variants.assert_source_only_transition(base, book)
     before, after = base["raw"]["legacy"], book["raw"]["legacy"]
     old_views, new_views = views(before), views(after)
@@ -206,10 +209,13 @@ def test_native_exact_book_v2_single_pass_extended_references(source_variant_db,
             ("pg_catalog", "pg_inherits"),
             ("pg_catalog", "pg_namespace"),
         }
-        lines = variants.named_envelope(payload, identity=uuid4().hex)
-        assert (
-            variants.extract_named(lines, payload["profile"], expected_git=expected_git) == payload
-        )
-        with capsys.disabled():
-            for line in lines:
-                print(line, flush=True)
+    import reader_source_packets as packets
+    # Validate BOTH complete pairs and source-only transition before emitting
+    # even the first of the four profile markers.
+    assert packets.extract_pair(base_lines, variants.PROFILES[0],
+                                expected_git=expected_git) == base
+    assert packets.extract_pair(book_lines, variants.PROFILES[1],
+                                expected_git=expected_git) == book
+    with capsys.disabled():
+        for line in [*base_lines, *book_lines]:
+            print(line, flush=True)

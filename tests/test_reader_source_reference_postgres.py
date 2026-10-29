@@ -79,6 +79,17 @@ def test_native_complete_committed_source_reference_and_numbered_lossless_output
         # Complete reference serialization is inside the SAME whole wall.
         ref.canonical(first)
         ref.canonical(semantic)
+        payload = {"format": "source-calibration-not-live-acceptance-v1", "authority": authority,
+                   "compiler_git": subprocess.check_output(
+                       ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+                   "compiler_sha256": ref.digest(
+                       (ROOT / "tests/reader_source_reference.py").read_bytes()),
+                   "raw": first, "semantic_reference": semantic,
+                   "permission_acceptance": False, "runtime_authority": False}
+        import reader_source_packets as packets
+        lines = packets.pair(payload, "LEGACY_BASE44", identity=uuid4().hex)
+        assert packets.extract_pair(lines, "LEGACY_BASE44",
+                                    expected_git=payload["compiler_git"]) == payload
     assert semantic["runtime_authority"] is semantic["permission_acceptance"] is False
     assert semantic["raw_document_must_be_retained"] is True
     funcs = [o for o in first["objects"] if o["catalog"] == "pg_proc"]
@@ -89,13 +100,6 @@ def test_native_complete_committed_source_reference_and_numbered_lossless_output
     assert len(helper) == len(callee) == 1
     assert helper[0]["oid"] != 41849  # Real ephemeral OID, never normalized into DEV evidence.
     assert helper[0]["row"]["body_seal"]["sha256"] == "06f4c87653e1aa4423f2183e9f2476c114eec06224b6d166f1d188d7d8452aac"
-    payload = {"format": "source-calibration-not-live-acceptance-v1", "authority": authority,
-               "compiler_git": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-               "compiler_sha256": ref.digest((ROOT / "tests/reader_source_reference.py").read_bytes()),
-               "raw": first, "semantic_reference": semantic,
-               "permission_acceptance": False, "runtime_authority": False}
-    lines = ref.reference_envelope(payload, identity=uuid4().hex)
-    assert ref.extract_envelope(lines) == payload
     with capsys.disabled():
         for line in lines:
             print(line, flush=True)

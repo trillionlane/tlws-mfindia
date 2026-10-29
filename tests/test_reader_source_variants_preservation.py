@@ -8,6 +8,7 @@ import stat
 import subprocess
 
 from test_reader_source_trigger import TRIGGER_RECIPE_SHA
+from reader_source_packets_preservation import PACKET_PATHS, restore_packet_source
 
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "016e63afb7b82aa1369b97bfdc63a729524d0c1d"
@@ -73,6 +74,8 @@ def test_all981_parent_whole_bytes_and_modes_remain_exact():
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
             raw = path.read_bytes()
+            if name.decode() in PACKET_PATHS:
+                raw = restore_packet_source(raw, name.decode())
             if name.decode() in TRIGGER_PATHS:
                 raw = restore_trigger_source(raw, name.decode())
             if name == b"tests/reader_source_reference.py":
@@ -97,11 +100,17 @@ def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
     ).decode().splitlines()
     assert set(delta) == {
         "A\tdocs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json",
+        "A\ttests/reader_source_packets.py",
+        "A\ttests/reader_source_packets_preservation.py",
         "M\ttests/reader_source_reference.py",
         "M\ttests/reader_source_variants.py",
+        "A\ttests/reader_source_variants_v2.py",
+        "A\ttests/test_reader_source_packets.py",
+        "M\ttests/test_reader_source_reference_postgres.py",
         "A\ttests/test_reader_source_trigger.py",
+        "M\ttests/test_reader_source_variants_postgres.py",
         "M\ttests/test_reader_source_variants_preservation.py",
-    } and len(delta) == 5
+    } and len(delta) == 11
     records = subprocess.check_output(["git", "ls-tree", "-r", "-z", TRIGGER_PARENT], cwd=ROOT).split(b"\0")
     records = [r for r in records if r]
     assert len(records) == 990
@@ -117,6 +126,8 @@ def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
             raw = path.read_bytes()
+            if name.decode() in PACKET_PATHS:
+                raw = restore_packet_source(raw, name.decode())
             if name.decode() in TRIGGER_PATHS:
                 raw = restore_trigger_source(raw, name.decode())
         assert hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest() == expected, name
