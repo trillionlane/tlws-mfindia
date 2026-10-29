@@ -11,7 +11,6 @@ import pytest
 import reader_source_packets as packets
 import reader_source_reference as old
 import reader_source_variants as variants
-from scripts import ci_risk_policy as ci_policy
 
 GIT = "a" * 40
 IDENTITY = "b" * 32
@@ -217,9 +216,9 @@ def test_normal_ci_bundle_requires_exact_trusted_run_context(monkeypatch):
         monkeypatch.setenv(key, value)
     plan = {"checkout": GIT, "head": BUNDLE["head"], "mode": "full",
             "event": "pull_request"}
-    monkeypatch.setattr(ci_policy, "environment_plan", lambda: plan)
-    monkeypatch.setattr(ci_policy, "verify_plan", lambda value: value)
-    monkeypatch.setattr(ci_policy, "digest", lambda value: BUNDLE["ci_binding"])
+    monkeypatch.setattr(packets.ci_policy, "environment_plan", lambda: plan)
+    monkeypatch.setattr(packets.ci_policy, "verify_plan", lambda value: value)
+    monkeypatch.setattr(packets.ci_policy, "digest", lambda value: BUNDLE["ci_binding"])
     assert packets.normal_ci_bundle(GIT) == BUNDLE
     with pytest.raises(ValueError):
         packets.normal_ci_bundle("f" * 40)

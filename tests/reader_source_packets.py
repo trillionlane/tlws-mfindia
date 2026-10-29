@@ -9,6 +9,7 @@ from copy import deepcopy
 import base64
 import gzip
 import hashlib
+from importlib.util import module_from_spec, spec_from_file_location
 import json
 import os
 from pathlib import Path
@@ -18,7 +19,11 @@ import zlib
 import reader_source_reference as old
 import reader_source_variants as variants
 import reader_source_variants_v2 as variants_v2
-from scripts import ci_risk_policy as ci_policy
+
+_policy_path = Path(__file__).resolve().parents[1] / "scripts/ci_risk_policy.py"
+_policy_spec = spec_from_file_location("ci_risk_policy", _policy_path)
+ci_policy = module_from_spec(_policy_spec)
+_policy_spec.loader.exec_module(ci_policy)
 
 PROFILES = ("LEGACY_BASE44", *variants.PROFILES)
 PARTS = ("A", "B")

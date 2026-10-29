@@ -5,7 +5,7 @@
     "tests/reader_source_packets.py": {
       "mode": "100644",
       "parent_sha256": "a27ef93d91231cb8d4da6cd8e40845fcc6c98f09db3c13ceb7c51b58040cf123",
-      "current_sha256": "1b0db307075a269ff16d3bdd378e83d649cae7ff72d4efe8d30382893d12cb35"
+      "current_sha256": "a1f280e1fce24bdc2fe7a4dc25d6e7ccdc5d3a1256c54fac34a203970645cf38"
     },
     "tests/reader_source_packets_preservation.py": {
       "mode": "100644",
@@ -15,7 +15,7 @@
     "tests/test_reader_source_packets.py": {
       "mode": "100644",
       "parent_sha256": "280bf646b5e35a00485fad42ba6caafb123b18410d0f1acd32ae25065cfafa35",
-      "current_sha256": "e5fa75a169b4cd15f8e27e29ded4905386b2f7ab2e609416ffb57dbaf4aeb729"
+      "current_sha256": "9572893e6391b66b1134f004b5e761fa98708001ff730195eff7ce9ff25638a4"
     },
     "tests/test_reader_source_reference_postgres.py": {
       "mode": "100644",
