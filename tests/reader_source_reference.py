@@ -41,6 +41,7 @@ FUNCTION_NAMES = (
 OPERATOR_NAMES = ("=", "<>", "<", ">", "<=", ">=", "->", "->>", "||", "!~")
 TYPE_NAMES = ("int4", "jsonb", "text", "bpchar", "name", "bytea", "bool", "int8",
               "date", "timestamp", "timestamptz", "numeric")
+GOVERNED_ROLES = ("mfdata_admin", "mfdata_verified_generator", "mfdata_verified_reader", "mfdata_verified_admin")
 
 
 def canonical(value):
@@ -211,6 +212,7 @@ def reference_transaction(conn):
         attempted = True
         with bounded.execute("ROLLBACK", prepare=False) as cursor:
             require(cursor.statusmessage == "ROLLBACK")
+        require(conn.info.transaction_status == TransactionStatus.IDLE)
     except BaseException as error:
         if begun:
             if attempted or isinstance(error, WallSpent) or time.monotonic() >= bounded.deadline:
@@ -219,6 +221,7 @@ def reference_transaction(conn):
             try:
                 with bounded.execute("ROLLBACK", prepare=False) as cursor:
                     require(cursor.statusmessage == "ROLLBACK")
+                require(conn.info.transaction_status == TransactionStatus.IDLE)
             except BaseException:
                 raise AbortUnconfirmed("source-reference abort unconfirmed; no retry") from None
         raise
@@ -240,6 +243,70 @@ def range_references(value):
     require(all(type(v) is int and 0 <= v <= 4294967295 for v in value.values()))
     require(value["rngtypid"] > 0 and value["rngsubtype"] > 0 and value["rngmultitypid"] > 0)
     return [(target, value[field]) for field, target in RANGE_REFS.items() if value[field]]
+
+
+def io_conversion_records(objects):
+    """PG18 scalar I/O fallback contexts, not a general coercion executor.
+
+    Domain/base paths and overriding catalogue casts remain explicit. Unknown
+    double-array/string-category combinations fail closed, never approximate
+    an array-coercion path. No I/O function is called by this metadata model.
+    """
+    types = {oid: row for (cat, oid), row in objects.items() if cat == "pg_type"}
+    casts = {(row["castsource"], row["casttarget"]): row for (cat, _), row in objects.items() if cat == "pg_cast"}
+    handlers = {oid for (cat, oid), row in objects.items()
+                if cat == "pg_proc" and row["proname"] == "array_subscript_handler"}
+
+    def base(oid):
+        chain, seen = [], set()
+        while types[oid]["typtype"] == "d":
+            require(oid not in seen)
+            seen.add(oid)
+            chain.append(oid)
+            oid = types[oid]["typbasetype"]
+            require(oid in types)
+        return oid, chain
+
+    def array(row):
+        return bool(row["typelem"]) and row["typsubscript"] in handlers
+
+    result = []
+    for oid, value in sorted(types.items()):
+        if value["typtype"] == "d":
+            root, chain = base(oid)
+            result.append({"kind": "domain_base", "source": oid, "target": root,
+                           "domain_chain": chain, "typmod": value["typtypmod"],
+                           "not_null": value["typnotnull"], "contexts": ["i", "a", "e"],
+                           "target_domain_requires_constraints": False})
+            result.append({"kind": "base_domain", "source": root, "target": oid,
+                           "domain_chain": chain, "typmod": value["typtypmod"],
+                           "not_null": value["typnotnull"], "contexts": ["i", "a", "e"],
+                           "target_domain_requires_constraints": True})
+        for target, _other in sorted(types.items()):
+            source_base, source_chain = base(oid)
+            target_base, target_chain = base(target)
+            s, t = types[source_base], types[target_base]
+            if source_base == target_base or (s["typcategory"] != "S" and t["typcategory"] != "S"):
+                continue
+            override = casts.get((source_base, target_base))
+            if override is not None:
+                contexts, reason = [], "CATALOGUE_CAST_SUPPRESSES_GENERIC_IO"
+            else:
+                # PG18 tries array element coercion before generic I/O. Such a
+                # shape is not silently represented as scalar I/O admission.
+                require(not (array(s) and array(t)))
+                contexts, reason = (["a", "e"], "TO_STRING_ASSIGNMENT_OR_EXPLICIT") if t["typcategory"] == "S" else (["e"], "FROM_STRING_EXPLICIT_ONLY")
+            result.append({"kind": "automatic_io_candidate", "source": oid, "target": target,
+                           "source_base": source_base, "target_base": target_base,
+                           "source_domain_chain": source_chain, "target_domain_chain": target_chain,
+                           "target_domain_requires_constraints": bool(target_chain),
+                           "source_typmod": value["typtypmod"], "target_typmod": types[target]["typtypmod"],
+                           "output": s["typoutput"], "input": t["typinput"],
+                           "eligible_contexts": contexts, "reason": reason,
+                           "catalogue_override_oid": 0 if override is None else override["oid"],
+                           "catalogue_override_context": None if override is None else override["castcontext"],
+                           "catalogue_override_method": None if override is None else override["castmethod"]})
+    return result
 
 
 def projection(catalog):
@@ -314,6 +381,10 @@ def collect(conn):
                  "AND relkind IN ('r','p','v','m','S') ORDER BY oid", (list(SCHEMAS),))
     for r in seeds:
         add("pg_class", r["oid"])
+    governed = rows(conn, "SELECT oid::bigint AS oid,rolname FROM pg_catalog.pg_roles WHERE rolname=ANY(%s) ORDER BY rolname", (list(GOVERNED_ROLES),))
+    require(len(governed) == len(GOVERNED_ROLES) and {row["rolname"] for row in governed} == set(GOVERNED_ROLES))
+    for row in governed:
+        add("pg_authid", row["oid"])
     for r in rows(conn, "SELECT oid::bigint AS oid FROM pg_catalog.pg_proc WHERE "
                   "pronamespace IN (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname=ANY(%s)) "
                   "AND proname=ANY(%s) ORDER BY oid",
@@ -330,7 +401,7 @@ def collect(conn):
     for r in rows(conn, "SELECT oid::bigint AS oid FROM pg_catalog.pg_collation WHERE "
                   "collnamespace='pg_catalog'::regnamespace AND collname IN ('C','default')"):
         add("pg_collation", r["oid"])
-    aggregates, ranges, columns, memberships, conversions = {}, {}, {}, [], []
+    aggregates, ranges, columns, member_rows = {}, {}, {}, {}
     expanded = set()
     while True:
         todo = sorted(pending - expanded)
@@ -341,6 +412,13 @@ def collect(conn):
             for r in rows(conn, "SELECT oid::bigint AS oid FROM pg_catalog.pg_cast "
                           "WHERE castsource=ANY(%s::oid[]) OR casttarget=ANY(%s::oid[])", (types, types)):
                 add("pg_cast", r["oid"])
+            role_ids = sorted(oid for cat, oid in objects if cat == "pg_authid")
+            for row in rows(conn, "SELECT roleid::bigint,member::bigint,grantor::bigint,admin_option,inherit_option,set_option FROM pg_catalog.pg_auth_members WHERE roleid=ANY(%s::oid[]) OR member=ANY(%s::oid[]) ORDER BY roleid,member,grantor", (role_ids, role_ids)):
+                marker = tuple(row[k] for k in ("roleid", "member", "grantor"))
+                require(marker not in member_rows or member_rows[marker] == row)
+                member_rows[marker] = row
+                for field in ("roleid", "member", "grantor"):
+                    add("pg_authid", row[field])
             if not (pending - expanded):
                 break
             continue
@@ -392,6 +470,13 @@ def collect(conn):
                 add(catalog, dep["objid"], dep["objsubid"])
                 add(target, dep["refobjid"], dep["refobjsubid"])
                 edges.add((*src, target, dep["refobjid"], dep["refobjsubid"], dep["deptype"]))
+            # ACL grantors/grantees and owners are shared dependencies, not
+            # necessarily pg_depend edges. Restrict to this DB/global objects.
+            for dep in rows(conn, "SELECT objid::bigint,objsubid,refclassid::bigint,refobjid::bigint,deptype::text FROM pg_catalog.pg_shdepend WHERE classid=%s::oid AND objid=ANY(%s::oid[]) AND dbid IN (0,(SELECT oid FROM pg_catalog.pg_database WHERE datname=current_database())) ORDER BY objid,objsubid,refclassid,refobjid,deptype", (classes[catalog], ids)):
+                require(dep["refclassid"] == classes["pg_authid"] and dep["deptype"] in ("o", "a", "i", "r"))
+                add(catalog, dep["objid"], dep["objsubid"])
+                add("pg_authid", dep["refobjid"])
+                edges.add((catalog, dep["objid"], dep["objsubid"], "pg_authid", dep["refobjid"], 0, "shared:" + dep["deptype"]))
             if catalog == "pg_class":
                 for child, field in (("pg_rewrite", "ev_class"), ("pg_constraint", "conrelid"), ("pg_attrdef", "adrelid")):
                     for r in rows(conn, "SELECT oid::bigint AS oid," + field + "::bigint AS parent FROM pg_catalog." + child + " WHERE " + field + "=ANY(%s::oid[])", (ids,)):
@@ -430,17 +515,8 @@ def collect(conn):
                 for r in rows(conn, "SELECT oid::bigint AS oid,contypid::bigint AS parent FROM pg_catalog.pg_constraint WHERE contypid=ANY(%s::oid[])", (ids,)):
                     add("pg_constraint", r["oid"], origin=(catalog, r["parent"], 0))
     require(pending == expanded)
-    for r in rows(conn, "SELECT roleid::bigint,member::bigint,grantor::bigint,admin_option,inherit_option,set_option FROM pg_catalog.pg_auth_members WHERE roleid=ANY(%s::oid[]) OR member=ANY(%s::oid[]) ORDER BY roleid,member,grantor", (sorted(k[1] for k in objects if k[0] == "pg_authid"),) * 2):
-        memberships.append(r)
-    for (cat, oid), value in sorted(objects.items()):
-        if cat == "pg_type" and value["typtype"] == "d":
-            conversions.append({"kind": "domain_base", "source": oid, "target": value["typbasetype"], "typmod": value["typtypmod"], "not_null": value["typnotnull"]})
-    # Automatic I/O conversions are explicit candidate rules, not invented pg_cast rows.
-    type_rows = [(key[1], row) for key, row in sorted(objects.items()) if key[0] == "pg_type"]
-    for oid, value in type_rows:
-        for target, other in type_rows:
-            if target != oid and (value["typcategory"] == "S" or other["typcategory"] == "S"):
-                conversions.append({"kind": "automatic_io_candidate", "source": oid, "target": target, "output": value["typoutput"], "input": other["typinput"], "source_typmod": value["typtypmod"], "target_typmod": other["typtypmod"]})
+    memberships = [member_rows[k] for k in sorted(member_rows)]
+    conversions = io_conversion_records(objects)
     database = rows(conn, "SELECT oid::bigint,datname,encoding,datlocprovider::text,datcollate,datctype,datlocale,datcollversion,pg_catalog.pg_database_collation_actual_version(oid) AS actual_collation_version," + seal_sql("daticurules") + " AS icu_rules_seal FROM pg_catalog.pg_database WHERE datname=current_database()")[0]
     result = {"format": "mf-reader-raw-CI-source-reference-v1", "base_git": BASE,
               "authority_sha256": AUTHORITY_SHA, "context": context, "database": database,
@@ -579,6 +655,14 @@ def semantic_reference(raw):
         value = deepcopy(original)
         for field in ("source", "target"):
             value[field] = name("pg_type", value[field])
+        for field in ("source_base", "target_base"):
+            if field in value:
+                value[field] = name("pg_type", value[field])
+        for field in ("domain_chain", "source_domain_chain", "target_domain_chain"):
+            if field in value:
+                value[field] = [name("pg_type", oid) for oid in value[field]]
+        if "catalogue_override_oid" in value:
+            value["catalogue_override_oid"] = name("pg_cast", value["catalogue_override_oid"])
         for field in ("input", "output"):
             if field in value:
                 value[field] = name("pg_proc", value[field])
