@@ -48,7 +48,8 @@ def test_only_oid_copy_is_normalized_and_original_remains_unchanged():
 
 
 @pytest.mark.parametrize("defect", ["capture_hash", "role_collision", "wrong_acl",
-                                    "wrong_source_seal", "wrong_schema_oid"])
+                                    "wrong_source_seal", "wrong_schema_oid",
+                                    "swapped_acl_atoms"])
 def test_oid_translation_never_repairs_nonidentity_or_broken_graph(defect):
     value, _, _ = _native_case()
     function = value["attestation"]["functions"][0]
@@ -61,6 +62,9 @@ def test_oid_translation_never_repairs_nonidentity_or_broken_graph(defect):
         function["execute_acl_atoms"][1]["is_grantable"] = True
     elif defect == "wrong_source_seal":
         function["body_sha256"] = "0" * 64
+    elif defect == "swapped_acl_atoms":
+        function["execute_acl_atoms"][0], function["execute_acl_atoms"][1] = (
+            function["execute_acl_atoms"][1], function["execute_acl_atoms"][0])
     else:
         function["namespace_oid"] += 1
     if defect != "capture_hash":

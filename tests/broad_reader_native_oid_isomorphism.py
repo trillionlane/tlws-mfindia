@@ -42,6 +42,12 @@ def validate(value, original_validator):
     atoms = function.get("execute_acl_atoms")
     _require(type(atoms) is list and len(atoms) == 3)
     _require(all(type(atom) is dict for atom in atoms))
+    _require(all(type(atom.get("grantor_oid")) is int
+                 and type(atom.get("grantee_oid")) is int
+                 and type(atom.get("is_grantable")) is bool for atom in atoms))
+    native_order = [(atom.get("grantor_oid"), atom.get("grantee_oid"),
+                     atom.get("is_grantable")) for atom in atoms]
+    _require(native_order == sorted(set(native_order)))
     by_name = {atom.get("grantee_name"): atom for atom in atoms}
     _require(len(by_name) == 3 and set(by_name) == {
         "mfdata_admin", "mfdata_verified_reader", "mfdata_verified_admin"})
