@@ -11,10 +11,12 @@ import pytest
 import reader_source_packets as packets
 import reader_source_reference as old
 import reader_source_variants as variants
+from scripts import ci_risk_policy as ci_policy
 
 GIT = "a" * 40
 IDENTITY = "b" * 32
-BUNDLE = {"run_id": 123, "attempt": 1, "head": GIT}
+BUNDLE = {"run_id": 123, "attempt": 1, "head": "d" * 40,
+          "checkout": GIT, "ci_binding": "e" * 64}
 
 
 def legacy(raw="raw", semantic="semantic"):
@@ -94,6 +96,25 @@ def test_noncanonical_inner_json_rejects_even_with_matching_inner_hashes():
     def change(packet):
         raw = b'{"value":"raw", "extra":0}'
         compressed = gzip.compress(raw, mtime=0)
+        packet["body"].update(raw_bytes=len(raw),
+                              raw_sha256=hashlib.sha256(raw).hexdigest(),
+                              compressed_bytes=len(compressed),
+                              compressed_sha256=hashlib.sha256(compressed).hexdigest(),
+                              gzip_base64=base64.b64encode(compressed).decode())
+
+    changed = replace_first_outer_packet(lines, change)
+    with pytest.raises(ValueError):
+        packets.extract_pair(changed, "LEGACY_BASE44", expected_git=GIT,
+                             bundle=BUNDLE)
+
+
+def test_nondeterministic_gzip_mtime_rejects_with_all_self_hashes_recomputed():
+    lines = packets.pair(legacy(), "LEGACY_BASE44", identity=IDENTITY,
+                         bundle=BUNDLE)
+
+    def change(packet):
+        raw = old.canonical(legacy()["raw"]).encode()
+        compressed = gzip.compress(raw, mtime=1)
         packet["body"].update(raw_bytes=len(raw),
                               raw_sha256=hashlib.sha256(raw).hexdigest(),
                               compressed_bytes=len(compressed),
@@ -194,7 +215,14 @@ def test_normal_ci_bundle_requires_exact_trusted_run_context(monkeypatch):
                        "GITHUB_RUN_ID": "123",
                        "GITHUB_RUN_ATTEMPT": "1"}.items():
         monkeypatch.setenv(key, value)
+    plan = {"checkout": GIT, "head": BUNDLE["head"], "mode": "full",
+            "event": "pull_request"}
+    monkeypatch.setattr(ci_policy, "environment_plan", lambda: plan)
+    monkeypatch.setattr(ci_policy, "verify_plan", lambda value: value)
+    monkeypatch.setattr(ci_policy, "digest", lambda value: BUNDLE["ci_binding"])
     assert packets.normal_ci_bundle(GIT) == BUNDLE
+    with pytest.raises(ValueError):
+        packets.normal_ci_bundle("f" * 40)
     monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
     with pytest.raises(ValueError):
         packets.normal_ci_bundle(GIT)

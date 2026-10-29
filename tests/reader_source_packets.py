@@ -18,6 +18,7 @@ import zlib
 import reader_source_reference as old
 import reader_source_variants as variants
 import reader_source_variants_v2 as variants_v2
+from scripts import ci_risk_policy as ci_policy
 
 PROFILES = ("LEGACY_BASE44", *variants.PROFILES)
 PARTS = ("A", "B")
@@ -43,23 +44,32 @@ def sha(value):
 
 
 def require_bundle(bundle, *, expected_git):
-    require(type(bundle) is dict and set(bundle) == {"run_id", "attempt", "head"})
+    require(type(bundle) is dict and set(bundle) ==
+            {"run_id", "attempt", "head", "checkout", "ci_binding"})
     require(type(bundle["run_id"]) is int and bundle["run_id"] > 0)
     require(type(bundle["attempt"]) is int and bundle["attempt"] == 1)
-    require(type(bundle["head"]) is str and bundle["head"] == expected_git
+    require(type(bundle["head"]) is str
             and re.fullmatch(r"[0-9a-f]{40}", bundle["head"]))
+    require(type(bundle["checkout"]) is str and bundle["checkout"] == expected_git
+            and re.fullmatch(r"[0-9a-f]{40}", bundle["checkout"]))
+    require(type(bundle["ci_binding"]) is str
+            and re.fullmatch(r"[0-9a-f]{64}", bundle["ci_binding"]))
 
 
-def normal_ci_bundle(head):
-    """Native source markers require the actual normal CI run context."""
+def normal_ci_bundle(checkout):
+    """Bind PR head and executed checkout independently via the CI plan."""
     require(os.environ.get("GITHUB_ACTIONS") == "true"
             and os.environ.get("GITHUB_REPOSITORY") == "trillionlane/tlws-mfindia"
             and os.environ.get("GITHUB_EVENT_NAME") in ("pull_request", "push"))
     run = os.environ.get("GITHUB_RUN_ID", "")
     attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
     require(run.isdecimal() and attempt == "1")
-    bundle = {"run_id": int(run), "attempt": 1, "head": head}
-    require_bundle(bundle, expected_git=head)
+    plan = ci_policy.verify_plan(ci_policy.environment_plan())
+    require(plan["checkout"] == checkout and plan["mode"] == "full"
+            and plan["event"] in ("pull_request", "push"))
+    bundle = {"run_id": int(run), "attempt": 1, "head": plan["head"],
+              "checkout": plan["checkout"], "ci_binding": ci_policy.digest(plan)}
+    require_bundle(bundle, expected_git=checkout)
     return bundle
 
 
@@ -93,6 +103,8 @@ def _decode_body(value):
             and hashlib.sha256(raw).hexdigest() == value["raw_sha256"])
     decoded = json.loads(raw, object_pairs_hook=old.unique)
     require(old.canonical(decoded).encode() == raw)
+    require(gzip.compress(raw, mtime=0) == compressed
+            and base64.b64encode(compressed).decode("ascii") == value["gzip_base64"])
     return decoded
 
 

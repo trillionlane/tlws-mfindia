@@ -1,0 +1,31 @@
+{
+  "format": "CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_FULL_BYTE_MODE_RECEIPT_V5",
+  "parent": "a8218d7747b6222a55d373c8c4a33bda23eec4e8",
+  "files": {
+    "tests/reader_source_packets.py": {
+      "mode": "100644",
+      "parent_sha256": "a27ef93d91231cb8d4da6cd8e40845fcc6c98f09db3c13ceb7c51b58040cf123",
+      "current_sha256": "1b0db307075a269ff16d3bdd378e83d649cae7ff72d4efe8d30382893d12cb35"
+    },
+    "tests/reader_source_packets_preservation.py": {
+      "mode": "100644",
+      "parent_sha256": "95de3d63943bf201141b14b2045406d798f7517834be6da9a956c62870003bff",
+      "current_sha256": "3ef9f87e7045127b59b292dcbd9a839627954d5870c9da461bf527daa3283e28"
+    },
+    "tests/test_reader_source_packets.py": {
+      "mode": "100644",
+      "parent_sha256": "280bf646b5e35a00485fad42ba6caafb123b18410d0f1acd32ae25065cfafa35",
+      "current_sha256": "e5fa75a169b4cd15f8e27e29ded4905386b2f7ab2e609416ffb57dbaf4aeb729"
+    },
+    "tests/test_reader_source_reference_postgres.py": {
+      "mode": "100644",
+      "parent_sha256": "6d46bea61bcc225dd0c5c88ca58bd6bbf1259e26e599c8be98ac129513620e7a",
+      "current_sha256": "7aeb7a0e095e19ec59d8cf04872990795bfc3f784df2c0a011db5950248160b7"
+    },
+    "tests/test_reader_source_variants_postgres.py": {
+      "mode": "100644",
+      "parent_sha256": "54edfd729bc86e525aa1047045ac7136322681ce1cb202f6133d7a9e12e57ce5",
+      "current_sha256": "0b85cab3884febf3e7e8408dddc40457e8e3c79bc8d279b1b5a124ef8832d9a4"
+    }
+  }
+}
