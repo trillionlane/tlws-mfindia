@@ -43,6 +43,45 @@ def _case(book=False):
     return {"relations": rows}, deepcopy(rows)
 
 
+def _legacy_case():
+    state, candidates = _case()
+    prior = ("mf_book_facts", "prior_field_versions")
+    state["relations"] = [row for row in state["relations"]
+                          if (row["nspname"], row["relname"]) != prior]
+    candidates = [row for row in candidates
+                  if (row["nspname"], row["relname"]) != prior]
+    assert len(state["relations"]) == len(candidates) == 14
+    return state, candidates
+
+
+def test_exact_legacy_base44_source_view_set_matches_retained_native_reference():
+    state, candidates = _legacy_case()
+    result = profile.select(state, candidates,
+                            base_authority_sha256=profile.BASE_AUTHORITY_SHA256,
+                            variant_authority_sha256=profile.VARIANT_AUTHORITY_SHA256)
+    assert result["profile"] == "LEGACY_BASE44" and result["views"] == 14
+    assert result["views_sha256"] == "57fba3c06dbae98db62038f3a1654f323ac13739ce100e2a18ab095ed06e6d4b"
+    assert result["source_only_candidate"] is True
+    assert result["live_admission"] is False and result["permission_enabled"] is False
+
+
+@pytest.mark.parametrize("defect", ["missing", "extra", "drift", "candidate"])
+def test_legacy_base44_profile_rejects_incomplete_or_unreviewed_views(defect):
+    state, candidates = _legacy_case()
+    if defect == "missing":
+        state["relations"].pop()
+    elif defect == "extra":
+        state["relations"].append(deepcopy(state["relations"][0]))
+    elif defect == "drift":
+        state["relations"][0]["definition"]["sha256"] = "0" * 64
+    else:
+        candidates[0]["oid"] = 99999
+    with pytest.raises(profile.ViewProfileError, match="UNMATCHED_BROAD_READER_SOURCE_PROFILE"):
+        profile.select(state, candidates,
+                       base_authority_sha256=profile.BASE_AUTHORITY_SHA256,
+                       variant_authority_sha256=profile.VARIANT_AUTHORITY_SHA256)
+
+
 @pytest.mark.parametrize("book,expected", [(False, "BASE44_EXTENDED"),
                                             (True, "BASE44_BOOK_V2_SINGLE_PASS")])
 def test_exact_complete_source_view_set_selects_one_variant(book, expected):

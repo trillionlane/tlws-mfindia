@@ -54,7 +54,7 @@ def test_native_complete_source_helper_callee_seals_and_acl(source_reference_db)
         assert proof["function_invoked"] is False
         assert proof["grant_authorized"] is False
         assert len(proof["functions"]) == 2
-        assert selected["profile"] == "BASE44_EXTENDED"
+        assert selected["profile"] == "LEGACY_BASE44"
         assert len(scope["lock_only_leaves"]) == 3
         assert all("pg_catalog" not in statement
                    for statement in dependencies.lock_statements(scope))

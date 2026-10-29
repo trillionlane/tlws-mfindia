@@ -12,10 +12,10 @@ import json
 BASE_AUTHORITY_SHA256 = "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372"
 VARIANT_AUTHORITY_SHA256 = "2d144f61fa67d936e537fb06b3845569e441f54a2dbde8075f0cd112b3993450"
 _PROFILES = {
-    "BASE44_EXTENDED": "3c5ec8ce41302dd33f43541143ae1a234d3d27585d92ba94cc93210eef43721b",
-    "BASE44_BOOK_V2_SINGLE_PASS": "3fc3053b2491772b66c843fbde77ef98f346c811c886267448bacc7b02ffee74",
+    "LEGACY_BASE44": (14, "57fba3c06dbae98db62038f3a1654f323ac13739ce100e2a18ab095ed06e6d4b"),
+    "BASE44_EXTENDED": (15, "3c5ec8ce41302dd33f43541143ae1a234d3d27585d92ba94cc93210eef43721b"),
+    "BASE44_BOOK_V2_SINGLE_PASS": (15, "3fc3053b2491772b66c843fbde77ef98f346c811c886267448bacc7b02ffee74"),
 }
-_VIEW_COUNT = 15
 
 
 class ViewProfileError(ValueError):
@@ -36,10 +36,11 @@ def select(state, candidates, *, base_authority_sha256, variant_authority_sha256
                    if type(row) is dict and row.get("relkind") == "v"]
     candidate_views = [row for row in candidates
                        if type(row) is dict and row.get("relkind") == "v"]
-    _require(len(state_views) == len(candidate_views) == _VIEW_COUNT)
+    _require(len(state_views) == len(candidate_views)
+             and len(state_views) in {count for count, _ in _PROFILES.values()})
     state_by_name = {(r.get("nspname"), r.get("relname")): r for r in state_views}
     candidate_by_name = {(r.get("nspname"), r.get("relname")): r for r in candidate_views}
-    _require(len(state_by_name) == len(candidate_by_name) == _VIEW_COUNT
+    _require(len(state_by_name) == len(candidate_by_name) == len(state_views)
              and set(state_by_name) == set(candidate_by_name))
     projection = []
     for name in sorted(state_by_name):
@@ -55,8 +56,9 @@ def select(state, candidates, *, base_authority_sha256, variant_authority_sha256
     raw = json.dumps(projection, sort_keys=True, separators=(",", ":"),
                      ensure_ascii=False, allow_nan=False).encode()
     digest = sha256(raw).hexdigest()
-    matches = [name for name, expected in _PROFILES.items() if digest == expected]
+    matches = [name for name, (count, expected) in _PROFILES.items()
+               if len(projection) == count and digest == expected]
     _require(len(matches) == 1)
-    return {"profile": matches[0], "views_sha256": digest, "views": _VIEW_COUNT,
+    return {"profile": matches[0], "views_sha256": digest, "views": len(projection),
             "source_only_candidate": True, "live_admission": False,
             "permission_enabled": False}
