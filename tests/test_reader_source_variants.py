@@ -130,17 +130,21 @@ def synthetic():
     }
 
 
-def test_exact_eight_source_pins_and_selection_only_activation():
+def test_exact_nine_source_pins_and_source_classification():
     authority = v.variant_authority(ROOT)
     rows = authority["variant"]["files"]
-    assert len(rows) == 8 and sum(r["bytes"] for r in rows) == 76406
-    assert rows[-1]["path"] == "src/mfdataindia/enrichment/book_activation.py"
-    assert rows[-1]["bytes"] == 11827
+    assert len(rows) == 9 and sum(r["bytes"] for r in rows) == 95068
+    assert [r["path"] for r in rows] == list(v.SOURCE_PATHS)
+    assert rows[-1]["path"] == "src/mfdataindia/enrichment/book_store.py"
+    assert rows[-1]["bytes"] == 18662
+    assert authority["variant"]["execution_order"] == list(v.EXECUTION_ORDER)
+    assert authority["variant"]["selection_only_not_invoked"] == list(v.SELECTION_ONLY)
     assert "book_activation" not in authority["variant"]["execution_order"]
 
 
-@pytest.mark.parametrize("mutation", ["omission", "order", "bytes", "sha", "source_bytes"])
-def test_eighth_pin_drift_rejects_before_any_connection(tmp_path, mutation):
+@pytest.mark.parametrize("mutation", ["omission", "order", "bytes", "sha", "source_bytes",
+                                       "execution_omission", "execution_order", "selection_overlap"])
+def test_ninth_pin_or_classification_drift_rejects_before_any_connection(tmp_path, mutation):
     paths = [old.AUTHORITY_PATH, v.AUTHORITY_PATH]
     for authority_path in paths:
         raw = (ROOT / authority_path).read_bytes()
@@ -161,9 +165,15 @@ def test_eighth_pin_drift_rejects_before_any_connection(tmp_path, mutation):
         value["files"][-1]["bytes" if mutation == "bytes" else "sha256"] = (
             1 if mutation == "bytes" else "0" * 64
         )
-    else:
+    elif mutation == "source_bytes":
         target = tmp_path / value["files"][-1]["path"]
         target.write_bytes(target.read_bytes() + b"\n")
+    elif mutation == "execution_omission":
+        value["execution_order"].pop(0)
+    elif mutation == "execution_order":
+        value["execution_order"][:2] = reversed(value["execution_order"][:2])
+    else:
+        value["selection_only_not_invoked"].append("src/mfdataindia/enrichment/book_store.py")
     if mutation != "source_bytes":
         authority_path.write_text(json.dumps(value))
     with pytest.raises(ValueError):

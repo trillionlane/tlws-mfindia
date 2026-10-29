@@ -12,6 +12,10 @@ from pathlib import Path
 import stat
 import subprocess
 
+from reader_source_prior_view_preservation import (
+    CHANGED as PRIOR_VIEW_CHANGED, PARENT as PRIOR_VIEW_PARENT, restore_prior_view_parent,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE = ROOT / "docs/CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_PRESERVATION_20261029_v5.json"
 RECIPE_SHA256 = "10a3db9c923f06b1a92b63f38d4f287e92d23d74162246f8ffa4a7a74b09e0f0"
@@ -42,7 +46,7 @@ def test_exact_immediate_parent_bytes_modes_and_finite_delta():
     assert recipe["format"] == "CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_FULL_BYTE_MODE_RECEIPT_V5"
     assert recipe["parent"] == PARENT and set(recipe["files"]) == CHANGED
     delta = subprocess.check_output(
-        ["git", "diff", "--name-status", "--no-renames", PARENT + "..HEAD"], cwd=ROOT
+        ["git", "diff", "--name-status", "--no-renames", PARENT + ".." + PRIOR_VIEW_PARENT], cwd=ROOT
     ).decode().splitlines()
     assert set(delta) == {"M\t" + path for path in CHANGED} | {
         "A\t" + path for path in ADDED
@@ -57,4 +61,7 @@ def test_exact_immediate_parent_bytes_modes_and_finite_delta():
         path = ROOT / name
         assert path.is_file() and not path.is_symlink()
         assert stat.S_ISREG(path.stat().st_mode) and not (os.stat(path).st_mode & 0o111)
-        assert sha(path.read_bytes()) == record["current_sha256"]
+        raw = path.read_bytes()
+        if name in PRIOR_VIEW_CHANGED:
+            raw = restore_prior_view_parent(raw, name)
+        assert sha(raw) == record["current_sha256"]

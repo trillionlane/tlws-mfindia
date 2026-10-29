@@ -9,6 +9,8 @@ import hashlib
 import subprocess
 from pathlib import Path
 
+from reader_source_prior_view_preservation import CHANGED as PRIOR_VIEW_CHANGED, restore_prior_view_parent
+
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "fb8129decd1ff7ba32e960140426b0b112c04275"
 PACKET_PATHS = {
@@ -26,6 +28,8 @@ PACKET_PATHS = {
 
 def restore_packet_source(raw, path):
     assert type(raw) is bytes and path in PACKET_PATHS
+    if path in PRIOR_VIEW_CHANGED:
+        raw = restore_prior_view_parent(raw, path)
     current_sha, original_sha = PACKET_PATHS[path]
     assert hashlib.sha256(raw).hexdigest() == current_sha, path
     original = subprocess.check_output(["git", "show", PARENT + ":" + path], cwd=ROOT)

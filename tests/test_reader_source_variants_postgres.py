@@ -25,6 +25,7 @@ EMPTY = (
     "mf_book_facts.configuration",
     "mf_book_facts.batches",
     "mf_book_facts.runs",
+    "mf_book_facts.prior_field_versions",
 )
 
 
@@ -72,6 +73,10 @@ def source_variant_db(pg_dsn):
                 assert (
                     store.apply_migrations(ROOT / "sql/optional", files=tuple(optional)) == optional
                 )
+            with psycopg.connect(dsn, autocommit=True, connect_timeout=5,
+                                 row_factory=dict_row) as owner:
+                variants.install_prior_view_fixture(owner, ROOT)
+                variants.verify_prior_view_fixture(owner)
             yield dsn, authority
         finally:
             # Normal disposable-CI fixture cleanup, never live automatic reversal.
@@ -182,6 +187,34 @@ def facade_columns(raw):
     ]
     assert len(objects) == 1
     return [r for r in raw["columns"] if r["attrelid"] == objects[0]["oid"]]
+
+
+def test_native_prior_view_fixture_rejects_unrelated_role_acl(source_variant_db, pg_dsn):
+    dsn, _ = source_variant_db
+    unrelated = "mfdata_reference_unrelated_" + uuid4().hex[:12]
+    with psycopg.connect(pg_dsn, autocommit=True) as admin:
+        admin.execute(sql.SQL("CREATE ROLE {} NOLOGIN").format(sql.Identifier(unrelated)))
+        try:
+            with psycopg.connect(dsn, autocommit=True, connect_timeout=5,
+                                 row_factory=dict_row) as owner:
+                variants.verify_prior_view_fixture(owner)
+                owner.execute(
+                    sql.SQL("GRANT SELECT ON mf_book_facts.prior_field_versions TO {}").format(
+                        sql.Identifier(unrelated)
+                    )
+                )
+                try:
+                    with pytest.raises(ValueError):
+                        variants.verify_prior_view_fixture(owner)
+                finally:
+                    owner.execute(
+                        sql.SQL("REVOKE ALL ON mf_book_facts.prior_field_versions FROM {}").format(
+                            sql.Identifier(unrelated)
+                        )
+                    )
+                variants.verify_prior_view_fixture(owner)
+        finally:
+            admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(unrelated)))
 
 
 def test_native_exact_book_v2_single_pass_extended_references(source_variant_db, capsys):

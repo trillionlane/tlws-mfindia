@@ -1,5 +1,5 @@
 {
-  "format": "source-only-eight-file-book-variant-authority-v1",
+  "format": "source-only-nine-file-book-variant-authority-v2",
   "implementation_parent": "016e63afb7b82aa1369b97bfdc63a729524d0c1d",
   "base44_authority_sha256": "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372",
   "files": [
@@ -42,12 +42,18 @@
       "path": "src/mfdataindia/enrichment/book_activation.py",
       "bytes": 11827,
       "sha256": "35fd4f51893cfe0e998717ee646b90c4748a4e89a348c6205875f43dd708864e"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/book_store.py",
+      "bytes": 18662,
+      "sha256": "6bdcd903778a8d981adad52b767ec3902de451604d1c8c88645895b05c11f80f"
     }
   ],
-  "total_bytes": 76406,
+  "total_bytes": 95068,
   "execution_order": [
+    "src/mfdataindia/enrichment/book_store.py:fixture_only_prior_field_versions_view_and_acl_recipe+src/mfdataindia/enrichment/current_facts_store.py:view_definition",
     "sql/optional/amc_book_current_projection_v2.sql.inc",
-    "src/mfdataindia/enrichment/book_core_projection.py:install"
+    "src/mfdataindia/enrichment/book_core_projection.py:install+sql/optional/amc_book_core_projection_v1.sql.inc"
   ],
   "selection_only_not_invoked": [
     "src/mfdataindia/enrichment/book_projection.py",

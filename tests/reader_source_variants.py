@@ -13,15 +13,48 @@ import signal
 import threading
 import time
 
+from psycopg import sql
+
 import reader_source_reference as legacy
 from mfdataindia.review import broad_reader_capture_inventory as inventory
 from mfdataindia.review.reader_access_transport_spec import state_shape
 
 AUTHORITY_PATH = "docs/CI_SOURCE_REFERENCE_BOOK_VARIANT_AUTHORITY_20261029.json"
-AUTHORITY_SHA = "77917a8dda9c41cd3a46c6ee662a13b221d01a7ca9c1eebd6622888c7b6d89ce"
+AUTHORITY_SHA = "2d144f61fa67d936e537fb06b3845569e441f54a2dbde8075f0cd112b3993450"
 PARENT = "016e63afb7b82aa1369b97bfdc63a729524d0c1d"
 PROFILES = ("BASE44_EXTENDED", "BASE44_BOOK_V2_SINGLE_PASS")
 MARKERS = {p: "SOURCE_SEMANTIC_REFERENCE_" + p + "_V1:" for p in PROFILES}
+SOURCE_PATHS = (
+    "sql/optional/amc_book_current_projection_v2.sql.inc",
+    "sql/optional/amc_book_core_projection_v1.sql.inc",
+    "src/mfdataindia/enrichment/book_core_projection.py",
+    "src/mfdataindia/enrichment/current_facts_store.py",
+    "src/mfdataindia/enrichment/book_projection.py",
+    "src/mfdataindia/enrichment/book_sources.py",
+    "config/official-book-sources-v5-aum-row.json",
+    "src/mfdataindia/enrichment/book_activation.py",
+    "src/mfdataindia/enrichment/book_store.py",
+)
+EXECUTION_ORDER = (
+    "src/mfdataindia/enrichment/book_store.py:fixture_only_prior_field_versions_view_and_acl_recipe+src/mfdataindia/enrichment/current_facts_store.py:view_definition",
+    "sql/optional/amc_book_current_projection_v2.sql.inc",
+    "src/mfdataindia/enrichment/book_core_projection.py:install+sql/optional/amc_book_core_projection_v1.sql.inc",
+)
+SELECTION_ONLY = (
+    "src/mfdataindia/enrichment/book_projection.py",
+    "src/mfdataindia/enrichment/book_sources.py",
+    "src/mfdataindia/enrichment/book_activation.py",
+    "config/official-book-sources-v5-aum-row.json",
+)
+EXECUTED_PATHS = (
+    "src/mfdataindia/enrichment/book_store.py",
+    "src/mfdataindia/enrichment/current_facts_store.py",
+    "sql/optional/amc_book_current_projection_v2.sql.inc",
+    "src/mfdataindia/enrichment/book_core_projection.py",
+    "sql/optional/amc_book_core_projection_v1.sql.inc",
+)
+assert len(EXECUTED_PATHS + SELECTION_ONLY) == len(SOURCE_PATHS)
+assert set(EXECUTED_PATHS + SELECTION_ONLY) == set(SOURCE_PATHS)
 ACL = {
     "pg_proc": ("proacl", "proowner", "f", {"EXECUTE"}),
     "pg_type": ("typacl", "typowner", "T", {"USAGE"}),
@@ -62,17 +95,20 @@ def variant_authority(root):
             "runtime_authority",
         }
     )
+    require(value["format"] == "source-only-nine-file-book-variant-authority-v2")
     require(value["implementation_parent"] == PARENT and value["runtime_authority"] is False)
     require(value["base44_authority_sha256"] == legacy.AUTHORITY_SHA)
-    require(len(value["files"]) == 8 and value["total_bytes"] == 76406)
-    require(len({r["path"] for r in value["files"]}) == 8)
+    require(len(value["files"]) == 9 and value["total_bytes"] == 95068)
+    require([r["path"] for r in value["files"]] == list(SOURCE_PATHS))
+    require(value["execution_order"] == list(EXECUTION_ORDER))
+    require(value["selection_only_not_invoked"] == list(SELECTION_ONLY))
     for row in value["files"]:
         require(set(row) == {"path", "bytes", "sha256"})
         path = root / row["path"]
         require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root))
         body = path.read_bytes()
         require(len(body) == row["bytes"] and digest(body) == row["sha256"])
-    require(sum(r["bytes"] for r in value["files"]) == 76406)
+    require(sum(r["bytes"] for r in value["files"]) == 95068)
     return {"base": original, "variant": value}
 
 
@@ -572,6 +608,102 @@ class DDLConnection:
         require(tags == (["CREATE VIEW", "DO"] if self.stage == 1 else ["CREATE VIEW"]))
         self.tags.extend(tags)
         self.stage += 1
+
+
+def verify_prior_view_fixture(conn):
+    """Exact book source precondition; never a general installer or grant check."""
+    from mfdataindia.enrichment import current_facts_store as current, store as evidence
+
+    rows = query(
+        conn,
+        "SELECT c.oid,c.relkind,c.relowner,pg_get_viewdef(c.oid,true) AS definition "
+        "FROM pg_class c WHERE c.oid=to_regclass('mf_book_facts.prior_field_versions')",
+        (),
+        ("oid", "relkind", "relowner", "definition"),
+    )
+    require(len(rows) == 1 and rows[0]["relkind"] == "v")
+    require(rows[0]["definition"] == current.view_definition(conn, "mf_live_facts.field_versions"))
+    roles = query(
+        conn,
+        "SELECT oid,rolname FROM pg_roles WHERE rolname=ANY(%s) ORDER BY rolname",
+        (list(evidence.ROLES) + ["mfdata_admin"],),
+        ("oid", "rolname"),
+    )
+    by_name = {r["rolname"]: r["oid"] for r in roles}
+    require(len(roles) == 4 and set(by_name) == set(evidence.ROLES) | {"mfdata_admin"})
+    owner = by_name["mfdata_admin"]
+    require(rows[0]["relowner"] == owner)
+    actual_acl = query(
+        conn,
+        "SELECT x.grantor,x.grantee,x.privilege_type,x.is_grantable "
+        "FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) x "
+        "WHERE c.oid=to_regclass('mf_book_facts.prior_field_versions') "
+        "ORDER BY x.grantor,x.grantee,x.privilege_type,x.is_grantable",
+        (),
+        ("grantor", "grantee", "privilege_type", "is_grantable"),
+    )
+    owner_acl = query(
+        conn,
+        "SELECT x.grantor,x.grantee,x.privilege_type,x.is_grantable "
+        "FROM aclexplode(acldefault('r',%s)) x "
+        "ORDER BY x.grantor,x.grantee,x.privilege_type,x.is_grantable",
+        (owner,),
+        ("grantor", "grantee", "privilege_type", "is_grantable"),
+    )
+    expected_acl = owner_acl + [
+        {"grantor": owner, "grantee": by_name[role], "privilege_type": "SELECT",
+         "is_grantable": False}
+        for role in evidence.ROLES
+    ]
+    require(actual_acl == sorted(expected_acl, key=lambda x:
+            (x["grantor"], x["grantee"], x["privilege_type"], x["is_grantable"])))
+    counts = query(
+        conn, "SELECT count(*) AS n FROM mf_book_facts.prior_field_versions", (), ("n",)
+    )
+    require(counts == [{"n": 0}])
+
+
+def install_prior_view_fixture(conn, root):
+    """Only the exact retained-view recipe preceding the two book projections."""
+    variant_authority(root)
+    from mfdataindia.enrichment import current_facts_store as current, store as evidence
+
+    with ddl_transaction(conn) as bounded:
+        absent = query(
+            bounded, "SELECT to_regclass('mf_book_facts.prior_field_versions') AS oid", (),
+            ("oid",),
+        )
+        require(absent == [{"oid": None}])
+        definition = current.view_definition(bounded, "mf_live_facts.field_versions")
+        require(type(definition) is str and definition)
+        with bounded.execute(
+            "CREATE VIEW mf_book_facts.prior_field_versions AS " + definition,
+            prepare=False,
+        ) as cursor:
+            require(cursor.statusmessage == "CREATE VIEW")
+        roles = query(
+            bounded, "SELECT rolname FROM pg_roles WHERE oid<>current_user::regrole", (),
+            ("rolname",),
+        )
+        for role in roles:
+            with bounded.execute(
+                sql.SQL("REVOKE ALL ON mf_book_facts.prior_field_versions FROM {}").format(
+                    sql.Identifier(role["rolname"])
+                ), prepare=False,
+            ) as cursor:
+                require(cursor.statusmessage == "REVOKE")
+        with bounded.execute(
+            "REVOKE ALL ON mf_book_facts.prior_field_versions FROM PUBLIC", prepare=False
+        ) as cursor:
+            require(cursor.statusmessage == "REVOKE")
+        for role in evidence.ROLES:
+            with bounded.execute(
+                sql.SQL("GRANT SELECT ON mf_book_facts.prior_field_versions TO {}").format(
+                    sql.Identifier(role)
+                ), prepare=False,
+            ) as cursor:
+                require(cursor.statusmessage == "GRANT")
+        verify_prior_view_fixture(bounded)
 
 
 def install_book_variant(conn, root):

@@ -1,0 +1,41 @@
+{
+  "format": "CI_BOOK_PRIOR_VIEW_EXACT_PARENT_BYTES_MODES_V7",
+  "parent": "4f8468a33a2843ee9758a5ffd9a49b83cf0e8c0d",
+  "files": {
+    "docs/CI_SOURCE_REFERENCE_BOOK_VARIANT_AUTHORITY_20261029.json": {
+      "mode": "100644",
+      "parent_sha256": "77917a8dda9c41cd3a46c6ee662a13b221d01a7ca9c1eebd6622888c7b6d89ce",
+      "current_sha256": "2d144f61fa67d936e537fb06b3845569e441f54a2dbde8075f0cd112b3993450"
+    },
+    "tests/reader_source_variants.py": {
+      "mode": "100644",
+      "parent_sha256": "661c31566d111d75fb4ce03b3f6b694bdbd6778fff3a6ed33f48bc9ef3895bbd",
+      "current_sha256": "30e684c2ea9625a04116d3ef695d60c9e48246ba3c7b0e39ac340110bc263c6e"
+    },
+    "tests/test_reader_source_variants.py": {
+      "mode": "100644",
+      "parent_sha256": "14a1acc629e550953b2bbdab78fdc295136c8ecb521b31da864e0c749d12a715",
+      "current_sha256": "a9f700a5aedb770c8aa3a017a225e4a09fe415c1ac6c3983c18e33a54d06007a"
+    },
+    "tests/test_reader_source_variants_postgres.py": {
+      "mode": "100644",
+      "parent_sha256": "0b85cab3884febf3e7e8408dddc40457e8e3c79bc8d279b1b5a124ef8832d9a4",
+      "current_sha256": "00a7eae338c06eb3f6a28b052c52348344061d3cdea9680194ad62fdb2ab9ee9"
+    },
+    "tests/test_reader_source_variants_preservation.py": {
+      "mode": "100644",
+      "parent_sha256": "219aeccec06e2d52808a3d5829528e1544d237180b8f3323ac36d05346b948dd",
+      "current_sha256": "ac5ce3a48a75c2996fe5448ec7ff452df1fca0e84ae03935122cd4f64577018e"
+    },
+    "tests/test_reader_source_immediate_parent_preservation.py": {
+      "mode": "100644",
+      "parent_sha256": "dfc5fe72bf32bbd50871d2d3f3c451a41dcf42e7d9b032c89162feba1a16c96f",
+      "current_sha256": "55f4e7894091e435b79b932e92c04fa93394cbd0941af865d7a643d1f5d4ec35"
+    },
+    "tests/reader_source_packets_preservation.py": {
+      "mode": "100644",
+      "parent_sha256": "ba9f5d07b61616b18ac24d1addc2940f3cc7270a3986f87e3fc6c523a2e89272",
+      "current_sha256": "4de99d693922b29653bfb9ac458ba2ef1e2112b4e4ac494ea3c175c0ec37a1d7"
+    }
+  }
+}

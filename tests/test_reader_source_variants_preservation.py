@@ -9,6 +9,9 @@ import subprocess
 
 from test_reader_source_trigger import TRIGGER_RECIPE_SHA
 from reader_source_packets_preservation import PACKET_PATHS, restore_packet_source
+from reader_source_prior_view_preservation import (
+    CHANGED as PRIOR_VIEW_CHANGED, PARENT as PRIOR_VIEW_PARENT, restore_prior_view_parent,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "016e63afb7b82aa1369b97bfdc63a729524d0c1d"
@@ -74,6 +77,8 @@ def test_all981_parent_whole_bytes_and_modes_remain_exact():
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
             raw = path.read_bytes()
+            if name.decode() in PRIOR_VIEW_CHANGED and name.decode() not in PACKET_PATHS:
+                raw = restore_prior_view_parent(raw, name.decode())
             if name.decode() in PACKET_PATHS:
                 raw = restore_packet_source(raw, name.decode())
             if name.decode() in TRIGGER_PATHS:
@@ -96,7 +101,7 @@ def test_exact_three_dependency_inverses_restore_entire_original_compiler():
 
 def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
     delta = subprocess.check_output(
-        ["git", "diff", "--name-status", TRIGGER_PARENT + "..HEAD"], cwd=ROOT
+        ["git", "diff", "--name-status", TRIGGER_PARENT + ".." + PRIOR_VIEW_PARENT], cwd=ROOT
     ).decode().splitlines()
     assert set(delta) == {
         "A\tdocs/CI_SOURCE_REFERENCE_IMMEDIATE_PARENT_PRESERVATION_20261029_v5.json",
@@ -128,6 +133,8 @@ def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
             raw = path.read_bytes()
+            if name.decode() in PRIOR_VIEW_CHANGED and name.decode() not in PACKET_PATHS:
+                raw = restore_prior_view_parent(raw, name.decode())
             if name.decode() in PACKET_PATHS:
                 raw = restore_packet_source(raw, name.decode())
             if name.decode() in TRIGGER_PATHS:
