@@ -10,11 +10,13 @@ from psycopg.conninfo import make_conninfo
 from psycopg.rows import dict_row
 import pytest
 
+from broad_reader_native_oid_isomorphism import validate as validate_native_oids
 from mfdataindia.review import broad_reader_direct_grant as grant
 from mfdataindia.review import broad_reader_direct_reader_check as reader_check
 from mfdataindia.review import broad_reader_embedded_authority as embedded
 from mfdataindia.review import broad_reader_policy as policy
 from mfdataindia.review import broad_reader_source_authority as source
+from mfdataindia.review import reader_function_attestation_spec as attestation_spec
 from mfdataindia.store.postgres import PostgresStore
 
 
@@ -99,7 +101,16 @@ def _permit(before, packaged):
     return grant.Permit(document, policy.fingerprint(document))
 
 
-def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact_source_db):
+@pytest.fixture
+def native_identity(monkeypatch):
+    """OID renaming only in this disposable test; live validation is untouched."""
+    original = attestation_spec.validate_capture_result
+    monkeypatch.setattr(attestation_spec, "validate_capture_result",
+                        lambda value: validate_native_oids(value, original))
+
+
+def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact_source_db,
+                                                                            native_identity):
     owner_dsn, reader_dsn, packaged = exact_source_db
     with _connection(owner_dsn) as observer:
         before = grant.capture_before(observer, packaged_source=packaged,
@@ -118,7 +129,8 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
         assert check["permission_enabled"] is False and check["ti_verified"] is False
 
 
-def test_native_nowait_denial_has_no_grant_or_partial_default_acl(exact_source_db):
+def test_native_nowait_denial_has_no_grant_or_partial_default_acl(exact_source_db,
+                                                                   native_identity):
     owner_dsn, reader_dsn, packaged = exact_source_db
     with _connection(owner_dsn) as observer:
         before = grant.capture_before(observer, packaged_source=packaged,

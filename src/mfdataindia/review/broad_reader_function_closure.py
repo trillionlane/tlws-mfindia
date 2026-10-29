@@ -175,8 +175,8 @@ def verify(rows, state):
         _require(broad["private_body_sha256"] == row["body"]["sha256"])
         if row["name"] == "canonical_json":
             _require(broad["proconfig"] == {"is_null": False,
-                     "sha256": "a2cac24529b7f82b6e5a6c1574baf25bcd24678b648faca2b3da9869f6925c46",
-                     "utf8_bytes": 36})
+                     "sha256": expected["configuration"][0],
+                     "utf8_bytes": expected["configuration"][1]})
         else:
             _require(broad["proconfig"] == row["configuration"])
     _require(not any(f.get("proname") in ("dependencies", "canonical_json")

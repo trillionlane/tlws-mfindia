@@ -21,12 +21,13 @@ def _require(condition):
 CALLEE_MIGRATION_SHA256 = "16e18cd8092fc12baa0216687ece92124f82953abb1b61b500128951e8dce0b6"
 CALLEE_BODY_SHA256 = "9f6d6eb2b15070d79ad0e12052218cf9f914335c68c41dd28421b7d5acf444ba"
 CALLEE_BODY_BYTES = 835
-# The full source pg_proc seal is distinct from the frozen broad STATE_SQL
-# projection, whose to_jsonb serialization has a different byte/hash value.
+# PostgreSQL normalizes the catalog search_path setting to a comma-space
+# spelling. Both full-source and broad-state projections seal that same
+# stored value; the migration's original spelling is not the catalog value.
 CALLEE_SOURCE_CONFIG_SHA256 = "c7db48fe507ed87f844868dba5cb1a12ad5a20481adfb34d288e4e213b54dc25"
 CALLEE_SOURCE_CONFIG_BYTES = 37
-CALLEE_CONFIG_SHA256 = "a2cac24529b7f82b6e5a6c1574baf25bcd24678b648faca2b3da9869f6925c46"
-CALLEE_CONFIG_BYTES = 36
+CALLEE_CONFIG_SHA256 = CALLEE_SOURCE_CONFIG_SHA256
+CALLEE_CONFIG_BYTES = CALLEE_SOURCE_CONFIG_BYTES
 _FUNCTION_KEYS = frozenset({"oid", "pronamespace", "proname", "proowner", "prosecdef",
                             "prokind", "proargtypes", "prorettype", "proconfig",
                             "private_body_sha256", "acl", "execute_allowed"})

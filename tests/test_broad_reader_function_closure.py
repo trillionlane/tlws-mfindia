@@ -53,6 +53,20 @@ def test_exact_full_seals_and_acl_bind_to_live_state_without_invocation():
     assert len(result["source_reviewed_call_graph"]) == 2
 
 
+def test_callee_broad_seal_requires_same_full_source_catalog_bytes():
+    state, rows = _case()
+    assert rows[1]["configuration"] == state["functions"][1]["proconfig"]
+    closure.verify(rows, state)
+    state["functions"][1]["proconfig"] = {
+        "is_null": False,
+        "sha256": "a2cac24529b7f82b6e5a6c1574baf25bcd24678b648faca2b3da9869f6925c46",
+        "utf8_bytes": 36,
+    }
+    with pytest.raises(closure.FunctionClosureError,
+                       match="UNREVIEWED_BROAD_READER_FUNCTION_CLOSURE"):
+        closure.verify(rows, state)
+
+
 @pytest.mark.parametrize("defect", [
     "body", "definition", "config", "public", "extra", "oid", "execute", "schema",
     "overload", "other_definer", "state_drift",

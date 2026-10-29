@@ -25,12 +25,19 @@ def test_callee_seals_derive_from_exact_committed_migration_bytes():
     assert source.count(start) == source.count(end) == 1
     statement = source[source.index(start):source.index(end)]
     body = statement.split(b" AS $$", 1)[1].rsplit(b"$$;", 1)[0]
-    config = json.dumps(["search_path=pg_catalog,mf_review"], separators=(",", ":")).encode()
+    migration_spelling = json.dumps(
+        ["search_path=pg_catalog,mf_review"], separators=(",", ":")).encode()
+    catalog_spelling = json.dumps(
+        ["search_path=pg_catalog, mf_review"], separators=(",", ":")).encode()
     assert hashlib.sha256(source).hexdigest() == scope.CALLEE_MIGRATION_SHA256
     assert (len(body), hashlib.sha256(body).hexdigest()) == (
         scope.CALLEE_BODY_BYTES, scope.CALLEE_BODY_SHA256)
-    assert (len(config), hashlib.sha256(config).hexdigest()) == (
+    assert (len(migration_spelling), hashlib.sha256(migration_spelling).hexdigest()) == (
+        36, "a2cac24529b7f82b6e5a6c1574baf25bcd24678b648faca2b3da9869f6925c46")
+    assert (len(catalog_spelling), hashlib.sha256(catalog_spelling).hexdigest()) == (
         scope.CALLEE_CONFIG_BYTES, scope.CALLEE_CONFIG_SHA256)
+    assert (scope.CALLEE_CONFIG_SHA256, scope.CALLEE_CONFIG_BYTES) == (
+        scope.CALLEE_SOURCE_CONFIG_SHA256, scope.CALLEE_SOURCE_CONFIG_BYTES)
 
 
 def _case():
