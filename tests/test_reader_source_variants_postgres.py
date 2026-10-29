@@ -1,0 +1,282 @@
+"""Empty, fresh normal-CI source databases ONLY; no live/provider admission."""
+
+from pathlib import Path
+import subprocess
+from uuid import uuid4
+
+import psycopg
+from psycopg import sql
+from psycopg.conninfo import make_conninfo
+from psycopg.rows import dict_row
+import pytest
+
+import reader_source_reference as legacy
+import reader_source_variants as variants
+from mfdataindia.store.postgres import PostgresStore
+
+pytestmark = pytest.mark.postgres
+ROOT = Path(__file__).resolve().parents[1]
+EMPTY = (
+    "mf.funds",
+    "mf.fund_facts",
+    "mf.nav_history",
+    "mf_review.policies",
+    "mf_live_facts.configuration",
+    "mf_book_facts.configuration",
+    "mf_book_facts.batches",
+    "mf_book_facts.runs",
+    "mf_book_facts.prior_field_versions",
+)
+
+
+@pytest.fixture
+def source_variant_db(pg_dsn):
+    if not pg_dsn:
+        pytest.skip("MF_TEST_DSN not set")
+    # ALL eight variant pins and every original44 source precede admin connect.
+    authority = variants.variant_authority(ROOT)
+    name = "mfdata_reference_" + uuid4().hex[:12]
+    dsn = make_conninfo(
+        pg_dsn, dbname=name, user="mfdata_admin", password="source-reference-ci-only"
+    )
+    created = []
+    allocated = False
+    with psycopg.connect(pg_dsn, autocommit=True) as admin:
+        assert not admin.execute(
+            "SELECT 1 FROM pg_roles WHERE rolname=ANY(%s)", (list(legacy.GOVERNED_ROLES),)
+        ).fetchone()
+        try:
+            for role in legacy.GOVERNED_ROLES:
+                admin.execute(
+                    sql.SQL(
+                        "CREATE ROLE {} LOGIN NOINHERIT NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS PASSWORD 'source-reference-ci-only'"
+                    ).format(sql.Identifier(role))
+                )
+                created.append(role)
+            admin.execute(
+                sql.SQL("CREATE DATABASE {} OWNER mfdata_admin").format(sql.Identifier(name))
+            )
+            allocated = True
+            core = [
+                Path(r["path"]).name
+                for r in authority["base"]["files"]
+                if Path(r["path"]).parent == Path("sql")
+            ]
+            optional = [
+                Path(r["path"]).name
+                for r in authority["base"]["files"]
+                if Path(r["path"]).parent == Path("sql/optional")
+            ]
+            assert len(core) == len(optional) == 22
+            with PostgresStore(dsn, use_copy=False) as store:
+                assert store.apply_migrations(ROOT / "sql", files=tuple(core)) == core
+                assert (
+                    store.apply_migrations(ROOT / "sql/optional", files=tuple(optional)) == optional
+                )
+            with psycopg.connect(dsn, autocommit=True, connect_timeout=5,
+                                 row_factory=dict_row) as owner:
+                variants.install_prior_view_fixture(owner, ROOT)
+                variants.verify_prior_view_fixture(owner)
+            yield dsn, authority
+        finally:
+            # Normal disposable-CI fixture cleanup, never live automatic reversal.
+            if allocated:
+                admin.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(name)))
+            for role in reversed(created):
+                admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(role)))
+
+
+def observe(dsn, authority, profile):
+    compiler_git = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    source_pins = {
+        path: legacy.digest((ROOT / path).read_bytes())
+        for path in ("tests/reader_source_reference.py", "tests/reader_source_variants.py")
+    }
+    import reader_source_variants_v2 as variants_v2
+
+    def complete_observation(bounded):
+        raw = variants_v2.collect_extended(bounded)
+        state_rows = variants.query(
+            bounded, variants.inventory.engine.STATE_SQL, (), ("value",)
+        )
+        assert len(state_rows) == 1
+        grant_state = state_rows[0]["value"]
+        variants.state_shape(grant_state)
+        empty_counts = []
+        for table in EMPTY:
+            names = [sql.Identifier(p) for p in table.split(".")]
+            with bounded.execute(
+                sql.SQL("SELECT count(*) AS n FROM {}.{}").format(*names), prepare=False
+            ) as cursor:
+                rows = cursor.fetchall()
+                assert cursor.statusmessage == "SELECT 1" and cursor.rowcount == len(rows) == 1
+                assert rows[0]["n"] == 0
+                empty_counts.append([table, rows[0]["n"]])
+        ledger = variants.query(
+            bounded,
+            "SELECT migration_name,content_sha256 FROM mf.schema_migrations ORDER BY migration_name",
+            (),
+            ("migration_name", "content_sha256"),
+        )
+        assert {r["migration_name"]: r["content_sha256"] for r in ledger} == {
+            Path(r["path"]).name: r["sha256"] for r in authority["base"]["files"]
+        }
+        return {"raw": raw, "grant_state": grant_state,
+                "empty_counts": empty_counts, "ledger": ledger}
+
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=5, row_factory=dict_row)
+    try:
+        with legacy.reference_transaction(conn) as bounded:
+            first = complete_observation(bounded)
+        with legacy.reference_transaction(conn) as bounded:
+            second = complete_observation(bounded)
+        assert legacy.canonical(first) == legacy.canonical(second)
+        portable = variants.portable_source_reference(first["raw"])
+        payload = dict(
+            format="extended-source-calibration-NOT-live-acceptance-v1",
+            profile=profile,
+            compiler_git=compiler_git,
+            compiler_sources=source_pins,
+            base_authority_sha256=legacy.AUTHORITY_SHA,
+            variant_authority_sha256=variants.AUTHORITY_SHA,
+            authority=authority,
+            raw=first["raw"],
+            grant_state=first["grant_state"],
+            portable_sha256=legacy.digest(legacy.canonical(portable).encode()),
+            portable_projection_format=portable["format"],
+            raw_sha256=legacy.digest(legacy.canonical(first["raw"]).encode()),
+            runtime_authority=False,
+            permission_acceptance=False,
+        )
+        assert conn.info.transaction_status == legacy.TransactionStatus.IDLE
+    finally:
+        conn.close()  # No context-manager rollback after a spent/ambiguous wall.
+    import reader_source_packets as packets
+    bundle = packets.normal_ci_bundle(compiler_git)
+    lines = packets.pair(payload, profile, identity=uuid4().hex, bundle=bundle)
+    assert packets.extract_pair(lines, profile, expected_git=compiler_git,
+                                bundle=bundle) == payload
+    return payload, lines
+
+
+def views(raw):
+    namespaces = {
+        o["oid"]: o["row"]["nspname"] for o in raw["objects"] if o["catalog"] == "pg_namespace"
+    }
+    return {
+        (namespaces[o["row"]["relnamespace"]], o["row"]["relname"]): o["row"][
+            "view_definition_seal"
+        ]
+        for o in raw["objects"]
+        if o["catalog"] == "pg_class" and o["row"]["relkind"] in ("v", "m")
+    }
+
+
+def facade_columns(raw):
+    namespaces = {
+        o["oid"]: o["row"]["nspname"] for o in raw["objects"] if o["catalog"] == "pg_namespace"
+    }
+    objects = [
+        o
+        for o in raw["objects"]
+        if o["catalog"] == "pg_class"
+        and namespaces[o["row"]["relnamespace"]] == "mf"
+        and o["row"]["relname"] == "current_fund_facts"
+    ]
+    assert len(objects) == 1
+    return [r for r in raw["columns"] if r["attrelid"] == objects[0]["oid"]]
+
+
+def test_native_prior_view_fixture_rejects_unrelated_role_acl(source_variant_db, pg_dsn):
+    dsn, _ = source_variant_db
+    unrelated = "mfdata_reference_unrelated_" + uuid4().hex[:12]
+    with psycopg.connect(pg_dsn, autocommit=True) as admin:
+        admin.execute(sql.SQL("CREATE ROLE {} NOLOGIN").format(sql.Identifier(unrelated)))
+        try:
+            with psycopg.connect(dsn, autocommit=True, connect_timeout=5,
+                                 row_factory=dict_row) as owner:
+                variants.verify_prior_view_fixture(owner)
+                owner.execute(
+                    sql.SQL("GRANT SELECT ON mf_book_facts.prior_field_versions TO {}").format(
+                        sql.Identifier(unrelated)
+                    )
+                )
+                try:
+                    with pytest.raises(ValueError):
+                        variants.verify_prior_view_fixture(owner)
+                finally:
+                    owner.execute(
+                        sql.SQL("REVOKE ALL ON mf_book_facts.prior_field_versions FROM {}").format(
+                            sql.Identifier(unrelated)
+                        )
+                    )
+                variants.verify_prior_view_fixture(owner)
+                column = owner.execute(
+                    "SELECT attname FROM pg_attribute "
+                    "WHERE attrelid='mf_book_facts.prior_field_versions'::regclass "
+                    "AND attnum>0 AND NOT attisdropped ORDER BY attnum LIMIT 1"
+                ).fetchone()
+                assert column and type(column["attname"]) is str
+                for grantee in (sql.Identifier(unrelated), sql.SQL("PUBLIC")):
+                    owner.execute(
+                        sql.SQL("GRANT SELECT ({}) ON mf_book_facts.prior_field_versions TO {}")
+                        .format(sql.Identifier(column["attname"]), grantee)
+                    )
+                    try:
+                        with pytest.raises(ValueError):
+                            variants.verify_prior_view_fixture(owner)
+                    finally:
+                        owner.execute(
+                            sql.SQL("REVOKE SELECT ({}) ON mf_book_facts.prior_field_versions FROM {}")
+                            .format(sql.Identifier(column["attname"]), grantee)
+                        )
+                    variants.verify_prior_view_fixture(owner)
+        finally:
+            admin.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(unrelated)))
+
+
+def test_native_exact_book_v2_single_pass_extended_references(source_variant_db, capsys):
+    dsn, authority = source_variant_db
+    expected_git = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    base, base_lines = observe(dsn, authority, variants.PROFILES[0])
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=5, row_factory=dict_row)
+    try:
+        variants.install_book_variant(conn, ROOT)
+        assert conn.info.transaction_status == legacy.TransactionStatus.IDLE
+    finally:
+        conn.close()
+    book, book_lines = observe(dsn, authority, variants.PROFILES[1])
+    variants.assert_source_only_transition(base, book)
+    before, after = base["raw"]["legacy"], book["raw"]["legacy"]
+    old_views, new_views = views(before), views(after)
+    assert set(old_views) == set(new_views)
+    assert {key for key in old_views if old_views[key] != new_views[key]} == {
+        ("mf_live_facts", "field_versions"),
+        ("mf_live_facts", "current_values"),
+        ("mf_live_facts", "resolved"),
+        ("mf", "current_fund_facts"),
+    }
+    assert new_views[("mf", "current_fund_facts")] == new_views[("mf_live_facts", "resolved")]
+    assert facade_columns(before) == facade_columns(
+        after
+    )  # All real types/typmods/collations/order preserved.
+    # Pinned initdb catalogue relations need not appear in pg_depend. The
+    # complete unfiltered candidate remains sealed, while this exact source
+    # profile rejects any unreviewed outside-schema candidate before output.
+    for payload in (base, book):
+        variants.require_source_candidate_scope(payload["raw"])
+    import reader_source_packets as packets
+    # Validate BOTH complete pairs and source-only transition before emitting
+    # even the first of the four profile markers.
+    bundle = packets.normal_ci_bundle(expected_git)
+    assert packets.extract_pair(base_lines, variants.PROFILES[0],
+                                expected_git=expected_git, bundle=bundle) == base
+    assert packets.extract_pair(book_lines, variants.PROFILES[1],
+                                expected_git=expected_git, bundle=bundle) == book
+    with capsys.disabled():
+        for line in [*base_lines, *book_lines]:
+            print(line, flush=True)

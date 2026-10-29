@@ -1,0 +1,65 @@
+{
+  "format": "source-only-nine-file-book-variant-authority-v2",
+  "implementation_parent": "016e63afb7b82aa1369b97bfdc63a729524d0c1d",
+  "base44_authority_sha256": "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372",
+  "files": [
+    {
+      "path": "sql/optional/amc_book_current_projection_v2.sql.inc",
+      "bytes": 5055,
+      "sha256": "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376"
+    },
+    {
+      "path": "sql/optional/amc_book_core_projection_v1.sql.inc",
+      "bytes": 2886,
+      "sha256": "222f81c25672e66a35bbe3c17be6723ca65495d55a6af571c15bafa00f5aa4f8"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/book_core_projection.py",
+      "bytes": 1381,
+      "sha256": "da324f8db06b4c93335177f1d83e1a61b4d1a811e54ef569c63fbf7542e4ce64"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/current_facts_store.py",
+      "bytes": 17936,
+      "sha256": "380f656f5d70a4870c9c86d2f821cc14c418128a1ffb51cf9124c5e3b8b5afc0"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/book_projection.py",
+      "bytes": 12822,
+      "sha256": "d3e7cd5a167dcbf7d47896624bb5f064808859f2d1e706dc5e2d5af171810dec"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/book_sources.py",
+      "bytes": 17843,
+      "sha256": "dcde01497a93ce867f475f8c707e9caf7683d0785636d03a34c2677dc64e0e12"
+    },
+    {
+      "path": "config/official-book-sources-v5-aum-row.json",
+      "bytes": 6656,
+      "sha256": "1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/book_activation.py",
+      "bytes": 11827,
+      "sha256": "35fd4f51893cfe0e998717ee646b90c4748a4e89a348c6205875f43dd708864e"
+    },
+    {
+      "path": "src/mfdataindia/enrichment/book_store.py",
+      "bytes": 18662,
+      "sha256": "6bdcd903778a8d981adad52b767ec3902de451604d1c8c88645895b05c11f80f"
+    }
+  ],
+  "total_bytes": 95068,
+  "execution_order": [
+    "src/mfdataindia/enrichment/book_store.py:fixture_only_prior_field_versions_view_and_acl_recipe+src/mfdataindia/enrichment/current_facts_store.py:view_definition",
+    "sql/optional/amc_book_current_projection_v2.sql.inc",
+    "src/mfdataindia/enrichment/book_core_projection.py:install+sql/optional/amc_book_core_projection_v1.sql.inc"
+  ],
+  "selection_only_not_invoked": [
+    "src/mfdataindia/enrichment/book_projection.py",
+    "src/mfdataindia/enrichment/book_sources.py",
+    "src/mfdataindia/enrichment/book_activation.py",
+    "config/official-book-sources-v5-aum-row.json"
+  ],
+  "runtime_authority": false
+}

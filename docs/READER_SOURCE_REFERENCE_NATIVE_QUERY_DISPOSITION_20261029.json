@@ -1,0 +1,14 @@
+{
+  "failed_head": "ccea9e24c4003faea434bde3785cca3e955c4bcf",
+  "failed_run": 40796880047,
+  "attempt": 1,
+  "actual_failure": "New source-reference native test: UndefinedFunction pg_catalog.unnest(oid[],integer[]) at the identity metadata query. No live operation or PostgreSQL permission denial occurred.",
+  "original_raw_bytes": 819505,
+  "original_raw_sha256": "e58105160dff9a810ccf2ee45eaefb299817fe374269b5a1a41507343759355b",
+  "before_corrective_code": true,
+  "correction": "Replace only the invalid schema-qualified multi-array function call with ROWS FROM (pg_catalog.unnest(%s::oid[]),pg_catalog.unnest(%s::int[])) AS pair(id,sub). The arrays are derived from the same exact nodes and keep original positional pairing, SQL parameters, identity query, row-count checks, ordering and full graph. No unqualified function resolution or arbitrary SQL.",
+  "regression": "Provider-free tests intercept the REAL existing compiler graph identity query for both role and type catalogs; first fail against the exact original query, then pass with the corrected parallel ROWS FROM form. Original native test and all old IDs/assertions stay.",
+  "unchanged": "All972 parent bytes/modes, source44 authority, full metadata/roles/casts/internal exclusion, original15s wall, rollback ambiguity, caps, workflows/deps/resources, no native local pass inferred.",
+  "reference_gate": "Draft calibration only remains non-mergeable. Actual complete source reference must still be extracted from its own successful normal CI and independently reviewed before amended PhaseB design/code. No failed-run rerun/admission or blind retry.",
+  "primary_reference": "https://www.postgresql.org/docs/18/queries-table-expressions.html#QUERIES-TABLEFUNCTIONS"
+}

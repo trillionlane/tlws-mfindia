@@ -1,0 +1,76 @@
+{
+  "format": "EXACT_COUNTED_TEST_ONLY_PG_TRIGGER_LITERAL_INVERSES",
+  "parent": "c7c1b1f62ddb54af926907537ecbbd7055a38053",
+  "files": {
+    "tests/reader_source_reference.py": [
+      {
+        "old": "",
+        "new": "    \"pg_trigger\": \"oid tgrelid tgparentid tgname tgfoid tgtype tgenabled tgisinternal tgconstrrelid tgconstrindid tgconstraint tgdeferrable tginitdeferred tgnargs tgattr tgoldtable tgnewtable\".split(),\n"
+      },
+      {
+        "old": "",
+        "new": "    \"pg_trigger\": {\"arguments\": \"pg_catalog.encode(r.tgargs,'hex')\",\n                   \"qualification\": \"r.tgqual::text\",\n                   \"definition\": \"pg_catalog.pg_get_triggerdef(r.oid,false)\"},\n"
+      },
+      {
+        "old": "",
+        "new": "    \"pg_trigger\": {\"tgrelid\": \"pg_class\", \"tgparentid\": \"pg_trigger\", \"tgfoid\": \"pg_proc\", \"tgconstrrelid\": \"pg_class\", \"tgconstrindid\": \"pg_class\", \"tgconstraint\": \"pg_constraint\"},\n"
+      },
+      {
+        "old": "",
+        "new": "        elif catalog == \"pg_trigger\" and name == \"tgattr\":\n            value += \"::int2[]\"\n"
+      },
+      {
+        "old": "",
+        "new": "def trigger_columns(relid, numbers, columns, identities):\n    \"\"\"Bind ordered trigger attnums to exact non-dropped column identities.\"\"\"\n    require(type(relid) is int and relid > 0 and type(numbers) is list)\n    seen, result = set(), []\n    for number in numbers:\n        require(type(number) is int and number > 0 and number not in seen)\n        seen.add(number)\n        key = (\"pg_class\", relid, number)\n        column = columns.get((relid, number))\n        identity = identities.get(key)\n        require(column is not None and column[\"attisdropped\"] is False)\n        require(type(identity) is dict and type(identity.get(\"identity\")) is str\n                and bool(identity[\"identity\"]))\n        result.append(deepcopy(identity))\n    return result\n\n\n"
+      },
+      {
+        "old": "                for child, field in ((\"pg_rewrite\", \"ev_class\"), (\"pg_constraint\", \"conrelid\"), (\"pg_attrdef\", \"adrelid\")):\n",
+        "new": "                for child, field in ((\"pg_rewrite\", \"ev_class\"), (\"pg_constraint\", \"conrelid\"),\n                                     (\"pg_attrdef\", \"adrelid\"), (\"pg_trigger\", \"tgrelid\")):\n"
+      },
+      {
+        "old": "",
+        "new": "    for (catalog, oid), row in sorted(objects.items()):\n        if catalog == \"pg_trigger\":\n            trigger_columns(row[\"tgrelid\"], row[\"tgattr\"], columns, identities)\n            for attnum in row[\"tgattr\"]:\n                edges.add((catalog, oid, 0, \"pg_class\", row[\"tgrelid\"], attnum, \"declared\"))\n    require_edge_identities(edges, identities)\n"
+      },
+      {
+        "old": "",
+        "new": "        if cat == \"pg_trigger\":\n            relation = row[\"tgrelid\"]\n            columns = {(column[\"attrelid\"], column[\"attnum\"]): column\n                       for column in raw[\"columns\"]}\n            row[\"tgattr\"] = trigger_columns(relation, row[\"tgattr\"], columns, names)\n"
+      },
+      {
+        "old": "",
+        "new": "def column_type_invariant(row):\n    \"\"\"Dropped columns have no type identity; all live columns have one.\"\"\"\n    dropped, type_oid = row[\"attisdropped\"], row[\"atttypid\"]\n    if (type(dropped) is not bool or type(type_oid) is not int or\n            not 0 <= type_oid <= 4294967295 or\n            (type_oid == 0) != dropped):\n        raise ValueError(\"invalid CI-only source reference: COLUMN_TYPE_INVARIANT\")\n\n\ndef require_edge_identities(edges, identities):\n    \"\"\"Fail before source output, with bounded address-only diagnostics.\"\"\"\n    absent = []\n    for edge in sorted(edges):\n        for side, endpoint in ((\"source\", edge[:3]), (\"target\", edge[3:6])):\n            if endpoint not in identities:\n                cat, oid, subid = endpoint\n                require(cat in FIELDS and type(oid) is int and type(subid) is int)\n                dep = edge[6]\n                dependency_type = dep if (type(dep) is str and\n                    (dep == \"declared\" or re.fullmatch(r\"(?:shared:)?[A-Za-z]\", dep))) else \"OTHER_DEPENDENCY_TYPE\"\n                absent.append({\"reason\": \"EDGE_ENDPOINT_WITHOUT_IDENTITY\", \"side\": side,\n                               \"catalog\": cat, \"oid\": oid, \"subid\": subid,\n                               \"dependency_type\": dependency_type})\n    if absent:\n        absent.sort(key=canonical)\n        evidence = {\"count\": len(absent), \"sha256\": digest(canonical(absent).encode()),\n                    \"first\": absent[:16]}\n        raise ValueError(\"invalid CI-only source reference: \" + canonical(evidence))\n\n\n"
+      },
+      {
+        "old": "                    add(\"pg_type\", r[\"atttypid\"], origin=(catalog, r[\"attrelid\"], r[\"attnum\"]))\n                    add(\"pg_collation\", r[\"attcollation\"], origin=(catalog, r[\"attrelid\"], r[\"attnum\"]))\n                    if not r[\"attisdropped\"]:\n                        add(catalog, r[\"attrelid\"], r[\"attnum\"])\n",
+        "new": "                    column_type_invariant(r)\n                    origin = None if r[\"attisdropped\"] else (catalog, r[\"attrelid\"], r[\"attnum\"])\n                    add(\"pg_type\", r[\"atttypid\"], origin=origin)\n                    add(\"pg_collation\", r[\"attcollation\"], origin=origin)\n                    if not r[\"attisdropped\"]:\n                        add(catalog, r[\"attrelid\"], r[\"attnum\"])\n"
+      }
+    ],
+    "tests/reader_source_variants.py": [
+      {
+        "old": "DEPARSE = {cat: \"definition_seal\" for cat in OPAQUE} | {\"pg_type\": \"default_text_seal\"}\n",
+        "new": "TRIGGER_OPAQUE = (\"arguments_seal\", \"qualification_seal\")\nDEPARSE = {cat: \"definition_seal\" for cat in OPAQUE} | {\"pg_type\": \"default_text_seal\", \"pg_trigger\": \"definition_seal\"}\n"
+      },
+      {
+        "old": "        for field in OPAQUE.get(cat, ()):\n",
+        "new": "        for field in (TRIGGER_OPAQUE if cat == \"pg_trigger\" else OPAQUE.get(cat, ())):\n"
+      }
+    ],
+    "tests/test_reader_source_variants_preservation.py": [
+      {
+        "old": "",
+        "new": "from test_reader_source_trigger import TRIGGER_RECIPE_SHA\n\n"
+      },
+      {
+        "old": "",
+        "new": "TRIGGER_PARENT = \"c7c1b1f62ddb54af926907537ecbbd7055a38053\"\nTRIGGER_PATHS = {\"tests/reader_source_reference.py\", \"tests/reader_source_variants.py\",\n                 \"tests/test_reader_source_variants_preservation.py\"}\n\n\ndef restore_trigger_source(raw, path):\n    recipe = (ROOT / \"docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json\").read_bytes()\n    assert hashlib.sha256(recipe).hexdigest() == TRIGGER_RECIPE_SHA\n    plan = json.loads(recipe)\n    assert set(plan) == {\"format\", \"parent\", \"files\"}\n    assert plan[\"format\"] == \"EXACT_COUNTED_TEST_ONLY_PG_TRIGGER_LITERAL_INVERSES\"\n    assert plan[\"parent\"] == TRIGGER_PARENT and set(plan[\"files\"]) == TRIGGER_PATHS\n    assert {name: len(pairs) for name, pairs in plan[\"files\"].items()} == {\n        \"tests/reader_source_reference.py\": 10,\n        \"tests/reader_source_variants.py\": 2,\n        \"tests/test_reader_source_variants_preservation.py\": 4,\n    }\n    assert all(type(pair) is dict and set(pair) == {\"old\", \"new\"}\n               and type(pair[\"old\"]) is str and type(pair[\"new\"]) is str\n               and pair[\"new\"] for pairs in plan[\"files\"].values() for pair in pairs)\n    assert path in TRIGGER_PATHS\n    for pair in reversed(plan[\"files\"][path]):\n        old, new = pair[\"old\"].encode(), pair[\"new\"].encode()\n        assert raw.count(new) == 1\n        raw = raw.replace(new, old, 1)\n    return raw\n"
+      },
+      {
+        "old": "",
+        "new": "            if name.decode() in TRIGGER_PATHS:\n                raw = restore_trigger_source(raw, name.decode())\n"
+      },
+      {
+        "old": "    assert restore_dependency_source(current) == original\n",
+        "new": "    assert restore_dependency_source(restore_trigger_source(current, \"tests/reader_source_reference.py\")) == original\n\n\ndef test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():\n    delta = subprocess.check_output(\n        [\"git\", \"diff\", \"--name-status\", TRIGGER_PARENT + \"..HEAD\"], cwd=ROOT\n    ).decode().splitlines()\n    assert set(delta) == {\n        \"A\\tdocs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json\",\n        \"M\\ttests/reader_source_reference.py\",\n        \"M\\ttests/reader_source_variants.py\",\n        \"A\\ttests/test_reader_source_trigger.py\",\n        \"M\\ttests/test_reader_source_variants_preservation.py\",\n    } and len(delta) == 5\n    records = subprocess.check_output([\"git\", \"ls-tree\", \"-r\", \"-z\", TRIGGER_PARENT], cwd=ROOT).split(b\"\\0\")\n    records = [r for r in records if r]\n    assert len(records) == 990\n    for record in records:\n        identity, name = record.split(b\"\\t\", 1)\n        mode, kind, expected = identity.decode().split()\n        path = ROOT / name.decode()\n        assert kind == \"blob\"\n        if mode == \"120000\":\n            assert path.is_symlink()\n            raw = os.readlink(path).encode()\n        else:\n            assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)\n            assert bool(path.stat().st_mode & 0o111) == (mode == \"100755\")\n            raw = path.read_bytes()\n            if name.decode() in TRIGGER_PATHS:\n                raw = restore_trigger_source(raw, name.decode())\n        assert hashlib.sha1(b\"blob \" + str(len(raw)).encode() + b\"\\0\" + raw).hexdigest() == expected, name\n"
+      }
+    ]
+  }
+}
