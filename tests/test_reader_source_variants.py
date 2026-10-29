@@ -230,6 +230,46 @@ def test_complete_portable_reference_is_separate_and_keeps_raw_untouched():
             assert "canonical_ACL" in obj["declaration"]
 
 
+def test_source_candidate_scope_rejects_complete_outside_relation():
+    raw = synthetic()
+    v.require_source_candidate_scope(raw)
+    legacy = raw["legacy"]
+    namespace = deepcopy(next(o for o in legacy["objects"]
+                              if o["catalog"] == "pg_namespace"))
+    namespace["oid"] = namespace["row"]["oid"] = 22001
+    namespace["row"]["nspname"] = "pg_catalog"
+    relation = deepcopy(next(o for o in legacy["objects"]
+                             if o["catalog"] == "pg_class"))
+    relation["oid"] = relation["row"]["oid"] = 30002
+    relation["row"]["relnamespace"] = 22001
+    relation["row"]["relname"] = "catalog_leaf"
+    legacy["objects"].extend((namespace, relation))
+    legacy["objects"].sort(key=lambda o: (o["catalog"], o["oid"]))
+    namespace_id = deepcopy(next(i for i in legacy["identities"]
+                                 if i["catalog"] == "pg_namespace"))
+    namespace_id["oid"] = 22001
+    namespace_id["identity"].update(schema=None, name="pg_catalog", identity="pg_catalog")
+    relation_id = deepcopy(next(i for i in legacy["identities"]
+                                if i["catalog"] == "pg_class"))
+    relation_id["oid"] = 30002
+    relation_id["identity"].update(schema="pg_catalog", name="catalog_leaf",
+                                   identity="pg_catalog.catalog_leaf")
+    legacy["identities"].extend((namespace_id, relation_id))
+    acl = deepcopy(next(r for r in raw["acl_rows"] if r["catalog"] == "pg_namespace"))
+    acl["oid"] = 22001
+    raw["acl_rows"].append(acl)
+    raw["acl_rows"].sort(key=lambda r: (r["catalog"], r["oid"]))
+    raw["relation_candidate"].append({
+        "oid": 30002, "nspname": "pg_catalog", "relname": "catalog_leaf",
+        "relkind": "r", "owner": 40000,
+        "definition": deepcopy(relation["row"]["view_definition_seal"]),
+    })
+    raw["relation_candidate"].sort(key=lambda r: r["oid"])
+    v.validate_extended(raw)  # The rejection below is the new scope gate, not malformed input.
+    with pytest.raises(ValueError):
+        v.require_source_candidate_scope(raw)
+
+
 OPAQUE = [(cat, field) for cat, fields in v.OPAQUE.items() for field in fields]
 
 

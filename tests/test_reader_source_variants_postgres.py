@@ -264,15 +264,11 @@ def test_native_exact_book_v2_single_pass_extended_references(source_variant_db,
     assert facade_columns(before) == facade_columns(
         after
     )  # All real types/typmods/collations/order preserved.
+    # Pinned initdb catalogue relations need not appear in pg_depend. The
+    # complete unfiltered candidate remains sealed, while this exact source
+    # profile rejects any unreviewed outside-schema candidate before output.
     for payload in (base, book):
-        outside = [
-            r for r in payload["raw"]["relation_candidate"] if r["nspname"] not in legacy.SCHEMAS
-        ]
-        assert {(r["nspname"], r["relname"]) for r in outside} == {
-            ("pg_catalog", "pg_class"),
-            ("pg_catalog", "pg_inherits"),
-            ("pg_catalog", "pg_namespace"),
-        }
+        variants.require_source_candidate_scope(payload["raw"])
     import reader_source_packets as packets
     # Validate BOTH complete pairs and source-only transition before emitting
     # even the first of the four profile markers.

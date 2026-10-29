@@ -461,6 +461,12 @@ def candidate_roots(raw):
     ]
 
 
+def require_source_candidate_scope(raw):
+    """Pin this disposable source profile, never waive live dependencies."""
+    validate_extended(raw)
+    require(all(row["nspname"] in legacy.SCHEMAS for row in raw["relation_candidate"]))
+
+
 def assert_source_only_transition(base, book):
     """Reject any grant/root drift; only four exact view seals may differ."""
     require(base["profile"] == PROFILES[0] and book["profile"] == PROFILES[1])
