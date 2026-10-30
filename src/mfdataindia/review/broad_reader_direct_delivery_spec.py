@@ -55,8 +55,8 @@ class Role:
 
 
 ROLES = {
-    "capture": Role("dev-bread-direct-cap-261030b",
-                    "mf-reader-direct-capture-261030b",
+    "capture": Role("dev-bread-direct-cap-261030c",
+                    "mf-reader-direct-capture-261030c",
                     "scripts/collect_broad_reader_direct_dev.py",
                     OWNER_SA, "tlws-mf-data-admin-dsn-dev"),
     "grant": Role("dev-bread-direct-grant-261029a",
@@ -74,6 +74,7 @@ ROOT_PREFIXES = {"capture": "mf-reader-direct-capture-20261030-",
                  "reader": "mf-reader-direct-check-20261029-"}
 
 OLD_CONSUMED_JOBS = frozenset({
+    "mf-reader-direct-capture-261030b",
     "mf-reader-direct-capture-261029a",
     "mf-reader-broad-capture-261026r",
     "mf-reader-broad-capture-261027s",

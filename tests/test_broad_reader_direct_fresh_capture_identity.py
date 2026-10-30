@@ -8,14 +8,14 @@ from mfdataindia.review import broad_reader_direct_delivery_spec as spec
 
 
 OLD_JOB = "mf-reader-direct-capture-261029a"
-NEW_JOB = "mf-reader-direct-capture-261030b"
+NEW_JOB = "mf-reader-direct-capture-261030c"
 OLD_ROOT = "mf-reader-direct-capture-20261029-Freeze1315B"
 NEW_ROOT = "mf-reader-direct-capture-20261030-NowDevB"
 
 
 def test_fresh_capture_identity_and_old_consumed_job_are_disjoint():
     capture = spec.ROLES["capture"]
-    assert capture.rollout_id == "dev-bread-direct-cap-261030b"
+    assert capture.rollout_id == "dev-bread-direct-cap-261030c"
     assert capture.job == NEW_JOB
     assert spec.ROOT_PREFIXES["capture"] == "mf-reader-direct-capture-20261030-"
     assert OLD_JOB in spec.OLD_CONSUMED_JOBS
