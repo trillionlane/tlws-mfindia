@@ -25,6 +25,7 @@ ADDED = {
     "src/mfdataindia/review/broad_reader_direct_delivery_spec.py",
     "src/mfdataindia/review/broad_reader_direct_rollout_controller.py",
     "tests/test_broad_reader_direct_capacity.py",
+    "tests/test_broad_reader_direct_capture_stage_diagnostic.py",
     "tests/test_broad_reader_direct_capture_worker.py",
     "tests/test_broad_reader_direct_delivery_backend.py",
     "tests/test_broad_reader_direct_delivery_binding.py",
