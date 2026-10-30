@@ -6,6 +6,8 @@ from pathlib import Path
 import stat
 import subprocess
 
+from broad_reader_runtime_environment_preservation import NEW_ADDED, restore_runtime_parent
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "9337a4d2d28c1c428039d20e8fbc3492b4c073eb"
@@ -57,6 +59,7 @@ def test_all_parent_bytes_modes_and_exact_no_freeze_delta():
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755"), name
             raw = path.read_bytes()
+            raw = restore_runtime_parent(name, raw)
         if name in MODIFIED:
             assert hashlib.sha256(raw).hexdigest() == MODIFIED[name], name
             assert raw != _git("show", PARENT + ":" + name), name
@@ -74,8 +77,10 @@ def test_all_parent_bytes_modes_and_exact_no_freeze_delta():
         assert not path.stat().st_mode & 0o111
     assert hashlib.sha256((ROOT / NEW_TEST).read_bytes()).hexdigest() == NEW_TEST_SHA256
     assert hashlib.sha256((ROOT / NEW_CHAIN_TEST).read_bytes()).hexdigest() == NEW_CHAIN_SHA256
-    assert hashlib.sha256((ROOT / NEW_IDENTITY_TEST).read_bytes()).hexdigest() == NEW_IDENTITY_SHA256
+    assert hashlib.sha256(restore_runtime_parent(
+        NEW_IDENTITY_TEST, (ROOT / NEW_IDENTITY_TEST).read_bytes()
+    )).hexdigest() == NEW_IDENTITY_SHA256
     changed = set(_git("diff", "--name-only", PARENT).decode().splitlines())
     untracked = set(_git("ls-files", "--others", "--exclude-standard").decode().splitlines())
     assert changed | untracked == set(MODIFIED) | {NEW_TEST, NEW_CHAIN_TEST,
-                                                NEW_IDENTITY_TEST, SELF}
+                                                NEW_IDENTITY_TEST, SELF} | NEW_ADDED

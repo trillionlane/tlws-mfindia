@@ -97,7 +97,7 @@ def run_worker(environment):
 
 def main():
     argparse.ArgumentParser(description=__doc__).parse_args()
-    print(run_worker(os.environ), flush=True)
+    print(run_worker(dict(os.environ)), flush=True)
 
 
 def _main_guarded():
