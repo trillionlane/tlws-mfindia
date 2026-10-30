@@ -4,7 +4,6 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import json
-import re
 
 import psycopg
 from psycopg import sql
@@ -13,6 +12,7 @@ from psycopg.rows import dict_row
 import pytest
 
 from broad_reader_native_oid_isomorphism import validate as validate_native_oids
+from broad_reader_postcommit_diagnostic import compare_failure_label, read_failure_label
 from mfdataindia.review import broad_reader_direct_grant as grant
 from mfdataindia.review import broad_reader_direct_plan as direct_plan
 from mfdataindia.review import broad_reader_direct_reader_check as reader_check
@@ -96,50 +96,6 @@ def _cross_capture_stable_snapshot(value):
     return result
 
 
-def _postcheck_failure_category(before, after):
-    """Classify an existing comparison failure without retaining catalogue values."""
-    try:
-        plan = before.get("plan")
-        if type(plan) is not dict or snapshot.canonical_state(after.get("state")) != plan.get("after"):
-            return "PLANNED_FULL_STATE"
-        for key, label in (("candidates", "CANDIDATES"),
-                           ("system_leaves", "SYSTEM_LEAVES"),
-                           ("ledger", "LEDGER"),
-                           ("migration_proof", "MIGRATION_PROOF"),
-                           ("view_profile", "VIEW_PROFILE")):
-            if before.get(key) != after.get(key):
-                return label
-        old_rows = deepcopy(before.get("function_rows"))
-        new_rows = deepcopy(after.get("function_rows"))
-        if (type(old_rows) is not list or type(new_rows) is not list
-                or len(old_rows) != 2 or len(new_rows) != 2):
-            return "FUNCTION_ROWS_SHAPE"
-        for old, new in zip(old_rows, new_rows, strict=True):
-            if type(old) is not dict or type(new) is not dict:
-                return "FUNCTION_ROWS_SHAPE"
-            old.pop("reader_schema_usage", None)
-            new.pop("reader_schema_usage", None)
-            if old != new:
-                return "FUNCTION_ROWS"
-        if after["plan"]["after"] != snapshot.canonical_state(after["state"]):
-            return "IDEMPOTENT_FULL_STATE"
-        if any(after["plan"]["delta"].values()):
-            return "IDEMPOTENT_DELTA"
-    except (KeyError, TypeError, ValueError):
-        return "CLASSIFIER_SHAPE"
-    return "OTHER_COMPARISON"
-
-
-def _fixed_exception_label(error):
-    """Never surface a server error, SQL, secret, or catalogue value in CI."""
-    kind = type(error).__name__
-    message = str(error)
-    if (type(error).__module__.startswith("mfdataindia.review.")
-            and re.fullmatch(r"[A-Z][A-Z0-9_]{0,99}", message)):
-        return kind + "_" + message
-    return kind if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,79}", kind) else "OTHER_ERROR"
-
-
 def _permit(before, packaged):
     now = datetime.now(timezone.utc).replace(microsecond=0)
     window = {"starts_at": (now - timedelta(seconds=1)).isoformat(),
@@ -180,7 +136,7 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
         before = grant.capture_before(observer, packaged_source=packaged,
                                       source_root=ROOT)
         assert before["grant_authorized"] is False
-        diagnostic = {"reads": 0, "label": "NO_POSTCHECK"}
+        diagnostic = {"reads": 0, "label": "UNCLASSIFIED_COMPARISON"}
         original_read = snapshot.read
         original_compare = snapshot.compare_post
 
@@ -189,20 +145,17 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
             try:
                 value = original_read(*args, **kwargs)
             except BaseException as error:
-                diagnostic["label"] = ("SNAPSHOT_READ_" + str(diagnostic["reads"])
-                                       + "_" + _fixed_exception_label(error))
+                diagnostic["label"] = read_failure_label(error)
                 raise
-            if diagnostic["reads"] == 2:
-                diagnostic["label"] = "POST_READ_SUCCEEDED"
             return value
 
         def observed_compare(old, new):
             try:
                 value = original_compare(old, new)
             except BaseException:
-                diagnostic["label"] = "COMPARE_" + _postcheck_failure_category(old, new)
+                diagnostic["label"] = compare_failure_label(old, new)
                 raise
-            diagnostic["label"] = "POST_COMPARE_SUCCEEDED"
+            diagnostic["label"] = "UNCLASSIFIED_COMPARISON"
             return value
 
         monkeypatch.setattr(snapshot, "read", observed_read)
@@ -213,7 +166,7 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
                                     source_root=ROOT)
             except grant.GrantError as error:
                 if str(error) == "COMMITTED_UNVERIFIED":
-                    pytest.fail("DISPOSABLE_POSTCOMMIT_" + diagnostic["label"], pytrace=False)
+                    pytest.fail(diagnostic["label"], pytrace=False)
                 raise
         assert receipt["stage"] == "COMMITTED_STATE_VERIFIED"
         assert receipt["postgrant_proof"]["permission_enabled"] is False
