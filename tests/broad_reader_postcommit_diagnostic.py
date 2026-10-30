@@ -9,12 +9,66 @@ LABELS = frozenset({
     "POSTCOMMIT_READ_FAILURE", "PLANNED_STATE", "CANDIDATES",
     "SYSTEM_LEAVES", "LEDGER_PROOF", "VIEW_PROFILE", "FUNCTION_ROWS",
     "IDEMPOTENT_AFTER_PLAN", "UNCLASSIFIED_COMPARISON",
+    "READ_STATE", "READ_CANDIDATES", "READ_LEAVES", "READ_FUNCTIONS",
+    "READ_LEDGER", "VERIFY_LEDGER", "VERIFY_FUNCTIONS", "VERIFY_PROFILE",
+    "PREPARE_PLAN", "READ_FINAL",
+})
+READ_STAGES = frozenset({
+    "READ_STATE", "READ_CANDIDATES", "READ_LEAVES", "READ_FUNCTIONS",
+    "READ_LEDGER", "VERIFY_LEDGER", "VERIFY_FUNCTIONS", "VERIFY_PROFILE",
+    "PREPARE_PLAN", "READ_FINAL",
 })
 
 
-def read_failure_label(_error):
+def read_failure_label(_error, *, stage=None):
     """Never include an exception type, message, SQL, or private value."""
-    return "POSTCOMMIT_READ_FAILURE"
+    return stage if stage in READ_STAGES else "POSTCOMMIT_READ_FAILURE"
+
+
+def stage_wrapper(diagnostic, stage, operation, *, completed=None):
+    """Test-only, one-call forwarding with a fixed post-read stage label."""
+    assert stage in READ_STAGES
+    assert completed is None or completed in READ_STAGES
+
+    def forward(*args, **kwargs):
+        if diagnostic["post_read_active"]:
+            diagnostic["label"] = stage
+        result = operation(*args, **kwargs)
+        if completed is not None and diagnostic["post_read_active"]:
+            diagnostic["label"] = completed
+        return result
+
+    return forward
+
+
+def install_read_stage_labels(monkeypatch, diagnostic):
+    """Observe existing second-read call sites without extra SQL or values."""
+    statement_labels = {
+        snapshot.policy.STATE_SQL: "READ_STATE",
+        snapshot.inventory.CANDIDATE_SQL: "READ_CANDIDATES",
+        snapshot.dependencies.SYSTEM_LEAVES_SQL: "READ_LEAVES",
+        snapshot.functions.FUNCTION_SQL: "READ_FUNCTIONS",
+        snapshot.source.LEDGER_SQL: "READ_LEDGER",
+    }
+    assert len(statement_labels) == 5
+    original_rows = snapshot._rows
+
+    def observed_rows(conn, statement, columns):
+        if diagnostic["post_read_active"]:
+            diagnostic["label"] = statement_labels.get(
+                statement, "POSTCOMMIT_READ_FAILURE")
+        return original_rows(conn, statement, columns)
+
+    monkeypatch.setattr(snapshot, "_rows", observed_rows)
+    for module, name, label, completed in (
+        (snapshot.source, "verify_live_ledger", "VERIFY_LEDGER", None),
+        (snapshot.functions, "verify", "VERIFY_FUNCTIONS", None),
+        (snapshot.views, "select", "VERIFY_PROFILE", None),
+        (snapshot.direct_plan, "prepare", "PREPARE_PLAN", "READ_FINAL"),
+    ):
+        original = getattr(module, name)
+        monkeypatch.setattr(
+            module, name, stage_wrapper(diagnostic, label, original, completed=completed))
 
 
 def compare_failure_label(before, after):

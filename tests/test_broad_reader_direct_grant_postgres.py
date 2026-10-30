@@ -12,7 +12,9 @@ from psycopg.rows import dict_row
 import pytest
 
 from broad_reader_native_oid_isomorphism import validate as validate_native_oids
-from broad_reader_postcommit_diagnostic import compare_failure_label, read_failure_label
+from broad_reader_postcommit_diagnostic import (
+    compare_failure_label, install_read_stage_labels, read_failure_label,
+)
 from mfdataindia.review import broad_reader_direct_grant as grant
 from mfdataindia.review import broad_reader_direct_plan as direct_plan
 from mfdataindia.review import broad_reader_direct_reader_check as reader_check
@@ -136,17 +138,25 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
         before = grant.capture_before(observer, packaged_source=packaged,
                                       source_root=ROOT)
         assert before["grant_authorized"] is False
-        diagnostic = {"reads": 0, "label": "UNCLASSIFIED_COMPARISON"}
+        diagnostic = {"reads": 0, "label": "UNCLASSIFIED_COMPARISON",
+                      "post_read_active": False}
         original_read = snapshot.read
         original_compare = snapshot.compare_post
+        install_read_stage_labels(monkeypatch, diagnostic)
 
         def observed_read(*args, **kwargs):
             diagnostic["reads"] += 1
+            diagnostic["post_read_active"] = diagnostic["reads"] == 2
+            if diagnostic["post_read_active"]:
+                diagnostic["label"] = "POSTCOMMIT_READ_FAILURE"
             try:
                 value = original_read(*args, **kwargs)
             except BaseException as error:
-                diagnostic["label"] = read_failure_label(error)
+                diagnostic["label"] = read_failure_label(
+                    error, stage=diagnostic["label"])
                 raise
+            finally:
+                diagnostic["post_read_active"] = False
             return value
 
         def observed_compare(old, new):
