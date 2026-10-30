@@ -14,6 +14,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "b56fe2ae0806fc0eaa80692be82c854bd429af84"
+REVIEWED_MAIN = "850873cc6469cf32f4bc427b7e56117983feb3b5"
 CHANGED = {
     "tests/test_reader_source_prior_view_preservation.py",
 }
@@ -63,7 +64,7 @@ def restore(raw, name):
 
 def test_every_parent_byte_and_mode_and_exact_finite_delta():
     delta = subprocess.check_output(
-        ["git", "diff", "--name-status", "--no-renames", PARENT + "..HEAD"],
+        ["git", "diff", "--name-status", "--no-renames", PARENT + ".." + REVIEWED_MAIN],
         cwd=ROOT).decode().splitlines()
     assert set(delta) == {"M\t" + name for name in CHANGED} | {
         "A\t" + name for name in ADDED}

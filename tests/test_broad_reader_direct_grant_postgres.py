@@ -185,6 +185,7 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
         with _connection(reader_dsn) as reader:
             check = reader_check.run(reader,
                                      planned_after=before["before_snapshot"]["plan"]["after"])
+        assert check["context"]["isolation"] == "repeatable read"
         assert check["representative_select_completed"] is True
         assert check["permission_enabled"] is False and check["ti_verified"] is False
 

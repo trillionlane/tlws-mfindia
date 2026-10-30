@@ -17,7 +17,7 @@ def _case():
                      "dropped": False}]}
     context = {"database": policy.DATABASE, "principal": policy.READER,
                "session": policy.READER, "in_recovery": False,
-               "readonly": "on", "isolation": "read committed"}
+               "readonly": "on", "isolation": "repeatable read"}
     namespaces = [{"oid": row["oid"], "nspname": row["nspname"],
                    "usage": True, "create_allowed": False}
                   for row in planned["namespaces"]]

@@ -74,7 +74,7 @@ def validate(context, namespaces, relations, columns, *, planned_after):
     """Require complete exact identities and no reader write capability."""
     _require(context == {"database": policy.DATABASE, "principal": policy.READER,
                          "session": policy.READER, "in_recovery": False,
-                         "readonly": "on", "isolation": "read committed"})
+                         "readonly": "on", "isolation": "repeatable read"})
     _require(type(planned_after) is dict)
     expected_namespaces = {n["oid"]: n for n in planned_after["namespaces"]
                            if n["nspname"] in policy.SCHEMAS}
@@ -153,7 +153,7 @@ def run(conn, *, planned_after):
         begun = rollback_attempted = False
         try:
             begun = True
-            _control(conn, "BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY", end=end)
+            _control(conn, "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY", end=end)
             for statement in ("SET LOCAL statement_timeout='5s'",
                               "SET LOCAL lock_timeout='5s'",
                               "SET LOCAL transaction_timeout='15s'",
