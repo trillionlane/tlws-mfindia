@@ -3,8 +3,11 @@
 import pytest
 
 from broad_reader_postcommit_diagnostic import (
-    LABELS, READ_STAGES, compare_failure_label, read_failure_label, stage_wrapper,
+    LABELS, READ_STAGES, compare_failure_label, install_plan_stage_labels,
+    read_failure_label, stage_wrapper,
 )
+from mfdataindia.review import broad_reader_direct_plan as planner
+from test_broad_reader_direct_plan import _case as pure_plan_case
 
 
 @pytest.mark.parametrize("error", [
@@ -57,6 +60,44 @@ def test_read_stage_wrapper_completed_and_inactive_paths_are_exact():
     assert wrapped("other", key="other") == ("other", "other")
     assert diagnostic["label"] == "READ_FINAL"
     assert calls == [("exact", "same"), ("other", "other")]
+
+
+def test_nested_historical_catalogue_keeps_historical_label(monkeypatch):
+    state, attestation, candidates, leaves = pure_plan_case()
+    diagnostic = {"post_read_active": True, "historical_prepare_active": False,
+                  "label": "PREPARE_PLAN"}
+    original = planner.policy.prepare
+
+    def fail_after_nested_catalogue(value):
+        original(value)
+        raise RuntimeError("SENSITIVE_CATALOGUE_SENTINEL")
+
+    monkeypatch.setattr(planner.policy, "prepare", fail_after_nested_catalogue)
+    install_plan_stage_labels(monkeypatch, diagnostic)
+    with pytest.raises(RuntimeError, match="SENSITIVE_CATALOGUE_SENTINEL"):
+        planner.prepare(state, helper_attestation=attestation,
+                        candidates=candidates, system_leaves=leaves)
+    assert diagnostic["label"] == "PLAN_HISTORICAL"
+    assert diagnostic["historical_prepare_active"] is False
+    assert (read_failure_label(RuntimeError("private"), stage=diagnostic["label"])
+            == "PLAN_HISTORICAL")
+
+
+def test_pure_plan_subphase_wrappers_preserve_result_and_inactive_path(monkeypatch):
+    state, attestation, candidates, leaves = pure_plan_case()
+    expected = planner.prepare(state, helper_attestation=attestation,
+                               candidates=candidates, system_leaves=leaves)
+    diagnostic = {"post_read_active": True, "historical_prepare_active": False,
+                  "label": "PREPARE_PLAN"}
+    install_plan_stage_labels(monkeypatch, diagnostic)
+    assert planner.prepare(state, helper_attestation=attestation,
+                           candidates=candidates, system_leaves=leaves) == expected
+    assert diagnostic["label"] == "PLAN_REVERSAL"
+    diagnostic["post_read_active"] = False
+    diagnostic["label"] = "POSTCOMMIT_READ_FAILURE"
+    assert planner.prepare(state, helper_attestation=attestation,
+                           candidates=candidates, system_leaves=leaves) == expected
+    assert diagnostic["label"] == "POSTCOMMIT_READ_FAILURE"
 
 
 def test_comparison_classifier_emits_only_fixed_category_without_values():

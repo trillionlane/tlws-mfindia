@@ -12,11 +12,15 @@ LABELS = frozenset({
     "READ_STATE", "READ_CANDIDATES", "READ_LEAVES", "READ_FUNCTIONS",
     "READ_LEDGER", "VERIFY_LEDGER", "VERIFY_FUNCTIONS", "VERIFY_PROFILE",
     "PREPARE_PLAN", "READ_FINAL",
+    "PLAN_HELPER", "PLAN_CALLEE", "PLAN_DEPENDENCY", "PLAN_NORMALIZE",
+    "PLAN_HISTORICAL", "PLAN_INVARIANTS", "PLAN_REVERSAL",
 })
 READ_STAGES = frozenset({
     "READ_STATE", "READ_CANDIDATES", "READ_LEAVES", "READ_FUNCTIONS",
     "READ_LEDGER", "VERIFY_LEDGER", "VERIFY_FUNCTIONS", "VERIFY_PROFILE",
     "PREPARE_PLAN", "READ_FINAL",
+    "PLAN_HELPER", "PLAN_CALLEE", "PLAN_DEPENDENCY", "PLAN_NORMALIZE",
+    "PLAN_HISTORICAL", "PLAN_INVARIANTS", "PLAN_REVERSAL",
 })
 
 
@@ -41,6 +45,46 @@ def stage_wrapper(diagnostic, stage, operation, *, completed=None):
     return forward
 
 
+def install_plan_stage_labels(monkeypatch, diagnostic):
+    """Observe the existing pure planner without changing its calls or result."""
+    planner = snapshot.direct_plan
+    for module, name, label in (
+        (planner.functions, "require_existing_helper", "PLAN_HELPER"),
+        (planner.functions, "require_existing_callee", "PLAN_CALLEE"),
+        (planner.dependencies, "classify", "PLAN_DEPENDENCY"),
+        (planner, "reversal_template", "PLAN_REVERSAL"),
+    ):
+        original = getattr(module, name)
+        monkeypatch.setattr(module, name, stage_wrapper(diagnostic, label, original))
+
+    original_catalogue = planner.policy.catalogue
+
+    def observed_catalogue(*args, **kwargs):
+        if (diagnostic["post_read_active"]
+                and not diagnostic["historical_prepare_active"]):
+            diagnostic["label"] = "PLAN_NORMALIZE"
+        return original_catalogue(*args, **kwargs)
+
+    monkeypatch.setattr(planner.policy, "catalogue", observed_catalogue)
+    original_historical = planner.policy.prepare
+
+    def observed_historical(*args, **kwargs):
+        active = diagnostic["post_read_active"]
+        if active:
+            diagnostic["label"] = "PLAN_HISTORICAL"
+            diagnostic["historical_prepare_active"] = True
+        try:
+            result = original_historical(*args, **kwargs)
+        finally:
+            if active:
+                diagnostic["historical_prepare_active"] = False
+        if active:
+            diagnostic["label"] = "PLAN_INVARIANTS"
+        return result
+
+    monkeypatch.setattr(planner.policy, "prepare", observed_historical)
+
+
 def install_read_stage_labels(monkeypatch, diagnostic):
     """Observe existing second-read call sites without extra SQL or values."""
     statement_labels = {
@@ -60,6 +104,7 @@ def install_read_stage_labels(monkeypatch, diagnostic):
         return original_rows(conn, statement, columns)
 
     monkeypatch.setattr(snapshot, "_rows", observed_rows)
+    install_plan_stage_labels(monkeypatch, diagnostic)
     for module, name, label, completed in (
         (snapshot.source, "verify_live_ledger", "VERIFY_LEDGER", None),
         (snapshot.functions, "verify", "VERIFY_FUNCTIONS", None),

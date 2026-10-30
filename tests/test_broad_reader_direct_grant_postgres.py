@@ -139,7 +139,8 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
                                       source_root=ROOT)
         assert before["grant_authorized"] is False
         diagnostic = {"reads": 0, "label": "UNCLASSIFIED_COMPARISON",
-                      "post_read_active": False}
+                      "post_read_active": False,
+                      "historical_prepare_active": False}
         original_read = snapshot.read
         original_compare = snapshot.compare_post
         install_read_stage_labels(monkeypatch, diagnostic)
