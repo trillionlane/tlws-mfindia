@@ -94,6 +94,94 @@ def test_existing_default_acl_row_oid_is_normalized_only_like_historical_planner
     assert plan["raw_full_input_sha256"] != plan["full_before_sha256"]
 
 
+@pytest.mark.parametrize("already_granted", [False, True])
+def test_complete_default_rows_compare_by_logical_key_after_physical_oid_order(already_granted):
+    state, attestation, candidates, leaves = _case()
+    assert state["defaults"] == []
+    owner_oid = next(r["oid"] for r in state["roles"] if r["rolname"] == policy.OWNER)
+    schema_oids = sorted(n["oid"] for n in state["namespaces"]
+                         if n["nspname"] in policy.SCHEMAS)
+    assert len(schema_oids) == len(policy.SCHEMAS)
+    reader_oid = next(r["oid"] for r in state["roles"] if r["rolname"] == policy.READER)
+    acl = [[owner_oid, reader_oid, "SELECT", False]] if already_granted else []
+    state["defaults"] = [
+        {"oid": 91000, "defaclrole": owner_oid,
+         "defaclnamespace": schema_oids[-1], "defaclobjtype": "r", "acl": deepcopy(acl)},
+        {"oid": 91001, "defaclrole": owner_oid,
+         "defaclnamespace": schema_oids[0], "defaclobjtype": "r", "acl": deepcopy(acl)},
+    ]
+    original = deepcopy(state)
+    plan = planner.prepare(state, helper_attestation=attestation,
+                           candidates=candidates, system_leaves=leaves)
+    assert state == original
+    assert plan["raw_full_input_sha256"] == policy.fingerprint(original)
+    canonical_full = deepcopy(original)
+    for row in canonical_full["defaults"]:
+        row.pop("oid")
+    canonical_full["defaults"].sort(
+        key=lambda row: (row["defaclrole"], row["defaclnamespace"],
+                         row["defaclobjtype"]))
+    assert plan["before"] == canonical_full
+    assert plan["canonical_full_input_sha256"] == policy.fingerprint(canonical_full)
+    assert plan["full_before_sha256"] == policy.fingerprint(canonical_full)
+    assert plan["before"]["functions"] == plan["after"]["functions"]
+    assert len(plan["delta"]["defaults"]) == len(policy.SCHEMAS) - (2 if already_granted else 0)
+    assert all("FUNCTION" not in statement and "pg_catalog" not in statement
+               for statement in plan["sql"])
+
+
+@pytest.mark.parametrize("fault, fixed_error", [
+    ("missing_key", "INVALID_BROAD_READER_INPUT"),
+    ("duplicate_key", "DUPLICATE_CATALOGUE_IDENTITY"),
+])
+def test_default_row_sort_does_not_bypass_historical_validation(fault, fixed_error):
+    state, attestation, candidates, leaves = _case()
+    owner_oid = next(r["oid"] for r in state["roles"] if r["rolname"] == policy.OWNER)
+    namespace_oid = next(n["oid"] for n in state["namespaces"]
+                         if n["nspname"] == "mf")
+    row = {"oid": 91000, "defaclrole": owner_oid,
+           "defaclnamespace": namespace_oid, "defaclobjtype": "r", "acl": []}
+    state["defaults"] = [row]
+    if fault == "missing_key":
+        row.pop("defaclrole")
+    else:
+        duplicate = deepcopy(row)
+        duplicate["oid"] = 91001
+        state["defaults"].append(duplicate)
+    with pytest.raises(policy.PolicyError, match=fixed_error):
+        planner.prepare(state, helper_attestation=attestation,
+                        candidates=candidates, system_leaves=leaves)
+
+
+@pytest.mark.parametrize("change", ["missing", "extra", "altered"])
+def test_default_row_sort_never_hides_complete_row_changes(change):
+    state, attestation, candidates, leaves = _case()
+    owner_oid = next(r["oid"] for r in state["roles"] if r["rolname"] == policy.OWNER)
+    reader_oid = next(r["oid"] for r in state["roles"] if r["rolname"] == policy.READER)
+    namespace_oid = next(n["oid"] for n in state["namespaces"]
+                         if n["nspname"] == "mf")
+    state["defaults"] = [{"oid": 91000, "defaclrole": owner_oid,
+                          "defaclnamespace": namespace_oid,
+                          "defaclobjtype": "r", "acl": []}]
+    original = planner.prepare(state, helper_attestation=attestation,
+                               candidates=candidates, system_leaves=leaves)
+    changed = deepcopy(state)
+    if change == "missing":
+        changed["defaults"].clear()
+    elif change == "extra":
+        changed["defaults"].append({"oid": 91001, "defaclrole": owner_oid,
+                                    "defaclnamespace": namespace_oid,
+                                    "defaclobjtype": "S", "acl": []})
+    else:
+        changed["defaults"][0]["acl"] = [[owner_oid, reader_oid, "SELECT", False]]
+    result = planner.prepare(changed, helper_attestation=attestation,
+                             candidates=candidates, system_leaves=leaves)
+    assert result["raw_full_input_sha256"] == policy.fingerprint(changed)
+    assert result["raw_full_input_sha256"] != original["raw_full_input_sha256"]
+    assert result["full_before_sha256"] != original["full_before_sha256"]
+    assert result["before"]["defaults"] != original["before"]["defaults"]
+
+
 @pytest.mark.parametrize("change", ["missing_schema", "function_drift", "outside_leaf"])
 def test_incomplete_plan_fails_before_any_sql(change):
     state, attestation, candidates, leaves = _case()

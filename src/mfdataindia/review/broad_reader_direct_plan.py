@@ -76,6 +76,9 @@ def prepare(state, *, helper_attestation, candidates, system_leaves):
     helper = next(f for f in normalized["functions"] if f["oid"] == helper_oid)
     normalized["functions"] = [f for f in normalized["functions"] if f["oid"] != helper_oid]
     normalized = policy.catalogue(normalized)  # Only default-ACL row OIDs are normalized.
+    canonical_full_input["defaults"].sort(
+        key=lambda row: (row["defaclrole"], row["defaclnamespace"],
+                         row["defaclobjtype"]))
     historical = policy.prepare(normalized)
     _require(historical["coverage"]["absent_schemas"] == [])
     _require(len(historical["coverage"]["present_schemas"]) == len(policy.SCHEMAS))
