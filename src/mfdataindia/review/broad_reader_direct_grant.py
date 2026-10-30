@@ -2,12 +2,14 @@
 
 This is a dormant engine, not a cloud job, secret reader, or authority to run.
 Its caller must supply the exact reviewed owner and observer connections, a
-fresh source-bound package, external custody, and a create-only execution
-intent. No caller-defined SQL, role, schema, or lock target is accepted.
+fresh source-bound package, an explicit custody or DEV no-freeze risk mode,
+and a create-only execution intent. No caller-defined SQL, role, schema, or
+lock target is accepted. The no-freeze mode offers no post-commit permanence.
 """
 
 from copy import deepcopy
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import re
 import threading
 import time
@@ -42,6 +44,59 @@ _CONTEXT = {"database": policy.DATABASE, "principal": policy.OWNER,
 
 class GrantError(RuntimeError):
     """No permission acceptance may be inferred from this failure."""
+
+
+_WINDOW_KEYS = frozenset({"starts_at", "ends_at", "exclusive_administration",
+                          "data_schema_custody", "future_owner_provisioning"})
+_NO_FREEZE_KEY = "dev_no_freeze_risk_accepted"
+_NO_FREEZE_MODE = "DEV_NO_FREEZE_V1"
+
+
+def direct_window(value):
+    """Direct DEV-only window; never broadens the historical policy entrypoint."""
+    if type(value) is dict and set(value) == _WINDOW_KEYS:
+        return policy._window(value)
+    policy.require(type(value) is dict and set(value) == _WINDOW_KEYS | {_NO_FREEZE_KEY},
+                   "EXACT_DIRECT_DEV_WINDOW_REQUIRED")
+    policy.require(value[_NO_FREEZE_KEY] is True and all(
+        value[key] is False for key in (
+            "exclusive_administration", "data_schema_custody",
+            "future_owner_provisioning")), "EXACT_DEV_NO_FREEZE_RISK_REQUIRED")
+    parsed = []
+    for key in ("starts_at", "ends_at"):
+        item = value[key]
+        policy.require(type(item) is str and re.fullmatch(
+            r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\+00:00", item),
+            "UTC_DIRECT_DEV_WINDOW_REQUIRED")
+        try:
+            parsed.append(datetime.fromisoformat(item))
+        except ValueError:
+            raise policy.PolicyError("UTC_DIRECT_DEV_WINDOW_REQUIRED") from None
+    policy.require(0 < (parsed[1] - parsed[0]).total_seconds() <= 900,
+                   "BOUNDED_DIRECT_DEV_WINDOW_REQUIRED")
+    return tuple(parsed)
+
+
+def direct_live(value, *, remaining=0):
+    if type(value) is dict and set(value) == _WINDOW_KEYS:
+        return policy._live(value, remaining=remaining)
+    start, end = direct_window(value)
+    now = datetime.now(timezone.utc)
+    policy.require(start <= now < end and (end - now).total_seconds() >= remaining,
+                   "DIRECT_DEV_WINDOW_NOT_LIVE")
+
+
+def custody_marker(value):
+    """None preserves old receipt bytes; the explicit mode never claims custody."""
+    direct_window(value)
+    if _NO_FREEZE_KEY not in value:
+        return None
+    return {"mode": _NO_FREEZE_MODE,
+            "exclusive_administration": False,
+            "data_schema_custody": False,
+            "future_owner_provisioning": False,
+            "dev_no_freeze_risk_accepted": True,
+            "postcommit_permanence_guarantee": False}
 
 
 def _image_binding(value, git_sha):
@@ -81,10 +136,18 @@ class Permit:
             value = deepcopy(self.document)
             policy.require(policy.fingerprint(value) == self.binding_sha256,
                            "UNBOUND_BROAD_READER_DIRECT_REQUEST")
-            policy.require(type(value) is dict and set(value) == {
+            base_keys = {
                 "format", "window", "before_snapshot", "helper_attestation",
                 "packaged_source", "git_sha", "image_binding", "create_only_intent_sha256",
-            }, "INCOMPLETE_BROAD_READER_DIRECT_REQUEST")
+            }
+            policy.require(type(value) is dict, "INCOMPLETE_BROAD_READER_DIRECT_REQUEST")
+            marker = custody_marker(value.get("window"))
+            policy.require(set(value) == (base_keys |
+                           ({"capture_custody"} if marker is not None else set())),
+                           "INCOMPLETE_BROAD_READER_DIRECT_REQUEST")
+            if marker is not None:
+                policy.require(value["capture_custody"] == marker,
+                               "UNMATCHED_DIRECT_CAPTURE_CUSTODY_MODE")
             policy.require(value["format"] == "mf-broad-reader-direct-grant-v1")
             policy.require(type(value["git_sha"]) is str
                            and re.fullmatch(r"[0-9a-f]{40}", value["git_sha"])
@@ -92,7 +155,7 @@ class Permit:
                            and re.fullmatch(r"[0-9a-f]{64}", value["create_only_intent_sha256"]),
                            "UNBOUND_BROAD_READER_DIRECT_REQUEST")
             _image_binding(value["image_binding"], value["git_sha"])
-            policy._window(value["window"])
+            direct_window(value["window"])
             policy.require(value["before_snapshot"]["plan"]["permission_acceptance"] is False)
             policy.require(value["before_snapshot"]["permission_enabled"] is False)
             source.require_packaged_source(value["packaged_source"], source_root)
@@ -149,7 +212,7 @@ def _rollback_once(target, *, end):
         raise GrantError("ABORT_UNCONFIRMED_NO_RETRY") from None
 
 
-def capture_before(observer, *, packaged_source, source_root):
+def capture_before(observer, *, packaged_source, source_root, window=None):
     """Complete read-only input before a writer is even opened.
 
     The existing helper attestation and full catalogue each retain their own
@@ -171,12 +234,19 @@ def capture_before(observer, *, packaged_source, source_root):
             rollback_attempted = True
             _rollback_once(observer, end=end)
             begun = False
-            return {"format": "mf-broad-reader-prewrite-capture-v1-nonexecutable",
-                    "helper_attestation": helper_attestation,
-                    "before_snapshot": before,
-                    "packaged_source": deepcopy(packaged_source),
-                    "capture_sha256": policy.fingerprint(before),
-                    "grant_authorized": False}
+            result = {"format": "mf-broad-reader-prewrite-capture-v1-nonexecutable",
+                      "helper_attestation": helper_attestation,
+                      "before_snapshot": before,
+                      "packaged_source": deepcopy(packaged_source),
+                      "capture_sha256": policy.fingerprint(before),
+                      "grant_authorized": False}
+            if window is not None:
+                marker = custody_marker(window)
+                if marker is not None:
+                    result["format"] = (
+                        "mf-broad-reader-prewrite-capture-v2-no-freeze-nonexecutable")
+                    result["custody"] = marker
+            return result
         except BaseException:
             if begun and rollback_attempted:
                 raise GrantError("ABORT_UNCONFIRMED_NO_RETRY") from None
@@ -213,7 +283,7 @@ def run(target, observer, permit, *, source_root):
     policy.require(bool(plan["sql"]) and plan["relation_scope"]["materialized_unlocked"]
                    == [r for r in plan["relation_scope"]["grant_roots"]
                        if r["relkind"] == "m"], "UNMATCHED_BROAD_READER_DIRECT_PLAN")
-    policy._live(document["window"], remaining=15)
+    direct_live(document["window"], remaining=15)
 
     with policy._deadline() as end:
         target_begun = observer_begun = False
@@ -285,14 +355,14 @@ def run(target, observer, permit, *, source_root):
                            "TARGET_BACKEND_CHANGED_AFTER_PREGRANT_READ")
             policy.require(_locks(observer, pid, end=end) == view_locks,
                            "PREGRANT_TARGET_LOCK_WITNESS_DRIFT")
-            policy._live(document["window"])
+            direct_live(document["window"])
             for statement in plan["sql"]:
                 result = _io(target, statement, end=end)
                 wanted = ("GRANT" if statement.startswith("GRANT ")
                           else "ALTER DEFAULT PRIVILEGES")
                 policy.require(result.statusmessage == wanted,
                                "DIRECT_GRANT_STATUS_DRIFT")
-            policy._live(document["window"])
+            direct_live(document["window"])
             stage = "COMMIT_OUTCOME_UNKNOWN"
             committed = _io(target, "COMMIT", end=end)
             policy.require(committed.statusmessage == "COMMIT",
@@ -306,18 +376,23 @@ def run(target, observer, permit, *, source_root):
             _io(observer, "ROLLBACK", end=end)
             observer_begun = False
             stage = "COMMITTED_STATE_VERIFIED"
-            return {"format": "mf-broad-reader-direct-transaction-receipt-v1",
-                    "stage": stage, "request_sha256": permit.binding_sha256,
-                    "before_sha256": plan["full_before_sha256"],
-                    "after_sha256": plan["full_after_sha256"],
-                    "source_sha256": policy.fingerprint(document["packaged_source"]),
-                    "lock_proof": lock_proof, "pregrant_equality": equality,
-                    "postgrant_proof": postproof, "delta": deepcopy(plan["delta"]),
-                    "materialized_unlocked": deepcopy(
-                        plan["relation_scope"]["materialized_unlocked"]),
-                    "postcommit_permanence_guarantee": False,
-                    "authenticated_reader_verified": False, "ti_verified": False,
-                    "permission_enabled": False}
+            result = {"format": "mf-broad-reader-direct-transaction-receipt-v1",
+                      "stage": stage, "request_sha256": permit.binding_sha256,
+                      "before_sha256": plan["full_before_sha256"],
+                      "after_sha256": plan["full_after_sha256"],
+                      "source_sha256": policy.fingerprint(document["packaged_source"]),
+                      "lock_proof": lock_proof, "pregrant_equality": equality,
+                      "postgrant_proof": postproof, "delta": deepcopy(plan["delta"]),
+                      "materialized_unlocked": deepcopy(
+                          plan["relation_scope"]["materialized_unlocked"]),
+                      "postcommit_permanence_guarantee": False,
+                      "authenticated_reader_verified": False, "ti_verified": False,
+                      "permission_enabled": False}
+            marker = custody_marker(document["window"])
+            if marker is not None:
+                result["format"] = "mf-broad-reader-direct-transaction-receipt-v2-no-freeze"
+                result["custody"] = marker
+            return result
         except BaseException as error:
             if stage in ("COMMIT_OUTCOME_UNKNOWN", "COMMITTED_UNVERIFIED"):
                 raise GrantError(stage) from None

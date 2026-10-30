@@ -55,8 +55,8 @@ class Role:
 
 
 ROLES = {
-    "capture": Role("dev-bread-direct-cap-261029a",
-                    "mf-reader-direct-capture-261029a",
+    "capture": Role("dev-bread-direct-cap-261030b",
+                    "mf-reader-direct-capture-261030b",
                     "scripts/collect_broad_reader_direct_dev.py",
                     OWNER_SA, "tlws-mf-data-admin-dsn-dev"),
     "grant": Role("dev-bread-direct-grant-261029a",
@@ -69,11 +69,12 @@ ROLES = {
                    READER_SA, "tlws-mf-review-read-dsn-dev"),
 }
 ARTIFACTS = Path("/Users/deviojha/projects/codex/artifacts")
-ROOT_PREFIXES = {"capture": "mf-reader-direct-capture-20261029-",
+ROOT_PREFIXES = {"capture": "mf-reader-direct-capture-20261030-",
                  "grant": "mf-reader-direct-grant-20261029-",
                  "reader": "mf-reader-direct-check-20261029-"}
 
 OLD_CONSUMED_JOBS = frozenset({
+    "mf-reader-direct-capture-261029a",
     "mf-reader-broad-capture-261026r",
     "mf-reader-broad-capture-261027s",
     "mf-reader-broad-capture-261027t",
@@ -269,7 +270,7 @@ def validate_capture_payload(payload, *, final_git_sha, source_root):
     image_binding(images["app"], expected_git_sha=final_git_sha)
     image_binding(images["tools"], expected_git_sha=final_git_sha,
                   repository="mfdataindia-review-tools")
-    broad_policy._window(payload["window"])
+    direct_grant.direct_window(payload["window"])
     source_authority.require_packaged_source(payload["packaged_source"], source_root)
     return deepcopy(payload)
 
@@ -292,10 +293,16 @@ def validate_grant_payload(payload, *, final_git_sha, source_root):
 
 def validate_reader_payload(payload, *, final_git_sha, source_root):
     """Bind a read-only postgrant check to one completed grant receipt."""
-    require(type(payload) is dict and set(payload) == {
+    require(type(payload) is dict, "EXACT_DIRECT_READER_PAYLOAD_REQUIRED")
+    marker = direct_grant.custody_marker(payload.get("window"))
+    require(set(payload) == ({
         "format", "planned_after", "grant_receipt_sha256", "packaged_source",
-        "git_sha", "image_binding", "create_only_intent_sha256", "window"},
+        "git_sha", "image_binding", "create_only_intent_sha256", "window"}
+        | ({"grant_custody"} if marker is not None else set())),
         "EXACT_DIRECT_READER_PAYLOAD_REQUIRED")
+    if marker is not None:
+        require(payload["grant_custody"] == marker,
+                "UNMATCHED_DIRECT_GRANT_CUSTODY_MODE")
     require(payload["format"] == "mf-broad-reader-direct-reader-v1"
             and payload["git_sha"] == git_sha(final_git_sha)
             and type(payload["planned_after"]) is dict,
@@ -308,7 +315,7 @@ def validate_reader_payload(payload, *, final_git_sha, source_root):
     image_binding(images["app"], expected_git_sha=final_git_sha)
     image_binding(images["tools"], expected_git_sha=final_git_sha,
                   repository="mfdataindia-review-tools")
-    broad_policy._window(payload["window"])
+    direct_grant.direct_window(payload["window"])
     source_authority.require_packaged_source(payload["packaged_source"], source_root)
     broad_policy.require_current_policy(payload["planned_after"])
     return deepcopy(payload)

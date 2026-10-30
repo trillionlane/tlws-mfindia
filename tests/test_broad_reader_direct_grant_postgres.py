@@ -98,12 +98,16 @@ def _cross_capture_stable_snapshot(value):
     return result
 
 
-def _permit(before, packaged):
+def _permit(before, packaged, *, no_freeze=False):
     now = datetime.now(timezone.utc).replace(microsecond=0)
     window = {"starts_at": (now - timedelta(seconds=1)).isoformat(),
               "ends_at": (now + timedelta(minutes=5)).isoformat(),
               "exclusive_administration": True, "data_schema_custody": True,
               "future_owner_provisioning": True}
+    if no_freeze:
+        window.update(exclusive_administration=False, data_schema_custody=False,
+                      future_owner_provisioning=False,
+                      dev_no_freeze_risk_accepted=True)
     git_sha = "a" * 40  # Synthetic CI-only image identity; no provider claim.
     images = {kind: {
         "image": ("asia-south1-docker.pkg.dev/trillionlane-dev/"
@@ -119,6 +123,8 @@ def _permit(before, packaged):
                 "helper_attestation": before["helper_attestation"],
                 "packaged_source": packaged, "git_sha": git_sha,
                 "image_binding": images, "create_only_intent_sha256": "b" * 64}
+    if no_freeze:
+        document["capture_custody"] = grant.custody_marker(window)
     return grant.Permit(document, policy.fingerprint(document))
 
 
@@ -130,14 +136,21 @@ def native_identity(monkeypatch):
                         lambda value: validate_native_oids(value, original))
 
 
+@pytest.mark.parametrize("no_freeze", (False, True))
 def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact_source_db,
                                                                             native_identity,
-                                                                            monkeypatch):
+                                                                            monkeypatch,
+                                                                            no_freeze):
     owner_dsn, reader_dsn, packaged = exact_source_db
     with _connection(owner_dsn) as observer:
+        candidate = _permit({"before_snapshot": {}, "helper_attestation": {}},
+                            packaged, no_freeze=no_freeze)
         before = grant.capture_before(observer, packaged_source=packaged,
-                                      source_root=ROOT)
+                                      source_root=ROOT,
+                                      window=candidate.document["window"])
         assert before["grant_authorized"] is False
+        assert before.get("custody") == (grant.custody_marker(
+            candidate.document["window"]))
         diagnostic = {"reads": 0, "label": "UNCLASSIFIED_COMPARISON",
                       "post_read_active": False,
                       "historical_prepare_active": False}
@@ -173,13 +186,16 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
         monkeypatch.setattr(snapshot, "compare_post", observed_compare)
         with _connection(owner_dsn) as target:
             try:
-                receipt = grant.run(target, observer, _permit(before, packaged),
+                receipt = grant.run(target, observer, _permit(
+                    before, packaged, no_freeze=no_freeze),
                                     source_root=ROOT)
             except grant.GrantError as error:
                 if str(error) == "COMMITTED_UNVERIFIED":
                     pytest.fail(diagnostic["label"], pytrace=False)
                 raise
         assert receipt["stage"] == "COMMITTED_STATE_VERIFIED"
+        assert receipt.get("custody") == grant.custody_marker(
+            candidate.document["window"])
         assert receipt["postgrant_proof"]["permission_enabled"] is False
         assert receipt["authenticated_reader_verified"] is False
         with _connection(reader_dsn) as reader:
@@ -190,18 +206,23 @@ def test_native_actual_grant_commit_full_readback_and_authenticated_reader(exact
         assert check["permission_enabled"] is False and check["ti_verified"] is False
 
 
+@pytest.mark.parametrize("no_freeze", (False, True))
 def test_native_nowait_denial_has_no_grant_or_partial_default_acl(exact_source_db,
-                                                                   native_identity):
+                                                                   native_identity,
+                                                                   no_freeze):
     owner_dsn, reader_dsn, packaged = exact_source_db
     with _connection(owner_dsn) as observer:
         before = grant.capture_before(observer, packaged_source=packaged,
                                       source_root=ROOT)
         with _connection(owner_dsn) as blocker, _connection(owner_dsn) as target:
             blocker.execute("BEGIN", prepare=False)
-            blocker.execute("SELECT 1 FROM mf.funds LIMIT 1", prepare=False)
+            blocker.execute(("GRANT SELECT ON TABLE mf.funds TO mfdata_verified_reader"
+                             if no_freeze else "SELECT 1 FROM mf.funds LIMIT 1"),
+                            prepare=False)
             try:
                 with pytest.raises(grant.GrantError, match="PRECOMMIT_ABORTED_NO_RETRY"):
-                    grant.run(target, observer, _permit(before, packaged),
+                    grant.run(target, observer, _permit(
+                        before, packaged, no_freeze=no_freeze),
                               source_root=ROOT)
             finally:
                 blocker.execute("ROLLBACK", prepare=False)
@@ -224,3 +245,44 @@ def test_native_nowait_denial_has_no_grant_or_partial_default_acl(exact_source_d
                 assert rows[0]["schema_usage"] is False
             finally:
                 reader.execute("ROLLBACK", prepare=False)
+
+
+def test_native_no_freeze_stale_pregrant_privilege_is_rejected(exact_source_db,
+                                                                 native_identity):
+    owner_dsn, _, packaged = exact_source_db
+    with _connection(owner_dsn) as observer:
+        before = grant.capture_before(observer, packaged_source=packaged,
+                                      source_root=ROOT)
+        with _connection(owner_dsn) as admin:
+            admin.execute("GRANT SELECT ON TABLE mf.funds TO mfdata_verified_reader",
+                          prepare=False)
+            try:
+                with _connection(owner_dsn) as target:
+                    with pytest.raises(grant.GrantError,
+                                       match="PRECOMMIT_ABORTED_NO_RETRY"):
+                        grant.run(target, observer, _permit(
+                            before, packaged, no_freeze=True), source_root=ROOT)
+            finally:
+                admin.execute("REVOKE SELECT ON TABLE mf.funds FROM mfdata_verified_reader",
+                              prepare=False)
+        after = grant.capture_before(observer, packaged_source=packaged,
+                                     source_root=ROOT)
+        assert _cross_capture_stable_snapshot(after) == _cross_capture_stable_snapshot(before)
+
+
+def test_native_no_freeze_mixed_predecessor_mode_is_rejected_before_sql(exact_source_db,
+                                                                           native_identity):
+    owner_dsn, _, packaged = exact_source_db
+    with _connection(owner_dsn) as observer:
+        before = grant.capture_before(observer, packaged_source=packaged,
+                                      source_root=ROOT)
+        permit = _permit(before, packaged, no_freeze=True)
+        permit.document["window"].pop("dev_no_freeze_risk_accepted")
+        permit.document["window"].update(
+            exclusive_administration=True, data_schema_custody=True,
+            future_owner_provisioning=True)
+        permit.binding_sha256 = policy.fingerprint(permit.document)
+        with _connection(owner_dsn) as target:
+            with pytest.raises(policy.PolicyError):
+                grant.run(target, observer, permit, source_root=ROOT)
+            assert target.info.transaction_status.name == "IDLE"

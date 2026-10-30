@@ -43,9 +43,9 @@ def run_worker(environment):
     payload_sha256 = policy.fingerprint(document)
     capacity_proof = capacity.prove_capacity(
         document, payload_sha256=payload_sha256)
-    policy._live(document["window"], remaining=20)
+    direct.direct_live(document["window"], remaining=20)
     arguments = spec.connection_arguments("grant", environment["MFDATAINDIA_DSN"])
-    policy._live(document["window"], remaining=20)
+    direct.direct_live(document["window"], remaining=20)
 
     connections = []
     failure = None
@@ -54,10 +54,10 @@ def run_worker(environment):
     try:
         target = psycopg.connect(**arguments)
         connections.append(target)
-        policy._live(document["window"], remaining=20)
+        direct.direct_live(document["window"], remaining=20)
         observer = psycopg.connect(**arguments)
         connections.append(observer)
-        policy._live(document["window"], remaining=15)
+        direct.direct_live(document["window"], remaining=15)
         permit = direct.Permit(document, payload_sha256)
         receipt = direct.run(target, observer, permit, source_root=ROOT)
         spec.require(receipt["stage"] == "COMMITTED_STATE_VERIFIED"

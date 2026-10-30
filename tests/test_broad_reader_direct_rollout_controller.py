@@ -6,11 +6,13 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import hashlib
 import json
+import sys
 
 import pytest
 
 from mfdataindia.review import broad_reader_direct_delivery_controller as prepare
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
+from mfdataindia.review import broad_reader_direct_grant as direct
 from mfdataindia.review import broad_reader_direct_rollout_controller as rollout
 from mfdataindia.review import broad_reader_source_authority as source
 from mfdataindia.review.policy import fingerprint
@@ -35,7 +37,7 @@ TOOLS = {**APP, "image": APP["image"].replace(
         "/mfdataindia@", "/mfdataindia-review-tools@")}
 
 
-def _approval(tmp_path):
+def _approval(tmp_path, *, no_freeze=False):
     now = datetime.now(timezone.utc).replace(microsecond=0)
     payload = {"format": "mf-broad-reader-direct-capture-v1",
                "packaged_source": source.verify_packaged_source(SOURCE),
@@ -47,6 +49,11 @@ def _approval(tmp_path):
                           "exclusive_administration": True,
                           "data_schema_custody": True,
                           "future_owner_provisioning": True}}
+    if no_freeze:
+        payload["window"].update(exclusive_administration=False,
+                                 data_schema_custody=False,
+                                 future_owner_provisioning=False,
+                                 dev_no_freeze_risk_accepted=True)
     root = tmp_path / (rollout.ROOT_NAMES["capture"] + "abcdef")
     root.mkdir()
     (root / "approval.json").write_text("synthetic-only")
@@ -155,15 +162,21 @@ class FakeBackend:
         assert kind == "capture" and name == self.name
         self.calls.append("certificate")
         before = {"permission_enabled": False}
+        marker = direct.custody_marker(self.approval["payload"]["window"])
+        evidence = {"format": "mf-broad-reader-prewrite-capture-v1-nonexecutable",
+                    "grant_authorized": False,
+                    "before_snapshot": before,
+                    "helper_attestation": {"synthetic": True},
+                    "packaged_source": self.approval["payload"]["packaged_source"],
+                    "capture_sha256": fingerprint(before)}
+        if marker is not None:
+            evidence["format"] = (
+                "mf-broad-reader-prewrite-capture-v2-no-freeze-nonexecutable")
+            evidence["custody"] = marker
         return spec.seal_certificate(
             payload_sha256=self.prepared["payload_sha256"],
             stage="direct-capture-readonly",
-            evidence={"format": "mf-broad-reader-prewrite-capture-v1-nonexecutable",
-                      "grant_authorized": False,
-                      "before_snapshot": before,
-                      "helper_attestation": {"synthetic": True},
-                      "packaged_source": self.approval["payload"]["packaged_source"],
-                      "capture_sha256": fingerprint(before)})
+            evidence=evidence)
 
 
 def test_exact_single_job_and_execution_are_intent_ordered(monkeypatch, tmp_path):
@@ -222,9 +235,18 @@ def test_completed_capture_is_required_for_grant_and_exact_snapshot(
     grant["payload"] = {
         "packaged_source": capture["payload"]["packaged_source"],
         "git_sha": GIT, "image_binding": capture["image_binding"],
+        "window": capture["payload"]["window"],
         "before_snapshot": completion["evidence"]["before_snapshot"],
         "helper_attestation": completion["evidence"]["helper_attestation"]}
     assert rollout.predecessor(grant, source_root=SOURCE)["completion"] == completion
+    mixed = deepcopy(grant)
+    mixed["payload"]["window"].update(
+        exclusive_administration=False, data_schema_custody=False,
+        future_owner_provisioning=False,
+        dev_no_freeze_risk_accepted=True)
+    with pytest.raises(rollout.DeliveryError,
+                       match="DIRECT_PREDECESSOR_CUSTODY_MODE_DRIFT"):
+        rollout.predecessor(mixed, source_root=SOURCE)
     changed = deepcopy(grant)
     changed["predecessor"]["result_sha256"] = "0" * 64
     with pytest.raises(rollout.DeliveryError,
@@ -244,6 +266,58 @@ def test_completed_capture_is_required_for_grant_and_exact_snapshot(
     with pytest.raises(rollout.DeliveryError,
                        match="DIRECT_PREDECESSOR_INTERNAL_ROOT_DRIFT"):
         rollout.predecessor(changed, source_root=SOURCE)
+
+
+def test_no_freeze_capture_evidence_and_grant_predecessor_are_exact(
+        monkeypatch, tmp_path):
+    monkeypatch.setattr(rollout, "ARTIFACTS", tmp_path)
+    monkeypatch.setattr(spec, "ARTIFACTS", tmp_path)
+    capture, prepared, protected = _approval(tmp_path, no_freeze=True)
+    root = Path(capture["root"])
+    (root / "approval.json").write_bytes((canonical(capture) + "\n").encode())
+    backend = FakeBackend(capture, prepared, protected)
+    completion = rollout.run(capture, backend, source_root=SOURCE,
+                             sleep=lambda _: pytest.fail("no wait needed"))
+    marker = direct.custody_marker(capture["payload"]["window"])
+    assert completion["evidence"]["custody"] == marker
+    grant = deepcopy(capture)
+    grant["kind"] = "grant"
+    grant["root"] = str(tmp_path / (rollout.ROOT_NAMES["grant"] + "abcdef"))
+    grant["predecessor"] = {"root": str(root), "result_sha256": hashlib.sha256(
+        (canonical(completion) + "\n").encode()).hexdigest()}
+    grant["payload"] = {
+        "packaged_source": capture["payload"]["packaged_source"],
+        "git_sha": GIT, "image_binding": capture["image_binding"],
+        "window": capture["payload"]["window"],
+        "before_snapshot": completion["evidence"]["before_snapshot"],
+        "helper_attestation": completion["evidence"]["helper_attestation"],
+        "capture_custody": marker}
+    assert rollout.predecessor(grant, source_root=SOURCE)["completion"] == completion
+    for variant in ("missing", "forged", "mixed"):
+        bad = deepcopy(grant)
+        if variant == "missing":
+            bad["payload"].pop("capture_custody")
+        elif variant == "forged":
+            bad["payload"]["capture_custody"] = {**marker, "mode": "CUSTODY_V1"}
+        else:
+            bad["payload"]["window"].pop("dev_no_freeze_risk_accepted")
+            bad["payload"]["window"].update(
+                exclusive_administration=True, data_schema_custody=True,
+                future_owner_provisioning=True)
+        with pytest.raises(rollout.DeliveryError):
+            rollout.predecessor(bad, source_root=SOURCE)
+    for variant in ("missing", "forged"):
+        evidence = deepcopy(completion["evidence"])
+        if variant == "missing":
+            evidence.pop("custody")
+        else:
+            evidence["custody"] = {**marker, "mode": "CUSTODY_V1"}
+        certificate = spec.seal_certificate(
+            payload_sha256=prepared["payload_sha256"],
+            stage="direct-capture-readonly", evidence=evidence)
+        with pytest.raises(rollout.DeliveryError,
+                           match="INCOMPLETE_DIRECT_CAPTURE_CERTIFICATE"):
+            rollout._evidence("capture", certificate, prepared)
 
 
 def test_protected_drift_stops_before_create(monkeypatch, tmp_path):
@@ -345,3 +419,29 @@ def test_operator_loads_only_exact_root_bound_approval(monkeypatch, tmp_path):
     path.write_text(duplicate)
     with pytest.raises(ValueError, match="DUPLICATE_DIRECT_APPROVAL_MEMBER"):
         operator.load_approval(path, fingerprint(approval), source_root=SOURCE)
+
+
+def test_no_freeze_operator_success_discloses_absent_custody(monkeypatch, tmp_path,
+                                                              capsys):
+    monkeypatch.setattr(spec, "ARTIFACTS", tmp_path)
+    approval, _, _ = _approval(tmp_path, no_freeze=True)
+    monkeypatch.setattr(operator, "load_approval", lambda *_a, **_k: approval)
+    monkeypatch.setattr(operator, "validate_approval", lambda *_a, **_k: {})
+
+    class FakeSession:
+        def close(self):
+            pass
+
+    class FakeOperatorBackend:
+        def __init__(self, *_a, **_k):
+            self.session = FakeSession()
+
+    monkeypatch.setattr(operator, "Backend", FakeOperatorBackend)
+    monkeypatch.setattr(operator, "run", lambda *_a, **_k: None)
+    monkeypatch.setattr(sys, "argv", ["operate", "--approval", "synthetic",
+                                     "--approval-hash", "a" * 64])
+    operator.main()
+    line = capsys.readouterr().out
+    assert "DEV_NO_FREEZE_V1" in line
+    assert "no administrative, schema, or future-owner custody" in line
+    assert "no post-commit permanence guarantee" in line

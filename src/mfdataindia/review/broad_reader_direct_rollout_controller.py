@@ -14,6 +14,7 @@ import time
 
 from mfdataindia.review import broad_reader_direct_delivery_controller as prepare
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
+from mfdataindia.review import broad_reader_direct_grant as direct
 from mfdataindia.review import broad_reader_direct_capacity as capacity
 from mfdataindia.review import broad_reader_direct_reader_check as reader_check
 from mfdataindia.review import broad_reader_lock_witness as witness
@@ -108,6 +109,9 @@ def predecessor(approval, *, source_root):
             "DIRECT_PREDECESSOR_EVIDENCE_DRIFT")
     payload = approval["payload"]
     prior_payload = previous_approval["payload"]
+    marker = direct.custody_marker(payload["window"])
+    require(marker == direct.custody_marker(prior_payload["window"]),
+            "DIRECT_PREDECESSOR_CUSTODY_MODE_DRIFT")
     require(payload["packaged_source"] == prior_payload["packaged_source"]
             and payload["git_sha"] == prior_payload["git_sha"]
             and payload["image_binding"] == prior_payload["image_binding"],
@@ -115,14 +119,20 @@ def predecessor(approval, *, source_root):
     if kind == "grant":
         require(payload["before_snapshot"] == previous_evidence["before_snapshot"]
                 and payload["helper_attestation"] ==
-                previous_evidence["helper_attestation"],
+                previous_evidence["helper_attestation"]
+                and (marker is None or
+                     (payload.get("capture_custody") == marker and
+                      previous_evidence.get("custody") == marker)),
                 "GRANT_NOT_DERIVED_FROM_COMPLETED_CAPTURE")
     else:
         receipt = previous_evidence["transaction_receipt"]
         require(receipt["stage"] == "COMMITTED_STATE_VERIFIED"
                 and payload["grant_receipt_sha256"] == fingerprint(receipt)
                 and payload["planned_after"] ==
-                prior_payload["before_snapshot"]["plan"]["after"],
+                prior_payload["before_snapshot"]["plan"]["after"]
+                and (marker is None or
+                     (payload.get("grant_custody") == marker and
+                      receipt.get("custody") == marker)),
                 "READER_NOT_DERIVED_FROM_COMPLETED_GRANT")
     return {"kind": expected_kind, "root": str(root),
             "approval": previous_approval, "prepared": previous_prepared,
@@ -244,12 +254,17 @@ def _evidence(kind, certificate, prepared):
     configured = {item["name"]: item["value"] for item in task_env
                   if "value" in item}
     bound = spec.payload_from_variables(configured)
+    marker = direct.custody_marker(bound["window"])
     if kind == "capture":
-        require(set(evidence) == {"format", "helper_attestation",
-                                  "before_snapshot", "packaged_source",
-                                  "capture_sha256", "grant_authorized"}
+        require(set(evidence) == ({"format", "helper_attestation",
+                                   "before_snapshot", "packaged_source",
+                                   "capture_sha256", "grant_authorized"}
+                                  | ({"custody"} if marker is not None else set()))
                 and evidence.get("format") ==
-                "mf-broad-reader-prewrite-capture-v1-nonexecutable"
+                ("mf-broad-reader-prewrite-capture-v2-no-freeze-nonexecutable"
+                 if marker is not None else
+                 "mf-broad-reader-prewrite-capture-v1-nonexecutable")
+                and (marker is None or evidence.get("custody") == marker)
                 and evidence.get("grant_authorized") is False
                 and type(evidence.get("before_snapshot")) is dict
                 and evidence["before_snapshot"].get("permission_enabled") is False
@@ -262,15 +277,19 @@ def _evidence(kind, certificate, prepared):
         plan = bound["before_snapshot"]["plan"]
         require(set(evidence) == {"transaction_receipt", "capacity_proof"}
                 and type(receipt) is dict
-                and set(receipt) == {
+                and set(receipt) == ({
                     "format", "stage", "request_sha256", "before_sha256",
                     "after_sha256", "source_sha256", "lock_proof",
                     "pregrant_equality", "postgrant_proof", "delta",
                     "materialized_unlocked", "postcommit_permanence_guarantee",
                     "authenticated_reader_verified", "ti_verified",
                     "permission_enabled"}
+                    | ({"custody"} if marker is not None else set()))
                 and receipt.get("format") ==
-                "mf-broad-reader-direct-transaction-receipt-v1"
+                ("mf-broad-reader-direct-transaction-receipt-v2-no-freeze"
+                 if marker is not None else
+                 "mf-broad-reader-direct-transaction-receipt-v1")
+                and (marker is None or receipt.get("custody") == marker)
                 and receipt.get("stage") == "COMMITTED_STATE_VERIFIED"
                 and receipt.get("request_sha256") == payload_sha
                 and receipt.get("before_sha256") == plan["full_before_sha256"]
@@ -313,7 +332,8 @@ def _evidence(kind, certificate, prepared):
         checked = reader_check.validate(
             reader["context"], reader["namespaces"], reader["relations"],
             reader["columns"], planned_after=bound["planned_after"])
-        require(reader == {**checked, "representative_select_completed": True},
+        require(reader == {**checked, "representative_select_completed": True,
+                           **({"custody": marker} if marker is not None else {})},
                 "UNMATCHED_AUTHENTICATED_READER_CAPABILITIES")
     return evidence
 

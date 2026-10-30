@@ -9,6 +9,20 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEWED_PARENT = "850873cc6469cf32f4bc427b7e56117983feb3b5"
+ADMITTED_PR133_MAIN = "9337a4d2d28c1c428039d20e8fbc3492b4c073eb"
+NO_FREEZE_MODIFIED = {
+    "scripts/apply_broad_reader_direct_dev.py",
+    "scripts/check_broad_reader_direct_dev.py",
+    "scripts/collect_broad_reader_direct_dev.py",
+    "src/mfdataindia/review/broad_reader_direct_delivery_spec.py",
+    "src/mfdataindia/review/broad_reader_direct_grant.py",
+    "src/mfdataindia/review/broad_reader_direct_rollout_controller.py",
+    "tests/test_broad_reader_direct_capture_stage_diagnostic.py",
+    "tests/test_broad_reader_direct_capture_worker.py",
+    "tests/test_broad_reader_direct_delivery_preservation.py",
+    "tests/test_broad_reader_direct_grant_postgres.py",
+    "tests/test_broad_reader_direct_rollout_controller.py",
+}
 GUARD = "tests/test_broad_reader_direct_parent_preservation.py"
 READER = "src/mfdataindia/review/broad_reader_direct_reader_check.py"
 READER_TEST = "tests/test_broad_reader_direct_reader_check.py"
@@ -75,7 +89,7 @@ def original_native_test(raw):
 def test_every_reviewed_parent_byte_mode_and_finite_delta_is_preserved():
     changed = subprocess.check_output(
         ["git", "diff", "--name-status", "--no-renames",
-         REVIEWED_PARENT + "..HEAD"], cwd=ROOT).decode().splitlines()
+         REVIEWED_PARENT + ".." + ADMITTED_PR133_MAIN], cwd=ROOT).decode().splitlines()
     assert set(changed) == {"M\t" + path for path in
                             (GUARD, READER, READER_TEST, NATIVE_TEST)} | {
                                 "A\t" + path for path in ADDED}
@@ -97,6 +111,11 @@ def test_every_reviewed_parent_byte_mode_and_finite_delta_is_preserved():
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
             raw = path.read_bytes()
+            if name in NO_FREEZE_MODIFIED:
+                # The new exact-parent guard pins every current byte. This
+                # historical proof still checks the admitted PR133 tree.
+                raw = subprocess.check_output(
+                    ["git", "show", ADMITTED_PR133_MAIN + ":" + name], cwd=ROOT)
             if name == GUARD:
                 raw = original_guard(raw)
             elif name == READER:

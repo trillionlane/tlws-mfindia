@@ -65,16 +65,17 @@ def run_worker(environment):
     _spec_stage("payload", lambda: spec.validate_capture_payload(
         payload, final_git_sha=environment["DEPLOYMENT_GIT_SHA"],
         source_root=ROOT))
-    _spec_stage("window", lambda: policy._live(payload["window"], remaining=30))
+    _spec_stage("window", lambda: direct.direct_live(payload["window"], remaining=30))
     arguments = _spec_stage("dsn", lambda: spec.connection_arguments(
         "capture", environment["MFDATAINDIA_DSN"]))
-    _spec_stage("window", lambda: policy._live(payload["window"], remaining=30))
+    _spec_stage("window", lambda: direct.direct_live(payload["window"], remaining=30))
     conn = _spec_stage("connect", lambda: psycopg.connect(**arguments))
     failure = None
     result = None
     try:
         result = _spec_stage("capture", lambda: direct.capture_before(
-            conn, packaged_source=packaged, source_root=ROOT))
+            conn, packaged_source=packaged, source_root=ROOT,
+            window=payload["window"]))
     except BaseException as error:
         failure = error
     finally:

@@ -8,6 +8,7 @@ import re
 import sys
 
 from mfdataindia.review.broad_reader_direct_delivery_backend import Backend
+from mfdataindia.review import broad_reader_direct_grant as direct
 from mfdataindia.review.broad_reader_direct_rollout_controller import run, validate_approval
 from mfdataindia.review.policy import fingerprint
 
@@ -48,8 +49,14 @@ def main():
         run(approval, backend, source_root=source_root)
     finally:
         backend.session.close()
-    print("one direct DEV reader stage verified; TI acceptance remains separate",
-          flush=True)
+    if direct.custody_marker(approval["payload"]["window"]) is None:
+        print("one direct DEV reader stage verified; TI acceptance remains separate",
+              flush=True)
+    else:
+        print("one direct DEV reader stage verified; DEV_NO_FREEZE_V1; "
+              "no administrative, schema, or future-owner custody; "
+              "no post-commit permanence guarantee; TI acceptance remains separate",
+              flush=True)
 
 
 if __name__ == "__main__":
