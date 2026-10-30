@@ -1,7 +1,10 @@
 """Provider-free, value-free diagnostics for one future direct capture."""
 
+import hashlib
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import stat
+import subprocess
 
 import pytest
 
@@ -9,6 +12,13 @@ from mfdataindia.review import broad_reader_direct_delivery_spec as spec
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PARENT = "ae752f711f422da6ac7fad8df847e9eda7de2372"
+WORKER = "scripts/collect_broad_reader_direct_dev.py"
+PRESERVATION = "tests/test_broad_reader_direct_delivery_preservation.py"
+THIS_TEST = "tests/test_broad_reader_direct_capture_stage_diagnostic.py"
+ADDED_PRESERVATION_LINE = (
+    b'    "tests/test_broad_reader_direct_capture_stage_diagnostic.py",\n'
+)
 WORKER_SPEC = spec_from_file_location(
     "_stage_direct_capture_worker", ROOT / "scripts" / "collect_broad_reader_direct_dev.py")
 assert WORKER_SPEC is not None and WORKER_SPEC.loader is not None
@@ -20,6 +30,34 @@ FIXTURE_SPEC = spec_from_file_location(
 assert FIXTURE_SPEC is not None and FIXTURE_SPEC.loader is not None
 fixture = module_from_spec(FIXTURE_SPEC)
 FIXTURE_SPEC.loader.exec_module(fixture)
+
+
+def test_exact_pr132_successor_delta_and_original_guard_bytes():
+    changed = subprocess.check_output(
+        ["git", "diff", "--name-status", "--no-renames", PARENT], cwd=ROOT
+    ).decode().splitlines()
+    assert set(changed) == {
+        "M\t" + WORKER, "M\t" + PRESERVATION, "A\t" + THIS_TEST,
+    }
+    worker_path = ROOT / WORKER
+    guard_path = ROOT / PRESERVATION
+    new_test_path = ROOT / THIS_TEST
+    for path in (worker_path, guard_path, new_test_path):
+        assert path.is_file() and not path.is_symlink()
+        assert stat.S_ISREG(path.stat().st_mode)
+        assert not path.stat().st_mode & 0o111
+    assert hashlib.sha256(worker_path.read_bytes()).hexdigest() == (
+        "3383bb431a077c0ef19eff57ded435d4950adbdf7a46b1662ddbce9fc3e9d350"
+    )
+    current_guard = guard_path.read_bytes()
+    assert current_guard.count(ADDED_PRESERVATION_LINE) == 1
+    old_guard = current_guard.replace(ADDED_PRESERVATION_LINE, b"", 1)
+    assert hashlib.sha256(old_guard).hexdigest() == (
+        "8e364a74954053086f36f5403745e7f5083a32a3e9ff11e9a1c5a6cce67f25b0"
+    )
+    assert old_guard == subprocess.check_output(
+        ["git", "show", PARENT + ":" + PRESERVATION], cwd=ROOT
+    )
 
 
 def fail(error):
