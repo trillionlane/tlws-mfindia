@@ -226,7 +226,9 @@ def test_intent_hash_binds_kind_root_complete_payload_before_worker_dsn(kind):
     assert preimage["payload_without_create_only_intent_sha256"] == {
         "format": "synthetic-provider-free"}
     assert decoded["create_only_intent_sha256"] == digest
-    for changed_root in (root + "x", root.replace("20261029", "20261028")):
+    expected_date = "20261030" if kind == "capture" else "20261029"
+    assert expected_date in root
+    for changed_root in (root + "x", root.replace(expected_date, "20261028")):
         with pytest.raises(spec.DeliverySpecError):
             spec.require_intent(kind, changed_root, decoded)
     tampered = deepcopy(decoded)
