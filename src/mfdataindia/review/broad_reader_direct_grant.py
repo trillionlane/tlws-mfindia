@@ -192,7 +192,8 @@ def run(target, observer, permit, *, source_root):
 
     The observer must be an explicitly declared separate direct-owner backend.
     The 15-second wall includes target preflight, pristine baseline, both lock
-    phases, observer reread, grant, commit and observer postcommit readback.
+    phases, target-local complete reread, grant, commit and independent
+    observer postcommit readback.
     Authenticated reader and TI checks remain separate acceptance gates.
     """
     document = permit.consume(source_root=source_root)  # Before owner I/O.
@@ -261,10 +262,27 @@ def run(target, observer, permit, *, source_root):
                 views=view_locks, target_pid=pid, observer_pid=observer_pid,
                 database_oid=database_oid)
 
+            # A separate backend's pg_get_viewdef can wait on the target's
+            # exclusive locks. The target can read its own locked catalogue.
+            # Roll back only the read's extra locks before comparing the exact
+            # independent phase-two witness; the earlier locks remain held.
+            saved = _io(target, "SAVEPOINT broad_reader_pregrant_read", end=end)
+            policy.require(saved.statusmessage == "SAVEPOINT",
+                           "PREGRANT_READ_SAVEPOINT_UNCONFIRMED")
             pregrant = snapshot.read(
-                observer, packaged=document["packaged_source"],
+                target, packaged=document["packaged_source"],
                 helper_attestation=document["helper_attestation"])
             equality = snapshot.compare(before, pregrant)
+            rolled_back_read = _io(
+                target, "ROLLBACK TO SAVEPOINT broad_reader_pregrant_read", end=end)
+            policy.require(rolled_back_read.statusmessage == "ROLLBACK",
+                           "PREGRANT_READ_LOCK_RELEASE_UNCONFIRMED")
+            released = _io(target, "RELEASE SAVEPOINT broad_reader_pregrant_read", end=end)
+            policy.require(released.statusmessage == "RELEASE",
+                           "PREGRANT_READ_SAVEPOINT_RELEASE_UNCONFIRMED")
+            policy.require(target.info.backend_pid == pid
+                           and target.info.transaction_status == TransactionStatus.INTRANS,
+                           "TARGET_BACKEND_CHANGED_AFTER_PREGRANT_READ")
             policy.require(_locks(observer, pid, end=end) == view_locks,
                            "PREGRANT_TARGET_LOCK_WITNESS_DRIFT")
             policy._live(document["window"])

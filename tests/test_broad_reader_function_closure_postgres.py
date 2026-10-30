@@ -115,22 +115,35 @@ def test_native_complete_source_helper_callee_seals_and_acl(source_reference_db)
                 database_oid=context["database"])
             assert proof["grant_authorized"] is False
             assert len(json.dumps(proof, sort_keys=True).encode()) < 8 * 1024 * 1024
-            # The observer's complete prewrite reread runs while the target
-            # holds every lock. It must fit the SAME 15-second wall, and no
-            # target catalogue query or GRANT is introduced by this test.
-            state_again = conn.execute(policy.STATE_SQL, prepare=False).fetchone()["value"]
-            candidates_again = [dict(row) for row in conn.execute(
+            # Read the complete catalogue on the same backend that holds the
+            # locks; an independent pg_get_viewdef can block behind them.
+            # The savepoint releases only locks added by this read, retaining
+            # the exact independently witnessed phase-two lock set.
+            target.execute("SAVEPOINT broad_reader_pregrant_read", prepare=False)
+            state_again = target.execute(policy.STATE_SQL, prepare=False).fetchone()["value"]
+            candidates_again = [dict(row) for row in target.execute(
                 capture_inventory.CANDIDATE_SQL, prepare=False).fetchall()]
-            functions_again = [dict(row) for row in conn.execute(
+            leaves_again = [dict(row) for row in target.execute(
+                dependencies.SYSTEM_LEAVES_SQL, prepare=False).fetchall()]
+            functions_again = [dict(row) for row in target.execute(
                 closure.FUNCTION_SQL, prepare=False).fetchall()]
-            ledger_again = [dict(row) for row in conn.execute(
+            ledger_again = [dict(row) for row in target.execute(
                 source_authority.LEDGER_SQL, prepare=False).fetchall()]
             assert state_again == state
             assert candidates_again == candidates
+            assert leaves_again == leaves
             assert functions_again == rows and ledger_again == ledger
             assert len(json.dumps({"state": state_again, "candidates": candidates_again,
                                    "functions": functions_again, "ledger": ledger_again,
                                    "lock_witness": proof}, sort_keys=True).encode()) < 8 * 1024 * 1024
+            with_self_read = snapshot()
+            phase_two = {(row["oid"], row["mode"]) for row in view_locks}
+            added = {(row["oid"], row["mode"]) for row in with_self_read} - phase_two
+            assert added and all(mode == "AccessShareLock" for _, mode in added)
+            assert all(row in with_self_read for row in view_locks)
+            target.execute("ROLLBACK TO SAVEPOINT broad_reader_pregrant_read", prepare=False)
+            target.execute("RELEASE SAVEPOINT broad_reader_pregrant_read", prepare=False)
+            assert snapshot() == view_locks
             assert time.monotonic() - started < 15
             target.execute("ROLLBACK", prepare=False)
             assert snapshot() == []

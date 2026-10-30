@@ -1,5 +1,6 @@
 """Disposable PG18 end-to-end direct grant only; never a live DB/prod test."""
 
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import json
@@ -12,6 +13,7 @@ import pytest
 
 from broad_reader_native_oid_isomorphism import validate as validate_native_oids
 from mfdataindia.review import broad_reader_direct_grant as grant
+from mfdataindia.review import broad_reader_direct_plan as direct_plan
 from mfdataindia.review import broad_reader_direct_reader_check as reader_check
 from mfdataindia.review import broad_reader_embedded_authority as embedded
 from mfdataindia.review import broad_reader_policy as policy
@@ -75,6 +77,21 @@ def exact_source_db(pg_dsn):
 def _connection(dsn):
     return psycopg.connect(dsn, autocommit=True, row_factory=dict_row,
                            connect_timeout=5)
+
+
+def _cross_capture_stable_snapshot(value):
+    """Only two attestation-derived hashes vary between fresh captures.
+
+    The operational within-permit full snapshot comparison is untouched.
+    Regenerate each complete prearmed reversal before excluding its derived
+    plan hash from this disposable test's cross-capture equality.
+    """
+    result = deepcopy(value["before_snapshot"])
+    plan = result["plan"]
+    assert plan["reversal_template"] == direct_plan.reversal_template(plan)
+    del plan["helper_attestation_sha256"]
+    del plan["reversal_template"]["grant_plan_sha256"]
+    return result
 
 
 def _permit(before, packaged):
@@ -146,7 +163,7 @@ def test_native_nowait_denial_has_no_grant_or_partial_default_acl(exact_source_d
                 blocker.execute("ROLLBACK", prepare=False)
         after = grant.capture_before(observer, packaged_source=packaged,
                                      source_root=ROOT)
-        assert after["before_snapshot"] == before["before_snapshot"]
+        assert _cross_capture_stable_snapshot(after) == _cross_capture_stable_snapshot(before)
         with _connection(reader_dsn) as reader:
             reader.execute("BEGIN READ ONLY", prepare=False)
             try:

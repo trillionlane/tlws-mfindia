@@ -43,19 +43,28 @@ class _Info:
 
 
 class _Connection:
-    def __init__(self, pid, *, lock_rows=(), commit_fails=False):
+    def __init__(self, pid, *, lock_rows=(), commit_fails=False, events=None):
         self.autocommit = True
         self.info = _Info(pid)
         self.statements = []
         self.lock_rows = list(lock_rows)
         self.commit_fails = commit_fails
+        self.snapshot_reads = 0
+        self.events = events if events is not None else []
 
     def execute(self, statement, parameters=None, *, prepare=False):
         assert prepare is False
         self.statements.append((statement, parameters))
+        self.events.append((self.info.backend_pid, statement))
         if statement.startswith("BEGIN "):
             self.info.transaction_status = TransactionStatus.INTRANS
             return _Cursor(status="BEGIN")
+        if statement == "SAVEPOINT broad_reader_pregrant_read":
+            return _Cursor(status="SAVEPOINT")
+        if statement == "ROLLBACK TO SAVEPOINT broad_reader_pregrant_read":
+            return _Cursor(status="ROLLBACK")
+        if statement == "RELEASE SAVEPOINT broad_reader_pregrant_read":
+            return _Cursor(status="RELEASE")
         if statement == "ROLLBACK":
             self.info.transaction_status = TransactionStatus.IDLE
             return _Cursor(status="ROLLBACK")
@@ -107,7 +116,12 @@ def _case(monkeypatch, *, drift=False, commit_fails=False):
     else:
         before_reread = deepcopy(before)
     snapshots = iter((before_reread, after))
-    monkeypatch.setattr(grant.snapshot, "read", lambda *_args, **_kwargs: next(snapshots))
+    def read(conn, **_kwargs):
+        conn.snapshot_reads += 1
+        conn.events.append((conn.info.backend_pid, "COMPLETE_SNAPSHOT_READ"))
+        return next(snapshots)
+
+    monkeypatch.setattr(grant.snapshot, "read", read)
     monkeypatch.setattr(grant.dependencies, "lock_phases",
                         lambda _scope: (["LOCK TABLE ONLY mf.t IN ACCESS EXCLUSIVE MODE NOWAIT"],
                                         ["LOCK TABLE ONLY mf.v IN ACCESS SHARE MODE NOWAIT"]))
@@ -133,8 +147,9 @@ def _case(monkeypatch, *, drift=False, commit_fails=False):
                                        ("tools", "mfdataindia-review-tools"))},
                 "create_only_intent_sha256": "b" * 64}
     permit = grant.Permit(document, policy.fingerprint(document))
-    target = _Connection(100, commit_fails=commit_fails)
-    observer = _Connection(200, lock_rows=[[], [], [], []])
+    events = []
+    target = _Connection(100, commit_fails=commit_fails, events=events)
+    observer = _Connection(200, lock_rows=[[], [], [], []], events=events)
     return target, observer, permit
 
 
@@ -149,6 +164,16 @@ def test_exact_two_phase_write_has_separate_observer_and_still_needs_consumer():
         "LOCK TABLE ONLY mf.v IN ACCESS SHARE MODE NOWAIT") < sql.index(
             "GRANT SELECT ON TABLE mf.t TO mfdata_verified_reader") < sql.index("COMMIT")
     assert sql.count(policy.CONTEXT_SQL) == 1
+    assert target.snapshot_reads == observer.snapshot_reads == 1
+    events = target.events
+    assert events.index((100, "SAVEPOINT broad_reader_pregrant_read")) < events.index(
+        (100, "COMPLETE_SNAPSHOT_READ")) < events.index(
+        (100, "ROLLBACK TO SAVEPOINT broad_reader_pregrant_read")) < events.index(
+        (100, "RELEASE SAVEPOINT broad_reader_pregrant_read"))
+    assert events.index((100, "RELEASE SAVEPOINT broad_reader_pregrant_read")) < events.index(
+        (200, grant.witness.LOCK_WITNESS_SQL),
+        events.index((100, "RELEASE SAVEPOINT broad_reader_pregrant_read"))) < events.index(
+        (100, "GRANT SELECT ON TABLE mf.t TO mfdata_verified_reader"))
     assert receipt["stage"] == "COMMITTED_STATE_VERIFIED"
     assert receipt["permission_enabled"] is receipt["ti_verified"] is False
     assert permit.used is True and observer.lock_rows == []
@@ -164,6 +189,7 @@ def test_full_pregrant_drift_aborts_before_grant_and_confirms_rollback():
             grant.run(target, observer, permit, source_root=ROOT)
     sql = [statement for statement, _ in target.statements]
     assert sql.count("ROLLBACK") == 2  # preflight plus sole grant abort
+    assert target.snapshot_reads == 1 and observer.snapshot_reads == 0
     assert not any(statement.startswith("GRANT ") for statement in sql)
     assert "COMMIT" not in sql and observer.info.transaction_status == TransactionStatus.IDLE
 
