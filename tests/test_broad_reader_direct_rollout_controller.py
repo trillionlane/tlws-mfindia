@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import hashlib
 import json
@@ -14,7 +15,12 @@ from mfdataindia.review import broad_reader_direct_rollout_controller as rollout
 from mfdataindia.review import broad_reader_source_authority as source
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.policy import canonical
-from scripts import operate_broad_reader_direct_dev as operator
+_SCRIPT_SPEC = spec_from_file_location(
+    "_phasec_operate_broad_reader_direct_dev",
+    Path(__file__).resolve().parents[1] / "scripts" / "operate_broad_reader_direct_dev.py")
+assert _SCRIPT_SPEC is not None and _SCRIPT_SPEC.loader is not None
+operator = module_from_spec(_SCRIPT_SPEC)
+_SCRIPT_SPEC.loader.exec_module(operator)
 
 
 SOURCE = Path(__file__).resolve().parents[1]

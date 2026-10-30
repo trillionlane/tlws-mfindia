@@ -1,10 +1,17 @@
 """Both-image direct delivery smoke remains provider-free and byte-bound."""
 
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
 import pytest
 
-from scripts import smoke_broad_reader_direct_delivery_binding as binding
+_SCRIPT_SPEC = spec_from_file_location(
+    "_phasec_smoke_broad_reader_direct_delivery_binding",
+    Path(__file__).resolve().parents[1] / "scripts"
+    / "smoke_broad_reader_direct_delivery_binding.py")
+assert _SCRIPT_SPEC is not None and _SCRIPT_SPEC.loader is not None
+binding = module_from_spec(_SCRIPT_SPEC)
+_SCRIPT_SPEC.loader.exec_module(binding)
 
 
 ROOT = Path(__file__).resolve().parents[1]

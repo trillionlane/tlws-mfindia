@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from importlib.util import module_from_spec, spec_from_file_location
 import json
 from pathlib import Path
 
@@ -10,7 +11,12 @@ import pytest
 from mfdataindia.review import broad_reader_direct_delivery_controller as controller
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
 from mfdataindia.review import broad_reader_source_authority as source
-from scripts import check_broad_reader_direct_dev as worker
+_SCRIPT_SPEC = spec_from_file_location(
+    "_phasec_check_broad_reader_direct_dev",
+    Path(__file__).resolve().parents[1] / "scripts" / "check_broad_reader_direct_dev.py")
+assert _SCRIPT_SPEC is not None and _SCRIPT_SPEC.loader is not None
+worker = module_from_spec(_SCRIPT_SPEC)
+_SCRIPT_SPEC.loader.exec_module(worker)
 
 
 ROOT = Path(__file__).resolve().parents[1]
