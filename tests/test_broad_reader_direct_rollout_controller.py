@@ -222,9 +222,18 @@ def test_completed_capture_is_required_for_grant_and_exact_snapshot(
     grant["payload"] = {
         "packaged_source": capture["payload"]["packaged_source"],
         "git_sha": GIT, "image_binding": capture["image_binding"],
+        "window": capture["payload"]["window"],
         "before_snapshot": completion["evidence"]["before_snapshot"],
         "helper_attestation": completion["evidence"]["helper_attestation"]}
     assert rollout.predecessor(grant, source_root=SOURCE)["completion"] == completion
+    mixed = deepcopy(grant)
+    mixed["payload"]["window"].update(
+        exclusive_administration=False, data_schema_custody=False,
+        future_owner_provisioning=False,
+        dev_no_freeze_risk_accepted=True)
+    with pytest.raises(rollout.DeliveryError,
+                       match="DIRECT_PREDECESSOR_CUSTODY_MODE_DRIFT"):
+        rollout.predecessor(mixed, source_root=SOURCE)
     changed = deepcopy(grant)
     changed["predecessor"]["result_sha256"] = "0" * 64
     with pytest.raises(rollout.DeliveryError,

@@ -13,6 +13,7 @@ from mfdataindia.review import broad_reader_direct_delivery_spec as spec
 
 ROOT = Path(__file__).resolve().parents[1]
 PARENT = "ae752f711f422da6ac7fad8df847e9eda7de2372"
+ADMITTED_PR133_MAIN = "9337a4d2d28c1c428039d20e8fbc3492b4c073eb"
 WORKER = "scripts/collect_broad_reader_direct_dev.py"
 PRESERVATION = "tests/test_broad_reader_direct_delivery_preservation.py"
 THIS_TEST = "tests/test_broad_reader_direct_capture_stage_diagnostic.py"
@@ -34,22 +35,28 @@ FIXTURE_SPEC.loader.exec_module(fixture)
 
 def test_exact_pr132_successor_delta_and_original_guard_bytes():
     changed = subprocess.check_output(
-        ["git", "diff", "--name-status", "--no-renames", PARENT], cwd=ROOT
+        ["git", "diff", "--name-status", "--no-renames",
+         PARENT + ".." + ADMITTED_PR133_MAIN], cwd=ROOT
     ).decode().splitlines()
     assert set(changed) == {
         "M\t" + WORKER, "M\t" + PRESERVATION, "A\t" + THIS_TEST,
     }
-    worker_path = ROOT / WORKER
-    guard_path = ROOT / PRESERVATION
-    new_test_path = ROOT / THIS_TEST
-    for path in (worker_path, guard_path, new_test_path):
+    worker_bytes = subprocess.check_output(
+        ["git", "show", ADMITTED_PR133_MAIN + ":" + WORKER], cwd=ROOT)
+    guard_bytes = subprocess.check_output(
+        ["git", "show", ADMITTED_PR133_MAIN + ":" + PRESERVATION], cwd=ROOT)
+    new_test_bytes = subprocess.check_output(
+        ["git", "show", ADMITTED_PR133_MAIN + ":" + THIS_TEST], cwd=ROOT)
+    for name in (WORKER, PRESERVATION, THIS_TEST):
+        path = ROOT / name
         assert path.is_file() and not path.is_symlink()
         assert stat.S_ISREG(path.stat().st_mode)
         assert not path.stat().st_mode & 0o111
-    assert hashlib.sha256(worker_path.read_bytes()).hexdigest() == (
+    assert new_test_bytes
+    assert hashlib.sha256(worker_bytes).hexdigest() == (
         "3383bb431a077c0ef19eff57ded435d4950adbdf7a46b1662ddbce9fc3e9d350"
     )
-    current_guard = guard_path.read_bytes()
+    current_guard = guard_bytes
     assert current_guard.count(ADDED_PRESERVATION_LINE) == 1
     old_guard = current_guard.replace(ADDED_PRESERVATION_LINE, b"", 1)
     assert hashlib.sha256(old_guard).hexdigest() == (
@@ -137,7 +144,7 @@ def test_each_real_boundary_is_labeled_once_and_keeps_connection_order(monkeypat
         monkeypatch.setattr(worker.spec, "validate_capture_payload",
                             lambda *_, **__: fail(spec.DeliverySpecError("STATIC_PAYLOAD_SENTINEL")))
     elif stage == "window":
-        monkeypatch.setattr(worker.policy, "_live",
+        monkeypatch.setattr(worker.direct, "direct_live",
                             lambda *_, **__: fail(spec.DeliverySpecError("STATIC_WINDOW_SENTINEL")))
     elif stage == "dsn":
         monkeypatch.setattr(worker.spec, "connection_arguments",

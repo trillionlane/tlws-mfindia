@@ -77,10 +77,11 @@ def test_read_only_worker_attests_before_single_owner_connection(monkeypatch):
         calls.append("connect")
         return FakeConnection()
 
-    def capture(conn, *, packaged_source, source_root):
+    def capture(conn, *, packaged_source, source_root, window):
         assert isinstance(conn, FakeConnection)
         assert packaged_source == payload["packaged_source"]
         assert source_root == ROOT
+        assert window == payload["window"]
         calls.append("capture")
         return {"format": "synthetic-read-only-capture",
                 "grant_authorized": False, "permission_enabled": False}

@@ -13,6 +13,7 @@ import psycopg
 from mfdataindia.review import broad_reader_direct_delivery_controller as controller
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
 from mfdataindia.review import broad_reader_direct_reader_check as reader
+from mfdataindia.review import broad_reader_direct_grant as direct
 from mfdataindia.review import broad_reader_policy as policy
 from mfdataindia.review import broad_reader_source_authority as source
 from mfdataindia.review.evidence_transport import render_evidence
@@ -38,9 +39,9 @@ def run_worker(environment):
     document = spec.validate_reader_payload(
         payload, final_git_sha=environment["DEPLOYMENT_GIT_SHA"],
         source_root=ROOT)
-    policy._live(document["window"], remaining=15)
+    direct.direct_live(document["window"], remaining=15)
     arguments = spec.connection_arguments("reader", environment["MFDATAINDIA_DSN"])
-    policy._live(document["window"], remaining=15)
+    direct.direct_live(document["window"], remaining=15)
     conn = psycopg.connect(**arguments)  # One reader connection, no owner role.
     failure = None
     result = None
@@ -60,6 +61,9 @@ def run_worker(environment):
                  and result["permission_enabled"] is False
                  and result["ti_verified"] is False,
                  "AUTHENTICATED_READER_RESULT_DRIFT")
+    marker = direct.custody_marker(document["window"])
+    if marker is not None:
+        result["custody"] = marker
     certificate = spec.seal_certificate(
         payload_sha256=policy.fingerprint(document),
         stage="direct-authenticated-reader",
