@@ -57,9 +57,13 @@ def test_complete_postgrant_only_exact_policy_delta_and_schema_usage():
 
 def test_server_allocated_default_acl_row_oid_is_sole_normalization():
     before, after_state = _bundle()
-    before["state"]["defaults"] = [{"oid": 777, "creator": 9}]
-    after_state["defaults"] = [{"oid": 888, "creator": 9, "acl": "SELECT"}]
-    before["plan"]["before"] = [{"creator": 9}]
+    before_row = {"oid": 777, "defaclrole": 9, "defaclnamespace": 10,
+                  "defaclobjtype": "r", "acl": []}
+    after_row = {"oid": 888, "defaclrole": 9, "defaclnamespace": 10,
+                 "defaclobjtype": "r", "acl": [[9, 11, "SELECT", False]]}
+    before["state"]["defaults"] = [before_row]
+    after_state["defaults"] = [after_row]
+    before["plan"]["before"] = [{k: v for k, v in before_row.items() if k != "oid"}]
     before["plan"]["after"] = snapshot.canonical_state(after_state)
     before["plan"]["full_after_sha256"] = policy.fingerprint(
         snapshot.canonical_state(after_state))
@@ -67,9 +71,51 @@ def test_server_allocated_default_acl_row_oid_is_sole_normalization():
     after["state"] = after_state
     after["plan"] = {"after": snapshot.canonical_state(after_state),
                      "delta": {"relations": []}}
-    assert snapshot.canonical_state(before["state"])["defaults"] == [{"creator": 9}]
+    assert snapshot.canonical_state(before["state"])["defaults"] == [
+        {k: v for k, v in before_row.items() if k != "oid"}]
     assert snapshot.compare_post(before, after)["permission_enabled"] is False
     drift = deepcopy(after)
     drift["state"]["relations"].append({"oid": 9})
     with pytest.raises(snapshot.SnapshotError):
         snapshot.compare_post(before, drift)
+
+
+def test_postgrant_default_rows_compare_in_logical_key_order_without_dropping_fields():
+    before, after_state = _bundle()
+    after_state["defaults"] = [
+        {"oid": 700, "defaclrole": 9, "defaclnamespace": 30,
+         "defaclobjtype": "r", "acl": [[9, 11, "SELECT", False]]},
+        {"oid": 701, "defaclrole": 9, "defaclnamespace": 20,
+         "defaclobjtype": "r", "acl": [[9, 11, "SELECT", False]]},
+    ]
+    physical = deepcopy(after_state)
+    planned = deepcopy(after_state)
+    for row in planned["defaults"]:
+        row.pop("oid")
+    planned["defaults"].sort(key=lambda row: (
+        row["defaclrole"], row["defaclnamespace"], row["defaclobjtype"]))
+    before["plan"]["after"] = planned
+    before["plan"]["full_after_sha256"] = policy.fingerprint(planned)
+    after = deepcopy(before)
+    after["state"] = physical
+    after["plan"] = {"after": planned, "delta": {"relations": []}}
+    assert after["state"] == physical
+    assert snapshot.compare_post(before, after)["permission_enabled"] is False
+    assert after["state"] == physical
+    for change in ("missing", "extra", "altered", "malformed_key", "malformed_type"):
+        drift = deepcopy(after)
+        if change == "missing":
+            drift["state"]["defaults"].pop()
+        elif change == "extra":
+            drift["state"]["defaults"].append(
+                {"oid": 702, "defaclrole": 9, "defaclnamespace": 40,
+                 "defaclobjtype": "r", "acl": [[9, 11, "SELECT", False]]})
+        elif change == "altered":
+            drift["state"]["defaults"][0]["acl"] = []
+        elif change == "malformed_key":
+            drift["state"]["defaults"][0].pop("defaclrole")
+        else:
+            drift["state"]["defaults"][0]["defaclnamespace"] = "30"
+        with pytest.raises(snapshot.SnapshotError,
+                           match="INCOMPLETE_BROAD_READER_LIVE_SNAPSHOT"):
+            snapshot.compare_post(before, drift)

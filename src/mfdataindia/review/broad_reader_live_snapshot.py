@@ -37,12 +37,21 @@ def _rows(conn, statement, columns):
 
 
 def canonical_state(state):
-    """The sole frozen normalization: discard server-allocated default row OIDs."""
+    """Normalize only default row OIDs and their complete logical ordering."""
     _require(type(state) is dict and type(state.get("defaults")) is list)
     value = deepcopy(state)
+    required = {"defaclrole", "defaclnamespace", "defaclobjtype", "acl"}
     for row in value["defaults"]:
-        _require(type(row) is dict)
+        _require(type(row) is dict and set(row) in (required, required | {"oid"}))
+        _require(type(row["defaclrole"]) is int
+                 and type(row["defaclnamespace"]) is int
+                 and type(row["defaclobjtype"]) is str
+                 and type(row["acl"]) is list)
+        if "oid" in row:
+            _require(type(row["oid"]) is int)
         row.pop("oid", None)
+    value["defaults"].sort(key=lambda row: (
+        row["defaclrole"], row["defaclnamespace"], row["defaclobjtype"]))
     return value
 
 
