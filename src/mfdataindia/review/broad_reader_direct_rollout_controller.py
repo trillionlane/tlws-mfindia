@@ -109,8 +109,8 @@ def predecessor(approval, *, source_root):
             "DIRECT_PREDECESSOR_EVIDENCE_DRIFT")
     payload = approval["payload"]
     prior_payload = previous_approval["payload"]
-    require(direct.custody_marker(payload["window"]) ==
-            direct.custody_marker(prior_payload["window"]),
+    marker = direct.custody_marker(payload["window"])
+    require(marker == direct.custody_marker(prior_payload["window"]),
             "DIRECT_PREDECESSOR_CUSTODY_MODE_DRIFT")
     require(payload["packaged_source"] == prior_payload["packaged_source"]
             and payload["git_sha"] == prior_payload["git_sha"]
@@ -120,9 +120,9 @@ def predecessor(approval, *, source_root):
         require(payload["before_snapshot"] == previous_evidence["before_snapshot"]
                 and payload["helper_attestation"] ==
                 previous_evidence["helper_attestation"]
-                and (direct.custody_marker(payload["window"]) is None
-                     or payload["capture_custody"] ==
-                     previous_evidence["custody"]),
+                and (marker is None or
+                     (payload.get("capture_custody") == marker and
+                      previous_evidence.get("custody") == marker)),
                 "GRANT_NOT_DERIVED_FROM_COMPLETED_CAPTURE")
     else:
         receipt = previous_evidence["transaction_receipt"]
@@ -130,8 +130,9 @@ def predecessor(approval, *, source_root):
                 and payload["grant_receipt_sha256"] == fingerprint(receipt)
                 and payload["planned_after"] ==
                 prior_payload["before_snapshot"]["plan"]["after"]
-                and (direct.custody_marker(payload["window"]) is None
-                     or payload["grant_custody"] == receipt["custody"]),
+                and (marker is None or
+                     (payload.get("grant_custody") == marker and
+                      receipt.get("custody") == marker)),
                 "READER_NOT_DERIVED_FROM_COMPLETED_GRANT")
     return {"kind": expected_kind, "root": str(root),
             "approval": previous_approval, "prepared": previous_prepared,

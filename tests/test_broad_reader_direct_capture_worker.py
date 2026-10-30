@@ -10,6 +10,7 @@ import pytest
 
 from mfdataindia.review import broad_reader_direct_delivery_controller as controller
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
+from mfdataindia.review import broad_reader_direct_grant as direct
 from mfdataindia.review import broad_reader_source_authority as source
 _SCRIPT_SPEC = spec_from_file_location(
     "_phasec_collect_broad_reader_direct_dev",
@@ -33,7 +34,7 @@ DSN = ("host=/cloudsql/" + spec.CONNECTION + " dbname=" + spec.DATABASE
        + " user=" + spec.OWNER_ROLE + " password=synthetic-only")
 
 
-def _environment():
+def _environment(*, no_freeze=False):
     now = datetime.now(timezone.utc).replace(microsecond=0)
     payload = {
         "format": "mf-broad-reader-direct-capture-v1",
@@ -47,6 +48,11 @@ def _environment():
                    "data_schema_custody": True,
                    "future_owner_provisioning": True},
     }
+    if no_freeze:
+        payload["window"].update(exclusive_administration=False,
+                                 data_schema_custody=False,
+                                 future_owner_provisioning=False,
+                                 dev_no_freeze_risk_accepted=True)
     root = str(spec.ARTIFACTS / (spec.ROOT_PREFIXES["capture"] + "abcdef"))
     payload["create_only_intent_sha256"] = spec.intent_preimage(
         "capture", root, payload)[1]
@@ -60,6 +66,38 @@ def _environment():
                 "CLOUD_RUN_TASK_INDEX": "0", "CLOUD_RUN_TASK_ATTEMPT": "0",
                 "CLOUD_RUN_TASK_COUNT": "1"})
     return env, payload
+
+
+def test_no_freeze_capture_worker_certificate_has_exact_risk_marker(monkeypatch):
+    env, payload = _environment(no_freeze=True)
+    marker = direct.custody_marker(payload["window"])
+    worker._consumed = False
+    calls = []
+
+    class FakeConnection:
+        def close(self):
+            calls.append("close")
+
+    def capture(_conn, *, packaged_source, source_root, window):
+        assert packaged_source == payload["packaged_source"]
+        assert source_root == ROOT and window == payload["window"]
+        calls.append("capture")
+        return {"format": "mf-broad-reader-prewrite-capture-v2-no-freeze-nonexecutable",
+                "custody": marker, "grant_authorized": False,
+                "before_snapshot": {"permission_enabled": False},
+                "helper_attestation": {"synthetic": True},
+                "packaged_source": packaged_source,
+                "capture_sha256": spec.broad_policy.fingerprint(
+                    {"permission_enabled": False})}
+
+    monkeypatch.setattr(worker.psycopg, "connect",
+                        lambda **_: (calls.append("connect"), FakeConnection())[1])
+    monkeypatch.setattr(worker.direct, "capture_before", capture)
+    certificate = json.loads(worker.run_worker(env))
+    assert spec.verify_certificate(
+        certificate, payload_sha256=spec.broad_policy.fingerprint(payload),
+        stage="direct-capture-readonly")["custody"] == marker
+    assert calls == ["connect", "capture", "close"]
 
 
 def test_read_only_worker_attests_before_single_owner_connection(monkeypatch):

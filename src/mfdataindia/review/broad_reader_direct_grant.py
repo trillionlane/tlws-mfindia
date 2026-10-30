@@ -2,8 +2,9 @@
 
 This is a dormant engine, not a cloud job, secret reader, or authority to run.
 Its caller must supply the exact reviewed owner and observer connections, a
-fresh source-bound package, external custody, and a create-only execution
-intent. No caller-defined SQL, role, schema, or lock target is accepted.
+fresh source-bound package, an explicit custody or DEV no-freeze risk mode,
+and a create-only execution intent. No caller-defined SQL, role, schema, or
+lock target is accepted. The no-freeze mode offers no post-commit permanence.
 """
 
 from copy import deepcopy

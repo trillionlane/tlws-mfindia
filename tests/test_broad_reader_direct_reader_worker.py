@@ -10,6 +10,7 @@ import pytest
 
 from mfdataindia.review import broad_reader_direct_delivery_controller as controller
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
+from mfdataindia.review import broad_reader_direct_grant as direct
 from mfdataindia.review import broad_reader_source_authority as source
 _SCRIPT_SPEC = spec_from_file_location(
     "_phasec_check_broad_reader_direct_dev",
@@ -33,7 +34,7 @@ READER_DSN = ("host=/cloudsql/" + spec.CONNECTION + " dbname=" + spec.DATABASE
               + " user=" + spec.READER_ROLE + " password=synthetic-only")
 
 
-def _environment(monkeypatch):
+def _environment(monkeypatch, *, no_freeze=False):
     # The real current-policy validator is tested by the existing native suite;
     # this transport test supplies only a synthetic state, never a live claim.
     monkeypatch.setattr(spec.broad_policy, "require_current_policy",
@@ -53,6 +54,12 @@ def _environment(monkeypatch):
                    "data_schema_custody": True,
                    "future_owner_provisioning": True},
     }
+    if no_freeze:
+        payload["window"].update(exclusive_administration=False,
+                                 data_schema_custody=False,
+                                 future_owner_provisioning=False,
+                                 dev_no_freeze_risk_accepted=True)
+        payload["grant_custody"] = direct.custody_marker(payload["window"])
     root = str(spec.ARTIFACTS / (spec.ROOT_PREFIXES["reader"] + "abcdef"))
     payload["create_only_intent_sha256"] = spec.intent_preimage(
         "reader", root, payload)[1]
@@ -66,6 +73,41 @@ def _environment(monkeypatch):
                 "CLOUD_RUN_TASK_INDEX": "0", "CLOUD_RUN_TASK_ATTEMPT": "0",
                 "CLOUD_RUN_TASK_COUNT": "1"})
     return env, payload, prepared
+
+
+def test_no_freeze_reader_worker_result_and_payload_marker(monkeypatch):
+    env, payload, _ = _environment(monkeypatch, no_freeze=True)
+    marker = direct.custody_marker(payload["window"])
+    worker._consumed = False
+    calls = []
+
+    class FakeConnection:
+        def close(self):
+            calls.append("close")
+
+    def read(_conn, *, planned_after):
+        assert planned_after == payload["planned_after"]
+        calls.append("read")
+        return {"format": "synthetic-actual-reader-check",
+                "representative_select_completed": True,
+                "permission_enabled": False, "ti_verified": False}
+
+    monkeypatch.setattr(worker.psycopg, "connect",
+                        lambda **_: (calls.append("connect"), FakeConnection())[1])
+    monkeypatch.setattr(worker.reader, "run", read)
+    certificate = json.loads(worker.run_worker(env))
+    assert spec.verify_certificate(
+        certificate, payload_sha256=spec.broad_policy.fingerprint(payload),
+        stage="direct-authenticated-reader")["reader_result"]["custody"] == marker
+    assert calls == ["connect", "read", "close"]
+    for variant in ("missing", "forged"):
+        bad = deepcopy(payload)
+        if variant == "missing":
+            bad.pop("grant_custody")
+        else:
+            bad["grant_custody"] = {**marker, "mode": "CUSTODY_V1"}
+        with pytest.raises(spec.DeliverySpecError):
+            spec.validate_reader_payload(bad, final_git_sha=GIT, source_root=ROOT)
 
 
 def test_reader_worker_uses_only_reader_secret_and_one_connection(monkeypatch):
