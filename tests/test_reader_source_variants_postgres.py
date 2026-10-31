@@ -155,7 +155,7 @@ def observe(dsn, authority, profile):
         conn.close()  # No context-manager rollback after a spent/ambiguous wall.
     import reader_source_packets as packets
     bundle = packets.normal_ci_bundle(compiler_git)
-    lines = packets.pair(payload, profile, identity=uuid4().hex, bundle=bundle)
+    lines = packets.pair(payload, profile, identity=packets.bundle_identity(bundle), bundle=bundle)
     assert packets.extract_pair(lines, profile, expected_git=compiler_git,
                                 bundle=bundle) == payload
     return payload, lines
