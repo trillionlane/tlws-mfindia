@@ -12,6 +12,13 @@ to merge or deploy by this feed. All earlier scheduled continuations were delete
 
 ## Policy and implementation note
 
+Programme sequence: RO-01 policy/planner/startup/install compatibility; RO-02
+reliable capture → grant → reader execution/diagnostics; RO-03 dependency and
+CI/release gates (PR136 is an early, separately scoped prerequisite); RO-04
+reviewed DEV enablement and actual consumer acceptance; RO-05 lifecycle/new-object
+coverage and handover. This change resolves the existing reset conflict now;
+it does not claim the full RO-05 deployment lifecycle.
+
 | Capability | Existing restricted profile | Explicit internal broad profile |
 |---|---|---|
 | Runtime identity | Existing dedicated generator/reader/admin checks | Direct, non-elevated `mfdata_verified_reader` |
@@ -128,9 +135,20 @@ and existing callee seals. It does not repeat whole-catalogue work for every
 nested feature/preservation guard. Historical restricted PostgreSQL-owner
 installations remain supported; the broad profile still requires mfdata_admin.
 Four additional native helper body/configuration/ACL/declaration drift cases
-bring RO-01 coverage to nine disposable PostgreSQL cases. A local validation run
+plus complete callee declaration and independent-owner regressions bring RO-01
+coverage to thirteen disposable PostgreSQL cases. The existing full
+`broad_reader_function_closure` SQL/validator is shared rather than duplicating a
+weaker callee proof. Restricted namespace owners are independently bounded to the
+two existing installer owners, and actual helper-owner callee EXECUTE is checked;
+the reverse mixed-owner combination is not assumed valid. The old strict broad
+closure entrypoint remains strict. No helper is invoked by these checks.
+A local validation run
 overlapped corrective edits and was invalidated by the byte guard; it is not
-final-head proof. Final validation runs against an unchanging candidate.
+final-head proof. Candidate `67846cb` subsequently passed all 26 local checks:
+5253 non-PG tests, 555 PG deselections, 38 subtests, 21 contracts, lint, audit,
+credential scan and diff check in 207.349s. That is not evidence for the later
+owner/complete-callee correction; final validation runs against its unchanging
+replacement candidate and is linked in PR137.
 
 Hosted run `41151029340` failed CI-plan validation before substantive tests:
 non-main workflow dispatch is not supported. PR137 now targets main so the

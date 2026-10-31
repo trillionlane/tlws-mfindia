@@ -56,6 +56,10 @@
       "previous_sha256": "1678ea7aed4661a231ecbe02f0133c3805657ec0b97e1ae94482944df84b40fb",
       "current_sha256": "994ad66c2fe8315d2e3d08858c68e0dda91cecfe0ff93b8cb4184afddac4fdff"
     },
+    "src/mfdataindia/review/broad_reader_function_closure.py": {
+      "previous_sha256": "b8be2b3df98ef9701fe4d126d43767f10d79f6b10cf255752fefe7460178b49f",
+      "current_sha256": "3a7cce1e1fe27f802988a1a4eeaac32e28e239c52f29b403bd353712dbbfdaae"
+    },
     "src/mfdataindia/review/broad_reader_source_authority.py": {
       "previous_sha256": "edfb05fea847bdf75d204bf71bf92b5cd6d10688d42d20522c1b98cc58f2e500",
       "current_sha256": "ea4629be3bd570ec00c4d9914278b709ee4385114b55a7777f740ebdb218bf4a"
@@ -66,27 +70,27 @@
     },
     "src/mfdataindia/review/core_access_metadata_controller.py": {
       "previous_sha256": "aaa5ac3bf1aa6a304c481f379af7b8b2b492e3116ba6f276719e83e005f1e4c1",
-      "current_sha256": "2577645e8aca13ed9e68a12c21f34413e937e01658d5567f214b5f2b38a5d745"
+      "current_sha256": "fc9d17c256a51106edf49eb63ef2ba1ff242d382de70278f50a21af76356af81"
     },
     "src/mfdataindia/review/core_access_metadata_controller_v2.py": {
       "previous_sha256": "accf80c6befc5b9b1f9f420b31d8aec68bbd27b8cc0417be8c51bcb18dd7cd0d",
-      "current_sha256": "d7f6eee862dd8e2a8c9f6811ef7d99600b77de313f7eb4e9043c77291f7a6700"
+      "current_sha256": "72b4b93c1ff4d759845abcae7283171be288d02dd9d24e17a8adb0e8419c1912"
     },
     "src/mfdataindia/review/core_access_metadata_spec.py": {
       "previous_sha256": "0c383479f03a528330f943dc42a52c002acc8297cdf6d21f849a84cc0725f18a",
-      "current_sha256": "9771ad0ea06452a98b0452bce0cbadcc25b0b6450509a7cb144028e4cdbf770c"
+      "current_sha256": "0faafe4a2c50ab9d809a54355edbc51d0f7f65dff3ba4285489cfa5baa53fc83"
     },
     "src/mfdataindia/review/core_access_metadata_spec_v2.py": {
       "previous_sha256": "fa48bc8eff625d18de0609decd3665f8aafd60427cb343ff54d7f8ccb93bec74",
-      "current_sha256": "350c6a785530eccd3ade8624fd16f4b12b3a35ed50c8d7a88bd17eb639c0828f"
+      "current_sha256": "2523adfbc9389d8d83c92b60fb7115755da25a8a1fa48497566d2be405654996"
     },
     "src/mfdataindia/review/core_permission_controller.py": {
       "previous_sha256": "734adc9f743decafa5c86d4a5d4e5dd41dc0366296dfe31a7b5a822302fd7a9f",
-      "current_sha256": "735ad468547e4b6e8429d93b9a3efd6698a34a8420d0a78378e0530933ac571b"
+      "current_sha256": "9c5ced2df991da10da3ddb580f93c15caa9f39d9a824ed963042504cdf78085a"
     },
     "src/mfdataindia/review/core_permission_spec.py": {
       "previous_sha256": "72ae4e44b67f6f24c883114f2645774d12de11d105ec42a55922cc83c9d13d0a",
-      "current_sha256": "2346f273e03f330ad256c7df6cea16ac020c9c5b5b104fe4b176cafdb1c153f5"
+      "current_sha256": "d63dfec6895723214ceb87fff6fe692cf48e307f58753f91015c9b3fab443580"
     },
     "src/mfdataindia/review/preservation.py": {
       "previous_sha256": "63c0045aa6fd3269718bbcc013991abb32ffa69e8778ff975fb044286871938d",

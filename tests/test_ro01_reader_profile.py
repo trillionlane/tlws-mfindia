@@ -124,3 +124,41 @@ def test_restricted_helper_exception_requires_actual_committed_seals(mutation):
         helper["acl"][1][3] = True
     with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
         profiles.verify_restricted_catalogue(value)
+
+
+@pytest.mark.parametrize("field,value", [("volatility", "v"), ("strict", False),
+    ("language", "unreviewed"), ("language_trusted", False), ("leakproof", True),
+    ("support_oid", 1), ("parallel", "s"), ("argument_default_count", 1),
+    ("cost", "101"), ("rows", "1"), ("definition", {"is_null": False, "sha256": "0" * 64, "utf8_bytes": 1})])
+def test_complete_callee_declaration_cannot_drift_under_restricted_profile(field, value):
+    from test_broad_reader_function_closure import _case
+    from mfdataindia.review import broad_reader_function_closure as closure
+    state, rows = _case()
+    closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=True)
+    rows[1][field] = value
+    with pytest.raises(closure.FunctionClosureError):
+        closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=True)
+
+
+@pytest.mark.parametrize("owner", ["helper", "callee", "unreviewed_helper", "unreviewed_callee"])
+def test_legacy_helper_and_callee_owners_are_independent_bounded_and_callable(owner):
+    from test_broad_reader_function_closure import _case
+    from mfdataindia.review import broad_reader_function_closure as closure
+    state, rows = _case()
+    index = 0 if owner.endswith("helper") else 1
+    name = "unknown_owner" if owner.startswith("unreviewed") else "postgres"
+    state["roles"].append({"rolname": name, "oid": 10})
+    namespace = rows[index]["schema"]
+    next(n for n in state["namespaces"] if n["nspname"] == namespace)["owner"] = 10
+    row = rows[index]
+    row["owner_oid"] = 10
+    row["acl"] = sorted([[10, atom[1] if atom[1] != 16587 else 10, atom[2], atom[3]] for atom in row["acl"]])
+    state["functions"][index]["proowner"] = 10
+    state["functions"][index]["acl"] = deepcopy(row["acl"])
+    if owner.startswith("unreviewed"):
+        with pytest.raises(closure.FunctionClosureError):
+            closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=True)
+    else:
+        closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=True)
+        with pytest.raises(closure.FunctionClosureError):
+            closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=False)

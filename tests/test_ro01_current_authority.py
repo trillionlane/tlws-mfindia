@@ -48,7 +48,8 @@ def test_current_diagnostic_attribution_is_one_explicit_changed_policy_source():
         assert new[version.PATH] == hashlib.sha256((ROOT / version.PATH).read_bytes()).hexdigest()
         assert {k: v for k, v in old.items() if k != version.PATH} == {k: new[k] for k in old if k != version.PATH}
         added = {"src/mfdataindia/review/reader_access_profile.py",
-                 "src/mfdataindia/review/reader_policy_source_version.py"}
+                 "src/mfdataindia/review/reader_policy_source_version.py",
+                 "src/mfdataindia/review/broad_reader_function_closure.py"}
         assert set(new) - set(old) == added
         assert all(new[path] == hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in added)
     with pytest.raises(ValueError, match="UNRECOGNIZED_READER_POLICY_SOURCE_PREDECESSOR"):

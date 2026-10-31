@@ -299,3 +299,54 @@ def test_native_restricted_runtime_and_install_reject_unreviewed_privileged_help
     with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
         install_and_reconcile(dsn, ROOT, manifest(), {}, reader_profile=profiles.RESTRICTED)
     assert catalogue(dsn) == before and values(dsn) == records
+
+
+@pytest.mark.parametrize("mutation", ["volatility", "strictness", "cost"])
+def test_native_restricted_callee_complete_declaration_is_attested(ro01_db, mutation):
+    dsn = ro01_db
+    signature = "mf_review.canonical_json(jsonb)"
+    with connect(dsn) as conn:
+        conn.execute("ALTER FUNCTION " + signature + " " + {
+            "volatility": "VOLATILE", "strictness": "CALLED ON NULL INPUT", "cost": "COST 101"}[mutation])
+    before, records = catalogue(dsn), values(dsn)
+    from mfdataindia.review.privileges import verify_runtime
+    with connect(dsn, planner.READER) as conn:
+        with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+            verify_runtime(conn, "api")
+    with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+        install_and_reconcile(dsn, ROOT, manifest(), {}, reader_profile=profiles.RESTRICTED)
+    assert catalogue(dsn) == before and values(dsn) == records
+
+
+def test_native_historical_independent_owners_require_actual_callee_execution(ro01_db, pg_dsn):
+    dsn = ro01_db
+    from mfdataindia.review.privileges import verify_runtime
+    from mfdataindia.enrichment import fact_review_store
+    admin_dsn = make_conninfo(pg_dsn, dbname="mfdataindia")
+    with psycopg.connect(admin_dsn, autocommit=True, row_factory=dict_row) as admin:
+        before = admin.execute("SELECT to_jsonb(f)::text AS value FROM mf.funds f ORDER BY amfi_scheme_code").fetchall()
+        admin.execute("ALTER SCHEMA mf_fact_review OWNER TO postgres")
+        admin.execute("ALTER TABLE mf_fact_review.events OWNER TO postgres")
+        for signature in ("dependencies(integer)", "record_review(integer,text,text,text,jsonb)"):
+            admin.execute("ALTER FUNCTION mf_fact_review." + signature + " OWNER TO postgres")
+        with connect(dsn, planner.READER) as conn:
+            verify_runtime(conn, "api")
+            fact_review_store.verify_acl(conn)
+        for schema in ("mf_review", "mf_fact_review"):
+            original = "mfdata_admin" if schema == "mf_review" else "postgres"
+            admin.execute(sql.SQL("ALTER SCHEMA {} OWNER TO mfdata_ingest").format(sql.Identifier(schema)))
+            with connect(dsn, planner.READER) as conn:
+                with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+                    verify_runtime(conn, "api")
+            admin.execute(sql.SQL("ALTER SCHEMA {} OWNER TO {}").format(sql.Identifier(schema), sql.Identifier(original)))
+        # Reverse owner combination is not accepted by assumption: the helper
+        # owner cannot execute this owner-only callee in the disposable fixture.
+        admin.execute("ALTER SCHEMA mf_fact_review OWNER TO mfdata_admin")
+        admin.execute("ALTER FUNCTION mf_fact_review.dependencies(integer) OWNER TO mfdata_admin")
+        admin.execute("ALTER SCHEMA mf_review OWNER TO postgres")
+        admin.execute("ALTER FUNCTION mf_review.canonical_json(jsonb) OWNER TO postgres")
+        assert not admin.execute("SELECT has_function_privilege('mfdata_admin','mf_review.canonical_json(jsonb)','EXECUTE') AS allowed").fetchone()["allowed"]
+        with connect(dsn, planner.READER) as conn:
+            with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+                verify_runtime(conn, "api")
+        assert admin.execute("SELECT to_jsonb(f)::text AS value FROM mf.funds f ORDER BY amfi_scheme_code").fetchall() == before

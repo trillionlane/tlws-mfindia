@@ -13,7 +13,7 @@ from psycopg.pq import TransactionStatus
 from . import broad_reader_policy as policy
 from . import broad_reader_function_scope as helper_scope
 from . import reader_function_attestation_reference as helper_reference
-from .reader_function_attestation_inventory import ATTESTATION_SQL
+from . import broad_reader_function_closure as helper_closure
 
 RESTRICTED = "mf-review-restricted-read-v1"
 BROAD = "mf-fund-research-read-v1"
@@ -123,15 +123,18 @@ def _existing_helper(state, *, restricted=False):
     if any(row.get(key) != value for key, value in expected.items()):
         raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
     if restricted:
+        callee_namespace = next((n for n in state["namespaces"] if n["nspname"] == "mf_review"), None)
+        callee_owner = next((roles[name] for name in owners
+                             if callee_namespace and roles.get(name) == callee_namespace["owner"]), None)
         callees = [f for f in state["functions"] if f["pronamespace"] == namespaces.get("mf_review")
                    and f["proname"] == "canonical_json" and f["proargtypes"] == "3802"]
-        expected_callee = {"proowner": roles[owner_name], "prokind": "f", "prosecdef": False,
+        expected_callee = {"proowner": callee_owner, "prokind": "f", "prosecdef": False,
                            "prorettype": 25, "private_body_sha256": helper_scope.CALLEE_BODY_SHA256,
                            "proconfig": {"is_null": False, "sha256": helper_scope.CALLEE_CONFIG_SHA256,
                                          "utf8_bytes": helper_scope.CALLEE_CONFIG_BYTES},
-                           "acl": [[roles[owner_name], roles[owner_name], "EXECUTE", False]],
+                           "acl": [[callee_owner, callee_owner, "EXECUTE", False]],
                            "execute_allowed": False}
-        if len(callees) != 1 or any(callees[0].get(k) != v for k, v in expected_callee.items()):
+        if callee_owner is None or len(callees) != 1 or any(callees[0].get(k) != v for k, v in expected_callee.items()):
             raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
     else:
         helper_scope.require_existing_callee(state)
@@ -248,11 +251,17 @@ def _catalogue(conn, *, restricted=False):
     state = conn.execute(policy.STATE_SQL).fetchone()["value"]
     helper = _existing_helper(state, restricted=restricted)
     if helper is not None:
-        functions = conn.execute(ATTESTATION_SQL).fetchone()["value"]["functions"]
-        if (len(functions) != 1 or functions[0]["oid"] != helper["oid"]
-                or not helper_reference.comparison(functions[0])[
-                    "declaration_matches_committed_reference"]):
+        functions = [dict(row) for row in conn.execute(helper_closure.FUNCTION_SQL).fetchall()]
+        callees = [f for f in functions if f["schema"] == "mf_review" and f["name"] == "canonical_json"]
+        if len(callees) != 1:
             raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
+        allowed = conn.execute("SELECT has_function_privilege(%s::oid,%s::oid,'EXECUTE') AS allowed",
+                               (helper["proowner"], callees[0]["oid"])).fetchone()["allowed"]
+        try:
+            helper_closure.verify_profile_helpers(functions, state, restricted=restricted,
+                                                   callee_execute_allowed=allowed)
+        except helper_closure.FunctionClosureError:
+            raise ReaderAccessError("UNREVIEWED_READER_FUNCTION") from None
     return state
 
 
