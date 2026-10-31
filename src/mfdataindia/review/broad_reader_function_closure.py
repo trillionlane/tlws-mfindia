@@ -116,12 +116,32 @@ def verify(rows, state):
     The exact bodies are source-reviewed for helper -> canonical_json and the
     callee's self-recursion. This does not execute either function or grant.
     """
+    return _verify(rows, state)
+
+
+def verify_profile_helpers(rows, state, *, restricted, callee_execute_allowed):
+    """Same complete declarations for trusted profile startup/installation.
+
+    Restricted supports independently owned historical schemas, only by the two
+    original installer owners. Actual helper-owner callee EXECUTE must come from
+    a fresh catalogue check, never a new grant or an assumed mixed-owner rule.
+    Missing reader schema USAGE is handled by the selected grant planner; no
+    function is invoked and this result is not operational grant admission.
+    """
+    _require(type(restricted) is bool and callee_execute_allowed is True)
+    value = _verify(rows, state, restricted=restricted, require_usage=restricted)
+    return {**value, "format": "mf-reader-profile-helper-declarations-v1-nonexecutable"}
+
+
+def _verify(rows, state, *, restricted=False, require_usage=True):
     _require(type(rows) is list and len(rows) == 2 and type(state) is dict)
     namespaces = {r["nspname"]: r for r in state.get("namespaces", [])}
     roles = {r["rolname"]: r for r in state.get("roles", [])}
-    _require(policy.OWNER in roles and policy.READER in roles)
+    _require(policy.READER in roles and (restricted or policy.OWNER in roles))
     _require("mfdata_verified_admin" in roles)
-    owner_oid, reader_oid = roles[policy.OWNER]["oid"], roles[policy.READER]["oid"]
+    reader_oid = roles[policy.READER]["oid"]
+    owner_names = (policy.OWNER, "postgres") if restricted else (policy.OWNER,)
+    owners = {roles[name]["oid"] for name in owner_names if name in roles}
     admin_oid = roles["mfdata_verified_admin"]["oid"]
     actual = {}
     for row in rows:
@@ -129,6 +149,8 @@ def verify(rows, state):
         key = (row["schema"], row["name"])
         _require(key in _EXPECTED and key not in actual)
         expected = _EXPECTED[key]
+        owner_oid = namespaces[key[0]]["owner"]
+        _require(owner_oid in owners)
         _require(type(row["oid"]) is int and row["oid"] > 0
                  and row["namespace_oid"] == namespaces[key[0]]["oid"]
                  and row["owner_oid"] == owner_oid)
@@ -149,16 +171,16 @@ def verify(rows, state):
             _seal(row[name], expected[name])
         _require(type(row["reader_schema_usage"]) is bool
                  and row["reader_schema_usage"] is namespaces[key[0]]["usage"])
-        if key[1] == "dependencies":
+        if key[1] == "dependencies" and require_usage:
             _require(row["reader_schema_usage"] is True)
         _require(type(row["acl"]) is list)
         if key[1] == "canonical_json":
             _require(row["acl"] == [[owner_oid, owner_oid, "EXECUTE", False]])
         else:
-            _require(len(row["acl"]) == 3 and row["acl"][0] ==
-                     [owner_oid, owner_oid, "EXECUTE", False])
-            _require(row["acl"][1] == [owner_oid, reader_oid, "EXECUTE", False]
-                     and row["acl"][2] == [owner_oid, admin_oid, "EXECUTE", False])
+            _require(row["acl"] == sorted([
+                [owner_oid, owner_oid, "EXECUTE", False],
+                [owner_oid, reader_oid, "EXECUTE", False],
+                [owner_oid, admin_oid, "EXECUTE", False]]))
         actual[key] = row
     _require(set(actual) == set(_EXPECTED))
     state_rows = {f["oid"]: f for f in state.get("functions", [])}
@@ -166,6 +188,7 @@ def verify(rows, state):
     _require(len({row["oid"] for row in actual.values()}) == 2)
     for row in actual.values():
         broad = state_rows[row["oid"]]
+        expected = _EXPECTED[(row["schema"], row["name"])]
         _require(all((broad[k] == row[v]) for k, v in (
             ("pronamespace", "namespace_oid"), ("proname", "name"),
             ("proowner", "owner_oid"), ("prokind", "kind"),

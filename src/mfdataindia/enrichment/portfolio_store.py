@@ -9,6 +9,7 @@ from mfdataindia.enrichment import (
 )
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -23,11 +24,12 @@ def installed_policy(conn):
     return value
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
+    profiles.verify_selection(conn, reader_profile, principal)
     if principal not in evidence.ROLES:
         raise ValueError("dedicated portfolio principal required")
-    evidence.verify_acl(conn, principal=principal)
+    evidence.verify_acl(conn, principal=principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_portfolios'"
     ).fetchone()
@@ -70,6 +72,7 @@ def verify_acl(conn, *, principal=None):
                 allowed = {"USAGE"}
             elif grant["kind"] == "table" and (
                 grant["name"] == "snapshots" or grant["grantee"] == evidence.ROLES[0]
+                or profiles.verified_reader_select(conn, grant["grantee"], reader_profile)
             ):
                 allowed = (
                     {"SELECT", "INSERT"} if grant["grantee"] == evidence.ROLES[0] else {"SELECT"}
@@ -92,15 +95,15 @@ def verify_acl(conn, *, principal=None):
     if conn.execute(
         "SELECT has_schema_privilege(%s,'mf_portfolios','CREATE') AS ddl,has_column_privilege(%s,'mf_portfolios.sources','content','SELECT') AS raw",
         (principal, principal),
-    ).fetchone() != {"ddl": False, "raw": principal == evidence.ROLES[0]}:
+    ).fetchone() != {"ddl": False, "raw": profiles.source_read_expected(principal, reader_profile)}:
         raise ValueError("portfolio raw-source or DDL capability differs")
     installed_policy(conn)
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not conn.execute("SELECT to_regnamespace('mf_portfolios') AS name").fetchone()["name"]:
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     output = {}
     for table, key in (("sources", "source_id"), ("snapshots", "snapshot_id")):
         # Owner or generator only: source bytes included in original-row seal.

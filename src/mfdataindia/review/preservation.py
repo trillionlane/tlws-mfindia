@@ -5,6 +5,8 @@ source-ledger addition is the exact opt-in migration; existing entries stay seal
 """
 from __future__ import annotations
 
+from mfdataindia.review import reader_access_profile as profiles
+
 import hashlib
 import re
 
@@ -62,7 +64,7 @@ def canonical_constraint(definition):
     return normalize(stack[0])
 
 
-def capture_preservation(conn, *, current_facts_baseline: bool = False, structure_only: bool = False) -> dict:
+def capture_preservation(conn, *, current_facts_baseline: bool = False, structure_only: bool = False, reader_profile=profiles.RESTRICTED) -> dict:
     """Full by default; an explicitly different format cannot certify row data."""
     if conn.execute('SHOW transaction_isolation').fetchone()['transaction_isolation'] != 'repeatable read':
         raise ValueError('preservation capture requires a consistent repeatable-read snapshot')
@@ -77,19 +79,19 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False, structur
     # like mf_review. Never silently ignore unknown tables within its namespace.
     if conn.execute("SELECT to_regnamespace('mf_book_facts') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.book_store import capture as capture_book
-        capture_book(conn)
+        capture_book(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_multi_facts') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.multi_store import capture as capture_multi
-        capture_multi(conn)
+        capture_multi(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_fact_review') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.fact_review_store import capture as capture_fact_review
-        capture_fact_review(conn)
+        capture_fact_review(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_fact_refresh') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.refresh_store import capture as capture_refresh
-        capture_refresh(conn)
+        capture_refresh(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_monthly_facts') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.monthly_store import capture as capture_monthly
-        capture_monthly(conn)
+        capture_monthly(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_analytics') AS namespace").fetchone()['namespace']:
         from mfdataindia.analytics.operations import capture_calendar
         capture_calendar(conn)
@@ -101,19 +103,19 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False, structur
         capture_enrichment(conn)
     if conn.execute("SELECT to_regnamespace('mf_official_facts') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.facts_store import capture as capture_official_facts
-        capture_official_facts(conn)
+        capture_official_facts(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_portfolios') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.portfolio_store import capture as capture_portfolios
-        capture_portfolios(conn)
+        capture_portfolios(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_overlap') AS namespace").fetchone()['namespace']:
         from mfdataindia.analytics.overlap_store import capture as capture_overlap
-        capture_overlap(conn)
+        capture_overlap(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_distributions') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.distribution_store import capture as capture_distributions
-        capture_distributions(conn)
+        capture_distributions(conn, **profiles.guard_options(reader_profile))
     if conn.execute("SELECT to_regnamespace('mf_idcw') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment.idcw_store import capture as capture_idcw
-        capture_idcw(conn)
+        capture_idcw(conn, **profiles.guard_options(reader_profile))
     official_baseline = None
     if conn.execute("SELECT to_regnamespace('mf_live_facts') AS namespace").fetchone()['namespace']:
         from mfdataindia.enrichment import current_facts_store

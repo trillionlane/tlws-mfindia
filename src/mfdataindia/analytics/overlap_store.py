@@ -5,6 +5,7 @@ from mfdataindia.analytics import overlap as engine, overlap_schemas as schemas
 from mfdataindia.enrichment import portfolio_store as portfolios
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 
 
 def installed_policy(conn):
@@ -17,9 +18,10 @@ def installed_policy(conn):
     return value
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
-    portfolios.verify_acl(conn, principal=principal)
+    profiles.verify_selection(conn, reader_profile, principal)
+    portfolios.verify_acl(conn, principal=principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_overlap'"
     ).fetchone()
@@ -76,10 +78,10 @@ def verify_acl(conn, *, principal=None):
     installed_policy(conn)
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not conn.execute("SELECT to_regnamespace('mf_overlap') AS name").fetchone()["name"]:
         return None
-    verify_acl(conn, principal=portfolios.evidence.ROLES[1])
+    verify_acl(conn, principal=portfolios.evidence.ROLES[1], **profiles.guard_options(reader_profile))
     rows = conn.execute(
         "SELECT result_id AS id,encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS hash FROM mf_overlap.results t ORDER BY result_id"
     ).fetchall()

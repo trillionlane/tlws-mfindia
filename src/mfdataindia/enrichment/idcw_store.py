@@ -5,6 +5,7 @@ from mfdataindia.enrichment import idcw_catalog as engine, distribution_store as
 from mfdataindia.enrichment import portfolio_store, store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 
 
 def installed_policy(conn):
@@ -17,9 +18,10 @@ def installed_policy(conn):
     return document
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
-    legacy.verify_acl(conn, principal=principal)
+    profiles.verify_selection(conn, reader_profile, principal)
+    legacy.verify_acl(conn, principal=principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_idcw'"
     ).fetchone()
@@ -62,6 +64,7 @@ def verify_acl(conn, *, principal=None):
                 allowed = {"USAGE"}
             elif grant["kind"] == "table" and (
                 grant["name"] == "snapshots" or grant["grantee"] == evidence.ROLES[0]
+                or profiles.verified_reader_select(conn, grant["grantee"], reader_profile)
             ):
                 allowed = {"SELECT"} | (
                     {"INSERT"} if grant["grantee"] == evidence.ROLES[0] else set()
@@ -84,15 +87,15 @@ def verify_acl(conn, *, principal=None):
     if conn.execute(
         "SELECT has_schema_privilege(%s,'mf_idcw','CREATE') AS ddl,has_column_privilege(%s,'mf_idcw.sources','content','SELECT') AS raw",
         (principal, principal),
-    ).fetchone() != {"ddl": False, "raw": principal == evidence.ROLES[0]}:
+    ).fetchone() != {"ddl": False, "raw": profiles.source_read_expected(principal, reader_profile)}:
         raise ValueError("idcw source/DDL privileges differ")
     installed_policy(conn)
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not conn.execute("SELECT to_regnamespace('mf_idcw') AS name").fetchone()["name"]:
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     output = {}
     for table, key in (("sources", "source_id"), ("snapshots", "snapshot_id")):
         rows = conn.execute(

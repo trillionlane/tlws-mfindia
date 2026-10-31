@@ -16,7 +16,8 @@ from psycopg.rows import dict_row
 from mfdataindia.review import store
 from mfdataindia.review.policy import policy
 from mfdataindia.review.preservation import MIGRATION, capture_preservation, compare_preservation
-from mfdataindia.review.privileges import verify_principal, verify_runtime
+from mfdataindia.review.privileges import verify_runtime
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.rollout import CONNECTION, ROLES, Manifest
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -179,7 +180,9 @@ def create_principal(conn, name, password):
     conn.execute(sql.SQL('CREATE ROLE {} LOGIN NOINHERIT NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD {}').format(sql.Identifier(name), sql.Literal(encrypted)))
 
 
-def install_and_reconcile(dsn, root, manifest, passwords):
+def install_and_reconcile(dsn, root, manifest, passwords, *, reader_profile=profiles.RESTRICTED):
+    selected = reader_profile
+    profiles.contract(selected)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
         conn.execute("SET LOCAL lock_timeout='5s'")
@@ -189,7 +192,14 @@ def install_and_reconcile(dsn, root, manifest, passwords):
         relations = conn.execute("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mf' AND c.relkind IN('r','p') AND NOT c.relispartition ORDER BY c.relname").fetchall()
         for row in relations:
             conn.execute(sql.SQL('LOCK TABLE mf.{} IN SHARE MODE').format(sql.Identifier(row['relname'])))
-        before = capture_preservation(conn)
+        previously_installed = conn.execute('SELECT 1 FROM mf.schema_migrations WHERE migration_name=%s', (MIGRATION,)).fetchone() is not None
+        if previously_installed:
+            # Reapply only the selected ACL contract before the existing strict
+            # preservation inspectors run. These generated GRANT statements
+            # cannot alter source values; the SAME outer transaction owns them.
+            profiles.reconcile(conn, selected)
+        before = capture_preservation(conn, **profiles.guard_options(
+            selected if previously_installed else profiles.RESTRICTED))
         for role, password in passwords.items():
             create_principal(conn, role, password)
         install_atomic(conn, root, manifest)
@@ -203,14 +213,12 @@ def install_and_reconcile(dsn, root, manifest, passwords):
             ) SELECT DISTINCT r.rolname FROM a CROSS JOIN LATERAL aclexplode(acl) x JOIN pg_roles r ON r.oid=x.grantee
               WHERE r.rolname<>current_user AND r.rolname<>ALL(%s)
         """, (list(ROLES),)).fetchall()
-        for row in inherited:
+        for row in (() if previously_installed else inherited):
             for kind in ('TABLES', 'SEQUENCES', 'FUNCTIONS'):
                 conn.execute(sql.SQL('REVOKE ALL ON ALL {} IN SCHEMA mf_review FROM {}').format(sql.SQL(kind), sql.Identifier(row['rolname'])))
             conn.execute(sql.SQL('REVOKE ALL ON SCHEMA mf_review FROM {}').format(sql.Identifier(row['rolname'])))
-        conn.execute((root / 'scripts/sql/reconcile_verified_review_privileges.sql').read_text())
-        for role in ROLES:
-            verify_principal(conn, 'generator' if role == ROLES[0] else 'api', role)
-        after = capture_preservation(conn)
+        profiles.reconcile(conn, selected, initialize_roles=tuple(passwords))
+        after = capture_preservation(conn, **profiles.guard_options(selected))
         compare_preservation(before, after, manifest.migration_hash)
     return {'before': before, 'after': after, 'source_values_preserved': True, 'bounded_lock_seconds': 180}
 

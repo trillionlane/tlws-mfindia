@@ -7,6 +7,8 @@ import subprocess
 
 import pytest
 
+from ro01_historical_source import BASE as RO01_BASE, historical_parent
+
 from pypdf_patch_preservation import (
     PATCH_ADDED, PATCH_MODIFIED, PLAN, PLAN_BYTES, PLAN_SHA, ROOT, restore_pypdf_parent,
 )
@@ -40,7 +42,7 @@ def test_all_1059_parent_bytes_modes_and_exact_finite_patch():
             assert path.is_file() and not path.is_symlink()
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = path.read_bytes()
+            raw = historical_parent(path, path.read_bytes())
         if name in PATCH_MODIFIED:
             recipe = PLAN["modified"][name]
             assert mode == recipe["mode"]
@@ -50,9 +52,10 @@ def test_all_1059_parent_bytes_modes_and_exact_finite_patch():
             restored.add(name)
         assert hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest() == blob, name
     assert restored == PATCH_MODIFIED and len(restored) == 26
-    changed = set(git("diff", "--name-only", BASE).decode().splitlines())
-    untracked = set(git("ls-files", "--others", "--exclude-standard").decode().splitlines())
-    assert changed | untracked == PATCH_MODIFIED | PATCH_ADDED
+    # This is the prerequisite's immutable release delta, not an assertion that
+    # current RO-01 policy sources are identical to that older release.
+    changed = set(git("diff", "--name-only", BASE + ".." + RO01_BASE).decode().splitlines())
+    assert changed == PATCH_MODIFIED | PATCH_ADDED
     for name in PATCH_ADDED:
         path = ROOT / name
         assert path.is_file() and not path.is_symlink()

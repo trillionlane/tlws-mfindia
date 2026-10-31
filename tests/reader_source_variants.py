@@ -19,9 +19,9 @@ import reader_source_reference as legacy
 from mfdataindia.review import broad_reader_capture_inventory as inventory
 from mfdataindia.review.reader_access_transport_spec import state_shape
 
-AUTHORITY_PATH = "docs/CI_SOURCE_REFERENCE_BOOK_VARIANT_AUTHORITY_20261029.json"
-AUTHORITY_SHA = "2d144f61fa67d936e537fb06b3845569e441f54a2dbde8075f0cd112b3993450"
-PARENT = "016e63afb7b82aa1369b97bfdc63a729524d0c1d"
+AUTHORITY_PATH = "docs/RO01_BOOK_SOURCE_AUTHORITY_20261031.json"
+AUTHORITY_SHA = "6230bcdbd2f442ca7e649be14cd0ed6d7fdb45fbbfdf2da399ae7cabf791a0e5"
+PARENT = "89af628c88f4b905d2136acc7a222683c672fa44"
 PROFILES = ("BASE44_EXTENDED", "BASE44_BOOK_V2_SINGLE_PASS")
 MARKERS = {p: "SOURCE_SEMANTIC_REFERENCE_" + p + "_V1:" for p in PROFILES}
 SOURCE_PATHS = (
@@ -93,12 +93,13 @@ def variant_authority(root):
             "execution_order",
             "selection_only_not_invoked",
             "runtime_authority",
+            "compatibility",
         }
     )
-    require(value["format"] == "source-only-nine-file-book-variant-authority-v2")
+    require(value["format"] == "source-only-nine-file-book-variant-authority-v3-ro01")
     require(value["implementation_parent"] == PARENT and value["runtime_authority"] is False)
     require(value["base44_authority_sha256"] == legacy.AUTHORITY_SHA)
-    require(len(value["files"]) == 9 and value["total_bytes"] == 95068)
+    require(len(value["files"]) == 9 and value["total_bytes"] == 95543)
     require([r["path"] for r in value["files"]] == list(SOURCE_PATHS))
     require(value["execution_order"] == list(EXECUTION_ORDER))
     require(value["selection_only_not_invoked"] == list(SELECTION_ONLY))
@@ -108,7 +109,7 @@ def variant_authority(root):
         require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root))
         body = path.read_bytes()
         require(len(body) == row["bytes"] and digest(body) == row["sha256"])
-    require(sum(r["bytes"] for r in value["files"]) == 95068)
+    require(sum(r["bytes"] for r in value["files"]) == 95543)
     return {"base": original, "variant": value}
 
 

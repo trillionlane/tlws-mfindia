@@ -412,7 +412,7 @@ def test_install_rolls_back_roles_and_schema_on_effective_privilege_failure(pg_d
                 conn.execute(sql.SQL('ALTER DEFAULT PRIVILEGES GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO {}').format(sql.Identifier(unlisted)))
                 conn.execute('CREATE TABLE mf.default_grant_control(value integer)')
             passwords = {r: 'rollout-runtime-fixture-only' for r in ROLES}
-            with pytest.raises(ValueError, match='privileged source'):
+            with pytest.raises(ValueError, match='^UNREVIEWED_READER_FUNCTION$'):
                 install_and_reconcile(owner_dsn, ROOT, manifest(), passwords)
             with connection(owner_dsn) as conn:
                 assert conn.execute("SELECT to_regnamespace('mf_review') AS schema").fetchone()['schema'] is None

@@ -10,6 +10,7 @@ from mfdataindia.enrichment import book_facts, book_sources, current_facts_store
 from mfdataindia.enrichment import multi_facts, store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_principal
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -70,9 +71,10 @@ def installed_configuration(conn):
     return row
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
-    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal)
+    profiles.verify_selection(conn, reader_profile, principal)
+    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_book_facts'"
     ).fetchone()
@@ -145,7 +147,7 @@ def verify_acl(conn, *, principal=None):
         "SELECT has_column_privilege(%s,'mf_book_facts.sources','content','SELECT') AS allowed,has_schema_privilege(%s,'mf_book_facts','CREATE') AS ddl",
         (principal, principal),
     ).fetchone()
-    if raw != {"allowed": principal == evidence.ROLES[0], "ddl": False}:
+    if raw != {"allowed": profiles.source_read_expected(principal, reader_profile), "ddl": False}:
         raise ValueError("book raw/DDL boundary differs")
     prior = conn.execute(
         "SELECT view_definitions->>'field_versions' AS definition FROM mf_live_facts.configuration WHERE policy_hash=%s ORDER BY generation DESC LIMIT 1",
@@ -159,10 +161,10 @@ def verify_acl(conn, *, principal=None):
         raise ValueError("retained v3 assertion graph differs")
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not installed(conn):
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     result = {
         "functions": fingerprint(
             conn.execute(
@@ -341,8 +343,8 @@ def append_run(conn, body):
     )
 
 
-def status(conn):
-    verify_acl(conn, principal=evidence.ROLES[1])
+def status(conn, *, reader_profile=profiles.RESTRICTED):
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     config = installed_configuration(conn)["document"]
     sources = []
     for source in config["registry"]["sources"]:
@@ -385,8 +387,8 @@ def status(conn):
     }
 
 
-def fund(conn, code):
-    verify_acl(conn, principal=evidence.ROLES[1])
+def fund(conn, code, *, reader_profile=profiles.RESTRICTED):
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     identity = evidence.identity(conn, code)
     rows = conn.execute(
         """WITH installed AS MATERIALIZED (

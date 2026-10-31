@@ -6,6 +6,7 @@ from psycopg.types.json import Jsonb
 from mfdataindia.enrichment import fact_review_policy, store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_principal
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -17,11 +18,12 @@ def installed(conn):
     return bool(conn.execute("SELECT to_regnamespace('mf_fact_review') AS ns").fetchone()["ns"])
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
+    profiles.verify_selection(conn, reader_profile, principal)
     if principal not in evidence.ROLES:
         raise ValueError("dedicated verification principal required")
-    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal)
+    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_fact_review'"
     ).fetchone()
@@ -83,10 +85,10 @@ def verify_acl(conn, *, principal=None):
         raise ValueError("verification policy missing or differs")
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not installed(conn):
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     rows = conn.execute(
         "SELECT event_id,encode(sha256(convert_to(to_jsonb(e)::text,'UTF8')),'hex') AS sha256 FROM mf_fact_review.events e ORDER BY event_id"
     ).fetchall()

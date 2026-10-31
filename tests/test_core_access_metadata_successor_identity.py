@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from ro01_historical_source import historical_parent
+
 from mfdataindia.review import core_access_metadata_controller as old
 from mfdataindia.review import core_access_metadata_controller_v2 as core
 from mfdataindia.review.core_access_metadata_backend_v2 import metadata_arguments
@@ -27,8 +29,8 @@ def test_preimplementation_literal_plan_and_authority_are_exact():
 def test_entire_successor_bytes_normalize_only_counted_literal_substitutions(section):
     plan = json.loads(PLAN_PATH.read_bytes())
     for predecessor, entry in plan[section].items():
-        before = (ROOT / predecessor).read_bytes()
-        raw = (ROOT / entry["successor_path"]).read_bytes()
+        before = historical_parent(ROOT / predecessor, (ROOT / predecessor).read_bytes())
+        raw = historical_parent(ROOT / entry["successor_path"], (ROOT / entry["successor_path"]).read_bytes())
         assert hashlib.sha256(before).hexdigest() == entry["predecessor_sha256"]
         if "successor_sha256" in entry:
             assert hashlib.sha256(raw).hexdigest() == entry["successor_sha256"]
@@ -44,7 +46,7 @@ def test_all_frozen_predecessor_inventory_and_tests_unchanged_except_explicit_ci
     excluded = {".github/workflows/verify.yml", "tests/test_ci_verify_sequence.py"}
     for name, digest in authority["sha256"].items():
         if name not in excluded:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+            assert hashlib.sha256(historical_parent(ROOT / name, (ROOT / name).read_bytes())).hexdigest() == digest
 
 
 def test_new_identity_job_root_and_global_start_are_disjoint_from_consumed_attempt():

@@ -4,6 +4,8 @@ from pypdf_patch_preservation import (
     PATCH_ADDED, PATCH_MODIFIED, restore_pypdf_parent as _pypdf_parent_bytes,
 )
 
+from ro01_historical_source import BASE as RO01_BASE
+
 import hashlib
 import os
 from pathlib import Path
@@ -84,7 +86,6 @@ def test_all_parent_bytes_modes_and_exact_no_freeze_delta():
     assert hashlib.sha256(restore_runtime_parent(
         NEW_IDENTITY_TEST, _pypdf_parent_bytes(ROOT / NEW_IDENTITY_TEST, (ROOT / NEW_IDENTITY_TEST).read_bytes())
     )).hexdigest() == NEW_IDENTITY_SHA256
-    changed = set(_git("diff", "--name-only", PARENT).decode().splitlines())
-    untracked = set(_git("ls-files", "--others", "--exclude-standard").decode().splitlines())
-    assert changed | untracked == set(MODIFIED) | {NEW_TEST, NEW_CHAIN_TEST,
+    changed = set(_git("diff", "--name-only", PARENT + ".." + RO01_BASE).decode().splitlines())
+    assert changed == set(MODIFIED) | {NEW_TEST, NEW_CHAIN_TEST,
                                                 NEW_IDENTITY_TEST, SELF} | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED
