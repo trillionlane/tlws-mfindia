@@ -1,4 +1,7 @@
 """Allowlisted outcomes, never exception text, SQL, credentials or class names."""
+from dataclasses import dataclass
+from copy import deepcopy
+
 import psycopg
 import jwt
 
@@ -75,7 +78,8 @@ STATES = frozenset({"COMMITTED_UNVERIFIED", "COMMITTED_ACL_VERIFIED_LATER_CHECK_
 CAUSES = frozenset(_CAUSES.values()) | _INPUT | frozenset(label for _, label in _TYPES) | frozenset({
     "CONFIGURATION_INVALID", "WHOLE_OPERATION_WALL_EXPIRED", "CONNECT_FAILED", "UNEXPECTED_FAILURE",
     "APPLICATION_GUARD_OR_READ_FAILED", "CERTIFICATE_INVALID", "READ_ONLY_ROLLBACK_UNCONFIRMED",
-    "OPERATION_WINDOW_NOT_LIVE", "PREFLIGHT_OBSERVATION_UNCONFIRMED", "TRANSPORT_OR_DELIVERY_UNCONFIRMED"})
+    "OPERATION_WINDOW_NOT_LIVE", "PREFLIGHT_OBSERVATION_UNCONFIRMED", "TRANSPORT_OR_DELIVERY_UNCONFIRMED",
+    "LOCAL_IO_UNCONFIRMED"})
 
 
 def _walk(error):
@@ -116,6 +120,7 @@ def report(error, *, stage, prior_effect=NO_GRANT, grant_started=False, worker=T
                   and item.args == ("DIRECT_DEV_WINDOW_NOT_LIVE",)]
     cause = causes[-1] if causes else (
         "CONFIGURATION_INVALID" if any(isinstance(x, (ContractError, spec.DeliverySpecError)) for x in chain)
+        else "LOCAL_IO_UNCONFIRMED" if any(isinstance(x, OSError) and not isinstance(x, TimeoutError) for x in chain)
         else "WHOLE_OPERATION_WALL_EXPIRED" if any(isinstance(x, policy.WallExpired) for x in chain)
         else "READ_ONLY_ROLLBACK_UNCONFIRMED" if readonly_abort
         else "CONNECT_FAILED" if stage == "connect"
@@ -159,3 +164,50 @@ def report(error, *, stage, prior_effect=NO_GRANT, grant_started=False, worker=T
             "grant_effect": effect, "disposition": "STOP_INSPECT_ONLY_NO_REPLAY",
             "execution_limitations": list(EXECUTION_LIMITATIONS),
             "consumer_acceptance": "PENDING_RO04"}
+
+
+class ExecutionFailure(ContractError):
+    """Safe execution outcome survives journal/lock cleanup; never a retry token."""
+    def __init__(self, outcome):
+        self.outcome = deepcopy(outcome)
+        super().__init__(outcome["safe_cause"])
+
+
+@dataclass
+class ExecutionContext:
+    """Process-local knowledge, NOT durable authority or permission to resume.
+
+    Dispatch flags advance only AFTER durable intent, BEFORE the provider call.
+    Verified certificate effects advance before any subsequent persistence.
+    A failed journal read can neither erase knowledge nor authorize new work.
+    """
+    operation_id: str | None = None
+    stage: str = "validation"
+    kind: str | None = None
+    effect: str = NO_GRANT
+    dispatch_possible: bool = False
+    diagnostic: dict | None = None
+
+    def observe(self, body):
+        if self.effect not in (COMMITTED, VERIFIED) or body["grant_effect"] == VERIFIED:
+            self.effect = body["grant_effect"]
+        if body["disposition"] == "STOP_INSPECT_ONLY_NO_REPLAY":
+            self.diagnostic = {key: deepcopy(body[key]) for key in (
+                "state", "reason", "safe_cause", "stage", "grant_effect",
+                "disposition", "consumer_acceptance", "execution_limitations")}
+            if self.diagnostic["grant_effect"] != self.effect:
+                dominant = report(RuntimeError(), stage=body["stage"], prior_effect=self.effect,
+                                  dispatch_possible=self.dispatch_possible, worker=False)
+                self.diagnostic.update(state=dominant["state"], reason=dominant["reason"],
+                                       grant_effect=self.effect)
+
+    def failure(self, error):
+        if self.diagnostic is None:
+            self.diagnostic = report(error, stage=self.stage, prior_effect=self.effect,
+                dispatch_possible=self.dispatch_possible, worker=False)
+        result = deepcopy(self.diagnostic)
+        if self.operation_id is not None:
+            result["operation_id"] = self.operation_id
+        if self.kind is not None:
+            result["execution_kind"] = self.kind
+        return result

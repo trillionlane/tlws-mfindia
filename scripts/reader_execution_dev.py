@@ -38,6 +38,14 @@ def load(path):
         os.close(fd)
 
 
+def fail(outcome):
+    try:
+        print(canonical(outcome), file=sys.stderr, flush=True)
+    except BaseException:
+        pass  # stderr failure is not successful reporting or permission to retry.
+    raise SystemExit(1) from None
+
+
 def main():
     parser = Parser(description=__doc__)
     parser.add_argument("command", choices=("worker", "validate", "execute", "inspect"), nargs="?", default="worker")
@@ -48,12 +56,12 @@ def main():
     try:
         args = parser.parse_args()
     except contract.ContractError as error:
-        print(canonical(diagnostics.report(error, stage="validation", worker=False)), file=sys.stderr)
-        raise SystemExit(1) from None
+        fail(diagnostics.report(error, stage="validation", worker=False))
     root = Path(__file__).resolve().parents[1]
     if args.command == "worker":
         # The worker snapshots os.environ itself, not an exact-dict type bypass.
         return worker.main(source_root=root)
+    entered_execution = args.command == "inspect"
     try:
         if args.command == "inspect":
             contract.require(args.operation_root is not None, "ORIGINAL_OPERATION_ROOT_REQUIRED")
@@ -77,13 +85,33 @@ def main():
                     env.get("READER_EXECUTION_READ_ASSERTION"), env.get("READER_EXECUTION_ADMIN_ASSERTION"))
                 # Fixed independently custodied record, never a CLI-selected
                 # key/approval file or a syntactically valid self-asserted hash.
-                result = controller.execute(plan, Authority().record, app, source_root=root,
+                authority = Authority().record
+                entered_execution = True
+                result = controller.execute(plan, authority, app, source_root=root,
                     expected_git=args.expected_git, backend_factory=backend.Backend)
+    except diagnostics.ExecutionFailure as error:
+        fail(error.outcome)
     except BaseException as error:
-        print(canonical(diagnostics.report(error, stage="validation", worker=False)), file=sys.stderr)
-        raise SystemExit(1) from None
-    print(canonical(result))
-    if args.command == "execute" and result["state"] != "OPERATION_APPLICATION_VERIFIED":
+        fail(diagnostics.report(error, stage="transport" if entered_execution else "validation",
+            prior_effect=diagnostics.UNKNOWN if entered_execution else diagnostics.NO_GRANT,
+            dispatch_possible=entered_execution, worker=False))
+    try:
+        print(canonical(result), flush=True)
+    except BaseException as error:
+        # Even final output failure must preserve known committed effects.
+        if result.get("disposition") == "STOP_INSPECT_ONLY_NO_REPLAY":
+            fail(result)  # Retain the earliest useful execution cause as well.
+        failure = diagnostics.report(error, stage=result.get("stage",
+            "application" if result["state"] == "OPERATION_APPLICATION_VERIFIED" else
+            "transport" if entered_execution else "validation"),
+            prior_effect=result.get("grant_effect", diagnostics.UNKNOWN if entered_execution else diagnostics.NO_GRANT),
+            dispatch_possible=entered_execution, worker=False)
+        if "operation_id" in result:
+            failure["operation_id"] = result["operation_id"]
+        fail(failure)
+    if args.command in {"execute", "inspect"} and result["state"] not in {
+        "OPERATION_APPLICATION_VERIFIED", "INSPECTED_WITH_KNOWN_EFFECT", "INSPECTED_BEFORE_DISPATCH"
+    }:
         raise SystemExit(1)
 
 

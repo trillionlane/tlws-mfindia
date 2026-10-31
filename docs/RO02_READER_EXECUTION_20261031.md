@@ -169,6 +169,56 @@ and must meet its own bounded authority/predecessor/fresh-state guards.
 
 ## Intentional source compatibility
 
+### P1 correction: journal-independent execution outcomes
+
+At reviewed head `e47656a5306aedaccab551083e002351aa4c233f`, an error
+handler could itself fail reading/appending a damaged journal. The CLI's broad
+exception fallback then incorrectly labelled the escaping post-dispatch error
+as local validation with no grant submitted. Fault injection against that
+implementation reproduced eight failures (three control cases passed).
+
+The controller now retains a process-local `ExecutionContext`: validated
+operation identity, current phase/stage kind, possible dispatch, strongest
+verified grant effect, and the earliest safe failure diagnostic. Durable intent
+is still mandatory before **each** provider create/run. Immediately after that
+intent succeeds and before the provider run, a grant becomes uncertain. A
+verified certificate updates memory **before** certificate/stage persistence.
+Journal reads and STOPPED writes during error handling are best effort and
+cannot replace this outcome. An outer typed `ExecutionFailure` carries the
+safe outcome through journal/lock cleanup. This is reporting only, not durable
+authority, a second journal, or permission to resume/replay.
+
+| Fault / observation | Reported grant effect and disposition |
+| --- | --- |
+| Proven invalid local candidate, before dispatch | `NO_GRANT_SUBMITTED`; no operation allocation |
+| Partial intent write, before provider call | No submission; incomplete history remains spent/blocked |
+| Grant RUN submitted, response/certificate unconfirmed | `MUTATION_OUTCOME_UNKNOWN`; inspect only, no replay |
+| Confirmed rollback certificate, next journal write fails | `ROLLED_BACK_CONFIRMED`; stop, no replay |
+| Committed-unverified certificate, next write fails | `COMMITTED_UNVERIFIED`; inspect only |
+| Verified commit, certificate/stage/final write or cleanup fails | `COMMITTED_ACL_VERIFIED`; later failure, never “no grant” |
+| Unknown execution exception without typed context | Unknown; never a local/no-dispatch assertion |
+| Inspect cannot read history | Unknown about the original operation; zero submissions |
+| Inspect observes commit, then persistence/inventory/cleanup fails | Retain committed evidence; zero submissions |
+| stdout/stderr unavailable | Unsuccessful exit; no promise that reporting succeeded |
+
+`tests/test_reader_execution_journal_faults.py` exercises actual CLI `main()`
+and controller boundaries, real private temporary journals (including partial
+files), and a fake provider. Deep catalogue-proof construction alone is
+substituted; certificate envelope/bindings and write-ahead/dispatch sequencing
+remain real. Assertions cover JSON, failure exit, operation/stage/effect,
+value-free diagnostics, exact mutation counts, and blocked re-entry without
+erasing files. These tests are **not** PostgreSQL/live evidence; the unchanged
+hosted connected chain retains actual grant/ACL/application and generator
+coexistence coverage.
+
+Only the current RO-02 controller, diagnostics and CLI contract change. The
+existing complete `code_binding` seals these exact files automatically; no old
+source authority/hash is refreshed, historical receipt rewritten, copied
+controller added, SQL/limit changed, or historical validator weakened. Updated
+head full/native/image/audit results must be attached to PR139 before acceptance.
+RO-02 remains subject to the architect's independent acceptance re-review;
+PR139 must remain unmerged and RO-04 live acceptance remains pending.
+
 The existing full44 migration ledger and every numbered migration/SQL fragment
 remain unchanged. Three small post-DDL constructors are shared by historical
 installers and the complete migrated disposable fixture: current-facts, multi
