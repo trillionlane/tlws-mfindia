@@ -231,6 +231,7 @@ def test_native_restricted_install_remains_restricted_and_refuses_silent_downgra
 def test_native_broad_does_not_mutate_or_elevate_and_rejects_missing_or_unsafe_grants(ro01_db):
     dsn = ro01_db
     adopt(dsn)
+    enrolled, original_values = catalogue(dsn), values(dsn)
     with connect(dsn, planner.READER) as conn:
         for command in ("INSERT INTO mf.fund_facts(amfi_scheme_code,source) VALUES(999,'MANUAL')",
                         "UPDATE mf.fund_facts SET aum=0", "DELETE FROM mf.fund_facts",
@@ -238,14 +239,22 @@ def test_native_broad_does_not_mutate_or_elevate_and_rejects_missing_or_unsafe_g
                         "CREATE SCHEMA ro01_unauthorized", "ALTER ROLE mfdata_verified_reader CREATEROLE"):
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 conn.execute(command)
-    enrolled = catalogue(dsn)
+    assert catalogue(dsn) == enrolled and values(dsn) == original_values
     with connect(dsn) as conn:
         conn.execute("REVOKE SELECT ON mf_monthly_facts.sources FROM mfdata_verified_reader")
+    # PostgreSQL's table REVOKE also removes this reader's explicit column
+    # SELECT atoms. Repair must match the complete production-planned state,
+    # not fabricate/reinstate the pre-REVOKE column ACL representation.
+    expected = profiles.prepare(catalogue(dsn))
+    assert expected["sql"]
     with connect(dsn, planner.READER) as conn:
         with pytest.raises(ValueError, match="READER_PROFILE_READ_GRANTS_MISSING"):
             profiles.verify_selection(conn, profiles.BROAD)
     adopt(dsn)
-    assert catalogue(dsn) == enrolled
+    repaired = catalogue(dsn)
+    assert repaired == expected["after"] and values(dsn) == original_values
+    adopt(dsn)
+    assert catalogue(dsn) == repaired and values(dsn) == original_values
     with connect(dsn, "mfdata_verified_admin") as conn:
         with pytest.raises(ValueError, match="READER_PROFILE_IDENTITY_MISMATCH"):
             profiles.verify_selection(conn, profiles.BROAD)
@@ -274,7 +283,7 @@ def test_native_core_only_cannot_silently_label_broad_current_and_future_reads_r
 
 
 @pytest.mark.parametrize("mutation", ["body", "configuration", "acl", "declaration"])
-def test_native_restricted_runtime_and_install_reject_unreviewed_privileged_helper(ro01_db, mutation):
+def test_native_restricted_runtime_and_install_reject_unreviewed_privileged_helper(ro01_db, pg_dsn, mutation):
     dsn = ro01_db
     from mfdataindia.review.privileges import verify_runtime
     with connect(dsn, planner.READER) as conn:
@@ -287,7 +296,10 @@ def test_native_restricted_runtime_and_install_reject_unreviewed_privileged_help
                 "END $$;", "END /* RO01 synthetic body drift */ $$;")
             conn.execute(statement)
         elif mutation == "configuration":
-            conn.execute("ALTER FUNCTION " + signature + " SET synthetic.private_config='fixture-only'")
+            # Synthetic private-setting injection needs the existing disposable
+            # administrator, not a new SET grant/elevation for the function owner.
+            with psycopg.connect(make_conninfo(pg_dsn, dbname="mfdataindia"), autocommit=True) as fixture_admin:
+                fixture_admin.execute("ALTER FUNCTION " + signature + " SET synthetic.private_config='fixture-only'")
         elif mutation == "acl":
             conn.execute("GRANT EXECUTE ON FUNCTION " + signature + " TO PUBLIC")
         else:

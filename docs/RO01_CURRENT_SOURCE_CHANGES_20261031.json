@@ -135,6 +135,10 @@
     "tests/test_reader_source_variants.py": {
       "previous_sha256": "3b4416874c72f993f41194e4664a823465527eda5781e2a8c8c48b76659547fe",
       "current_sha256": "3457e2a7aeb173c248f106b6a38ff2f10f9172fa4bb1aedb7c73819689430c6e"
+    },
+    "tests/test_verified_review_rollout.py": {
+      "previous_sha256": "bbd74e8945e8f920b4987372156ea1dda9ce16c639a94f62f2a635710dfe6348",
+      "current_sha256": "5a6b09892d113577724344c9674f377047557fd2cc0e9073524c8f64f2ab98e3"
     }
   }
 }

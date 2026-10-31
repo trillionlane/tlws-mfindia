@@ -163,6 +163,18 @@ Candidate `cfbf815` passed all 26 local checks in 212.385s (5272 non-PG, 559 PG
 deselected, 38 subtests); that predecessor result does not certify the final
 schema-USAGE/bootstrap correction. The final exact-head outcomes are in PR137.
 
+Hosted final-candidate run `41153503368` remained FAILURE: 13 focused tests passed,
+then 5816 passed/3 failed/1 existing skip in the remainder. The real broad API
+startup/authenticated feature reads and ten other RO-01 cases passed; this is not
+whole-suite acceptance. Corrections address two fixture assumptions and one exact
+error expectation: PostgreSQL table REVOKE also removes explicit column SELECT
+atoms, so recovery compares the complete production-planned after-state and repeats
+reconciliation/data equality; synthetic private function settings are injected only
+by the existing disposable administrator; the old atomic rollback test expects the
+new earlier stable `UNREVIEWED_READER_FUNCTION` rejection while retaining all rollback,
+unrelated-ACL/default and login assertions. No production policy/SQL changed, no
+catalogue differences are ignored and no failure is retroactively accepted.
+
 Hosted run `41151029340` failed CI-plan validation before substantive tests:
 non-main workflow dispatch is not supported. PR137 now targets main so the
 unchanged supported PR workflow can run. Its GitHub comparison includes the
