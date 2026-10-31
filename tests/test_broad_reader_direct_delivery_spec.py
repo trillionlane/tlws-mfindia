@@ -425,7 +425,7 @@ def test_capture_payload_rechecks_real_complete_packaged_source_bytes():
                                             source_root=root)
     assert checked == payload and checked is not payload
     assert checked["packaged_source"]["base_files"] == 44
-    assert checked["packaged_source"]["variant_files"] == 9
+    assert checked["packaged_source"]["variant_files"] == 10
 
 
 @pytest.mark.parametrize("mutation", (

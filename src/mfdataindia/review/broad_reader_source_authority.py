@@ -12,23 +12,14 @@ from pathlib import Path
 
 from mfdataindia.store.postgres import DEFAULT_MIGRATIONS
 from mfdataindia.review import broad_reader_embedded_authority as embedded
+from mfdataindia.review import reader_execution_source_reference as current
 
 
 BASE_DOCUMENT = "docs/READER_SOURCE_REFERENCE_MIGRATION_AUTHORITY_20261029.json"
 BASE_SHA256 = "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372"
-VARIANT_DOCUMENT = "docs/RO01_BOOK_SOURCE_AUTHORITY_20261031.json"
-VARIANT_SHA256 = "6230bcdbd2f442ca7e649be14cd0ed6d7fdb45fbbfdf2da399ae7cabf791a0e5"
-_VARIANT_PATHS = (
-    "sql/optional/amc_book_current_projection_v2.sql.inc",
-    "sql/optional/amc_book_core_projection_v1.sql.inc",
-    "src/mfdataindia/enrichment/book_core_projection.py",
-    "src/mfdataindia/enrichment/current_facts_store.py",
-    "src/mfdataindia/enrichment/book_projection.py",
-    "src/mfdataindia/enrichment/book_sources.py",
-    "config/official-book-sources-v5-aum-row.json",
-    "src/mfdataindia/enrichment/book_activation.py",
-    "src/mfdataindia/enrichment/book_store.py",
-)
+VARIANT_DOCUMENT = current.DOCUMENT
+VARIANT_SHA256 = current.SHA256
+_VARIANT_PATHS = current.PATHS
 LEDGER_SQL = ("SELECT migration_name,content_sha256 FROM mf.schema_migrations "
               "ORDER BY migration_name")
 
@@ -50,7 +41,7 @@ def _read(root, relative, digest):
     elif relative in (BASE_DOCUMENT, VARIANT_DOCUMENT):
         # Final app/tools images contain installed package code, not repository
         # docs. The complete embedded bytes remain pinned to the SAME SHA.
-        body = embedded.document("base" if relative == BASE_DOCUMENT else "variant")
+        body = embedded.document("base") if relative == BASE_DOCUMENT else current.document()
     elif relative.startswith("src/mfdataindia/") and relative.endswith(".py"):
         module = relative[4:-3].replace("/", ".")
         spec = importlib.util.find_spec(module)
@@ -86,12 +77,12 @@ def _verify_files(root, entries, *, expected_count, expected_bytes, paths):
 
 
 def verify_packaged_source(root):
-    """Attest complete 44+9 exact file bytes; no wildcard migration selection."""
+    """Attest complete 44+10 current bytes; old nine-file evidence is immutable."""
     root = Path(root).resolve()
     base_raw = _read(root, BASE_DOCUMENT, BASE_SHA256)
     variant_raw = _read(root, VARIANT_DOCUMENT, VARIANT_SHA256)
     _require(base_raw == embedded.document("base")
-             and variant_raw == embedded.document("variant"))
+             and variant_raw == current.document())
     base = json.loads(base_raw)
     variant = json.loads(variant_raw)
     _require(type(base) is dict and base.get("format") ==
@@ -108,17 +99,17 @@ def verify_packaged_source(root):
     _verify_files(root, base["files"], expected_count=44, expected_bytes=783832,
                   paths=base_paths)
     _require(type(variant) is dict and variant.get("format") ==
-             "source-only-nine-file-book-variant-authority-v3-ro01"
+             "source-only-ten-file-reader-execution-authority-v4-ro02"
              and variant.get("base44_authority_sha256") == BASE_SHA256
              and variant.get("implementation_parent") ==
-             "89af628c88f4b905d2136acc7a222683c672fa44"
-             and variant.get("total_bytes") == 95543
+             "69037c0ec078ad67a8dfd708bc3cf86040b655e6"
+             and variant.get("total_bytes") == current.TOTAL_BYTES
              and variant.get("runtime_authority") is False)
-    _verify_files(root, variant["files"], expected_count=9, expected_bytes=95543,
+    _verify_files(root, variant["files"], expected_count=10, expected_bytes=current.TOTAL_BYTES,
                   paths=_VARIANT_PATHS)
     return {"format": "mf-broad-reader-packaged-source-v1-nonexecutable",
             "base_sha256": BASE_SHA256, "variant_sha256": VARIANT_SHA256,
-            "base_files": 44, "variant_files": 9,
+            "base_files": 44, "variant_files": 10,
             "migration_ledger": [{"migration_name": Path(row["path"]).name,
                                   "content_sha256": row["sha256"]}
                                  for row in base["files"]],

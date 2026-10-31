@@ -11,6 +11,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 import subprocess
+from ro02_historical_source import previous as ro02_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "89af628c88f4b905d2136acc7a222683c672fa44"
@@ -27,6 +28,7 @@ def authority():
 
 def historical_parent(path, data):
     assert type(data) is bytes
+    data = ro02_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:

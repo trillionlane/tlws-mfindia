@@ -16,6 +16,7 @@ import time
 from psycopg import sql
 
 import reader_source_reference as legacy
+from ro02_historical_source import previous as ro02_previous
 from mfdataindia.review import broad_reader_capture_inventory as inventory
 from mfdataindia.review.reader_access_transport_spec import state_shape
 
@@ -107,7 +108,10 @@ def variant_authority(root):
         require(set(row) == {"path", "bytes", "sha256"})
         path = root / row["path"]
         require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root))
-        body = path.read_bytes()
+        # This is the retained v3 nine-file calibration, not current RO-02
+        # source admission. Restore only reviewed complete predecessor bytes.
+        # RO-02 recompiles all three graphs under its distinct ten-file source.
+        body = ro02_previous(path, path.read_bytes())
         require(len(body) == row["bytes"] and digest(body) == row["sha256"])
     require(sum(r["bytes"] for r in value["files"]) == 95543)
     return {"base": original, "variant": value}

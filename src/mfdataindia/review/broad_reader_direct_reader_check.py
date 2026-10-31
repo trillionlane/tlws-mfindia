@@ -144,7 +144,24 @@ def _control(conn, statement, *, end):
     return result
 
 
-def run(conn, *, planned_after):
+class _BoundedProfileConnection:
+    """Reuse the SAME reader wall for every selected-profile query."""
+    def __init__(self, connection, end):
+        self.connection, self.end = connection, end
+
+    def __getattr__(self, name):
+        return getattr(self.connection, name)
+
+    def execute(self, *args, **kwargs):
+        if time.monotonic() >= self.end:
+            raise ReaderCheckError("READER_WALL_SPENT_NO_FURTHER_IO")
+        value = self.connection.execute(*args, **kwargs)
+        if time.monotonic() >= self.end:
+            raise ReaderCheckError("READER_WALL_SPENT_NO_FURTHER_IO")
+        return value
+
+
+def run(conn, *, planned_after, reader_profile=None):
     """One bounded direct-reader metadata check; no privileged function call."""
     policy.require(conn.autocommit is True
                    and conn.info.transaction_status == TransactionStatus.IDLE,
@@ -175,6 +192,12 @@ def run(conn, *, planned_after):
                 "update_allowed", "references_allowed"], end=end)
             result = validate(context[0], namespaces, relations, columns,
                               planned_after=planned_after)
+            if reader_profile is not None:
+                from .privileges import verify_runtime
+                from .reader_access_profile import contract
+                contract(reader_profile)
+                verify_runtime(_BoundedProfileConnection(conn, end), "api", reader_profile=reader_profile)
+                result.update(reader_profile=reader_profile, installed_policy_verified=True)
             # Bounded current-fund read proves a real SELECT wire path but
             # exports no fund identifier, NAV, or other business value.
             representative = _read(conn, REPRESENTATIVE_SQL, ["readable"], end=end)

@@ -162,6 +162,27 @@ def capture(conn, *, reader_profile=profiles.RESTRICTED):
     return result
 
 
+def _initialize_configuration(conn):
+    """Construct an empty post-DDL installation, never replace or activate it."""
+    who = conn.execute("SELECT session_user AS name,current_user=session_user AS direct").fetchone()
+    if not who["direct"] or who["name"] not in ("postgres", "mfdata_admin") or conn.info.transaction_status.name != "INTRANS":
+        raise ValueError("direct transactional configuration owner required")
+    if conn.execute("SELECT 1 FROM mf_multi_facts.configuration LIMIT 1").fetchone():
+        raise ValueError("empty registered configuration required")
+    conn.execute("INSERT INTO mf_multi_facts.configuration VALUES(1,%s,%s,%s)",
+        (fingerprint(multi_facts.registry()), Jsonb(multi_facts.registry()), fingerprint(multi_facts.policy())))
+    conn.execute("CREATE VIEW mf_multi_facts.prior_field_versions AS "
+                 + current.view_definition(conn, "mf_live_facts.field_versions"))
+    for row in conn.execute("SELECT rolname FROM pg_roles WHERE oid<>current_user::regrole").fetchall():
+        conn.execute(sql.SQL("REVOKE ALL ON mf_multi_facts.prior_field_versions FROM {}").format(sql.Identifier(row["rolname"])))
+    conn.execute("REVOKE ALL ON mf_multi_facts.prior_field_versions FROM PUBLIC")
+    for role in evidence.ROLES:
+        conn.execute(sql.SQL("GRANT SELECT ON mf_multi_facts.prior_field_versions TO {}").format(sql.Identifier(role)))
+    for document in (multi_facts.policy(), multi_facts.current_policy()):
+        review._insert_exact(conn, "policies", "policy_hash", fingerprint(document), document,
+            {"policy_id": document["id"], "policy_version": document["version"]})
+
+
 def install(conn, root):
     from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
     from mfdataindia.review.publication_operations import capture_review, compare_review
@@ -188,44 +209,7 @@ def install(conn, root):
         ):
             raise ValueError("registered migration differs from reviewed pin")
         conn.execute(raw.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
-        conn.execute(
-            "INSERT INTO mf_multi_facts.configuration VALUES(1,%s,%s,%s)",
-            (
-                fingerprint(multi_facts.registry()),
-                Jsonb(multi_facts.registry()),
-                fingerprint(multi_facts.policy()),
-            ),
-        )
-        conn.execute(
-            "CREATE VIEW mf_multi_facts.prior_field_versions AS "
-            + current.view_definition(conn, "mf_live_facts.field_versions")
-        )
-        # The restored administrator's default grants also apply to new views.
-        for row in conn.execute(
-            "SELECT rolname FROM pg_roles WHERE oid<>current_user::regrole"
-        ).fetchall():
-            conn.execute(
-                sql.SQL("REVOKE ALL ON mf_multi_facts.prior_field_versions FROM {}").format(
-                    sql.Identifier(row["rolname"])
-                )
-            )
-        conn.execute("REVOKE ALL ON mf_multi_facts.prior_field_versions FROM PUBLIC")
-        for role in evidence.ROLES:
-            conn.execute(
-                sql.SQL("GRANT SELECT ON mf_multi_facts.prior_field_versions TO {}").format(
-                    sql.Identifier(role)
-                )
-            )
-        for document in (multi_facts.policy(), multi_facts.current_policy()):
-            ph = fingerprint(document)
-            review._insert_exact(
-                conn,
-                "policies",
-                "policy_hash",
-                ph,
-                document,
-                {"policy_id": document["id"], "policy_version": document["version"]},
-            )
+        _initialize_configuration(conn)
         verify_acl(conn, principal=evidence.ROLES[1])
         after_review = capture_review(conn)
         added = {fingerprint(multi_facts.policy()), fingerprint(multi_facts.current_policy())}

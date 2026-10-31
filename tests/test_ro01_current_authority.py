@@ -25,10 +25,12 @@ def test_versioned_book_authority_changes_only_reader_compatibility_source():
     old_path = "docs/CI_SOURCE_REFERENCE_BOOK_VARIANT_AUTHORITY_20261029.json"
     old = (ROOT / old_path).read_bytes()
     assert old == subprocess.check_output(["git", "show", BASE + ":" + old_path], cwd=ROOT)
-    current = (ROOT / source.VARIANT_DOCUMENT).read_bytes()
+    # The original RO-01 source version remains independently verifiable;
+    # RO-02's separate current ten-file descriptor has its own regressions.
+    current = (ROOT / "docs/RO01_BOOK_SOURCE_AUTHORITY_20261031.json").read_bytes()
     document = json.loads(current)
     assert current == embedded.document("variant")
-    assert hashlib.sha256(current).hexdigest() == source.VARIANT_SHA256
+    assert hashlib.sha256(current).hexdigest() == "6230bcdbd2f442ca7e649be14cd0ed6d7fdb45fbbfdf2da399ae7cabf791a0e5"
     assert document["compatibility"]["predecessor_sha256"] == hashlib.sha256(old).hexdigest()
     old_files = json.loads(old)["files"]
     assert document["files"][:-1] == old_files[:-1]
@@ -46,7 +48,13 @@ def test_current_diagnostic_attribution_is_one_explicit_changed_policy_source():
         new = module.SOURCE_HASHES
         assert old[version.PATH] == version.PREVIOUS_SHA256
         assert new[version.PATH] == hashlib.sha256((ROOT / version.PATH).read_bytes()).hexdigest()
-        assert {k: v for k, v in old.items() if k != version.PATH} == {k: new[k] for k in old if k != version.PATH}
+        # Retain the complete original RO-01 attribution assertion separately.
+        ro01 = version.historical_ro01_attribution(old)
+        assert {k: v for k, v in old.items() if k != version.PATH} == {k: ro01[k] for k in old if k != version.PATH}
+        assert old[version.CONFIGURATION_PATH] == version.CONFIGURATION_PREVIOUS_SHA256
+        assert new[version.CONFIGURATION_PATH] == version.CONFIGURATION_CURRENT_SHA256
+        untouched = set(old) - {version.PATH, version.CONFIGURATION_PATH}
+        assert {k: old[k] for k in untouched} == {k: new[k] for k in untouched}
         added = {"src/mfdataindia/review/reader_access_profile.py",
                  "src/mfdataindia/review/reader_policy_source_version.py",
                  "src/mfdataindia/review/broad_reader_function_closure.py"}

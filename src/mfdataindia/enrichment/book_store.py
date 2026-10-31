@@ -206,6 +206,39 @@ def capture(conn, *, reader_profile=profiles.RESTRICTED):
     return result
 
 
+def _initialize_configuration(conn, *, version=1):
+    """Post-DDL constructor; v5 only on the actual numbered 044 schema.
+
+    This does not activate, publish, upgrade or reconcile an installed book.
+    The historical installer deliberately still selects version 1.
+    """
+    who = conn.execute("SELECT session_user AS name,current_user=session_user AS direct").fetchone()
+    if not who["direct"] or who["name"] not in ("postgres", "mfdata_admin") or conn.info.transaction_status.name != "INTRANS":
+        raise ValueError("direct transactional configuration owner required")
+    if type(version) is not int or version not in (1, 5):
+        raise ValueError("explicit supported configuration version required")
+    if conn.execute("SELECT 1 FROM mf_book_facts.configuration LIMIT 1").fetchone():
+        raise ValueError("empty book configuration required")
+    if version == 5:
+        migration, schema_pin = MIGRATIONS[5]
+        row = conn.execute("SELECT content_sha256 FROM mf.schema_migrations WHERE migration_name=%s", (migration,)).fetchone()
+        if row != {"content_sha256": schema_pin}:
+            raise ValueError("actual numbered book schema required")
+    document = book_sources.configuration(version)
+    conn.execute("INSERT INTO mf_book_facts.configuration VALUES(1,%s,%s)", (fingerprint(document), Jsonb(document)))
+    conn.execute("CREATE VIEW mf_book_facts.prior_field_versions AS "
+                 + current.view_definition(conn, "mf_live_facts.field_versions"))
+    for row in conn.execute("SELECT rolname FROM pg_roles WHERE oid<>current_user::regrole").fetchall():
+        conn.execute(sql.SQL("REVOKE ALL ON mf_book_facts.prior_field_versions FROM {}").format(sql.Identifier(row["rolname"])))
+    conn.execute("REVOKE ALL ON mf_book_facts.prior_field_versions FROM PUBLIC")
+    for role in evidence.ROLES:
+        conn.execute(sql.SQL("GRANT SELECT ON mf_book_facts.prior_field_versions TO {}").format(sql.Identifier(role)))
+    p = book_sources.current_policy(version)
+    review._insert_exact(conn, "policies", "policy_hash", fingerprint(p), p,
+                         {"policy_id": p["id"], "policy_version": p["version"]})
+    return document
+
+
 def install(conn, root):
     from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
     from mfdataindia.review.publication_operations import capture_review, compare_review
@@ -239,39 +272,8 @@ def install(conn, root):
         ):
             raise ValueError("book migration differs from reviewed pin")
         conn.execute(raw.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
-        document = book_sources.configuration(1)
-        conn.execute(
-            "INSERT INTO mf_book_facts.configuration VALUES(1,%s,%s)",
-            (fingerprint(document), Jsonb(document)),
-        )
-        conn.execute(
-            "CREATE VIEW mf_book_facts.prior_field_versions AS "
-            + current.view_definition(conn, "mf_live_facts.field_versions")
-        )
-        for row in conn.execute(
-            "SELECT rolname FROM pg_roles WHERE oid<>current_user::regrole"
-        ).fetchall():
-            conn.execute(
-                sql.SQL("REVOKE ALL ON mf_book_facts.prior_field_versions FROM {}").format(
-                    sql.Identifier(row["rolname"])
-                )
-            )
-        conn.execute("REVOKE ALL ON mf_book_facts.prior_field_versions FROM PUBLIC")
-        for role in evidence.ROLES:
-            conn.execute(
-                sql.SQL("GRANT SELECT ON mf_book_facts.prior_field_versions TO {}").format(
-                    sql.Identifier(role)
-                )
-            )
+        document = _initialize_configuration(conn)
         p = book_sources.current_policy(1)
-        review._insert_exact(
-            conn,
-            "policies",
-            "policy_hash",
-            fingerprint(p),
-            p,
-            {"policy_id": p["id"], "policy_version": p["version"]},
-        )
         verify_acl(conn, principal=evidence.ROLES[1])
         after_review = capture_review(conn)
         cleaned = {

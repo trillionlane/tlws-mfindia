@@ -31,8 +31,9 @@ BASE_URL = (f"https://{spec.REGION}-run.googleapis.com/apis/run.googleapis.com/v
             f"namespaces/{spec.PROJECT}")
 
 
-def metadata_arguments(kind, name=None, *, role=None):
+def metadata_arguments(kind, name=None, *, role=None, operation_id=None):
     """No caller-controlled project, resource pattern, secret or SQL command."""
+    roles = {key: spec.role_for(key, operation_id=operation_id) for key in spec.ROLES}
     if kind == "auth" and name is None:
         return ["auth", "list", "--filter=account:" + spec.OPERATOR,
                 "--format=json"]
@@ -43,7 +44,7 @@ def metadata_arguments(kind, name=None, *, role=None):
     elif kind in ("service", "serviceIAM") and name in SERVICES:
         args = ["run", "services", "describe" if kind == "service" else
                 "get-iam-policy", name]
-    elif kind in ("job", "jobIAM") and name in (*PROTECTED_JOBS, *(r.job for r in spec.ROLES.values())):
+    elif kind in ("job", "jobIAM") and name in (*PROTECTED_JOBS, *(r.job for r in roles.values())):
         args = ["run", "jobs", "describe" if kind == "job" else
                 "get-iam-policy", name]
     elif kind == "schedule" and name in PROTECTED_JOBS:
@@ -56,13 +57,13 @@ def metadata_arguments(kind, name=None, *, role=None):
     elif kind in ("jobs", "executions") and role in spec.ROLES and name is None:
         if kind == "jobs":
             args = ["run", "jobs", "list",
-                    "--filter=metadata.name=" + spec.ROLES[role].job, "--limit=2"]
+                    "--filter=metadata.name=" + roles[role].job, "--limit=2"]
         else:
             args = ["run", "jobs", "executions", "list",
-                    "--job=" + spec.ROLES[role].job, "--limit=2"]
+                    "--job=" + roles[role].job, "--limit=2"]
     elif kind in ("execution", "logs") and role in spec.ROLES \
             and type(name) is str and re.fullmatch(
-                re.escape(spec.ROLES[role].job) + r"-[a-z0-9]{5,10}", name):
+                re.escape(roles[role].job) + r"-[a-z0-9]{5,10}", name):
         if kind == "execution":
             args = ["run", "jobs", "executions", "describe", name]
         else:
@@ -80,13 +81,16 @@ def metadata_arguments(kind, name=None, *, role=None):
 class Backend:
     """One kind, one fixed job, one request and one original execution."""
 
-    def __init__(self, approval, repo, prepared):
+    def __init__(self, approval, repo, prepared, *, operation_id=None):
         spec.require(type(approval) is dict and approval.get("kind") in spec.ROLES,
                      "EXACT_DIRECT_BACKEND_APPROVAL_REQUIRED")
         self.approval = deepcopy(approval)
         self.repo = Path(repo).resolve()
         self.prepared = deepcopy(prepared)
         self.kind = approval["kind"]
+        self.operation_id = operation_id
+        self.role = spec.role_for(self.kind, operation_id=operation_id)
+        self.current_preflight_verified = False
         self.created = False
         self.executed = False
         self.sent_urls = set()
@@ -106,7 +110,7 @@ class Backend:
         return completed.stdout.strip()
 
     def metadata(self, kind, name=None, *, role=None):
-        args = metadata_arguments(kind, name, role=role)
+        args = metadata_arguments(kind, name, role=role, operation_id=self.operation_id)
         completed = subprocess.run(
             ["gcloud", "--account=" + spec.OPERATOR, *args],
             capture_output=True, text=True, timeout=60)
@@ -115,6 +119,8 @@ class Backend:
         return json.loads(completed.stdout)
 
     def preflight(self, approval, prepared):
+        if self.operation_id is not None:
+            raise ValueError("CURRENT_OPERATION_PREFLIGHT_REQUIRED")
         if approval != self.approval or prepared != self.prepared:
             raise ValueError("DIRECT_BACKEND_PREPARED_INPUT_DRIFT")
         verify_checkout(self.repo, approval["final_git_sha"])
@@ -219,7 +225,9 @@ class Backend:
             "executions", role=kind) == []
 
     def _post(self, url, body):
-        name = spec.ROLES[self.kind].job
+        if self.operation_id is not None and not self.current_preflight_verified:
+            raise ValueError("CURRENT_OPERATION_PREFLIGHT_REQUIRED")
+        name = self.role.job
         allowed = {BASE_URL + "/jobs": self.prepared["body"],
                    BASE_URL + "/jobs/" + name + ":run": b"{}"}
         if url not in allowed or body != allowed[url] or url in self.sent_urls:
@@ -245,12 +253,12 @@ class Backend:
         if kind != self.kind or not self.created or self.executed:
             raise ValueError("SOLE_DIRECT_EXECUTION_REQUIRED")
         self.executed = True
-        return self._post(BASE_URL + "/jobs/" + spec.ROLES[kind].job + ":run", b"{}")
+        return self._post(BASE_URL + "/jobs/" + self.role.job + ":run", b"{}")
 
     def job(self, kind):
         if kind != self.kind:
             raise ValueError("UNAPPROVED_DIRECT_JOB_READ")
-        return self.metadata("job", spec.ROLES[kind].job)
+        return self.metadata("job", self.role.job)
 
     def executions(self, kind):
         if kind != self.kind:
