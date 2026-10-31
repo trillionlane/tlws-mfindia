@@ -64,7 +64,7 @@ def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
                 allowed = {"USAGE"}
             elif grant["kind"] == "table" and (
                 grant["name"] == "snapshots" or grant["grantee"] == evidence.ROLES[0]
-                or profiles.is_broad_reader(grant["grantee"], reader_profile)
+                or profiles.verified_reader_select(conn, grant["grantee"], reader_profile)
             ):
                 allowed = {"SELECT"} | (
                     {"INSERT"} if grant["grantee"] == evidence.ROLES[0] else set()

@@ -192,6 +192,41 @@ separate prerequisite until PR136 merges; the focused RO-01 review range is
 results, SHA and run links are maintained in the PR description/checks rather
 than forcing another expensive unchanged CI run for a documentation-only update.
 
+### Review correction: caller capabilities are not another role's reader policy
+
+The independent P1 review at `76da239` found a missing interaction: the native
+startup fixture published its generator data before broad adoption. Afterwards,
+the unchanged generator publication chain rejected the shared reader's legitimate
+`mf_enrichment.blobs` SELECT. Selecting BROAD for the generator is deliberately
+invalid and is not the remedy.
+
+`verified_reader_select` now separates cross-role ACL validation from the
+current caller's profile. Existing direct generator/admin paths retain their
+restricted caller checks. Only their acceptance of the reader's extra table
+SELECT requires the complete actual installed broad catalogue, including the
+existing helper seals, absence of mutation/elevation capabilities and all
+required reads/defaults. It is not inferred from one grant atom. The actual
+database and direct configured identity are verified; no HTTP input, grant,
+profile promotion, cached permission verdict or SQL/policy relaxation is added.
+Restricted reader calls still cannot self-adopt broad access. The enrichment,
+portfolio, distribution, IDCW and review-artifact ACL loops share this seam;
+current-caller source, write, DDL, ownership and integrity checks are unchanged.
+
+A controlled-catalogue test executes the actual enrichment validator and first
+failed on `76da239` with `enrichment grants exceed declared capabilities`. It
+passes after the correction, while BROAD selection for the generator still
+fails identity validation. Additional pure tests reject incomplete/unsafe
+reader states and indirect/untrusted sessions; these are not native proof.
+
+The added hosted-native regression adopts the actual planned broad profile,
+then connects directly as the existing generator and runs real portfolio,
+distribution and IDCW publication/replay. It compares complete effective
+generator/admin relation, column, schema, sequence, function, role and membership
+capabilities before adoption and after publication. It also checks reader DML
+and DDL denial, unchanged ACLs, and source values outside the expected synthetic
+IDCW publications. Final-head native/full/image results remain required and
+are reported through PR137; the prior green run is not evidence for this fix.
+
 ### RO-02 handoff seam and residual boundary
 
 Use the selected-profile installer and `profiles.prepare`/`verify_selection` plus

@@ -32,7 +32,8 @@ def verify_artifact_acl(conn, *, reader_profile=profiles.RESTRICTED) -> None:
                 allowed = {'SELECT'}
             elif kind == 'function' and name == 'mf_review.append_event(integer,text,text,text,text,text,jsonb)' and role == 'mfdata_verified_admin':
                 allowed = {'EXECUTE'}
-            if kind == 'table' and profiles.is_broad_reader(role, reader_profile):
+            if (kind == 'table' and permission == 'SELECT' and permission not in allowed
+                    and profiles.verified_reader_select(conn, role, reader_profile)):
                 allowed = {'SELECT'}
         if grant['owner'] != namespace['nspowner'] or permission not in allowed:
             if kind == 'function' and name == 'mf_review.append_event(integer,text,text,text,text,text,jsonb)':

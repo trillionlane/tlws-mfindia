@@ -82,6 +82,34 @@ def is_broad_reader(principal, selected=RESTRICTED):
     return selected == BROAD and principal == policy.READER
 
 
+def verified_reader_select(conn, grantee, selected=RESTRICTED):
+    """Validate another role's installed read policy, not the caller's powers.
+
+    Explicit broad reader callers have already passed verify_selection. Existing
+    generator/admin paths keep their restricted caller checks, but may coexist
+    with the reader's independently verified complete broad catalogue. A raw
+    SELECT atom alone, an incomplete grant rollout or an unsafe reader is not
+    sufficient. There is no grant, caller-profile promotion or cached verdict.
+    """
+    contract(selected)
+    if grantee != policy.READER:
+        return False
+    if selected == BROAD:
+        return True
+    identity = conn.execute(
+        "SELECT current_database() AS database,current_user AS principal,session_user AS session"
+    ).fetchone()
+    if identity["principal"] == policy.READER:
+        return False  # A restricted reader must explicitly adopt broad access.
+    if (identity["database"] != policy.DATABASE
+            or identity["principal"] != identity["session"]
+            or identity["principal"] not in (policy.OWNER, "mfdata_verified_generator",
+                                              "mfdata_verified_admin")):
+        raise ReaderAccessError("READER_PROFILE_IDENTITY_MISMATCH")
+    _verify_broad_catalogue(conn)
+    return True
+
+
 def guard_options(selected):
     contract(selected)
     return {} if selected == RESTRICTED else {"reader_profile": selected}
@@ -188,6 +216,10 @@ def verify_selection(conn, selected=RESTRICTED, principal=None):
             or identity["principal"] != identity["session"]
             or identity["principal"] not in (policy.READER, policy.OWNER)):
         raise ReaderAccessError("READER_PROFILE_IDENTITY_MISMATCH")
+    _verify_broad_catalogue(conn)
+
+
+def _verify_broad_catalogue(conn):
     planned = prepare(_catalogue(conn))
     if planned["sql"] or any(planned["delta"].values()):
         raise ReaderAccessError("READER_PROFILE_READ_GRANTS_MISSING")

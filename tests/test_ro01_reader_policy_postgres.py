@@ -79,6 +79,14 @@ def ro01_db(pg_dsn, monkeypatch, request):
             if getattr(request, "param", None) == "core":
                 yield dsn
                 return
+            if getattr(request, "param", None) == "generator":
+                # Existing synthetic portfolio/distribution inputs and published
+                # baseline; the regression performs real publication AFTER broad
+                # adoption, unlike the original all-features startup fixture.
+                from test_idcw_catalog import prepare as prepare_generator
+                prepare_generator(dsn, monkeypatch)
+                yield dsn
+                return
             identities, inputs, _ = prepared(dsn, monkeypatch)
             publish(dsn, identities, inputs)
             # Directly related sibling source guards are real installed modules,
@@ -140,6 +148,81 @@ def adopt(dsn):
     # Exercise the actual production installation/planner composition in its
     # own existing transaction; no hand-written reduced grant population.
     return install_and_reconcile(dsn, ROOT, manifest(), {}, reader_profile=profiles.BROAD)
+
+
+def generator_capabilities(dsn):
+    """Actual effective generator/admin capabilities, independent of reader ACLs."""
+    output = {}
+    with connect(dsn) as conn:
+        for role in ("mfdata_verified_generator", "mfdata_verified_admin"):
+            output[role] = {
+                "role": conn.execute("SELECT rolsuper,rolinherit,rolcreaterole,rolcreatedb,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=%s", (role,)).fetchone(),
+                "memberships": conn.execute("SELECT m.* FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.member WHERE r.rolname=%s ORDER BY m.roleid", (role,)).fetchall(),
+                "schemas": conn.execute("SELECT oid,has_schema_privilege(%s,oid,'USAGE') AS usage,has_schema_privilege(%s,oid,'CREATE') AS create FROM pg_namespace WHERE nspname=ANY(%s) ORDER BY oid", (role, role, list(planner.SCHEMAS))).fetchall(),
+                "relations": conn.execute("SELECT c.oid,ARRAY[has_table_privilege(%s,c.oid,'SELECT'),has_table_privilege(%s,c.oid,'INSERT'),has_table_privilege(%s,c.oid,'UPDATE'),has_table_privilege(%s,c.oid,'DELETE'),has_table_privilege(%s,c.oid,'TRUNCATE'),has_table_privilege(%s,c.oid,'REFERENCES'),has_table_privilege(%s,c.oid,'TRIGGER')] AS capabilities FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY(%s) AND c.relkind IN('r','p','v','m') ORDER BY c.oid", (role,) * 7 + (list(planner.SCHEMAS),)).fetchall(),
+                "columns": conn.execute("SELECT c.oid,a.attnum,ARRAY[has_column_privilege(%s,c.oid,a.attnum,'SELECT'),has_column_privilege(%s,c.oid,a.attnum,'INSERT'),has_column_privilege(%s,c.oid,a.attnum,'UPDATE'),has_column_privilege(%s,c.oid,a.attnum,'REFERENCES')] AS capabilities FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY(%s) AND c.relkind IN('r','p','v','m') AND a.attnum>0 AND NOT a.attisdropped ORDER BY c.oid,a.attnum", (role,) * 4 + (list(planner.SCHEMAS),)).fetchall(),
+                "functions": conn.execute("SELECT p.oid,has_function_privilege(%s,p.oid,'EXECUTE') AS execute FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=ANY(%s) ORDER BY p.oid", (role, list(planner.SCHEMAS))).fetchall(),
+                "sequences": conn.execute("SELECT c.oid,ARRAY[has_sequence_privilege(%s,c.oid,'USAGE'),has_sequence_privilege(%s,c.oid,'SELECT'),has_sequence_privilege(%s,c.oid,'UPDATE')] AS capabilities FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY(%s) AND c.relkind='S' ORDER BY c.oid", (role,) * 3 + (list(planner.SCHEMAS),)).fetchall(),
+            }
+    return output
+
+
+@pytest.mark.parametrize("ro01_db", ["generator"], indirect=True)
+def test_native_broad_adoption_preserves_real_generator_publication_paths(ro01_db, monkeypatch, capsys):
+    from mfdataindia.enrichment import portfolio_store, portfolio_schemas, distribution_store, idcw_store
+    from mfdataindia.review.privileges import verify_runtime
+    from test_distribution_observations import inputs as distribution_inputs
+    from test_idcw_catalog import inputs as idcw_inputs
+
+    dsn = ro01_db
+    before = generator_capabilities(dsn)
+    with connect(dsn) as conn:
+        portfolio = conn.execute("SELECT document FROM mf_portfolios.snapshots WHERE amfi_scheme_code=1").fetchone()["document"]
+    selection = portfolio_schemas.Selection(source_id=portfolio["source_id"],
+        identity_source_id=portfolio["identity_source_id"],
+        targets=[portfolio_schemas.Target(code=1, sheet="BSLFEF", identity_page=28)])
+    adopt(dsn)
+    assert generator_capabilities(dsn) == before
+    enrolled = catalogue(dsn)
+    baseline_values = values(dsn)
+
+    # Real direct generator connections, original default caller profile and
+    # actual publication/replay transactions, not owner impersonation or mocks.
+    with connect(dsn, "mfdata_verified_generator", autocommit=False) as conn:
+        assert portfolio_store.publish(conn, selection) == [portfolio]
+    request, raw, _ = distribution_inputs(monkeypatch)
+    with connect(dsn, "mfdata_verified_generator", autocommit=False) as conn:
+        first_distribution = distribution_store.append(conn, request, raw)
+        assert distribution_store.append(conn, request, raw) == first_distribution
+    requests, sources, _ = idcw_inputs(monkeypatch)
+    with connect(dsn, "mfdata_verified_generator", autocommit=False) as conn:
+        first_idcw = idcw_store.append_batch(conn, requests, sources)
+        assert len(first_idcw) == 4
+        assert idcw_store.append_batch(conn, requests, sources) == first_idcw
+    for role in ("mfdata_verified_generator", "mfdata_verified_admin"):
+        with connect(dsn, role) as conn:
+            verify_runtime(conn, "generator" if role.endswith("generator") else "api")
+            for module in (portfolio_store, distribution_store, idcw_store):
+                module.verify_acl(conn)
+            with pytest.raises(profiles.ReaderAccessError, match="^READER_PROFILE_IDENTITY_MISMATCH$"):
+                portfolio_store.verify_acl(conn, reader_profile=profiles.BROAD)
+    assert generator_capabilities(dsn) == before
+    assert catalogue(dsn) == enrolled  # Publication does not change any role/ACL.
+    after = values(dsn)
+    assert all(after[name] == digest for name, digest in baseline_values.items()
+               if not name.startswith("mf_idcw."))
+    with connect(dsn, planner.READER) as conn:
+        profiles.verify_selection(conn, profiles.BROAD)
+        for schema in ("mf_portfolios", "mf_distributions", "mf_idcw"):
+            for statement in (f"INSERT INTO {schema}.sources DEFAULT VALUES",
+                              f"UPDATE {schema}.sources SET content=content",
+                              f"DELETE FROM {schema}.sources"):
+                with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                    conn.execute(statement)
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute("CREATE TABLE mf_portfolios.unapproved(value integer)")
+    with capsys.disabled():
+        print("RO01 native generator coexistence: broad adopted; direct portfolio/distribution/IDCW publication and replay pass; generator/admin capabilities unchanged; reader DML/DDL denied", flush=True)
 
 
 def test_native_base_raw_conflicts_and_real_broad_application_startup_and_reads(ro01_db, capsys):
