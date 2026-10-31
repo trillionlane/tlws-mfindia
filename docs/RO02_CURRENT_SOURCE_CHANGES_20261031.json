@@ -44,7 +44,7 @@
       "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
     },
     "src/mfdataindia/review/broad_reader_view_profile.py": {
-      "current_sha256": "e6cd341e67021a33e8e27fa5a59b96e743fa2ad362271fa3728729ed20a09acf",
+      "current_sha256": "a78d8f364707c324776609cf7e40bfc289e87db4be2e765e6aa92b090efe9c60",
       "previous_sha256": "07339a8765bd0d7d19ac0b6c59711b703f0b41bfed2054a689fd5e0d2339f250",
       "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
     },

@@ -1,0 +1,354 @@
+{
+  "format": "RO02_POPULATED_SOURCE_VIEW_REFERENCE_V1_NOT_RUNTIME_ACCEPTANCE",
+  "profile": "BASE44_RO02_REGISTERED_AND_BOOK_V5_POPULATED",
+  "source_run": 41214644674,
+  "source_head": "e5154ce097a04c3117ddb0e8302d3a4a2fe4e1c4",
+  "source_checkout": "b0dff71e013ce66b819d7d736272609c8779d1e4",
+  "source_tree": "61f44eca89ba02be308f6346f3bfceaa9736e48b",
+  "original_raw_log_sha256": "4e191d7f85e662ab9f0dddf0a11d17c6aeda3443c076ef1f6a00c4b69efdedfb",
+  "actual_compiler_postgres_version_assertion": "180006",
+  "compilation": {
+    "checkout": "b0dff71e013ce66b819d7d736272609c8779d1e4",
+    "consumer_acceptance": false,
+    "format": "RO02_HOSTED_SOURCE_VIEW_COMPILATION_V1_NOT_LIVE_ACCEPTANCE",
+    "head": "e5154ce097a04c3117ddb0e8302d3a4a2fe4e1c4",
+    "permission_enabled": false,
+    "source": {
+      "base_files": 44,
+      "base_sha256": "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372",
+      "format": "mf-broad-reader-packaged-source-v1-nonexecutable",
+      "live_migration_ledger_compared": false,
+      "migration_ledger": [
+        {
+          "content_sha256": "b6f6c1e5a719f4e29f4e1c96a00acaf9778c53962e03a8ccef91f9dc88f7a0bf",
+          "migration_name": "000_schema_migrations.sql"
+        },
+        {
+          "content_sha256": "9aabc2462908079636b03f88015a9b6b2b76350184e44cab029e4f8e26d35a6d",
+          "migration_name": "001_core_schema.sql"
+        },
+        {
+          "content_sha256": "418154719b237b616f458fd20ffa1f8408914c88e86cf75dadf71b9e07261a2a",
+          "migration_name": "002_nav_and_views.sql"
+        },
+        {
+          "content_sha256": "4da1bba8e1a406ae29e9bab429eef54ad2556bf3c6f8264d33f3b150d723bdf0",
+          "migration_name": "003_enrichment_recon.sql"
+        },
+        {
+          "content_sha256": "fa37bac398799552bedfe8ad491aeba2ec4db1a5f807027199ba336254a8ea8f",
+          "migration_name": "004_groww_enrichment.sql"
+        },
+        {
+          "content_sha256": "6695775a51a4c32a05bbb192be11447ca69eb2e51f08427b07b3e7967a8a08e4",
+          "migration_name": "005_groww_deep_enrichment.sql"
+        },
+        {
+          "content_sha256": "76274690c1e217ce6b4a4aa261e3a15a7adca456b6c8e69b21f4e4bbe95d66b7",
+          "migration_name": "006_groww_provenance.sql"
+        },
+        {
+          "content_sha256": "a99afcb6188f4a61d947097e3abc8936ae9262d8765445caad13652918bd20f9",
+          "migration_name": "008_fund_data_status_v2.sql"
+        },
+        {
+          "content_sha256": "c477f93498a9a8946113899498fdc9b0a22125b9b3602aa4e274d93dcb9189c7",
+          "migration_name": "009_fund_risk_profile.sql"
+        },
+        {
+          "content_sha256": "7b2bdace1f9d824eb1ff63a5a509a222713c8eaba404931803ce334cce55bca7",
+          "migration_name": "010_computed_metrics.sql"
+        },
+        {
+          "content_sha256": "d03d60fc07589bb19586460af6f706a59f188efcc2cf9a94fd6a0c2543285dee",
+          "migration_name": "011_amc_factsheets.sql"
+        },
+        {
+          "content_sha256": "23672b13fca64d48c6fe60c14c2f8d7d1ff561396577469508400bdc05401e44",
+          "migration_name": "012_drop_aggregator_identity.sql"
+        },
+        {
+          "content_sha256": "87bad2d770b4b46c3e4fdb476a64a54236718323c29efda7072db97112f1e96a",
+          "migration_name": "013_purge_aggregator_references.sql"
+        },
+        {
+          "content_sha256": "342418cb123aa159eff3130456bd07348978e5a93559d08479c99d1d7450aa27",
+          "migration_name": "014_ingest_role_privileges.sql"
+        },
+        {
+          "content_sha256": "4759e71a6490558dfae2e3f48675c720b62b98eb14d360c68f1f16768861e49b",
+          "migration_name": "015_dataset_summary.sql"
+        },
+        {
+          "content_sha256": "46bdae03033fbbd525ef26d6f51bbc69a6430058e0ff5897f4945804c6117546",
+          "migration_name": "016_nav_quality_assessments.sql"
+        },
+        {
+          "content_sha256": "ee58cc4a679c291e9f6ab6c4a4a86cabc3d6ce3f10679d236c5574f6d9373dd5",
+          "migration_name": "017_source_snapshot_runs.sql"
+        },
+        {
+          "content_sha256": "b3747df087c2e3c30e11eb87b158a047323a2257a4eeace7caa1621baf3792f0",
+          "migration_name": "018_fund_family_association_tags.sql"
+        },
+        {
+          "content_sha256": "c77a42540924e73ba3af21a3c7392a40efcc8cf0c6aa709bb17e9ed9d3f18c4f",
+          "migration_name": "019_reconcile_association_writer_privileges.sql"
+        },
+        {
+          "content_sha256": "b155bcc1a67d835d8306c81438ccf17d534730649bbcb4461305fb5aa14b8e3d",
+          "migration_name": "020_nav_quality_audit_privileges.sql"
+        },
+        {
+          "content_sha256": "47779138da9dce74a3ba52d0548e01d18cf82e2240aad8872a6561bf8adc156c",
+          "migration_name": "021_nav_remediation_review.sql"
+        },
+        {
+          "content_sha256": "206ea5768d4ccb121f7280a058d3fdf93994b121580354eb360be07595801ebe",
+          "migration_name": "022_nav_correction_consistency.sql"
+        },
+        {
+          "content_sha256": "16e18cd8092fc12baa0216687ece92124f82953abb1b61b500128951e8dce0b6",
+          "migration_name": "023_verified_fund_review.sql"
+        },
+        {
+          "content_sha256": "4f4590e193dd86e9026f096e3a761b18d28dc46bd763ca7641f86079b98571ed",
+          "migration_name": "024_research_publication.sql"
+        },
+        {
+          "content_sha256": "8dcbdc09d485089bbffdc9c5cd9e3730bbd70b8cec3849d66b2f61f123c48ac9",
+          "migration_name": "025_calendar_analytics.sql"
+        },
+        {
+          "content_sha256": "45774437379f736c9f1465935c6071951072674e5affb9abeee60e99eba3af41",
+          "migration_name": "026_rolling_analytics.sql"
+        },
+        {
+          "content_sha256": "52ef41fef91e43c4cc87a98a165f22c96120ad189feaccd7b3d0e551ab15aca8",
+          "migration_name": "027_official_enrichment_evidence.sql"
+        },
+        {
+          "content_sha256": "e2de8323663dd08d420bee3731e7cf2b307798afe51bf4e1ba351cb047229ab4",
+          "migration_name": "028_official_fund_facts.sql"
+        },
+        {
+          "content_sha256": "59ea0a46e7cd86cfc61c22667c30428d9a9cd0020346d3fb91f4ea54e83f453e",
+          "migration_name": "029_official_complete_portfolios.sql"
+        },
+        {
+          "content_sha256": "6421c0d1de19be2b5b6a0bed461997c8f60d47890179412f196c942743d602e4",
+          "migration_name": "030_reported_weighted_overlap.sql"
+        },
+        {
+          "content_sha256": "37171479532837e746812f67c477d537408aeaef56811c86284563371a32cd5c",
+          "migration_name": "031_reported_distribution_observations.sql"
+        },
+        {
+          "content_sha256": "a08b0f396489c1b8fec40d3575c28445a00e4cb2f855cd5236358c19bb8a6c91",
+          "migration_name": "032_multi_fund_idcw_observations.sql"
+        },
+        {
+          "content_sha256": "c5cf7b1c04d2ab7a088a19824fb0d951c9b7925bf7fc1846bca28e18fcc10dbb",
+          "migration_name": "033_current_official_facts.sql"
+        },
+        {
+          "content_sha256": "1363ec9ddddbb331e0f822dc3262777b0725cf48da8ebcc61adc46154d60e631",
+          "migration_name": "034_official_monthly_facts.sql"
+        },
+        {
+          "content_sha256": "2bfb9a075d7ea42f6d3a074d37e44c98131e9726cfa29f8d4ef563030a58bb6c",
+          "migration_name": "035_official_fact_refresh.sql"
+        },
+        {
+          "content_sha256": "ac679dcfaae317a195b352c08b8319d325bf43df3ea8e54d71d376ed65f059f3",
+          "migration_name": "036_official_fact_verification.sql"
+        },
+        {
+          "content_sha256": "2b5048a1f3640ea6de9845ada60e46352d2fcbe03598f4869117ef86ae2ba18a",
+          "migration_name": "037_registered_monthly_facts.sql"
+        },
+        {
+          "content_sha256": "62a526c54d1d069ed1f68e0a681e1110ede700249051ff4de57bf97675dd8928",
+          "migration_name": "038_amc_book_facts.sql"
+        },
+        {
+          "content_sha256": "64618433ce87e5b81f3ebbe072576803c63d2a6ca58643551d602053a76b05b7",
+          "migration_name": "039_sbi_book_evidence.sql"
+        },
+        {
+          "content_sha256": "0ffc43a8759c498ee67708a87118160b00e9901aac6e293e1bc9d0c513bdccb3",
+          "migration_name": "040_kotak_book_evidence.sql"
+        },
+        {
+          "content_sha256": "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702",
+          "migration_name": "041_uti_book_evidence.sql"
+        },
+        {
+          "content_sha256": "97482ba0be7e2f422cce4bf1389e60f73f9601f8ad91d181ecc727b2dc1887ef",
+          "migration_name": "042_uti_physical_title_evidence.sql"
+        },
+        {
+          "content_sha256": "6da1cd6e1cb9b84ab98e1b4d7045e1895134424dd8d036b45137b0b42e662276",
+          "migration_name": "043_uti_canonical_title_evidence.sql"
+        },
+        {
+          "content_sha256": "4b4e3d73d49a4844c4da300a17a952a8e24a47a6fa025382a2db064f5ed1a778",
+          "migration_name": "044_uti_complete_aum_rows.sql"
+        }
+      ],
+      "permission_enabled": false,
+      "variant_files": 10,
+      "variant_sha256": "67b8ca2698b237a53cbe615d3fe7f12dc81339a7d0d8c770e09217d0b761a75e"
+    },
+    "tree": "61f44eca89ba02be308f6346f3bfceaa9736e48b",
+    "view_count": 16,
+    "view_projection": [
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "8a52b762bd206cd9e568ad6e297221494f1534daf6a8e11f47fce20ac172c70a",
+          "utf8_bytes": 2395
+        },
+        "nspname": "mf",
+        "relname": "current_fund_facts"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "89998cd74e4f6534d5803036d7a989854821586159565501344a0d5b4423e108",
+          "utf8_bytes": 692
+        },
+        "nspname": "mf",
+        "relname": "current_risk_profile"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "86e36ed6a6aa82cc37338b58816bcb5eef3260309dc1ef14bc348cbe9e71f1d7",
+          "utf8_bytes": 521
+        },
+        "nspname": "mf",
+        "relname": "nav_last_5y"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "989430b2405490c84221c4edadbbbd69b31cd2868b650413cb29bbc9c83fe148",
+          "utf8_bytes": 828
+        },
+        "nspname": "mf",
+        "relname": "v_coverage"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "8de9dea5a7ff4686f884ba2a5c97bdc92a1979ca815ef2a992aa4165e182d2b7",
+          "utf8_bytes": 559
+        },
+        "nspname": "mf",
+        "relname": "v_enrichment_coverage"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "77c30e089520b091841ab5199050112986daadaa3cab6ad845c6ee617bc136c1",
+          "utf8_bytes": 8050
+        },
+        "nspname": "mf",
+        "relname": "v_fund_data_status"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "2fe9431ed2208ab870832a241cf97488232e0b55d92dfe9b292bbf1148329bdd",
+          "utf8_bytes": 598
+        },
+        "nspname": "mf",
+        "relname": "v_nav_coverage"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "3c214e9242b0d1b0dc437689a658c35f032a42ab61b155ec3817618b8dedcd24",
+          "utf8_bytes": 477
+        },
+        "nspname": "mf",
+        "relname": "v_partition_health"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "08ec203344f69f64457d383eec73714b2c88f1d8ebbe82d99e7a807517a7d758",
+          "utf8_bytes": 4336
+        },
+        "nspname": "mf_book_facts",
+        "relname": "prior_field_versions"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "50500eb1a09bd0d6d988600672e9b8ca1aea0f37e780fcc4f42ccc0cfb3cbf9e",
+          "utf8_bytes": 2957
+        },
+        "nspname": "mf_live_facts",
+        "relname": "baseline"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "877b0d59ac38e4ff4c570e6fb78ee52240c3ee840a6e763ffe9741c3660e3a01",
+          "utf8_bytes": 1656
+        },
+        "nspname": "mf_live_facts",
+        "relname": "current_values"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "ba4ccba16ac9c3ecfab8879bd4438e0500aabc0d5a4280ad494cca47f64b428b",
+          "utf8_bytes": 190
+        },
+        "nspname": "mf_live_facts",
+        "relname": "field_heads"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "2031446be30eb854068afa88d83262a479a38f41cf18f1a081f710837c8b2822",
+          "utf8_bytes": 4346
+        },
+        "nspname": "mf_live_facts",
+        "relname": "field_versions"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "8a52b762bd206cd9e568ad6e297221494f1534daf6a8e11f47fce20ac172c70a",
+          "utf8_bytes": 2395
+        },
+        "nspname": "mf_live_facts",
+        "relname": "resolved"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "e5cc3ce3e72e4a1c9ee38eaab590092248f432b3418bf2e430760a7056ec1312",
+          "utf8_bytes": 233
+        },
+        "nspname": "mf_live_facts",
+        "relname": "selected_fields"
+      },
+      {
+        "definition": {
+          "is_null": false,
+          "sha256": "75da887c6cbf8f82612f0446f9b49d9050202c926eef0785e84c9281c9e29beb",
+          "utf8_bytes": 7569
+        },
+        "nspname": "mf_multi_facts",
+        "relname": "prior_field_versions"
+      }
+    ],
+    "view_projection_sha256": "e2fca3236a4372cb705ba1eda686763221a60354837df3419743fbe643ee664c"
+  },
+  "scope": "Complete actual compiled source/view projection. Initial connected chain rejected it before grant; final independent fresh-head native chain remains required. Not live authority, permissions or consumer acceptance."
+}

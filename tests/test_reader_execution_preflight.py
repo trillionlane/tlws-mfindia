@@ -165,3 +165,27 @@ def test_reader_unverified_grant_predecessor_never_claims_no_grant_before_connec
     assert result.exit_code == 1 and result.certificate is not None
     assert result.diagnostic["grant_effect"] == diagnostics.UNKNOWN
     assert "synthetic-secret-marker" not in canonical(result.diagnostic)
+
+
+def test_packaged_smoke_isolates_synthetic_children_from_postgres_image_defaults(monkeypatch):
+    selected = importlib.util.spec_from_file_location("_ro02_smoke", ROOT / "scripts/smoke_reader_execution_dev.py")
+    module = importlib.util.module_from_spec(selected)
+    selected.loader.exec_module(module)
+    monkeypatch.setenv("PG_MAJOR", "18")
+    monkeypatch.setenv("PGDATA", "/synthetic/postgres/image-default-not-a-live-target")
+    result = module.smoke(root=ROOT, git_sha=GIT)
+    assert result["packaged_reader_execution_entrypoints"] == "PASS"
+    assert result["provider_requests"] == result["database_connections"] == 0
+    assert os.environ["PG_MAJOR"] == "18"  # Only synthetic child inputs change.
+
+
+@pytest.mark.parametrize("key", ["PGPASSWORD", "PGDATA", "PG_MAJOR"])
+def test_actual_worker_still_rejects_any_postgres_environment_override(key):
+    from reader_execution_fixtures import environment
+    value, _, _ = plan()
+    env = environment(value)
+    env[key] = "synthetic-secret-marker"
+    result = worker.Worker().run(env, source_root=ROOT,
+        connect=lambda **kw: pytest.fail("PG override connected"))
+    assert result.exit_code == 1 and result.diagnostic["stage"] == "validation"
+    assert "synthetic-secret-marker" not in canonical(result.diagnostic)

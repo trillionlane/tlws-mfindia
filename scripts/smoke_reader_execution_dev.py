@@ -47,8 +47,12 @@ def smoke(*, root=None, git_sha=None):
         prepared = spec.request(kind, root=contract.operation_root(plan), final_git_sha=git_sha,
             image=images["app"], payload=payload, source_sha256=fingerprint(plan["packaged_source"]),
             operation_id=plan["operation_id"], **contract.package_hashes(root))
+        # The TOOLS base is postgres and has PG_* image defaults. Deliberately
+        # isolate ONLY this synthetic child's inputs: actual workers continue
+        # rejecting every PG_* override before DSN/connect. Do not weaken that
+        # runtime guard or accept an earlier failure as this smoke's success.
         env = {key: value for key, value in os.environ.items()
-               if not key.startswith(("BROAD_DIRECT_", "READER_EXECUTION_", "CLOUD_RUN_"))}
+               if not key.startswith(("BROAD_DIRECT_", "READER_EXECUTION_", "CLOUD_RUN_", "PG"))}
         env.update({row["name"]: row["value"] for row in prepared["task"]["containers"][0]["env"] if "value" in row})
         name = spec.role_for(kind, operation_id=plan["operation_id"]).job
         env.update(MFDATAINDIA_DSN="synthetic-invalid-dsn-no-connection", CLOUD_RUN_JOB=name,
@@ -58,7 +62,8 @@ def smoke(*, root=None, git_sha=None):
         assert result.returncode == 1
         diagnostic = json.loads(result.stderr.strip().splitlines()[-1])
         assert diagnostic["state"] == "WORKER_VALIDATION_FAILED_BEFORE_CONNECT"
-        assert diagnostic["stage"] == ("dsn" if kind == "capture" else "validation")
+        assert diagnostic["stage"] == ("dsn" if kind == "capture" else "validation"), {
+            "kind": kind, "stage": diagnostic["stage"], "safe_cause": diagnostic["safe_cause"]}
         assert "synthetic-invalid-dsn" not in result.stdout + result.stderr
         checks.append({"kind": kind, "state": diagnostic["state"], "stage": diagnostic["stage"]})
     return {"packaged_reader_execution_entrypoints": "PASS", "git_sha": git_sha,

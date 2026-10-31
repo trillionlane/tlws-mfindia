@@ -177,7 +177,16 @@ descriptor version bind all ten source files, including those three intentional
 changes. The old RO-01 nine-file descriptor remains byte-identical. Source/view
 admission uses explicit exact authority/profile pairs, never their cross-product
 or a runtime-learned hash. Ordinary hosted CI recompiles the three existing
-graphs and the populated fixture's complete new graph before its pin is adopted.
+graphs and the populated fixture's complete new graph. The original ordinary
+bootstrap run `41214644674`, exact head `e5154ce…` / checkout `b0dff71…` /
+tree `61f44eca…`, actually compiled the complete 16-view projection
+`e2fca3236a4372cb705ba1eda686763221a60354837df3419743fbe643ee664c`.
+Its connected chain correctly rejected that then-unreviewed graph before grant.
+The complete source-bound reference is retained in
+`RO02_POPULATED_SOURCE_VIEW_REFERENCE_20261031.json`. Only the new ten-file
+authority admits this exact profile; the old nine-file authority cannot. The
+fresh final head must reproduce the complete projection and prove the connected
+chain; bootstrap compilation is not runtime/CI acceptance.
 
 The existing diagnostic source-attribution v2 separately recognizes the changed
 current-facts file. Its named historical RO-01 mapping and each original
@@ -194,6 +203,13 @@ the real environment mapping, all three stage bindings, create/run ambiguity,
 durability/tamper/spent identity, inspection's zero mutation calls and all outcome
 classes. Both image smokes execute real parser/main boundaries with synthetic
 inputs, not just `--help` or source hashes.
+
+The initial APP smoke passed, while TOOLS failed because its postgres base's
+`PG_*` defaults reached the synthetic worker input. The new smoke isolates only
+its synthetic child environment; real workers still reject every `PG_*` override
+before DSN parsing/connection. The regression first failed with `PG_MAJOR` and
+`PGDATA`, then passed; separate negative worker cases retain the runtime ban.
+Both expected stage assertions and both-image requirements remain unchanged.
 
 The hosted disposable fixture applies the actual44 numbered migrations once,
 uses genuine registries/policies and the shared post-DDL constructors, publishes

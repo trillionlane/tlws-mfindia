@@ -48,13 +48,15 @@ def compilation(dsn):
 def test_native_compile_actual_populated_current_source_graph(ro01_db, monkeypatch, capsys):
     populate(ro01_db, monkeypatch)
     observed, state, candidates = compilation(ro01_db)
-    # Bootstrap compilation is not permission acceptance. Until its complete
-    # actual projection is reviewed/pinned, the unreviewed graph MUST reject.
-    with pytest.raises(views.ViewProfileError):
-        views.select(state, candidates, base_authority_sha256=source.BASE_SHA256,
-                     variant_authority_sha256=source.VARIANT_SHA256)
+    # The first actual hosted compilation is retained in full. Fresh final-head
+    # source must reproduce it, not learn a new profile from runtime metadata.
+    reference = json.loads((ROOT / "docs/RO02_POPULATED_SOURCE_VIEW_REFERENCE_20261031.json").read_text())
+    assert observed["view_projection"] == reference["compilation"]["view_projection"]
+    assert observed["source"] == reference["compilation"]["source"]
+    assert views.select(state, candidates, base_authority_sha256=source.BASE_SHA256,
+        variant_authority_sha256=source.VARIANT_SHA256)["profile"] == views.RO02_POPULATED_PROFILE
     with capsys.disabled():
-        print("RO02_SOURCE_VIEW_COMPILATION:" + canonical(observed), flush=True)
+        print("\nRO02_SOURCE_VIEW_COMPILATION:" + canonical(observed), flush=True)
 
 
 @pytest.mark.parametrize("profile", ["BASE44_EXTENDED", "BASE44_BOOK_V2_SINGLE_PASS"])
