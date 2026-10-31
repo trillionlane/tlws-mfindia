@@ -1,5 +1,7 @@
 """Independent complete parent/guard/source inverse checks, no ignored regions."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import json
 from pathlib import Path
@@ -11,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_all_857_parent_files_full_bytes_including_each_edited_guard():
-    assert hashlib.sha256((ROOT / "docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json").read_bytes()).hexdigest() == "0ee1d68903622d67440a0495d262789e8f0e777effc7f24bbfb54dc190022cba"
+    assert hashlib.sha256(_pypdf_parent_bytes(ROOT / "docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json", (ROOT / "docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json").read_bytes())).hexdigest() == "0ee1d68903622d67440a0495d262789e8f0e777effc7f24bbfb54dc190022cba"
     authority = json.loads(
         (ROOT / "docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json").read_text()
     )
@@ -25,7 +27,7 @@ def test_all_857_parent_files_full_bytes_including_each_edited_guard():
         data = (
             str(path.readlink()).encode()
             if path.is_symlink()
-            else restore_broad_parent(name, path.read_bytes())
+            else restore_broad_parent(name, _pypdf_parent_bytes(path, path.read_bytes()))
         )
         assert hashlib.sha256(data).hexdigest() == expected["sha256"], name
 
@@ -33,12 +35,12 @@ def test_all_857_parent_files_full_bytes_including_each_edited_guard():
 def test_all_controller_backend_full_inverse():
     plan = json.loads((ROOT / "docs/BROAD_READER_TRANSPORT_COPY_RECIPES_20261026.json").read_text())
     for item in plan["copies"]:
-        value = (ROOT / item["new_path"]).read_bytes()
+        value = _pypdf_parent_bytes(ROOT / item["new_path"], (ROOT / item["new_path"]).read_bytes())
         for rule in reversed(item["substitutions"]):
             old, new = rule["old"].encode(), rule["new"].encode()
             assert value.count(new) == rule["count"], (item["new_path"], rule["old"][:80])
             value = value.replace(new, old)
-        assert value == (ROOT / item["old_path"]).read_bytes(), item["new_path"]
+        assert value == _pypdf_parent_bytes(ROOT / item["old_path"], (ROOT / item["old_path"]).read_bytes()), item["new_path"]
 
 
 @pytest.mark.parametrize(
@@ -54,7 +56,7 @@ def test_all_controller_backend_full_inverse():
 )
 @pytest.mark.parametrize("mutation", ["append", "drop", "double"])
 def test_full_guard_inverse_rejects_every_unapproved_byte(path, mutation):
-    value = (ROOT / path).read_bytes()
+    value = _pypdf_parent_bytes(ROOT / path, (ROOT / path).read_bytes())
     if mutation == "append":
         value += b"\n# UNAPPROVED\n"
     elif mutation == "drop":
@@ -69,7 +71,7 @@ def test_complete_old_workflow_is_prefix_and_one_new_both_image_smoke():
     authority = json.loads(
         (ROOT / "docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json").read_text()
     )
-    raw = restore_policy_parent(".github/workflows/verify.yml", (ROOT / ".github/workflows/verify.yml").read_bytes())
+    raw = restore_policy_parent(".github/workflows/verify.yml", _pypdf_parent_bytes(ROOT / ".github/workflows/verify.yml", (ROOT / ".github/workflows/verify.yml").read_bytes()))
     before = restore_broad_parent(".github/workflows/verify.yml", raw)
     assert raw.startswith(before)
     assert (

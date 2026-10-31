@@ -1,5 +1,9 @@
 """Restore every immediate-parent byte and mode under only the reviewed edits."""
 
+from pypdf_patch_preservation import (
+    PATCH_ADDED, PATCH_MODIFIED, restore_pypdf_parent as _pypdf_parent_bytes,
+)
+
 import hashlib
 import os
 from pathlib import Path
@@ -38,7 +42,7 @@ def test_all_1056_parent_full_bytes_modes_and_exact_repair_delta():
             assert path.is_file() and not path.is_symlink(), name
             assert stat.S_ISREG(path.stat().st_mode), name
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755"), name
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
         original = restore_runtime_parent(name, raw)
         if name in MODIFIED:
             assert original != raw, name
@@ -51,7 +55,7 @@ def test_all_1056_parent_full_bytes_modes_and_exact_repair_delta():
     assert len(NEW_ADDED) == 3 and not NEW_ADDED & names
     changed = set(git("diff", "--name-only", PARENT).decode().splitlines())
     untracked = set(git("ls-files", "--others", "--exclude-standard").decode().splitlines())
-    assert changed | untracked == MODIFIED | NEW_ADDED
+    assert changed | untracked == MODIFIED | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED
     for name in NEW_ADDED:
         path = ROOT / name
         assert path.is_file() and not path.is_symlink(), name

@@ -1,5 +1,7 @@
 """All 851 parent files restore EXACT full bytes under six finite exceptions."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import json
 from pathlib import Path
@@ -29,13 +31,13 @@ def test_all_parent_files_whole_bytes_including_full_old_preservation_guard():
     assert len(authority['files']) == authority['old_tracked_files'] == 851
     assert set(authority['allowed_full_byte_inverse_only']) == APPROVED == EXACT_SIX
     assert DESIGN_SHA == '8d4c3437d34f30cba094faf53de0b35b37eade4709dcdb6f663757a7745d75ba'
-    assert hashlib.sha256((ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json').read_bytes()).hexdigest() == DESIGN_SHA
+    assert hashlib.sha256(_pypdf_parent_bytes(ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json', (ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json').read_bytes())).hexdigest() == DESIGN_SHA
     recipes = json.loads((ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json').read_text())['counted_literal_recipe_before_code']
     assert set(recipes) == EXACT_SIX
     for name, expected in authority['files'].items():
         path = ROOT / name
         assert path.is_symlink() == (expected['kind'] == 'symlink'), name
-        data = str(path.readlink()).encode() if path.is_symlink() else restore_broad_parent(name, path.read_bytes())
+        data = str(path.readlink()).encode() if path.is_symlink() else restore_broad_parent(name, _pypdf_parent_bytes(path, path.read_bytes()))
         original = data
         if name in EXACT_SIX:
             for change in reversed(recipes[name]['substitutions']):
@@ -52,7 +54,7 @@ def test_all_parent_files_whole_bytes_including_full_old_preservation_guard():
 @pytest.mark.parametrize('name', sorted(APPROVED))
 @pytest.mark.parametrize('mutation', ['append', 'drop', 'duplicate'])
 def test_literal_inverse_does_not_hide_any_unapproved_bytes(name, mutation):
-    data = (ROOT / name).read_bytes()
+    data = _pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())
     if mutation == 'append':
         data += b'\n# unapproved edit\n'
     elif mutation == 'drop':

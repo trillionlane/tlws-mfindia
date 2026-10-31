@@ -1,4 +1,6 @@
 """Entire951-parent and whole-copy inverses, no ignored bytes or old hash updates."""
+
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
 import base64
 import gzip
 import hashlib
@@ -28,7 +30,7 @@ def test_all951_parent_full_bytes_modes_and_modified_old_guard_restore_exactly()
         else:
             assert not p.is_symlink() and stat.S_ISREG(p.stat().st_mode)
             assert bool(p.stat().st_mode & 0o111) == (row["mode"] == "100755")
-            data = p.read_bytes()
+            data = _pypdf_parent_bytes(p, p.read_bytes())
         restored = restore_attestation_parent(row["path"], data)
         assert len(restored) == row["bytes"], row["path"]
         assert hashlib.sha256(restored).hexdigest() == row["sha256"], row["path"]
@@ -37,19 +39,19 @@ def test_all951_parent_full_bytes_modes_and_modified_old_guard_restore_exactly()
 def test_all11_source_and_test_whole_literal_copies_restore_their_entire_parent_bytes():
     assert len(PLAN["copies"]) == 11
     for row in PLAN["copies"]:
-        raw = (ROOT / row["new_path"]).read_bytes()
+        raw = _pypdf_parent_bytes(ROOT / row["new_path"], (ROOT / row["new_path"]).read_bytes())
         assert hashlib.sha256(raw).hexdigest() == row["new_sha256"], row["new_path"]
         for rule in reversed(row["substitutions"]):
             assert raw.count(rule["new"].encode()) == rule["count"], row["new_path"]
             raw = raw.replace(rule["new"].encode(), rule["old"].encode())
         assert hashlib.sha256(raw).hexdigest() == row["old_sha256"], row["old_path"]
-        assert raw == (ROOT / row["old_path"]).read_bytes(), row["old_path"]
+        assert raw == _pypdf_parent_bytes(ROOT / row["old_path"], (ROOT / row["old_path"]).read_bytes()), row["old_path"]
 
 
 @pytest.mark.parametrize("name", sorted(PLAN["parent_recipes"]))
 @pytest.mark.parametrize("mutation", ["append", "drop", "duplicate", "change"])
 def test_finite_inverse_rejects_every_unapproved_change(name, mutation):
-    raw = (ROOT / name).read_bytes()
+    raw = _pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())
     changed = (raw + b"\n# UNAPPROVED\n" if mutation == "append" else raw[1:]
                if mutation == "drop" else raw + raw if mutation == "duplicate"
                else bytes([raw[0] ^ 1]) + raw[1:])
@@ -63,7 +65,7 @@ def test_exact_3commands_only_after_all_prior_BOTH_image_commands_and_old_workfl
     rule = row["substitutions"][0]
     assert rule["count"] == 1
     assert rule["new"].count("docker run --rm") - rule["old"].count("docker run --rm") == 3
-    raw = (ROOT / ".github/workflows/verify.yml").read_bytes()
+    raw = _pypdf_parent_bytes(ROOT / ".github/workflows/verify.yml", (ROOT / ".github/workflows/verify.yml").read_bytes())
     assert hashlib.sha256(restore_attestation_parent(
         ".github/workflows/verify.yml", raw)).hexdigest() == row["old_sha256"]
 
@@ -87,6 +89,6 @@ def test_frozen_policy_default_rejection_and_migration_reference_remain_unmodifi
     for name in ("src/mfdataindia/review/broad_reader_policy.py",
                  "sql/optional/036_official_fact_verification.sql"):
         row = next(r for r in authority["all_files"] if r["path"] == name)
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == row["sha256"]
+        assert hashlib.sha256(_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())).hexdigest() == row["sha256"]
     assert "PRIVILEGED_DOMAIN_FUNCTION_NOT_ALLOWED" in policy.catalogue.__code__.co_consts
-    assert hashlib.sha256((ROOT / "sql/optional/036_official_fact_verification.sql").read_bytes()).hexdigest() == reference.MIGRATION_SHA256
+    assert hashlib.sha256(_pypdf_parent_bytes(ROOT / "sql/optional/036_official_fact_verification.sql", (ROOT / "sql/optional/036_official_fact_verification.sql").read_bytes())).hexdigest() == reference.MIGRATION_SHA256
