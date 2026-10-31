@@ -5,6 +5,8 @@ preservation helper does not have to hash itself. Older 981-file restoration
 checks remain independent and unchanged.
 """
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import json
 import os
@@ -39,7 +41,7 @@ def sha(raw):
 
 
 def test_exact_immediate_parent_bytes_modes_and_finite_delta():
-    raw_recipe = RECIPE.read_bytes()
+    raw_recipe = _pypdf_parent_bytes(RECIPE, RECIPE.read_bytes())
     assert sha(raw_recipe) == RECIPE_SHA256
     recipe = json.loads(raw_recipe)
     assert set(recipe) == {"format", "parent", "files"}
@@ -61,7 +63,7 @@ def test_exact_immediate_parent_bytes_modes_and_finite_delta():
         path = ROOT / name
         assert path.is_file() and not path.is_symlink()
         assert stat.S_ISREG(path.stat().st_mode) and not (os.stat(path).st_mode & 0o111)
-        raw = path.read_bytes()
+        raw = _pypdf_parent_bytes(path, path.read_bytes())
         if name in PRIOR_VIEW_CHANGED:
             raw = restore_prior_view_parent(raw, name)
         assert sha(raw) == record["current_sha256"]

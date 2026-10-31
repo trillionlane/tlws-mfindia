@@ -1,5 +1,7 @@
 """New whole-tree proof while retaining every older full-byte inverse."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import os
 from pathlib import Path
@@ -41,7 +43,7 @@ def test_complete_998_file_immediate_parent_bytes_modes_and_finite_delta():
         else:
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
             if name.decode() in CHANGED:
                 raw = restore_prior_view_parent(raw, name.decode())
         assert hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest() == expected, name

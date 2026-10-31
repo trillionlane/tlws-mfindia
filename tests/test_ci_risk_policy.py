@@ -1,4 +1,6 @@
 """Provider-free routing, failure propagation, actual workflow and parent proofs."""
+
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
 from copy import deepcopy
 import base64
 import gzip
@@ -419,7 +421,7 @@ def test_targeted_stale_receipt_and_missing_collection_fail_without_success(monk
 
 
 def test_all_884_baseline_files_restore_whole_bytes_including_all_five_changed_guards():
-    assert hashlib.sha256((ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json').read_bytes()).hexdigest() == 'd45440ec5e71e49038255525fd5568e543b55cefac202109a3440d7f78d858b0'
+    assert hashlib.sha256(_pypdf_parent_bytes(ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json', (ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json').read_bytes())).hexdigest() == 'd45440ec5e71e49038255525fd5568e543b55cefac202109a3440d7f78d858b0'
     authority = json.loads((ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json').read_text())
     assert authority['head'] == '038ec40bf5400cf7d2218eedaca151d1048b9f93'
     assert authority['tracked_file_count'] == len(authority['files']) == 884
@@ -429,14 +431,14 @@ def test_all_884_baseline_files_restore_whole_bytes_including_all_five_changed_g
     for name, expected in authority['files'].items():
         path = ROOT / name
         assert path.is_symlink() == (expected['kind'] == 'symlink')
-        value = str(path.readlink()).encode() if path.is_symlink() else restore_policy_parent(name, path.read_bytes())
+        value = str(path.readlink()).encode() if path.is_symlink() else restore_policy_parent(name, _pypdf_parent_bytes(path, path.read_bytes()))
         assert hashlib.sha256(value).hexdigest() == expected['sha256'], name
 
 
 @pytest.mark.parametrize('name', sorted(RECIPES))
 @pytest.mark.parametrize('mutation', ['append', 'drop', 'duplicate', 'change'])
 def test_inverse_rejects_every_unapproved_byte_including_old_guard_changes(name, mutation):
-    data = (ROOT / name).read_bytes()
+    data = _pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())
     if mutation == 'append':
         data += b'\n# unapproved\n'
     elif mutation == 'drop':
@@ -476,9 +478,9 @@ def test_actual_committed_presentation_edits_work_on_pr_and_full_main_without_ma
         pr = policy.plan('pull_request', pr_event(base, head), head, root=root)
         assert pr['mode'] == ('docs' if name == 'README.md' else 'targeted')
         assert policy.plan('push', {'ref': 'refs/heads/main', 'after': head}, head, root=root)['mode'] == 'full'
-        restored = restore_broad_parent(name, path.read_bytes())
+        restored = restore_broad_parent(name, _pypdf_parent_bytes(path, path.read_bytes()))
         assert restored == baseline and hashlib.sha256(restored).hexdigest() == PRESENTATION[name]['sha256']
-        assert path.read_bytes() == actual and actual != restored
+        assert _pypdf_parent_bytes(path, path.read_bytes()) == actual and actual != restored
         # Already restored bytes may flow through the historical adapter twice,
         # but the actual disk/HEAD must remain attested even then.
         assert restore_policy_parent(name, restored) == baseline
@@ -490,7 +492,7 @@ def test_presentation_adapter_rejects_unattested_bytes_types_and_deletions(git_r
     root = git_repo
     monkeypatch.setattr(preservation, 'ROOT', root)
     path = root / 'README.md'
-    data = path.read_bytes()
+    data = _pypdf_parent_bytes(path, path.read_bytes())
     if defect == 'dirty':
         path.write_bytes(b'not committed\n')
     elif defect == 'wrong_argument':
@@ -525,7 +527,7 @@ def test_parent_directory_symlink_does_not_create_a_presentation_exception(git_r
     (root / 'src').rename(root / 'saved-src')
     (root / 'src').symlink_to(root / 'saved-src', target_is_directory=True)
     with pytest.raises(AssertionError):
-        restore_policy_parent(name, path.read_bytes())
+        restore_policy_parent(name, _pypdf_parent_bytes(path, path.read_bytes()))
 
 
 @pytest.mark.parametrize('name', ['docs/DEPLOYMENT.md', 'docs/evidence/FS12_DEV_ACCEPTANCE_2026-10-18.md',

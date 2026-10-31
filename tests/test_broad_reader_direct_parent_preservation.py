@@ -5,6 +5,8 @@ reviewed b56 commit; its original full bytes are independently reconstructed
 here. Every production/image source file remains byte-exact to that parent.
 """
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import os
 from pathlib import Path
@@ -85,7 +87,7 @@ def test_every_parent_byte_and_mode_and_exact_finite_delta():
             assert path.is_file() and not path.is_symlink()
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
             if name in CHANGED:
                 raw = restore(raw, name)
         actual = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()

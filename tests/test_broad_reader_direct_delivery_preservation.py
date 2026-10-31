@@ -1,5 +1,7 @@
 """Exact admitted PR131 squash-main tree plus only the fixed Phase C DEV delivery delta."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import os
 from pathlib import Path
@@ -110,7 +112,7 @@ def test_every_reviewed_parent_byte_mode_and_finite_delta_is_preserved():
             assert path.is_file() and not path.is_symlink()
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
             if name in NO_FREEZE_MODIFIED:
                 # The new exact-parent guard pins every current byte. This
                 # historical proof still checks the admitted PR133 tree.

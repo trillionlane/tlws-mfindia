@@ -1,5 +1,7 @@
 """Provider-free owner transport contracts. No actual secret/DB/cloud access."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import base64
@@ -70,7 +72,7 @@ def payload(**changes):
     return {
         "manifest": m.model_dump(mode="json"),
         "controller_git_sha": m.git_sha,
-        "controller_sha256": hashlib.sha256(Path(core.__file__).read_bytes()).hexdigest(),
+        "controller_sha256": hashlib.sha256(_pypdf_parent_bytes(Path(core.__file__), Path(core.__file__).read_bytes())).hexdigest(),
         "protected_hash": fingerprint({"protected": True}),
         "root": str(s.ARTIFACTS / "mf-reader-access-correction-20261025-aBc123"),
         "grant_proposal": proposal(),
@@ -342,7 +344,7 @@ def test_all_old_files_fullbytes_and_workflow_fullprefix_preserved():
     assert len(a["files"]) == 804
     for name, sha in a["files"].items():
         if name not in (".github/workflows/verify.yml", "tests/test_ci_verify_sequence.py"):
-            actual = restore_parent_file(name, (ROOT / name).read_bytes())
+            actual = restore_parent_file(name, _pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes()))
             if name == ".github/workflows/rollout-verified-review-dev.yml":
                 guard_plan = json.loads(
                     (ROOT / "docs/IMAGE_PREPARATION_REVISION_GUARD_LITERAL_PLAN_20261025.json").read_text()

@@ -1,0 +1,853 @@
+{
+  "added": [
+    "src/mfdataindia/enrichment/pdf_security_v3.py",
+    "src/mfdataindia/enrichment/layout_book_pdf_v4.py",
+    "src/mfdataindia/enrichment/_layout_book_pdf_worker_v4.py",
+    "src/mfdataindia/enrichment/uti_book_pdf_v6.py",
+    "src/mfdataindia/enrichment/_uti_book_pdf_worker_v6.py",
+    "scripts/smoke_pdf_security_compatibility_v3.py",
+    "docs/PYPDF_SECURITY_REMEDIATION_DESIGN_20261030.json",
+    "docs/PYPDF_SECURITY_REMEDIATION_LITERAL_PLAN_20261030.json",
+    "tests/pypdf_patch_preservation.py",
+    "tests/test_pypdf_security_20261030.py",
+    "tests/test_pypdf_patch_preservation.py"
+  ],
+  "base": "03f3932eb22218478f82e7985e1d0ba527f22cde",
+  "format": "MF_PYPDF_EXACT_LITERAL_PLAN_BEFORE_CODE_V1",
+  "legacy_case_ids": "The six module-parameter logical IDs deliberately retain their historical tracking label; actual target and installed runtime are asserted6.21.4/newv6, never old-runtime acceptance.",
+  "modified": {
+    ".github/workflows/verify.yml": {
+      "mode": "100644",
+      "new_full_sha256": "a7b7992177822de45bbd56750e84b72c11cb734b1dbd1ecb5226fcff16e1cb5c",
+      "old_full_sha256": "a27b7931a88776857be75d8b63c5b21e38c63e3fea17de32138210717e39d41e",
+      "substitutions": [
+        {
+          "count": 2,
+          "new": "/app/scripts/smoke_pdf_security_compatibility_v3.py",
+          "old": "/app/scripts/smoke_pdf_security_compatibility.py"
+        }
+      ]
+    },
+    "pyproject.toml": {
+      "mode": "100644",
+      "new_full_sha256": "776b86656c4ca727a685fa60ab6e1a80621f8465743e31c3bc115be137aeb0e5",
+      "old_full_sha256": "100828d68588aece4f5551122b3030597c34fbf101eace335087004e03ab66a7",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "pypdf==6.21.4",
+          "old": "pypdf==6.21.2"
+        }
+      ]
+    },
+    "tests/test_broad_capture_successor_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "6b2b84878e6f363b04f0321395fa3582099fc42ae3c384d06f6139a53ed415d7",
+      "old_full_sha256": "e95ae11c8d1d0937172d54e9a5a8f1b268c47e602e5b2bf242c09d93b13f9aed",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / expected[\"authority_path\"], (ROOT / expected[\"authority_path\"]).read_bytes())",
+          "old": "(ROOT / expected[\"authority_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / item[\"new_path\"], (ROOT / item[\"new_path\"]).read_bytes())",
+          "old": "(ROOT / item[\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / item[\"old_path\"], (ROOT / item[\"old_path\"]).read_bytes())",
+          "old": "(ROOT / item[\"old_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 4,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Independent full parent/copy restoration, including the changed guard itself.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Independent full parent/copy restoration, including the changed guard itself.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_direct_delivery_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "858d2569a40312e80ca5bae6e569ab60e52702003be838c6b284dfd2e5de4540",
+      "old_full_sha256": "5fa68f8d0b1f3205fe8adb70b7cebe6de09aca47de914243240848824c2a49cb",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Exact admitted PR131 squash-main tree plus only the fixed Phase C DEV delivery delta.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Exact admitted PR131 squash-main tree plus only the fixed Phase C DEV delivery delta.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_direct_no_freeze_parent_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "c8631220a526fc2906f8b862e65add3ab24dba3ea27c1fded51ead91573a0744",
+      "old_full_sha256": "4e37b13f167503aa48f10a8ed0212a6dfffa322e11a0b1d3711297c7901c0fed",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / NEW_IDENTITY_TEST, (ROOT / NEW_IDENTITY_TEST).read_bytes())",
+          "old": "(ROOT / NEW_IDENTITY_TEST).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / NEW_CHAIN_TEST, (ROOT / NEW_CHAIN_TEST).read_bytes())",
+          "old": "(ROOT / NEW_CHAIN_TEST).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / NEW_TEST, (ROOT / NEW_TEST).read_bytes())",
+          "old": "(ROOT / NEW_TEST).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Pin the entire admitted PR133 parent and the finite no-freeze DEV delta.\"\"\"\n\nfrom pypdf_patch_preservation import (\n    PATCH_ADDED, PATCH_MODIFIED, restore_pypdf_parent as _pypdf_parent_bytes,\n)\n",
+          "old": "\"\"\"Pin the entire admitted PR133 parent and the finite no-freeze DEV delta.\"\"\"\n"
+        },
+        {
+          "count": 1,
+          "new": "                                                NEW_IDENTITY_TEST, SELF} | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED\n",
+          "old": "                                                NEW_IDENTITY_TEST, SELF} | NEW_ADDED\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_direct_parent_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "23e6ab100139046e5891aaa89ae8c38be755ec0197606130d4f0d29e0380370b",
+      "old_full_sha256": "a985b2f85a808b3d4f260334cee4edcb1ad103a68223cf783f7e6273c406005a",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Exact immediate-parent byte/mode proof for the bounded DEV reader slice.\n\nThe previous source-reference preservation test is fixed to its already\nreviewed b56 commit; its original full bytes are independently reconstructed\nhere. Every production/image source file remains byte-exact to that parent.\n\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Exact immediate-parent byte/mode proof for the bounded DEV reader slice.\n\nThe previous source-reference preservation test is fixed to its already\nreviewed b56 commit; its original full bytes are independently reconstructed\nhere. Every production/image source file remains byte-exact to that parent.\n\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_direct_runtime_environment_parent.py": {
+      "mode": "100644",
+      "new_full_sha256": "0441fca8298ab2aa6aab5ce8973a415592a79275607697e861fc86d8cca9850c",
+      "old_full_sha256": "7ce9972f306fb44bd32a48a57001045ae4cc0abdd6239247444de7144b2fe7d5",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Restore every immediate-parent byte and mode under only the reviewed edits.\"\"\"\n\nfrom pypdf_patch_preservation import (\n    PATCH_ADDED, PATCH_MODIFIED, restore_pypdf_parent as _pypdf_parent_bytes,\n)\n",
+          "old": "\"\"\"Restore every immediate-parent byte and mode under only the reviewed edits.\"\"\"\n"
+        },
+        {
+          "count": 1,
+          "new": "    assert changed | untracked == MODIFIED | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED\n",
+          "old": "    assert changed | untracked == MODIFIED | NEW_ADDED\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_paired_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "f7421e27ad050cff9688e0f5278449d1acb11b893dc454b72c7f1480eaa0a9aa",
+      "old_full_sha256": "3c303b6552d10340f365569b0880b67b4602341aeb339494969ea6cdab8e5edd",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \".github/workflows/verify.yml\", (ROOT / \".github/workflows/verify.yml\").read_bytes())",
+          "old": "(ROOT / \".github/workflows/verify.yml\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / row[\"new_path\"], (ROOT / row[\"new_path\"]).read_bytes())",
+          "old": "(ROOT / row[\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / row[\"old_path\"], (ROOT / row[\"old_path\"]).read_bytes())",
+          "old": "(ROOT / row[\"old_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Independent complete parent and copy bytes, including the modified guard.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Independent complete parent and copy bytes, including the modified guard.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_policy_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "d44e494c2d1a37ba541a3ded0f6752a3e1a5b3df1dd8faa504aa586ab482bd56",
+      "old_full_sha256": "4df4063ff28311b79273b507f2922353c1465e4944a13b99b6e9910ee1b7ec43",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"src/mfdataindia/review/reader_access_correction.py\", (ROOT / \"src/mfdataindia/review/reader_access_correction.py\").read_bytes())",
+          "old": "(ROOT / \"src/mfdataindia/review/reader_access_correction.py\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"src/mfdataindia/review/reader_access_profile_v1.py\", (ROOT / \"src/mfdataindia/review/reader_access_profile_v1.py\").read_bytes())",
+          "old": "(ROOT / \"src/mfdataindia/review/reader_access_profile_v1.py\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Every pre-existing tracked file remains byte-identical; only additive scope.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Every pre-existing tracked file remains byte-identical; only additive scope.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_broad_reader_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "e44170c2fd804894eef6915b6183e638a3d31919da647f78e628c8d179241f71",
+      "old_full_sha256": "95abc56856bafc2379265d52f6a73e535ec8c020c77e087c62be3a40b6bcf8f0",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json\", (ROOT / \"docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json\").read_bytes())",
+          "old": "(ROOT / \"docs/BROAD_READER_TRANSPORT_PARENT_AUTHORITY_20261026.json\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \".github/workflows/verify.yml\", (ROOT / \".github/workflows/verify.yml\").read_bytes())",
+          "old": "(ROOT / \".github/workflows/verify.yml\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / item[\"new_path\"], (ROOT / item[\"new_path\"]).read_bytes())",
+          "old": "(ROOT / item[\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / item[\"old_path\"], (ROOT / item[\"old_path\"]).read_bytes())",
+          "old": "(ROOT / item[\"old_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / path, (ROOT / path).read_bytes())",
+          "old": "(ROOT / path).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Independent complete parent/guard/source inverse checks, no ignored regions.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Independent complete parent/guard/source inverse checks, no ignored regions.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_ci_cost_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "4588fac8740ac6dab299cd796dda1dabdf70ed1de9a27fd4b1d2d605104477af",
+      "old_full_sha256": "1d1ffcb552ce9f4d2151eecc3e20bb2b8dc9191dd114373c7c6c3653ad997a2d",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json', (ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json').read_bytes())",
+          "old": "(ROOT / 'docs/CI_COST_REDUCTION_DESIGN_20261026.json').read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"All 851 parent files restore EXACT full bytes under six finite exceptions.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"All 851 parent files restore EXACT full bytes under six finite exceptions.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_ci_risk_policy.py": {
+      "mode": "100644",
+      "new_full_sha256": "8d50b703a7bd4fe47c0322f6ffcfaa78676dbe794b530776d67e34ac33a6432d",
+      "old_full_sha256": "193578e2f7db9b7dccd6cf133785411a1c1a2d2dff013ff691c5ef7b406bab03",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json', (ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json').read_bytes())",
+          "old": "(ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json').read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 5,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Provider-free routing, failure propagation, actual workflow and parent proofs.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Provider-free routing, failure propagation, actual workflow and parent proofs.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_ci_verify_sequence.py": {
+      "mode": "100644",
+      "new_full_sha256": "66b8f630be2a808d41e8862c97853a0f8afcfaa328654f7b822350b96c478c65",
+      "old_full_sha256": "6322d36868bc4344051912a41b4657e1b05ba391e48e67c78ac4e253ff8962f7",
+      "substitutions": [
+        {
+          "count": 3,
+          "new": "_pypdf_parent_bytes(WORKFLOW, WORKFLOW.read_bytes())",
+          "old": "WORKFLOW.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Parallel jobs retain every original check, inner order and per-job limits.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Parallel jobs retain every original check, inner order and per-job limits.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_dependency_security_20261024.py": {
+      "mode": "100644",
+      "new_full_sha256": "36424050a3b88e38405fe6de0ee59a5dc580f4ec06535b9da4d218d76e39339c",
+      "old_full_sha256": "a42df6e7aeeab38c5155999ba6396ab3cc6764c18808c6fe3d2ac747b95da28b",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "\"pdf_security_v3\", \"layout_book_pdf_v4\", \"uti_book_pdf_v6\"",
+          "old": "\"pdf_security_v2\", \"layout_book_pdf_v3\", \"uti_book_pdf_v5\""
+        },
+        {
+          "count": 10,
+          "new": "6.21.4",
+          "old": "6.21.2"
+        },
+        {
+          "count": 1,
+          "new": "33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c",
+          "old": "1d44d1a3a200f25062adff0085b02040e4646431ac2ccac22e42679e91466084"
+        },
+        {
+          "count": 1,
+          "new": "c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163",
+          "old": "0a3e1c5c886a1be03646c16a04827cc166c2a0575c971b26a4bf89686551c2d4"
+        },
+        {
+          "count": 1,
+          "new": "patched-pdf-dependency-v3",
+          "old": "patched-pdf-dependency-v2"
+        },
+        {
+          "count": 1,
+          "new": "assert layout.policy(\"uti\")[\"version\"] == 4 and uti.policy()[\"version\"] == 6",
+          "old": "assert layout.policy(\"uti\")[\"version\"] == 3 and uti.policy()[\"version\"] == 5"
+        },
+        {
+          "count": 1,
+          "new": "assert uti.policy()[\"retained_security_policy_hash\"] == fingerprint(\n        importlib.import_module(\"mfdataindia.enrichment.uti_book_pdf_v5\").policy())",
+          "old": "assert uti.policy()[\"retained_security_policy_hash\"] == fingerprint(uti_book_pdf_v4.policy())"
+        },
+        {
+          "count": 1,
+          "new": "mfdataindia.enrichment._layout_book_pdf_worker_v4",
+          "old": "mfdataindia.enrichment._layout_book_pdf_worker_v3"
+        },
+        {
+          "count": 1,
+          "new": "        \"GHSA-gmh7-3g9r-mjh5\",\n        \"GHSA-62m5-6wh8-28x7\",\n        \"GHSA-42gh-23hr-vphw\",\n        \"GHSA-x3rh-gjgm-fmqc\",\n        \"GHSA-4vqv-7265-gm2w\",\n        \"GHSA-5849-834g-hvw5\",\n        \"GHSA-mfr5-77xh-9j7h\",\n        \"GHSA-cggf-277g-3q54\",\n    } == set(dependency.dependency_contract()[\"advisories\"])",
+          "old": "        \"GHSA-gmh7-3g9r-mjh5\",\n    } == set(dependency.dependency_contract()[\"advisories\"])"
+        }
+      ]
+    },
+    "tests/test_pdf_security_compatibility.py": {
+      "mode": "100644",
+      "new_full_sha256": "e645e59e1b52b726c58590a364285f3d6ae06314d1fd9899637ac2210f10db86",
+      "old_full_sha256": "46c44e2eaf4efbfaecfac0917f2b31a0a2c076296cec678013fc0f336277384a",
+      "substitutions": [
+        {
+          "count": 3,
+          "new": "layout_book_pdf_v4",
+          "old": "layout_book_pdf_v3"
+        },
+        {
+          "count": 12,
+          "new": "pdf_security_v3",
+          "old": "pdf_security_v2"
+        },
+        {
+          "count": 11,
+          "new": "uti_book_pdf_v6",
+          "old": "uti_book_pdf_v5"
+        },
+        {
+          "count": 4,
+          "new": "6.21.4",
+          "old": "6.21.2"
+        },
+        {
+          "count": 1,
+          "new": "uti_book_pdf_v6.uti_book_pdf_v5.uti_book_pdf_v4.uti_book_pdf_v2",
+          "old": "uti_book_pdf_v6.uti_book_pdf_v4.uti_book_pdf_v2"
+        },
+        {
+          "count": 2,
+          "new": "[\"uti\", \"kotak\", pytest.param(uti_book_pdf_v6, id=\"mfdataindia.enrichment.uti_book_pdf_v5\")]",
+          "old": "[\"uti\", \"kotak\", uti_book_pdf_v6]"
+        }
+      ]
+    },
+    "tests/test_reader_access_transport.py": {
+      "mode": "100644",
+      "new_full_sha256": "515b2545e822b8e16865b40421250405ec11e37e3da356636232c8d54526d320",
+      "old_full_sha256": "31101e00c6c969cade200988a8ca982a7c2c69e410053bcaaf1b3b258d610a4a",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(Path(core.__file__), Path(core.__file__).read_bytes())",
+          "old": "Path(core.__file__).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Provider-free owner transport contracts. No actual secret/DB/cloud access.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Provider-free owner transport contracts. No actual secret/DB/cloud access.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_function_attestation_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "a223691fc1a4b3716dffd335b957970c54cc402445399b6fcf7c053ecf002ac1",
+      "old_full_sha256": "4c562d821531cc3cd590004e45067c141beff1d77f8f3b5759cf5ba83585cf9b",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"sql/optional/036_official_fact_verification.sql\", (ROOT / \"sql/optional/036_official_fact_verification.sql\").read_bytes())",
+          "old": "(ROOT / \"sql/optional/036_official_fact_verification.sql\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \".github/workflows/verify.yml\", (ROOT / \".github/workflows/verify.yml\").read_bytes())",
+          "old": "(ROOT / \".github/workflows/verify.yml\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / row[\"new_path\"], (ROOT / row[\"new_path\"]).read_bytes())",
+          "old": "(ROOT / row[\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / row[\"old_path\"], (ROOT / row[\"old_path\"]).read_bytes())",
+          "old": "(ROOT / row[\"old_path\"]).read_bytes()"
+        },
+        {
+          "count": 2,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(p, p.read_bytes())",
+          "old": "p.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Entire951-parent and whole-copy inverses, no ignored bytes or old hash updates.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Entire951-parent and whole-copy inverses, no ignored bytes or old hash updates.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_function_identification_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "1a352a6915e055e307d9158dd6460bd156ce8077026aa99d6f874834da34bd1f",
+      "old_full_sha256": "0ad245ebfba2b9715e4824a3970d2b083e50aad4358837fe6e1e2dfaa6940254",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \".github/workflows/verify.yml\", (ROOT / \".github/workflows/verify.yml\").read_bytes())",
+          "old": "(ROOT / \".github/workflows/verify.yml\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / rows[0][\"new_path\"], (ROOT / rows[0][\"new_path\"]).read_bytes())",
+          "old": "(ROOT / rows[0][\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / row[\"new_path\"], (ROOT / row[\"new_path\"]).read_bytes())",
+          "old": "(ROOT / row[\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / row[\"old_path\"], (ROOT / row[\"old_path\"]).read_bytes())",
+          "old": "(ROOT / row[\"old_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())",
+          "old": "(ROOT / name).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(p, p.read_bytes())",
+          "old": "p.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Whole930 parent proof, including every modified old guard and workflow.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Whole930 parent proof, including every modified old guard and workflow.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_function_identification_validation.py": {
+      "mode": "100644",
+      "new_full_sha256": "d1c70545c8ba0e6ca75ddcabd50c22745f506a4ac6e942590061c26d181eceeb",
+      "old_full_sha256": "2a1fec02a4a489414f09d45c06d0309d8bbbddba9173e34b361589bb710ef4d6",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "\"\"\"Synthetic preparation tests only. No database, provider or runtime execution.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Synthetic preparation tests only. No database, provider or runtime execution.\"\"\"\n"
+        },
+        {
+          "count": 1,
+          "new": "raw = restore_identification_parent(row[\"path\"], _pypdf_parent_bytes(p, p.read_bytes()))",
+          "old": "raw = restore_identification_parent(row[\"path\"], p.read_bytes())"
+        }
+      ]
+    },
+    "tests/test_reader_permission_capture_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "72222b35865049d99bc646cca023be223afc9132e1207f8e12491fe8c5eb592c",
+      "old_full_sha256": "18dbc1cd3f3f394c35c7bcff4840150f30d339bd5cd868455475c83d8dd15f8a",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / entry[\"new_path\"], (ROOT / entry[\"new_path\"]).read_bytes())",
+          "old": "(ROOT / entry[\"new_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / entry[\"old_path\"], (ROOT / entry[\"old_path\"]).read_bytes())",
+          "old": "(ROOT / entry[\"old_path\"]).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / path, (ROOT / path).read_bytes())",
+          "old": "(ROOT / path).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Counted full-byte inverse only. No ignored ranges, AST or whitespace exemptions.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Counted full-byte inverse only. No ignored ranges, AST or whitespace exemptions.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_source_immediate_parent_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "c3015c9ac8a9eef389ec0a5b3d775eda7d3f64e3b189f28258a32ccb06d2d519",
+      "old_full_sha256": "55f4e7894091e435b79b932e92c04fa93394cbd0941af865d7a643d1f5d4ec35",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(RECIPE, RECIPE.read_bytes())",
+          "old": "RECIPE.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"Versioned exact-byte receipt for all six evolved CI files.\n\nThe recipe is externally pinned by this NEW test, so the changed historical\npreservation helper does not have to hash itself. Older 981-file restoration\nchecks remain independent and unchanged.\n\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"Versioned exact-byte receipt for all six evolved CI files.\n\nThe recipe is externally pinned by this NEW test, so the changed historical\npreservation helper does not have to hash itself. Older 981-file restoration\nchecks remain independent and unchanged.\n\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_source_prior_view_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "02186ca5932f6f5797b9a9af81f84d4fb9e7e0c59d3c0589603a407eaa4dd588",
+      "old_full_sha256": "cd82bff02b27f51fb9bc5e95c4aa1b2ace33bb53415b4594904c476fe2ae81dd",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"New whole-tree proof while retaining every older full-byte inverse.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"New whole-tree proof while retaining every older full-byte inverse.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_source_reference_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "b1a0417a4656b555197ced1a9efc07e3ada9c38bc6579529f3a0bd72670af50e",
+      "old_full_sha256": "f4cfb6a9a7e623f3d6c447649a55d5d2327a0f511b9530794e9d88b3384b4005",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"All parent bytes and modes unchanged in the non-mergeable calibration slice.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"All parent bytes and modes unchanged in the non-mergeable calibration slice.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_reader_source_variants_preservation.py": {
+      "mode": "100644",
+      "new_full_sha256": "cecadf07314f199e366cd125103cb0539353bdbb5bf20188976bcf1d02a9a71d",
+      "old_full_sha256": "ac5ce3a48a75c2996fe5448ec7ff452df1fca0e84ae03935122cd4f64577018e",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"docs/CI_SOURCE_REFERENCE_DEPENDENCY_CORRECTION_LITERALS_20261029.json\", (\n        ROOT / \"docs/CI_SOURCE_REFERENCE_DEPENDENCY_CORRECTION_LITERALS_20261029.json\"\n    ).read_bytes())",
+          "old": "(\n        ROOT / \"docs/CI_SOURCE_REFERENCE_DEPENDENCY_CORRECTION_LITERALS_20261029.json\"\n    ).read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json\", (ROOT / \"docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json\").read_bytes())",
+          "old": "(ROOT / \"docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json\").read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "_pypdf_parent_bytes(ROOT / \"tests/reader_source_reference.py\", (ROOT / \"tests/reader_source_reference.py\").read_bytes())",
+          "old": "(ROOT / \"tests/reader_source_reference.py\").read_bytes()"
+        },
+        {
+          "count": 2,
+          "new": "_pypdf_parent_bytes(path, path.read_bytes())",
+          "old": "path.read_bytes()"
+        },
+        {
+          "count": 1,
+          "new": "\"\"\"The source-reference extension changes no previously tracked byte or mode.\"\"\"\n\nfrom pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes\n",
+          "old": "\"\"\"The source-reference extension changes no previously tracked byte or mode.\"\"\"\n"
+        }
+      ]
+    },
+    "tests/test_uti_book_pdf.py": {
+      "mode": "100644",
+      "new_full_sha256": "bdeb8d152abaa0764fb2e74123711588859eb752c91b5fda665365d3e8c06bff",
+      "old_full_sha256": "c6ed78dcb34936a88316120337834b4c809eda67c014f0cce0ec919adc852095",
+      "substitutions": [
+        {
+          "count": 2,
+          "new": "uti_book_pdf_v6",
+          "old": "uti_book_pdf_v5"
+        }
+      ]
+    },
+    "uv.lock": {
+      "mode": "100644",
+      "new_full_sha256": "cbad265c09394d0ec424e3f48d651396f8af764b08049680f073bf5b2b4be1f6",
+      "old_full_sha256": "eee71d2a24a7de6a03ee074e5f50e3465f0f2a4cbe41f5ef103ba90eee3fa900",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "[[package]]\nname = \"pypdf\"\nversion = \"6.21.4\"\nsource = { registry = \"https://pypi.org/simple\" }\nsdist = { url = \"https://files.pythonhosted.org/packages/1e/e1/ec8f4d155c997c45917153a5521e60d6ee6389d68abdcbc8e44e564caffc/pypdf-6.21.4.tar.gz\", hash = \"sha256:c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163\", size = 7109255, upload-time = \"2026-10-28T17:00:54.810Z\" }\nwheels = [\n    { url = \"https://files.pythonhosted.org/packages/3f/4b/77e8ad4ac42c9d93600f40541a50e9feb3a61d2bbee2d76f659346072051/pypdf-6.21.4-py3-none-any.whl\", hash = \"sha256:33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c\", size = 410430, upload-time = \"2026-10-28T17:00:53.146Z\" },\n]\n\n",
+          "old": "[[package]]\nname = \"pypdf\"\nversion = \"6.21.2\"\nsource = { registry = \"https://pypi.org/simple\" }\nsdist = { url = \"https://files.pythonhosted.org/packages/06/28/081f1cbcca7042441dafc8de00f48ba60853f89e5bff92c5f26477346d81/pypdf-6.21.2.tar.gz\", hash = \"sha256:0a3e1c5c886a1be03646c16a04827cc166c2a0575c971b26a4bf89686551c2d4\", size = 7144571, upload-time = \"2026-10-21T16:44:55.272Z\" }\nwheels = [\n    { url = \"https://files.pythonhosted.org/packages/1b/4d/c9d2d67f204eff463237a1a8f5e25a6923b7b1043982b91fcaf104c8ef60/pypdf-6.21.2-py3-none-any.whl\", hash = \"sha256:1d44d1a3a200f25062adff0085b02040e4646431ac2ccac22e42679e91466084\", size = 407766, upload-time = \"2026-10-21T16:44:53.626Z\" },\n]\n\n"
+        },
+        {
+          "count": 1,
+          "new": "{ name = \"pypdf\", specifier = \"==6.21.4\" }",
+          "old": "{ name = \"pypdf\", specifier = \"==6.21.2\" }"
+        }
+      ]
+    }
+  },
+  "parent_files": 1059,
+  "whole_copies": [
+    {
+      "new_full_sha256": "537811e21a72720acc5b27541fb4d5847560364e581f49123548881af54561ec",
+      "new_path": "src/mfdataindia/enrichment/pdf_security_v3.py",
+      "old_full_sha256": "3abe12ff7b00e957dd8764e0b2f17498b29790ad6d898050815daaee26915140",
+      "old_path": "src/mfdataindia/enrichment/pdf_security_v2.py",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "6.21.4",
+          "old": "6.21.2"
+        },
+        {
+          "count": 1,
+          "new": "33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c",
+          "old": "1d44d1a3a200f25062adff0085b02040e4646431ac2ccac22e42679e91466084"
+        },
+        {
+          "count": 1,
+          "new": "c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163",
+          "old": "0a3e1c5c886a1be03646c16a04827cc166c2a0575c971b26a4bf89686551c2d4"
+        },
+        {
+          "count": 1,
+          "new": "patched-pdf-dependency-v3",
+          "old": "patched-pdf-dependency-v2"
+        },
+        {
+          "count": 1,
+          "new": "\"GHSA-jr96-gvgh-j3r4\", \"GHSA-gmh7-3g9r-mjh5\",\n                           \"GHSA-62m5-6wh8-28x7\", \"GHSA-42gh-23hr-vphw\", \"GHSA-x3rh-gjgm-fmqc\", \"GHSA-4vqv-7265-gm2w\", \"GHSA-5849-834g-hvw5\", \"GHSA-mfr5-77xh-9j7h\", \"GHSA-cggf-277g-3q54\"],",
+          "old": "\"GHSA-jr96-gvgh-j3r4\", \"GHSA-gmh7-3g9r-mjh5\"],"
+        }
+      ]
+    },
+    {
+      "new_full_sha256": "7b5a20bb9399dadc5f02a4b9280dd24a35cf88a7643de3cf02d8293b5b5d2f3b",
+      "new_path": "src/mfdataindia/enrichment/layout_book_pdf_v4.py",
+      "old_full_sha256": "638fcd8ee9980913bdc4fc5ba786a60b58f5a694823f491298405f970846d863",
+      "old_path": "src/mfdataindia/enrichment/layout_book_pdf_v3.py",
+      "substitutions": [
+        {
+          "count": 4,
+          "new": "pdf_security_v3",
+          "old": "pdf_security_v2"
+        },
+        {
+          "count": 2,
+          "new": "_layout_book_pdf_worker_v4",
+          "old": "_layout_book_pdf_worker_v3"
+        },
+        {
+          "count": 1,
+          "new": "\"version\": 4,",
+          "old": "\"version\": 3,"
+        }
+      ]
+    },
+    {
+      "new_full_sha256": "cfad6108cf22cf13e2c61c1f590a609912eec0028c93378a89f6482e8a6de866",
+      "new_path": "src/mfdataindia/enrichment/_layout_book_pdf_worker_v4.py",
+      "old_full_sha256": "f1e337434e226333c8f63cf7b935e2b4df6af30bf8c985a18b3c2ebbf4fbb0b3",
+      "old_path": "src/mfdataindia/enrichment/_layout_book_pdf_worker_v3.py",
+      "substitutions": [
+        {
+          "count": 1,
+          "new": "layout_book_pdf_v4",
+          "old": "layout_book_pdf_v3"
+        },
+        {
+          "count": 2,
+          "new": "pdf_security_v3",
+          "old": "pdf_security_v2"
+        }
+      ]
+    },
+    {
+      "new_full_sha256": "d9d2d9369666ba25738f51cd415af97555257939f07485bf5171d91ee4868ee5",
+      "new_path": "src/mfdataindia/enrichment/uti_book_pdf_v6.py",
+      "old_full_sha256": "3aa7d47b7b905a827230c0af3f1151c911143fc6d89ad5df346945c354063431",
+      "old_path": "src/mfdataindia/enrichment/uti_book_pdf_v5.py",
+      "substitutions": [
+        {
+          "count": 4,
+          "new": "layout_book_pdf_v4",
+          "old": "layout_book_pdf_v3"
+        },
+        {
+          "count": 4,
+          "new": "pdf_security_v3",
+          "old": "pdf_security_v2"
+        },
+        {
+          "count": 4,
+          "new": "uti_book_pdf_v5",
+          "old": "uti_book_pdf_v4"
+        },
+        {
+          "count": 2,
+          "new": "_uti_book_pdf_worker_v6",
+          "old": "_uti_book_pdf_worker_v5"
+        },
+        {
+          "count": 1,
+          "new": "_layout_book_pdf_worker_v4.py",
+          "old": "_layout_book_pdf_worker_v3.py"
+        },
+        {
+          "count": 1,
+          "new": "\"version\": 6,",
+          "old": "\"version\": 5,"
+        }
+      ]
+    },
+    {
+      "new_full_sha256": "753df802030f5face3bedea3201d431b8cc2d23164379fcc9a6a744d2715a6ae",
+      "new_path": "src/mfdataindia/enrichment/_uti_book_pdf_worker_v6.py",
+      "old_full_sha256": "6692f915963dae3fec36352bd5e7395c979256aa5e6b2b3639fb6373771e31e9",
+      "old_path": "src/mfdataindia/enrichment/_uti_book_pdf_worker_v5.py",
+      "substitutions": [
+        {
+          "count": 2,
+          "new": "pdf_security_v3",
+          "old": "pdf_security_v2"
+        }
+      ]
+    },
+    {
+      "new_full_sha256": "a14356fcee0ce758e463c22ba8e3ab55348a82e7f833438c8516f62c4a2413c6",
+      "new_path": "scripts/smoke_pdf_security_compatibility_v3.py",
+      "old_full_sha256": "6cc3e2b4e21460ea172674d255405fa894c2c6279a8830f3a18a84fd14c028fc",
+      "old_path": "scripts/smoke_pdf_security_compatibility.py",
+      "substitutions": [
+        {
+          "count": 4,
+          "new": "pdf_security_v3",
+          "old": "pdf_security_v2"
+        },
+        {
+          "count": 5,
+          "new": "uti_book_pdf_v6",
+          "old": "uti_book_pdf_v5"
+        }
+      ]
+    }
+  ]
+}

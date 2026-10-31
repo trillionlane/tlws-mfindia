@@ -545,8 +545,8 @@ jobs:
           set -euo pipefail
           image="tlws-mf-data:${{ github.sha }}"
           tools_image="tlws-mf-review-tools:${{ github.sha }}"
-          docker run --rm --entrypoint python "$image" /app/scripts/smoke_pdf_security_compatibility.py
-          docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_pdf_security_compatibility.py
+          docker run --rm --entrypoint python "$image" /app/scripts/smoke_pdf_security_compatibility_v3.py
+          docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_pdf_security_compatibility_v3.py
 
       - name: Verify packaged read-only core plan worker binding
         id: original_35

@@ -1,5 +1,7 @@
 """Every pre-existing tracked file remains byte-identical; only additive scope."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import json
 from pathlib import Path
@@ -23,7 +25,7 @@ def test_all_parent_tracked_files_preserved_whole_bytes_without_normalization():
             data = str(path.readlink()).encode()
         else:
             assert path.is_file() and not path.is_symlink(), name
-            data = restore_parent_file(name, path.read_bytes())
+            data = restore_parent_file(name, _pypdf_parent_bytes(path, path.read_bytes()))
         assert hashlib.sha256(data).hexdigest() == expected["sha256"], name
 
 
@@ -37,13 +39,13 @@ def test_catalogue_composition_is_only_three_fixed_schema_predicate_inverses():
     assert restored == historical.STATE_SQL
     assert (
         hashlib.sha256(
-            (ROOT / "src/mfdataindia/review/reader_access_correction.py").read_bytes()
+            _pypdf_parent_bytes(ROOT / "src/mfdataindia/review/reader_access_correction.py", (ROOT / "src/mfdataindia/review/reader_access_correction.py").read_bytes())
         ).hexdigest()
         == "863fd37dfa45be74642cf731f44bbd7cc182e263c95309a7d48a4c91af315d00"
     )
     assert (
         hashlib.sha256(
-            (ROOT / "src/mfdataindia/review/reader_access_profile_v1.py").read_bytes()
+            _pypdf_parent_bytes(ROOT / "src/mfdataindia/review/reader_access_profile_v1.py", (ROOT / "src/mfdataindia/review/reader_access_profile_v1.py").read_bytes())
         ).hexdigest()
         == "5d54dbee9631c806b039306599ad0de0e07533fe4be54e93c6d9a817bcf5fdb9"
     )

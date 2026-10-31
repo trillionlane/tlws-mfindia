@@ -1,5 +1,7 @@
 """The source-reference extension changes no previously tracked byte or mode."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import json
 import os
@@ -21,7 +23,7 @@ TRIGGER_PATHS = {"tests/reader_source_reference.py", "tests/reader_source_varian
 
 
 def restore_trigger_source(raw, path):
-    recipe = (ROOT / "docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json").read_bytes()
+    recipe = _pypdf_parent_bytes(ROOT / "docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json", (ROOT / "docs/CI_SOURCE_REFERENCE_PG_TRIGGER_CORRECTION_LITERALS_20261029.json").read_bytes())
     assert hashlib.sha256(recipe).hexdigest() == TRIGGER_RECIPE_SHA
     plan = json.loads(recipe)
     assert set(plan) == {"format", "parent", "files"}
@@ -44,9 +46,9 @@ def restore_trigger_source(raw, path):
 
 
 def restore_dependency_source(raw):
-    recipe = (
+    recipe = _pypdf_parent_bytes(ROOT / "docs/CI_SOURCE_REFERENCE_DEPENDENCY_CORRECTION_LITERALS_20261029.json", (
         ROOT / "docs/CI_SOURCE_REFERENCE_DEPENDENCY_CORRECTION_LITERALS_20261029.json"
-    ).read_bytes()
+    ).read_bytes())
     assert (
         hashlib.sha256(recipe).hexdigest()
         == "23e56ed93cd4ef57174552dccae3b4d737c21c639ae426788f6281a09bfb870a"
@@ -76,7 +78,7 @@ def test_all981_parent_whole_bytes_and_modes_remain_exact():
         else:
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
             if name.decode() in PRIOR_VIEW_CHANGED and name.decode() not in PACKET_PATHS:
                 raw = restore_prior_view_parent(raw, name.decode())
             if name.decode() in PACKET_PATHS:
@@ -94,7 +96,7 @@ def test_exact_three_dependency_inverses_restore_entire_original_compiler():
     original = subprocess.check_output(
         ["git", "show", PARENT + ":tests/reader_source_reference.py"], cwd=ROOT
     )
-    current = (ROOT / "tests/reader_source_reference.py").read_bytes()
+    current = _pypdf_parent_bytes(ROOT / "tests/reader_source_reference.py", (ROOT / "tests/reader_source_reference.py").read_bytes())
     assert current != original
     assert restore_dependency_source(restore_trigger_source(current, "tests/reader_source_reference.py")) == original
 
@@ -132,7 +134,7 @@ def test_all990_c7_whole_bytes_and_modes_remain_exact_after_trigger_inverse():
         else:
             assert path.is_file() and not path.is_symlink() and stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
             if name.decode() in PRIOR_VIEW_CHANGED and name.decode() not in PACKET_PATHS:
                 raw = restore_prior_view_parent(raw, name.decode())
             if name.decode() in PACKET_PATHS:

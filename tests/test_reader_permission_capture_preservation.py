@@ -1,4 +1,6 @@
 """Counted full-byte inverse only. No ignored ranges, AST or whitespace exemptions."""
+
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
 import base64
 import gzip
 import hashlib
@@ -13,7 +15,7 @@ PLAN = json.loads((ROOT / "docs/READER_PERMISSION_CAPTURE_LITERAL_PLAN_20261025.
 
 
 def original_parent_bytes(path):
-    raw = restore_parent_file(path, (ROOT / path).read_bytes())
+    raw = restore_parent_file(path, _pypdf_parent_bytes(ROOT / path, (ROOT / path).read_bytes()))
     if path == ".github/workflows/verify.yml":
         suffix = PLAN["workflow_append"].encode()
         assert raw.endswith(suffix) and raw.count(suffix) == 1
@@ -36,10 +38,10 @@ def test_all_825_parent_files_restore_full_bytes_exactly():
 
 def test_full_template_copies_reverse_only_counted_identity_source_and_owner_literals():
     for entry in PLAN["copies"]:
-        raw = (ROOT / entry["new_path"]).read_bytes()
+        raw = _pypdf_parent_bytes(ROOT / entry["new_path"], (ROOT / entry["new_path"]).read_bytes())
         for sub in reversed(entry["substitutions"]):
             assert raw.count(sub["new"].encode()) == sub["count"], sub
             raw = raw.replace(sub["new"].encode(), sub["old"].encode())
         old = gzip.decompress(base64.b64decode(AUTHORITY["full_bytes_gzip_base64"][entry["old_path"]]))
-        assert raw == old == (ROOT / entry["old_path"]).read_bytes()
+        assert raw == old == _pypdf_parent_bytes(ROOT / entry["old_path"], (ROOT / entry["old_path"]).read_bytes())
         assert hashlib.sha256(raw).hexdigest() == entry["parent_sha256"]

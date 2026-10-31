@@ -1,5 +1,9 @@
 """Pin the entire admitted PR133 parent and the finite no-freeze DEV delta."""
 
+from pypdf_patch_preservation import (
+    PATCH_ADDED, PATCH_MODIFIED, restore_pypdf_parent as _pypdf_parent_bytes,
+)
+
 import hashlib
 import os
 from pathlib import Path
@@ -58,7 +62,7 @@ def test_all_parent_bytes_modes_and_exact_no_freeze_delta():
             assert path.is_file() and not path.is_symlink(), name
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755"), name
-            raw = path.read_bytes()
+            raw = _pypdf_parent_bytes(path, path.read_bytes())
             raw = restore_runtime_parent(name, raw)
         if name in MODIFIED:
             assert hashlib.sha256(raw).hexdigest() == MODIFIED[name], name
@@ -75,12 +79,12 @@ def test_all_parent_bytes_modes_and_exact_no_freeze_delta():
         assert path.is_file() and not path.is_symlink()
         assert stat.S_ISREG(path.stat().st_mode)
         assert not path.stat().st_mode & 0o111
-    assert hashlib.sha256((ROOT / NEW_TEST).read_bytes()).hexdigest() == NEW_TEST_SHA256
-    assert hashlib.sha256((ROOT / NEW_CHAIN_TEST).read_bytes()).hexdigest() == NEW_CHAIN_SHA256
+    assert hashlib.sha256(_pypdf_parent_bytes(ROOT / NEW_TEST, (ROOT / NEW_TEST).read_bytes())).hexdigest() == NEW_TEST_SHA256
+    assert hashlib.sha256(_pypdf_parent_bytes(ROOT / NEW_CHAIN_TEST, (ROOT / NEW_CHAIN_TEST).read_bytes())).hexdigest() == NEW_CHAIN_SHA256
     assert hashlib.sha256(restore_runtime_parent(
-        NEW_IDENTITY_TEST, (ROOT / NEW_IDENTITY_TEST).read_bytes()
+        NEW_IDENTITY_TEST, _pypdf_parent_bytes(ROOT / NEW_IDENTITY_TEST, (ROOT / NEW_IDENTITY_TEST).read_bytes())
     )).hexdigest() == NEW_IDENTITY_SHA256
     changed = set(_git("diff", "--name-only", PARENT).decode().splitlines())
     untracked = set(_git("ls-files", "--others", "--exclude-standard").decode().splitlines())
     assert changed | untracked == set(MODIFIED) | {NEW_TEST, NEW_CHAIN_TEST,
-                                                NEW_IDENTITY_TEST, SELF} | NEW_ADDED
+                                                NEW_IDENTITY_TEST, SELF} | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED

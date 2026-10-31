@@ -1,5 +1,7 @@
 """Independent full parent/copy restoration, including the changed guard itself."""
 
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
+
 import hashlib
 import os
 import stat
@@ -35,25 +37,25 @@ def test_all896_whole_parent_bytes_modes_including_changed_guard():
         else:
             assert not path.is_symlink() and stat.S_ISREG(path.stat().st_mode), name
             assert bool(path.stat().st_mode & 0o111) == (expected["mode"] == "100755"), name
-            data = path.read_bytes()
+            data = _pypdf_parent_bytes(path, path.read_bytes())
         assert hashlib.sha256(parent_bytes(name, data)).hexdigest() == expected["sha256"], name
 
 
 def test_five_whole_copy_inverses_and_all_frozen_source_pins():
     for item in PLAN["copies"]:
-        value = (ROOT / item["new_path"]).read_bytes()
+        value = _pypdf_parent_bytes(ROOT / item["new_path"], (ROOT / item["new_path"]).read_bytes())
         assert hashlib.sha256(value).hexdigest() == item["new_sha256"]
         for rule in reversed(item["substitutions"]):
             assert value.count(rule["new"].encode()) == rule["count"]
             value = value.replace(rule["new"].encode(), rule["old"].encode())
-        assert value == (ROOT / item["old_path"]).read_bytes()
+        assert value == _pypdf_parent_bytes(ROOT / item["old_path"], (ROOT / item["old_path"]).read_bytes())
         assert hashlib.sha256(value).hexdigest() == item["old_sha256"]
 
 
 @pytest.mark.parametrize("name", sorted(PLAN["parent_recipes"]))
 @pytest.mark.parametrize("mutation", ["append", "drop", "duplicate", "change"])
 def test_inverse_rejects_unapproved_guard_and_workflow_bytes(name, mutation):
-    data = (ROOT / name).read_bytes()
+    data = _pypdf_parent_bytes(ROOT / name, (ROOT / name).read_bytes())
     if mutation == "append":
         data += b"\n# UNAPPROVED\n"
     elif mutation == "drop":
@@ -126,17 +128,17 @@ def test_prospective_committed_presentation_uses_same896_parent_helper(git_repo,
     path.write_bytes(changed)
     git_at(root, "add", name)
     git_at(root, "commit", "-m", "synthetic presentation")
-    restored = parent_bytes(name, path.read_bytes())
+    restored = parent_bytes(name, _pypdf_parent_bytes(path, path.read_bytes()))
     assert restored != changed
     assert hashlib.sha256(restored).hexdigest() == PLAN["files"][name]["sha256"]
-    assert path.read_bytes() == changed
+    assert _pypdf_parent_bytes(path, path.read_bytes()) == changed
 
 
 def test_exact_existing_tenfile_authority_no_new_exception():
     expected = PLAN["existing_approved_presentation_exception"]
     assert set(expected["files"]) == set(old_preservation.PRESENTATION)
     assert len(expected["files"]) == 10
-    raw = (ROOT / expected["authority_path"]).read_bytes()
+    raw = _pypdf_parent_bytes(ROOT / expected["authority_path"], (ROOT / expected["authority_path"]).read_bytes())
     assert hashlib.sha256(raw).hexdigest() == expected["authority_sha256"]
     assert all(
         PLAN["files"][n]["sha256"] == sha == old_preservation.PRESENTATION[n]["sha256"]
@@ -178,7 +180,7 @@ def test_same896_helper_keeps_original_presentation_custody_rejections(
     root = git_repo
     monkeypatch.setattr(old_preservation, "ROOT", root)
     path = root / "README.md"
-    data = path.read_bytes()
+    data = _pypdf_parent_bytes(path, path.read_bytes())
     if defect == "dirty":
         path.write_bytes(b"SYNTHETIC_UNCOMMITTED\n")
     elif defect == "wrong_argument":

@@ -1,4 +1,6 @@
 """Synthetic preparation tests only. No database, provider or runtime execution."""
+
+from pypdf_patch_preservation import restore_pypdf_parent as _pypdf_parent_bytes
 import hashlib
 import json
 import re
@@ -306,7 +308,7 @@ class PreparationTests(unittest.TestCase):
         repo = ROOT.parents[1]
         for row in authority["all_files"]:
             p = repo / row["path"]
-            raw = restore_identification_parent(row["path"], p.read_bytes())
+            raw = restore_identification_parent(row["path"], _pypdf_parent_bytes(p, p.read_bytes()))
             self.assertEqual(len(raw), row["bytes"], row["path"])
             self.assertEqual(hashlib.sha256(raw).hexdigest(), row["sha256"], row["path"])
             self.assertEqual(bool(p.stat().st_mode & 0o111),

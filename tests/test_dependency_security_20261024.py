@@ -24,19 +24,19 @@ ROOT = Path(__file__).resolve().parents[1]
 def new_modules():
     return tuple(
         importlib.import_module("mfdataindia.enrichment." + name)
-        for name in ("pdf_security_v2", "layout_book_pdf_v3", "uti_book_pdf_v5")
+        for name in ("pdf_security_v3", "layout_book_pdf_v4", "uti_book_pdf_v6")
     )
 
 
 def test_exact_security_patch_versions_and_both_distribution_artifact_hashes():
-    assert version("pypdf") == "6.21.2"
+    assert version("pypdf") == "6.21.4"
     assert version("filelock") == "4.2.1"
     lock = tomllib.loads((ROOT / "uv.lock").read_text())
     expected = {
         "pypdf": (
-            "6.21.2",
-            "1d44d1a3a200f25062adff0085b02040e4646431ac2ccac22e42679e91466084",
-            "0a3e1c5c886a1be03646c16a04827cc166c2a0575c971b26a4bf89686551c2d4",
+            "6.21.4",
+            "33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c",
+            "c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163",
         ),
         "filelock": (
             "4.2.1",
@@ -50,7 +50,7 @@ def test_exact_security_patch_versions_and_both_distribution_artifact_hashes():
         assert package["sdist"]["hash"] == "sha256:" + source
         assert [w["hash"] for w in package["wheels"]] == ["sha256:" + wheel]
     assert (
-        "pypdf==6.21.2"
+        "pypdf==6.21.4"
         in tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
     )
     assert not any(p["name"].lower() == "pillow" for p in lock["package"])
@@ -74,7 +74,7 @@ def test_all_historical_pdf_files_configurations_and_policies_remain_exact():
 
 @pytest.mark.parametrize("decoder", ["layout", "uti"])
 def test_historical_patched_engines_reject_new_runtime_before_worker_spawn(monkeypatch, decoder):
-    assert version("pypdf") == "6.21.2"
+    assert version("pypdf") == "6.21.4"
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: pytest.fail("historical worker spawned"))
     with pytest.raises(ValueError, match="exact reviewed patched pypdf"):
         if decoder == "layout":
@@ -85,16 +85,24 @@ def test_historical_patched_engines_reject_new_runtime_before_worker_spawn(monke
 
 def test_additive_dependency_contract_and_dormant_policies_are_distinct():
     dependency, layout, uti = new_modules()
-    assert dependency.PYPDF_VERSION == "6.21.2"
-    assert dependency.dependency_contract()["format"] == "patched-pdf-dependency-v2"
+    assert dependency.PYPDF_VERSION == "6.21.4"
+    assert dependency.dependency_contract()["format"] == "patched-pdf-dependency-v3"
     assert {
         "GHSA-5hx5-vpf9-5wcv",
         "GHSA-6c7f-9265-g8fw",
         "GHSA-jr96-gvgh-j3r4",
         "GHSA-gmh7-3g9r-mjh5",
+        "GHSA-62m5-6wh8-28x7",
+        "GHSA-42gh-23hr-vphw",
+        "GHSA-x3rh-gjgm-fmqc",
+        "GHSA-4vqv-7265-gm2w",
+        "GHSA-5849-834g-hvw5",
+        "GHSA-mfr5-77xh-9j7h",
+        "GHSA-cggf-277g-3q54",
     } == set(dependency.dependency_contract()["advisories"])
-    assert layout.policy("uti")["version"] == 3 and uti.policy()["version"] == 5
-    assert uti.policy()["retained_security_policy_hash"] == fingerprint(uti_book_pdf_v4.policy())
+    assert layout.policy("uti")["version"] == 4 and uti.policy()["version"] == 6
+    assert uti.policy()["retained_security_policy_hash"] == fingerprint(
+        importlib.import_module("mfdataindia.enrichment.uti_book_pdf_v5").policy())
     for old, new in (
         (layout_book_pdf_v2.policy("uti"), layout.policy("uti")),
         (uti_book_pdf_v4.policy(), uti.policy()),
@@ -108,11 +116,11 @@ def test_additive_dependency_contract_and_dormant_policies_are_distinct():
 
 def test_old_dependency_contract_cannot_be_relabelled_for_new_runtime():
     dependency, _, _ = new_modules()
-    body = {"extractor_version": "6.21.2", "engine_hash": "e" * 64, "policy_hash": "a" * 64}
+    body = {"extractor_version": "6.21.4", "engine_hash": "e" * 64, "policy_hash": "a" * 64}
     body["extraction_hash"] = fingerprint(body)
     for old in (
         pdf_security.dependency_contract(),
-        {**pdf_security.dependency_contract(), "version": "6.21.2"},
+        {**pdf_security.dependency_contract(), "version": "6.21.4"},
     ):
         with pytest.raises(ValueError, match="contract"):
             dependency.admit_extraction(
@@ -167,7 +175,7 @@ def test_new_worker_bad_xref_header_is_bounded_without_relaxing_production_limit
     dependency.require_runtime()
     raw = b"%PDF-1.7\nxref\n0 2147483647\n0000000000 65535 f \ntrailer\n<< /Size 2147483647 >>\nstartxref\n9\n%%EOF\n"
     result = subprocess.run(
-        [sys.executable, "-I", "-m", "mfdataindia.enrichment._layout_book_pdf_worker_v3", "uti"],
+        [sys.executable, "-I", "-m", "mfdataindia.enrichment._layout_book_pdf_worker_v4", "uti"],
         input=raw,
         capture_output=True,
         timeout=5,
@@ -190,7 +198,7 @@ def synthetic_reader():
 def test_115572_missing_objects_are_cached_even_when_the_value_is_none():
     from pypdf import PdfReader
 
-    assert version("pypdf") == "6.21.2"
+    assert version("pypdf") == "6.21.4"
     reader = synthetic_reader()
     assert reader.get_object(999999) is None
     assert (0, 999999) in reader.resolved_objects
@@ -210,7 +218,7 @@ def test_115572_missing_objects_are_cached_even_when_the_value_is_none():
 def test_115585_recovery_stream_read_and_cache_build_are_both_once_guarded():
     from pypdf import PdfReader
 
-    assert version("pypdf") == "6.21.2"
+    assert version("pypdf") == "6.21.4"
     tree = ast.parse(textwrap.dedent(inspect.getsource(PdfReader._read_standard_xref_table)))
     guards = [
         n
@@ -234,6 +242,6 @@ def test_115585_recovery_stream_read_and_cache_build_are_both_once_guarded():
 def test_115580_declared_xref_size_is_bounded_by_actual_stream_bytes():
     from pypdf.errors import LimitReachedError
 
-    assert version("pypdf") == "6.21.2"
+    assert version("pypdf") == "6.21.4"
     with pytest.raises(LimitReachedError, match="Declared size 13 exceeds allowed limit of 5"):
         synthetic_reader()._read_standard_xref_table(io.BytesIO(b"ref\n0 13\n" + b"a" * 100))
