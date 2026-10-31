@@ -35,7 +35,7 @@ RESTRICTED_TABLES = {
     "mf_monthly_facts": frozenset({"snapshots"}),
     "mf_fact_refresh": frozenset("runs publications transitions".split()),
     "mf_fact_review": frozenset({"events"}),
-    "mf_multi_facts": frozenset("configuration snapshots runs transitions".split()),
+    "mf_multi_facts": frozenset("configuration snapshots runs transitions prior_field_versions".split()),
     "mf_book_facts": frozenset("configuration batches runs transitions prior_field_versions".split()),
 }
 RESTRICTED_COLUMNS = {
@@ -87,7 +87,7 @@ def guard_options(selected):
     return {} if selected == RESTRICTED else {"reader_profile": selected}
 
 
-def _existing_helper(state):
+def _existing_helper(state, *, restricted=False):
     """Retain the reviewed privileged helper only; never add EXECUTE.
 
     Existing non-privileged invoker helpers are not revoked or expanded.
@@ -101,25 +101,40 @@ def _existing_helper(state):
         return None
     roles = {r["rolname"]: r["oid"] for r in state["roles"]}
     namespaces = {n["nspname"]: n["oid"] for n in state["namespaces"]}
-    expected_roles = (policy.OWNER, policy.READER, "mfdata_verified_admin")
+    namespace = next((n for n in state["namespaces"] if n["nspname"] == "mf_fact_review"), None)
+    owners = (policy.OWNER, "postgres") if restricted else (policy.OWNER,)
+    owner_name = next((name for name in owners if namespace and roles.get(name) == namespace["owner"]), None)
+    expected_roles = (owner_name, policy.READER, "mfdata_verified_admin")
     if len(privileged) != 1 or any(name not in roles for name in expected_roles):
         raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
     row = privileged[0]
     expected = {
         "pronamespace": namespaces.get("mf_fact_review"), "proname": "dependencies",
-        "proowner": roles[policy.OWNER], "prosecdef": True, "prokind": "f",
+        "proowner": roles[owner_name], "prosecdef": True, "prokind": "f",
         "proargtypes": "23", "prorettype": 3802,
         "private_body_sha256": helper_reference.BODY_SHA256,
         "proconfig": {"is_null": False,
                       "sha256": helper_reference.EXPECTED_DECLARATION["configuration_sha256"],
                       "utf8_bytes": helper_reference.EXPECTED_DECLARATION["configuration_bytes"]},
         "execute_allowed": True,
-        "acl": sorted([[roles[policy.OWNER], roles[name], "EXECUTE", False]
+        "acl": sorted([[roles[owner_name], roles[name], "EXECUTE", False]
                        for name in expected_roles]),
     }
     if any(row.get(key) != value for key, value in expected.items()):
         raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
-    helper_scope.require_existing_callee(state)
+    if restricted:
+        callees = [f for f in state["functions"] if f["pronamespace"] == namespaces.get("mf_review")
+                   and f["proname"] == "canonical_json" and f["proargtypes"] == "3802"]
+        expected_callee = {"proowner": roles[owner_name], "prokind": "f", "prosecdef": False,
+                           "prorettype": 25, "private_body_sha256": helper_scope.CALLEE_BODY_SHA256,
+                           "proconfig": {"is_null": False, "sha256": helper_scope.CALLEE_CONFIG_SHA256,
+                                         "utf8_bytes": helper_scope.CALLEE_CONFIG_BYTES},
+                           "acl": [[roles[owner_name], roles[owner_name], "EXECUTE", False]],
+                           "execute_allowed": False}
+        if len(callees) != 1 or any(callees[0].get(k) != v for k, v in expected_callee.items()):
+            raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
+    else:
+        helper_scope.require_existing_callee(state)
     return deepcopy(row)
 
 
@@ -160,8 +175,6 @@ def verify_selection(conn, selected=RESTRICTED, principal=None):
     """An explicit broad choice is effective only with a matching real database."""
     contract(selected)
     if selected == RESTRICTED:
-        if principal == policy.READER:
-            verify_restricted_catalogue(conn.execute(policy.STATE_SQL).fetchone()["value"])
         return
     identity = conn.execute(
         "SELECT current_database() AS database,current_user AS principal,session_user AS session"
@@ -184,6 +197,7 @@ def verify_restricted_catalogue(state):
     are restricted. Existing invoker helpers are unchanged; no EXECUTE is added.
     """
     try:
+        _existing_helper(state, restricted=True)
         reader = next(row for row in state["roles"] if row["rolname"] == policy.READER)
         oid = reader["oid"]
         if any(reader[k] for k in ("rolsuper", "rolinherit", "rolcreaterole", "rolcreatedb", "rolreplication", "rolbypassrls")):
@@ -225,14 +239,14 @@ def verify_restricted_catalogue(state):
         raise ReaderAccessError("INCOMPLETE_READER_ACCESS_PROFILE") from None
 
 
-def _catalogue(conn):
+def _catalogue(conn, *, restricted=False):
     """Fresh effective state plus complete existing-helper declaration seals.
 
     Reuse the committed metadata-only SQL, not a worker's private executor or
     a fabricated live attestation. OIDs remain the actual database values.
     """
     state = conn.execute(policy.STATE_SQL).fetchone()["value"]
-    helper = _existing_helper(state)
+    helper = _existing_helper(state, restricted=restricted)
     if helper is not None:
         functions = conn.execute(ATTESTATION_SQL).fetchone()["value"]["functions"]
         if (len(functions) != 1 or functions[0]["oid"] != helper["oid"]
@@ -240,6 +254,16 @@ def _catalogue(conn):
                     "declaration_matches_committed_reference"]):
             raise ReaderAccessError("UNREVIEWED_READER_FUNCTION")
     return state
+
+
+def verify_restricted_connection(conn):
+    """Complete restricted startup/provisioning gate, with helper attestation.
+
+    Feature stores retain their original local restricted checks. This complete
+    catalogue gate runs at the trusted lifespan/composition boundary, not once
+    per nested source guard or preservation-table capture.
+    """
+    verify_restricted_catalogue(_catalogue(conn, restricted=True))
 
 
 def reconcile(conn, selected=RESTRICTED, *, initialize_roles=()):
@@ -261,7 +285,7 @@ def reconcile(conn, selected=RESTRICTED, *, initialize_roles=()):
     if selected == BROAD:
         prepare(_catalogue(conn))
     else:
-        verify_restricted_catalogue(conn.execute(policy.STATE_SQL).fetchone()["value"])
+        verify_restricted_connection(conn)
     # Existing supported principal roles keep their original capabilities. This
     # is additive baseline provisioning, not a role reset or credential rotation.
     from .privileges import verify_principal
@@ -293,6 +317,8 @@ def reconcile(conn, selected=RESTRICTED, *, initialize_roles=()):
         if actual != planned["after"]:
             raise ReaderAccessError("READER_PROFILE_RECONCILIATION_MISMATCH")
         verify_selection(conn, selected, policy.READER)
+    else:
+        verify_restricted_connection(conn)
     for role in roles:
         verify_principal(conn, "generator" if role == roles[0] else "api", role,
                          reader_profile=selected if role == policy.READER else RESTRICTED)

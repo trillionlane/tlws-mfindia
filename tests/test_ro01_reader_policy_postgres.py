@@ -271,3 +271,31 @@ def test_native_core_only_cannot_silently_label_broad_current_and_future_reads_r
         with pytest.raises(profiles.ReaderAccessError, match="READER_PROFILE_SELECTION_CONFLICT"):
             verify_runtime(conn, "api")
     assert catalogue(dsn) == enrolled and values(dsn) == before
+
+
+@pytest.mark.parametrize("mutation", ["body", "configuration", "acl", "declaration"])
+def test_native_restricted_runtime_and_install_reject_unreviewed_privileged_helper(ro01_db, mutation):
+    dsn = ro01_db
+    from mfdataindia.review.privileges import verify_runtime
+    with connect(dsn, planner.READER) as conn:
+        verify_runtime(conn, "api")
+    signature = "mf_fact_review.dependencies(integer)"
+    with connect(dsn) as conn:
+        if mutation == "body":
+            from test_reader_function_attestation_postgres import create_statement
+            statement = create_statement().replace("CREATE FUNCTION", "CREATE OR REPLACE FUNCTION").replace(
+                "END $$;", "END /* RO01 synthetic body drift */ $$;")
+            conn.execute(statement)
+        elif mutation == "configuration":
+            conn.execute("ALTER FUNCTION " + signature + " SET synthetic.private_config='fixture-only'")
+        elif mutation == "acl":
+            conn.execute("GRANT EXECUTE ON FUNCTION " + signature + " TO PUBLIC")
+        else:
+            conn.execute("ALTER FUNCTION " + signature + " COST 101")
+    before, records = catalogue(dsn), values(dsn)
+    with connect(dsn, planner.READER) as conn:
+        with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+            verify_runtime(conn, "api")
+    with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+        install_and_reconcile(dsn, ROOT, manifest(), {}, reader_profile=profiles.RESTRICTED)
+    assert catalogue(dsn) == before and values(dsn) == records

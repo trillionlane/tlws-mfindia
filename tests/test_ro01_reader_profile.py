@@ -95,3 +95,32 @@ def test_restricted_profile_rejects_complete_core_and_future_read_drift(change):
         value["columns"][-1]["capabilities"][0] = True
     with pytest.raises(profiles.ReaderAccessError, match="READER_PROFILE_SELECTION_CONFLICT"):
         profiles.verify_restricted_catalogue(value)
+
+
+@pytest.mark.parametrize("schema", ["mf_multi_facts", "mf_book_facts"])
+def test_supported_python_installer_prior_views_remain_restricted_reads(schema):
+    from test_broad_reader_policy import state
+    value = state()
+    relation = value["relations"][0]
+    relation.update(nspname=schema, relname="prior_field_versions")
+    relation["capabilities"][0] = True
+    profiles.verify_restricted_catalogue(value)
+    relation["relname"] = "unadopted_view"
+    with pytest.raises(profiles.ReaderAccessError, match="READER_PROFILE_SELECTION_CONFLICT"):
+        profiles.verify_restricted_catalogue(value)
+
+
+@pytest.mark.parametrize("mutation", ["body", "configuration", "acl"])
+def test_restricted_helper_exception_requires_actual_committed_seals(mutation):
+    from test_broad_reader_function_scope import _case
+    value, _ = _case()
+    profiles.verify_restricted_catalogue(value)
+    helper = value["functions"][0]
+    if mutation == "body":
+        helper["private_body_sha256"] = "0" * 64
+    elif mutation == "configuration":
+        helper["proconfig"]["sha256"] = "0" * 64
+    else:
+        helper["acl"][1][3] = True
+    with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+        profiles.verify_restricted_catalogue(value)

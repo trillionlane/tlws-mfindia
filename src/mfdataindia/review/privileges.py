@@ -44,6 +44,8 @@ def verify_runtime(conn, purpose: str, *, reader_profile=profiles.RESTRICTED) ->
     identity = conn.execute('SELECT current_user AS name,session_user=current_user AS dedicated').fetchone()
     if not identity['dedicated']:
         raise ValueError('require direct login as dedicated runtime principal, not SET ROLE from administrator')
+    if reader_profile == profiles.RESTRICTED and identity['name'] == 'mfdata_verified_reader':
+        profiles.verify_restricted_connection(conn)
     verify_principal(conn, purpose, identity['name'], reader_profile=reader_profile)
 
 

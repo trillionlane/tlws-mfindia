@@ -119,6 +119,19 @@ function-access P2 was withdrawn after reconciling the exact approved intent;
 documentation now distinguishes unchanged invoker helpers from the single
 approved privileged helper. No function grant or revoke was introduced.
 
+Re-review additionally caught the existing Python-installed multi-facts prior
+view missing from the restricted allowlist, and a restricted helper-attestation
+gap. Both prior views now have positive/unknown-view negative regressions. The
+complete restricted connection gate runs at actual API lifespan and before/after
+installer reconciliation, including metadata-only helper declaration attestation
+and existing callee seals. It does not repeat whole-catalogue work for every
+nested feature/preservation guard. Historical restricted PostgreSQL-owner
+installations remain supported; the broad profile still requires mfdata_admin.
+Four additional native helper body/configuration/ACL/declaration drift cases
+bring RO-01 coverage to nine disposable PostgreSQL cases. A local validation run
+overlapped corrective edits and was invalidated by the byte guard; it is not
+final-head proof. Final validation runs against an unchanging candidate.
+
 Hosted run `41151029340` failed CI-plan validation before substantive tests:
 non-main workflow dispatch is not supported. PR137 now targets main so the
 unchanged supported PR workflow can run. Its GitHub comparison includes the

@@ -29,7 +29,7 @@ IDENTITY = "dev-core-perm-261022a"
 WORKER = "scripts/diagnose_core_permissions_dev.py"
 WORKER_SHA = "e8c1ec3f79b6a98716828cfe21e2f043f59426dfd17f6aa2a6771c1e809d0e8e"
 # RO-01 current source-attribution version; historical receipts remain consumed.
-SPEC_SHA = 'dd5b1393b14d545521b405a6a5a027255e00970a32f2f62a366ff51e4e3bd748'
+SPEC_SHA = '2346f273e03f330ad256c7df6cea16ac020c9c5b5b104fe4b176cafdb1c153f5'
 STAGE = "core-permission-diagnostic-not-acceptance"
 ARTIFACTS = Path("/Users/deviojha/projects/codex/artifacts")
 START = ARTIFACTS / (NAME + "-controller-start.json")
