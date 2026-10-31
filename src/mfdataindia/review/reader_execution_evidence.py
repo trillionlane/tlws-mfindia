@@ -78,10 +78,11 @@ def certificate(plan, kind, predecessors, *, state, effect, data, diagnostic=Non
     payload = contract.stage_payload(plan, kind, predecessors)
     status = (diagnostic if diagnostic is not None else {
         "state": state, "reason": "OK", "safe_cause": "NONE", "stage": kind,
-        "grant_effect": effect, "disposition": "ADVANCE", "consumer_acceptance": "PENDING_RO04"})
+        "grant_effect": effect, "disposition": "ADVANCE", "consumer_acceptance": "PENDING_RO04",
+        "execution_limitations": list(contract.EXECUTION_LIMITATIONS)})
     require(status["grant_effect"] == effect and status["state"] == state,
             "OUTCOME_EFFECT_MISMATCH")
-    body = {"format": "mf-reader-execution-result-v1", "kind": kind,
+    body = {"format": "mf-reader-execution-result-v2", "kind": kind,
             "operation_id": plan["operation_id"], "plan_sha256": fingerprint(plan),
             "predecessor_sha256": fingerprint(predecessors[-1]) if predecessors else None,
             "git_sha": plan["git_sha"], "source_sha256": fingerprint(plan["packaged_source"]),
@@ -98,8 +99,8 @@ def read_certificate(plan, kind, predecessors, value):
     require(type(body) is dict and set(body) == {
         "format", "kind", "operation_id", "plan_sha256", "predecessor_sha256", "git_sha",
         "source_sha256", "code_sha256", "images_sha256", "data", "state", "reason", "safe_cause",
-        "stage", "grant_effect", "disposition", "consumer_acceptance"}, "EXACT_RESULT_REQUIRED")
-    require(body["format"] == "mf-reader-execution-result-v1" and body["kind"] == kind
+        "stage", "grant_effect", "disposition", "consumer_acceptance", "execution_limitations"}, "EXACT_RESULT_REQUIRED")
+    require(body["format"] == "mf-reader-execution-result-v2" and body["kind"] == kind
             and body["operation_id"] == plan["operation_id"] and body["plan_sha256"] == fingerprint(plan)
             and body["predecessor_sha256"] == (fingerprint(predecessors[-1]) if predecessors else None)
             and body["git_sha"] == plan["git_sha"]
@@ -107,6 +108,7 @@ def read_certificate(plan, kind, predecessors, value):
             and body["code_sha256"] == fingerprint(plan["code_binding"])
             and body["images_sha256"] == fingerprint(plan["image_binding"])
             and body["consumer_acceptance"] == "PENDING_RO04"
+            and body["execution_limitations"] == list(contract.EXECUTION_LIMITATIONS)
             and body["grant_effect"] in diagnostics.EFFECTS
             and body["stage"] in diagnostics.PHASES and type(body["data"]) is dict,
             "PREDECESSOR_BINDING_MISMATCH")

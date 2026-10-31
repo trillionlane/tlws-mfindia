@@ -11,6 +11,7 @@ from mfdataindia.review import reader_execution_diagnostics as diagnostics
 from mfdataindia.review import reader_execution_worker as worker
 from mfdataindia.review import reader_execution_controller as controller
 from mfdataindia.review import reader_execution_backend as backend
+from mfdataindia.review.reader_execution_authority import Authority
 from mfdataindia.review.reader_execution_application import ApplicationCheck
 from mfdataindia.review.auth import AssertionVerifier
 from mfdataindia.review.policy import canonical
@@ -42,7 +43,6 @@ def main():
     parser.add_argument("command", choices=("worker", "validate", "execute", "inspect"), nargs="?", default="worker")
     parser.add_argument("--plan", type=Path)
     parser.add_argument("--expected-git")
-    parser.add_argument("--authority", type=Path)
     parser.add_argument("--trust", type=Path)
     parser.add_argument("--operation-root", type=Path)
     try:
@@ -75,7 +75,9 @@ def main():
                 env = dict(os.environ)
                 app = ApplicationCheck(env.get("MFDATAINDIA_READER_DSN"), verifier,
                     env.get("READER_EXECUTION_READ_ASSERTION"), env.get("READER_EXECUTION_ADMIN_ASSERTION"))
-                result = controller.execute(plan, load(args.authority), app, source_root=root,
+                # Fixed independently custodied record, never a CLI-selected
+                # key/approval file or a syntactically valid self-asserted hash.
+                result = controller.execute(plan, Authority().record, app, source_root=root,
                     expected_git=args.expected_git, backend_factory=backend.Backend)
     except BaseException as error:
         print(canonical(diagnostics.report(error, stage="validation", worker=False)), file=sys.stderr)

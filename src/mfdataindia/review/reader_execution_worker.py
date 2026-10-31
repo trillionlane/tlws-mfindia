@@ -59,6 +59,11 @@ class Worker:
             contract.validate_stage(payload, source_root=source_root,
                                      expected_git=environment["DEPLOYMENT_GIT_SHA"])
             plan, predecessors = payload["plan"], payload["predecessors"]
+            # A reader cannot assert that an earlier grant never happened merely
+            # because its proof cannot be revalidated. Only the full predecessor
+            # verification below can establish that earlier known effect.
+            if kind == "reader" and len(predecessors) == 2:
+                effect = diagnostics.UNKNOWN
             prior = evidence.verify_chain(plan, kind, predecessors)
             effect = prior["prior_effect"] if prior is not None else diagnostics.NO_GRANT
             capacity = (evidence.prove_capacity(plan, prior["capture"], predecessors)

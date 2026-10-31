@@ -15,6 +15,7 @@ from mfdataindia.review import reader_execution_controller as controller
 from mfdataindia.review import broad_reader_direct_delivery_spec as spec
 from mfdataindia.review.policy import canonical
 from reader_execution_fixtures import ROOT, GIT, plan, app_context, authority
+from reader_execution_fixtures import execution_custody as execution_custody
 
 
 def test_complete_dry_run_has_no_identity_or_intent_or_database_side_effect(tmp_path, monkeypatch):
@@ -145,3 +146,22 @@ def test_invalid_command_line_does_not_echo_accidental_secret_arguments():
     assert result.returncode == 1
     assert "SYNTHETIC_SECRET" not in result.stdout + result.stderr
     assert contract.parse_json(result.stderr.encode())["state"] == "LOCAL_VALIDATION_FAILED_NO_DISPATCH"
+
+
+def test_reader_unverified_grant_predecessor_never_claims_no_grant_before_connect():
+    from mfdataindia.review import reader_execution_diagnostics as diagnostics
+    value, _, _ = plan()
+    payload = contract.stage_payload(value, "reader", [{"synthetic": "capture"}, {"synthetic": "grant"}])
+    prepared = spec.request("reader", root=contract.operation_root(value), final_git_sha=GIT,
+        image=value["image_binding"]["app"], payload=payload,
+        source_sha256=contract.fingerprint(value["packaged_source"]),
+        operation_id=value["operation_id"], **contract.package_hashes(ROOT))
+    env = {row["name"]: row["value"] for row in prepared["task"]["containers"][0]["env"] if "value" in row}
+    name = spec.role_for("reader", operation_id=value["operation_id"]).job
+    env.update(MFDATAINDIA_DSN="synthetic-secret-marker", CLOUD_RUN_JOB=name,
+        CLOUD_RUN_EXECUTION=name + "-abcde", CLOUD_RUN_TASK_COUNT="1", CLOUD_RUN_TASK_INDEX="0", CLOUD_RUN_TASK_ATTEMPT="0")
+    result = worker.Worker().run(env, source_root=ROOT,
+        connect=lambda **kw: pytest.fail("invalid predecessor connected"))
+    assert result.exit_code == 1 and result.certificate is not None
+    assert result.diagnostic["grant_effect"] == diagnostics.UNKNOWN
+    assert "synthetic-secret-marker" not in canonical(result.diagnostic)

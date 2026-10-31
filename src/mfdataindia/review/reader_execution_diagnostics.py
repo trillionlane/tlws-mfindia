@@ -18,7 +18,8 @@ from . import broad_reader_direct_reader_check as reader
 from . import reader_function_attestation as attestation
 from .evidence_transport import ExecutionEvidenceNotDelivered
 from . import reader_access_profile as profiles
-from .reader_execution_contract import ContractError
+from .reader_execution_authority import AuthorityError
+from .reader_execution_contract import ContractError, EXECUTION_LIMITATIONS
 
 NO_GRANT = "NO_GRANT_SUBMITTED"
 ROLLED_BACK = "ROLLED_BACK_CONFIRMED"
@@ -48,10 +49,13 @@ _PREFLIGHT = frozenset({"CURRENT_BACKEND_INPUT_DRIFT", "EXACT_CURRENT_OPERATOR_R
     "CURRENT_IMAGE_BINDING_DRIFT", "PROTECTED_BASELINE_DRIFT", "ORIGINAL_REQUEST_DRIFT",
     "APPLICATION_TRUST_BINDING_MISMATCH", "APPLICATION_ASSERTION_SCOPE_MISMATCH",
     "INCOMPLETE_GRANT_PROOF", "INCOMPLETE_CAPTURE_PROOF", "UNVERIFIED_READER",
+    "PREDECESSOR_GRANT_EFFECT_MISMATCH",
+    "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION", "PRIOR_OPERATION_REQUIRES_READ_ONLY_INSPECTION",
     "EXECUTION_STATUS_UNCONFIRMED", "TASK_RETRY_NOT_AUTHORIZED", "JOB_READINESS_FAILED",
     "JOB_READINESS_EXPIRED", "EXECUTION_INSPECTION_EXPIRED", "CURRENT_JOB_PROFILE_DRIFT"})
 _INPUT = _INPUT | _PREFLIGHT
 _TYPES = ((source.SourceAuthorityError, "SOURCE_BINDING_INVALID"),
+          (AuthorityError, "RO04_DIRECT_BOUNDED_PLAN_AUTHORITY_REQUIRED"),
           (jwt.PyJWTError, "DELEGATED_ASSERTION_INVALID_OR_EXPIRED"),
           (views.ViewProfileError, "SOURCE_VIEW_PROFILE_UNREVIEWED"),
           (functions.FunctionScopeError, "EXISTING_HELPER_NOT_ATTESTED"),
@@ -153,4 +157,5 @@ def report(error, *, stage, prior_effect=NO_GRANT, grant_started=False, worker=T
         effect = UNKNOWN
     return {"state": state, "reason": state, "safe_cause": cause, "stage": stage,
             "grant_effect": effect, "disposition": "STOP_INSPECT_ONLY_NO_REPLAY",
+            "execution_limitations": list(EXECUTION_LIMITATIONS),
             "consumer_acceptance": "PENDING_RO04"}

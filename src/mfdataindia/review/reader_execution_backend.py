@@ -1,5 +1,8 @@
 """One current adapter; original fixed DEV HTTP/task/resource limits retained."""
 from copy import deepcopy
+import json
+import re
+import subprocess
 
 from . import broad_reader_direct_delivery_backend as old
 from . import broad_reader_direct_delivery_spec as spec
@@ -14,9 +17,51 @@ class Backend(old.Backend):
         self.plan = deepcopy(plan)
         super().__init__({"kind": kind}, repo, prepared, operation_id=plan["operation_id"])
 
-    def preflight(self, plan, prepared, completed):
+    def metadata(self, kind, name=None, *, role=None):
+        if kind == "programme_jobs":
+            contract.require(name is None and role is None, "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+            args = ["run", "jobs", "list", "--filter=metadata.name~^mf-reader-internal-", "--limit=1001",
+                "--region=" + spec.REGION, "--project=" + spec.PROJECT, "--format=json"]
+        elif kind in ("programme_job", "programme_executions"):
+            match = re.fullmatch(r"mf-reader-internal-(capture|grant|reader)-(op-[a-z0-9]{12,24})", name or "")
+            contract.require(match is not None and role is None, "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+            stage, operation = match.groups()
+            args = old.metadata_arguments("job" if kind == "programme_job" else "executions",
+                name if kind == "programme_job" else None, role=stage, operation_id=operation)
+        else:
+            return super().metadata(kind, name, role=role)
+        result = subprocess.run(["gcloud", "--account=" + spec.OPERATOR, *args],
+            capture_output=True, text=True, timeout=60)
+        contract.require(result.returncode == 0 and not result.stderr.strip()
+            and 0 < len(result.stdout.encode()) <= spec.MAX_PAYLOAD_BYTES,
+            "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+        return json.loads(result.stdout)
+
+    def recheck_programme_inventory(self, *, current=None):
+        expected = {**self._expected_programme, **({} if current is None else current)}
+        contract.require(current is None or not set(current) & set(self._expected_programme),
+                         "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+        prior = None
+        for _ in range(2):
+            rows = self.metadata("programme_jobs")
+            contract.require(type(rows) is list and len(rows) <= 1000
+                and all(type(row) is dict and type(row.get("metadata")) is dict for row in rows),
+                "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+            names = [row["metadata"].get("name") for row in rows]
+            contract.require(len(names) == len(set(names)) and set(names) == set(expected),
+                "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+            observed = {}
+            for name in sorted(names):
+                observed[name] = {"job_sha256": fingerprint(self.metadata("programme_job", name)),
+                    "execution_sha256": fingerprint(self.metadata("programme_executions", name))}
+            contract.require(observed == expected and (prior is None or observed == prior),
+                "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+            prior = observed
+
+    def preflight(self, plan, prepared, completed, *, settled=None):
         self.current_preflight_verified = False
         self._images = None
+        self._expected_programme = deepcopy({} if settled is None else settled)
         contract.require(plan == self.plan and prepared == self.prepared,
                          "CURRENT_BACKEND_INPUT_DRIFT")
         verify_checkout(self.repo, plan["git_sha"])
@@ -50,6 +95,9 @@ class Backend(old.Backend):
                     operation_id=self.operation_id)
             contract.require(fingerprint(record["certificate"]) == record["certificate_sha256"],
                              "PREDECESSOR_CERTIFICATE_DRIFT")
+            self._expected_programme[spec.role_for(kind, operation_id=self.operation_id).job] = {
+                "job_sha256": fingerprint(actual), "execution_sha256": fingerprint(executions)}
+        self.recheck_programme_inventory()
         previous = None
         for _ in range(2):
             pair = {name: verify_image(self, plan["image_binding"][name]["image"],

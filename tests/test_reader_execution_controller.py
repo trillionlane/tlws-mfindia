@@ -10,6 +10,7 @@ from mfdataindia.review import reader_execution_diagnostics as diagnostics
 from mfdataindia.review import reader_execution_evidence as evidence
 from mfdataindia.review.reader_execution_journal import Journal
 from reader_execution_fixtures import plan, authority, app_context, FakeProvider, ROOT, GIT
+from reader_execution_fixtures import execution_custody as execution_custody
 
 
 @pytest.mark.parametrize("boundary", ["create", "execute", "certificate"])
@@ -71,7 +72,7 @@ def test_correctable_local_validation_failure_spends_no_identity(monkeypatch, tm
     with pytest.raises(ValueError, match="RO04_DIRECT_BOUNDED_PLAN_AUTHORITY_REQUIRED"):
         controller.execute(value, bad, app_context(value, verifier, private), source_root=ROOT,
             expected_git=GIT, backend_factory=lambda *_: pytest.fail("no provider"), journal_base=tmp_path)
-    assert not list(tmp_path.iterdir())
+    assert not list(tmp_path.glob("mf-reader-internal-*"))
     assert contract.dry_run(value, source_root=ROOT, expected_git=GIT)["dispatches"] == 0
 
 
@@ -79,7 +80,7 @@ def test_preflight_failure_is_before_identity_allocation(monkeypatch, tmp_path):
     monkeypatch.setattr(spec, "ARTIFACTS", tmp_path)
     value, verifier, private = plan()
     class Refused(FakeProvider):
-        def preflight(self, *_args):
+        def preflight(self, *_args, **_kwargs):
             raise contract.ContractError("CURRENT_TARGET_NOT_EMPTY")
     with pytest.raises(ValueError, match="CURRENT_TARGET_NOT_EMPTY"):
         controller.execute(value, authority(value), app_context(value, verifier, private),
@@ -129,3 +130,43 @@ def test_inspection_rederives_whole_fixed_request_not_a_forged_self_hash():
     stored.update(request_sha256=hashlib.sha256(raw).hexdigest(), request_bytes=len(raw))
     with pytest.raises(ValueError, match="ORIGINAL_REQUEST_DRIFT"):
         controller.inspect_request(value, "capture", [], stored)
+
+
+@pytest.mark.parametrize("reported", [diagnostics.NO_GRANT, diagnostics.ROLLED_BACK,
+                                     diagnostics.UNKNOWN, diagnostics.COMMITTED])
+def test_reader_failure_cannot_downgrade_independently_verified_commit(reported, monkeypatch):
+    value, _, _ = plan()
+    predecessors = [{"synthetic": "capture"}, {"synthetic": "verified-grant"}]
+    diagnostic = diagnostics.report(RuntimeError("synthetic-secret-marker"),
+        stage="reader", prior_effect=reported)
+    certificate = evidence.certificate(value, "reader", predecessors,
+        state=diagnostic["state"], effect=reported, data={}, diagnostic=diagnostic)
+    # This unit boundary isolates an already independently verified predecessor;
+    # the hosted chain separately proves the actual catalogue/SQL semantics.
+    monkeypatch.setattr(evidence, "verify_chain", lambda *_: {"prior_effect": diagnostics.VERIFIED})
+    with pytest.raises(ValueError, match="PREDECESSOR_GRANT_EFFECT_MISMATCH"):
+        controller._verified(value, "reader", predecessors, certificate)
+
+
+def test_reader_failure_preserves_verified_commit_and_useful_safe_reason(monkeypatch):
+    value, _, _ = plan()
+    predecessors = [{"synthetic": "capture"}, {"synthetic": "verified-grant"}]
+    import psycopg
+    diagnostic = diagnostics.report(psycopg.errors.InsufficientPrivilege("synthetic-secret-marker"),
+        stage="reader", prior_effect=diagnostics.VERIFIED)
+    certificate = evidence.certificate(value, "reader", predecessors,
+        state=diagnostic["state"], effect=diagnostics.VERIFIED, data={}, diagnostic=diagnostic)
+    monkeypatch.setattr(evidence, "verify_chain", lambda *_: {"prior_effect": diagnostics.VERIFIED})
+    body, success = controller._verified(value, "reader", predecessors, certificate)
+    assert not success and body["grant_effect"] == diagnostics.VERIFIED
+    assert body["safe_cause"] == "PERMISSION_DENIED"
+    assert "synthetic-secret-marker" not in contract.canonical(body)
+
+
+def test_self_asserted_hash_is_not_a_trusted_direct_approval_record(monkeypatch, tmp_path):
+    monkeypatch.setattr(spec, "ARTIFACTS", tmp_path)
+    value, _, _ = plan()
+    claimed = authority(value)
+    claimed["direct_human_approval_record_sha256"] = "f" * 64
+    with pytest.raises(ValueError, match="RO04_DIRECT_BOUNDED_PLAN_AUTHORITY_REQUIRED"):
+        controller.validate_authority(value, claimed)

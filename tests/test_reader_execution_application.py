@@ -36,3 +36,11 @@ def test_admin_claim_cannot_replace_the_required_read_assertion():
     wrong = application.ApplicationCheck(original.dsn, verifier, original.admin_assertion)
     with pytest.raises(ValueError, match="APPLICATION_ASSERTION_SCOPE_MISMATCH"):
         wrong.validate(value)
+
+
+def test_missing_admin_assertion_cannot_certify_profile_mutation_boundary():
+    value, verifier, private = plan()
+    context = app_context(value, verifier, private)
+    missing = application.ApplicationCheck(context.dsn, verifier, context.read_assertion)
+    with pytest.raises(ValueError, match="APPLICATION_ASSERTION_REQUIRED"):
+        missing.validate(value)

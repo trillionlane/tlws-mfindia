@@ -12,7 +12,7 @@ from .auth import AssertionVerifier
 from . import broad_reader_direct_delivery_spec as spec
 from . import broad_reader_direct_grant as direct
 from . import reader_access_profile as profiles
-from .reader_execution_contract import require
+from .reader_execution_contract import require, EXECUTION_LIMITATIONS
 from .policy import fingerprint
 
 FLAGS = dict(calendar=True, rolling=True, current_facts=True, fact_verification=True,
@@ -84,8 +84,6 @@ class ApplicationCheck:
                 "APPLICATION_TRUST_BINDING_MISMATCH")
         for token, expected in ((self.read_assertion, {"review:read"}),
                                 (self.admin_assertion, {"review:read", "review:admin"})):
-            if token is None and "review:admin" in expected:
-                continue
             require(type(token) is str and 0 < len(token) <= 8192, "APPLICATION_ASSERTION_REQUIRED")
             principal = self.verifier.verify(token)
             require(principal.scopes == expected, "APPLICATION_ASSERTION_SCOPE_MISMATCH")
@@ -125,8 +123,6 @@ class ApplicationCheck:
                 "reason": "synthetic-access-check", "evidence": ["fixture://access-only"]}).encode()
             scopes = []
             for scope, token in (("read", self.read_assertion), ("read_admin", self.admin_assertion)):
-                if token is None:
-                    continue
                 direct.direct_live(plan["window"])
                 denied = await _request(app, "POST", "/api/review/v1/funds/1/reviews", token=token,
                     body=mutation, extra=((b"idempotency-key", b"ro02-denied-mutation"),
@@ -135,6 +131,7 @@ class ApplicationCheck:
                 scopes.append({"scope": scope, **denied})
             direct.direct_live(plan["window"])
         return {"format": "mf-reader-application-check-v1",
+                "execution_limitations": list(EXECUTION_LIMITATIONS),
                 "state": "APPLICATION_CHECKS_VERIFIED_CONSUMER_PENDING",
                 "surface": "IN_PROCESS_SELECTED_PROFILE_APPLICATION", "profile": profiles.BROAD,
                 "trust_sha256": plan["application_trust_sha256"], "startup_seconds": startup,

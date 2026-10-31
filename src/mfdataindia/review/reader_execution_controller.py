@@ -14,6 +14,7 @@ from . import broad_reader_direct_rollout_controller as old
 from . import reader_execution_contract as contract
 from . import reader_execution_diagnostics as diagnostics
 from . import reader_execution_evidence as evidence
+from .reader_execution_authority import Authority, PROGRAMME
 from .reader_execution_journal import Journal, ProgramLock
 from .policy import fingerprint
 
@@ -49,19 +50,11 @@ def inspect_request(plan, kind, predecessors, stored):
     return recorded
 
 
-def validate_authority(plan, authority):
-    require(type(authority) is dict and set(authority) == {
-        "format", "plan_sha256", "operation_id", "approved_by", "stages", "window",
-        "scope", "direct_human_approval_record_sha256"}
-        and authority["format"] == "mf-reader-bounded-plan-authority-v1"
-        and authority["plan_sha256"] == fingerprint(plan)
-        and authority["operation_id"] == plan["operation_id"]
-        and authority["approved_by"] == spec.OPERATOR
-        and authority["stages"] == list(contract.KINDS)
-        and authority["window"] == plan["window"]
-        and authority["scope"] == "ONE_DEV_CAPTURE_DERIVED_GRANT_AUTHENTICATED_READER",
-        "RO04_DIRECT_BOUNDED_PLAN_AUTHORITY_REQUIRED")
-    spec.sha(authority["direct_human_approval_record_sha256"])
+def validate_authority(plan, authority, *, source=None, lineage=None):
+    source = Authority() if source is None else source
+    require(type(source) is Authority, "RO04_DIRECT_BOUNDED_PLAN_AUTHORITY_REQUIRED")
+    source.verify(plan, authority, lineage=lineage)
+    return source
 
 
 def terminal(value):
@@ -115,11 +108,57 @@ def inventory(plan, kind, backend, prepared, seal, identity=None):
     return {"job_sha256": fingerprint(job), "execution_sha256": fingerprint(executions)}
 
 
+def sealed_programme_inventory(plan, rows, factory, source_root):
+    """Reconcile every original submitted stage read-only before settling it."""
+    creates = [r for r in rows if r["state"] == "CREATE_OUTCOME_UNKNOWN"]
+    kinds = tuple(r["kind"] for r in creates)
+    require(kinds in (("capture",), ("capture", "grant"), ("capture", "reader"), contract.KINDS),
+            "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+    result = {}
+    for original in creates:
+        kind, data = original["kind"], original["data"]
+        prepared = inspect_request(plan, kind, data["predecessors"], data["prepared"])
+        adapter = factory(plan, kind, source_root, prepared)
+        following = [r for r in rows[original["sequence"] + 1:] if r["kind"] == kind]
+        runs = [r for r in following if r["state"] == "RUN_OUTCOME_UNKNOWN"]
+        known_seals = [r["data"]["job_seal"] for r in following if r["state"] == "JOB_CREATED"]
+        known_ids = [r["data"]["identity"] for r in following if r["state"] == "EXECUTION_IDENTIFIED"]
+        require(len(runs) <= 1 and len(known_seals) <= 1 and len(known_ids) <= 1,
+                "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+        job, executions = adapter.job(kind), adapter.executions(kind)
+        require(type(executions) is list and len(executions) == int(bool(runs)),
+                "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+        seal = spec.validate_job_export(kind, job, prepared, namespace=spec.PROJECT_NUMBER,
+            expected_executions=int(bool(runs)), operation_id=plan["operation_id"])
+        require(not known_seals or seal == known_seals[0], "ORIGINAL_JOB_DRIFT")
+        identity = None
+        if runs:
+            identity = _execution(plan, kind, executions[0], prepared, seal,
+                                  known_ids[0] if known_ids else None)
+            observed = adapter.execution(kind, identity["name"])
+            _execution(plan, kind, observed, prepared, seal, identity)
+            require(terminal(observed) is not None, "ORIGINAL_EXECUTION_STILL_RUNNING")
+            body, _ = _verified(plan, kind, data["predecessors"], adapter.certificate(kind, identity["name"]))
+            require(body["grant_effect"] in (diagnostics.NO_GRANT, diagnostics.ROLLED_BACK, diagnostics.VERIFIED),
+                    "PRIOR_OPERATION_REQUIRES_READ_ONLY_INSPECTION")
+        old._job_status(job, execution=identity)
+        actual = inventory(plan, kind, adapter, prepared, seal, identity)
+        require(actual == inventory(plan, kind, adapter, prepared, seal, identity),
+                "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+        result[spec.role_for(kind, operation_id=plan["operation_id"]).job] = actual
+        require(fingerprint(adapter.protected()) == plan["protected_sha256"], "PROTECTED_BASELINE_DRIFT")
+    return result
+
+
 def _verified(plan, kind, predecessors, certificate):
     body = evidence.read_certificate(plan, kind, predecessors, certificate)
     if body["state"] not in evidence.SUCCESS:
         require(body["data"] == {} and body["disposition"] == "STOP_INSPECT_ONLY_NO_REPLAY",
                 "INVALID_FAILURE_CERTIFICATE")
+        if kind == "reader":
+            prior = evidence.verify_chain(plan, kind, predecessors)
+            require(body["grant_effect"] == prior["prior_effect"],
+                    "PREDECESSOR_GRANT_EFFECT_MISMATCH")
         return body, False
     if kind == "capture":
         evidence.verify_chain(plan, "reader" if body["state"] == evidence.NOOP else "grant", [certificate])
@@ -133,18 +172,38 @@ def _verified(plan, kind, predecessors, certificate):
 
 def _unresolved(lock):
     # A different operation must never conceal unresolved prior mutation effects.
+    genesis = lock.genesis()
+    operations, inventory = [], {}
     for root in lock.roots():
         with Journal(root) as prior:
-            prior.plan()
+            plan = prior.plan()
             rows = prior.events()
             require(rows and rows[-1]["state"] in {
                 "OPERATION_APPLICATION_VERIFIED", "STOPPED_WITH_KNOWN_EFFECT", "INSPECTED_WITH_KNOWN_EFFECT"}
-                and rows[-1]["grant_effect"] != diagnostics.UNKNOWN,
+                and rows[-1]["grant_effect"] in (diagnostics.NO_GRANT, diagnostics.ROLLED_BACK, diagnostics.VERIFIED),
                 "PRIOR_OPERATION_REQUIRES_READ_ONLY_INSPECTION")
+            settled = rows[-1]["data"].get("programme_inventory")
+            expected = {spec.role_for(r["kind"], operation_id=plan["operation_id"]).job
+                        for r in rows if r["state"] == "CREATE_OUTCOME_UNKNOWN"}
+            require(type(settled) is dict and set(settled) == expected and expected,
+                    "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+            for name, seals in settled.items():
+                require(name not in inventory and type(seals) is dict
+                    and set(seals) == {"job_sha256", "execution_sha256"}, "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
+                for seal in seals.values():
+                    spec.sha(seal)
+                inventory[name] = seals
+            operations.append({"operation_id": plan["operation_id"], "terminal_event_sha256": rows[-1]["sha256"],
+                "state": rows[-1]["state"], "grant_effect": rows[-1]["grant_effect"]})
+    return {"format": "mf-reader-settled-programme-lineage-v1", "programme": PROGRAMME,
+            "journal_identity": lock.identity(),
+            "genesis_sha256": fingerprint(genesis), "operations": operations, "inventory": inventory}
 
 
-def _stage(plan, kind, predecessors, backend, prepared, journal, *, effect, clock, sleep):
+def _stage(plan, kind, predecessors, backend, prepared, journal, *, effect, clock, sleep, authorize):
     direct.direct_live(plan["window"], remaining=30 if kind == "capture" else 20)
+    authorize()  # Same custodied approval throughout this entire bounded plan.
+    backend.recheck_programme_inventory()
     # Complete intent durable BEFORE the first possible create submission.
     journal.append(state="CREATE_OUTCOME_UNKNOWN", kind=kind, effect=effect,
         data={"prepared": recorded_request(prepared), "predecessors": predecessors,
@@ -167,8 +226,11 @@ def _stage(plan, kind, predecessors, backend, prepared, journal, *, effect, cloc
     else:
         raise contract.ContractError("JOB_READINESS_EXPIRED")
     require(fingerprint(backend.protected()) == plan["protected_sha256"], "PROTECTED_BASELINE_DRIFT")
-    inventory(plan, kind, backend, prepared, seal)
+    pristine = inventory(plan, kind, backend, prepared, seal)
     direct.direct_live(plan["window"], remaining=30 if kind == "capture" else 20)
+    authorize()
+    backend.recheck_programme_inventory(current={
+        spec.role_for(kind, operation_id=plan["operation_id"]).job: pristine})
     possible = diagnostics.UNKNOWN if kind == "grant" else effect
     journal.append(state="RUN_OUTCOME_UNKNOWN", kind=kind, effect=possible,
                    data={"job_seal": seal, "prepared_sha256": prepared["request_sha256"]})
@@ -203,20 +265,22 @@ def _stage(plan, kind, predecessors, backend, prepared, journal, *, effect, cloc
 def execute(plan, authority, application, *, source_root, expected_git, backend_factory,
             journal_base=spec.ARTIFACTS, clock=time.monotonic, sleep=time.sleep):
     checked = contract.validate_plan(plan, source_root=source_root, expected_git=expected_git)
-    validate_authority(checked, authority)
+    trusted = validate_authority(checked, authority)
     application.validate(checked)  # No provider, SQL, secret or identity spending.
     contract.dry_run(checked, source_root=source_root, expected_git=expected_git)
     direct.direct_live(checked["window"], remaining=30)
     require(Path(journal_base).resolve() == spec.ARTIFACTS, "FIXED_JOURNAL_BASE_REQUIRED")
     with ProgramLock(journal_base) as lock:
-        _unresolved(lock)
+        lineage = _unresolved(lock)
+        trusted.verify(checked, authority, lineage=lineage)
         # Current target/images/protected checks happen BEFORE identity allocation.
         prepared = contract.prepare_request(checked, "capture", [], source_root=source_root, expected_git=expected_git)
         backend = backend_factory(checked, "capture", source_root, prepared)
-        backend.preflight(checked, prepared, {})
+        backend.preflight(checked, prepared, {}, settled=lineage["inventory"])
         direct.direct_live(checked["window"], remaining=30)
         with lock.create(checked) as journal:
-            journal.append(state="BOUNDED_PLAN_STARTED", data={"authority_sha256": fingerprint(authority)})
+            journal.append(state="BOUNDED_PLAN_STARTED", data={"authority_sha256": fingerprint(authority),
+                "prior_lineage_sha256": fingerprint(lineage), "executor_mode": "SINGLE_AUTHORITATIVE_EXECUTOR_NOT_DISTRIBUTED_LOCK"})
             completed, predecessors = {}, []
             effect, stage = diagnostics.NO_GRANT, "transport"
             try:
@@ -229,16 +293,18 @@ def execute(plan, authority, application, *, source_root, expected_git, backend_
                         source_root=source_root, expected_git=expected_git)
                     if kind != "capture":
                         backend = backend_factory(checked, kind, source_root, prepared)
-                        backend.preflight(checked, prepared, completed)
+                        backend.preflight(checked, prepared, completed, settled=lineage["inventory"])
                     stage = "transport"
                     record, body = _stage(checked, kind, predecessors, backend, prepared, journal,
-                        effect=effect, clock=clock, sleep=sleep)
+                        effect=effect, clock=clock, sleep=sleep,
+                        authorize=lambda: trusted.verify(checked, authority, lineage=lineage))
                     effect = body["grant_effect"]
                     completed[kind] = record
                     predecessors.append(record["certificate"])
                     journal.append(state="STAGE_VERIFIED", kind=kind, effect=effect,
                                    data={"certificate_sha256": record["certificate_sha256"]})
                 stage = "application"
+                trusted.verify(checked, authority, lineage=lineage)
                 direct.direct_live(checked["window"], remaining=15)
                 result = application.check(checked)
                 direct.direct_live(checked["window"])
@@ -249,8 +315,11 @@ def execute(plan, authority, application, *, source_root, expected_git, backend_
                     adapter = backend_factory(checked, kind, source_root, record["prepared"])
                     inventory(checked, kind, adapter, record["prepared"], record["job_seal"], record["identity"])
                 require(fingerprint(backend.protected()) == checked["protected_sha256"], "PROTECTED_BASELINE_DRIFT")
-                journal.append(state="OPERATION_APPLICATION_VERIFIED", effect=effect, data={"application": result})
+                sealed = sealed_programme_inventory(checked, journal.events(), backend_factory, source_root)
+                journal.append(state="OPERATION_APPLICATION_VERIFIED", effect=effect,
+                    data={"application": result, "programme_inventory": sealed})
                 return {"state": "OPERATION_APPLICATION_VERIFIED", "grant_effect": effect,
+                        "execution_limitations": list(contract.EXECUTION_LIMITATIONS),
                         "operation_id": checked["operation_id"], "consumer_acceptance": "PENDING_RO04"}
             except BaseException as error:
                 rows = journal.events()
@@ -264,11 +333,20 @@ def execute(plan, authority, application, *, source_root, expected_git, backend_
                     if safe["state"] not in evidence.SUCCESS:
                         report = {key: safe[key] for key in (
                             "state", "reason", "safe_cause", "stage", "grant_effect",
-                            "disposition", "consumer_acceptance")}
+                            "disposition", "consumer_acceptance", "execution_limitations")}
                 unresolved = (effect == diagnostics.UNKNOWN or not rows or rows[-1]["state"] in {
                     "CREATE_OUTCOME_UNKNOWN", "RUN_OUTCOME_UNKNOWN", "EXECUTION_IDENTIFIED", "JOB_CREATED"})
+                settled = None
+                if not unresolved and effect != diagnostics.COMMITTED:
+                    try:
+                        settled = sealed_programme_inventory(checked, rows, backend_factory, source_root)
+                    except BaseException:
+                        unresolved = True
+                else:
+                    unresolved = True
                 journal.append(state="STOPPED_UNRESOLVED" if unresolved else "STOPPED_WITH_KNOWN_EFFECT",
-                               effect=report["grant_effect"], data={"diagnostic": report})
+                    effect=report["grant_effect"], data={"diagnostic": report,
+                        **({"programme_inventory": settled} if settled is not None else {})})
                 return {**report, "operation_id": checked["operation_id"]}
 
 
@@ -296,6 +374,7 @@ def inspect(root, *, source_root, inspector_factory, journal_base=spec.ARTIFACTS
         adapter = inspector_factory(plan, kind, source_root, prepared)
         effect = rows[-1]["grant_effect"]
         output = {"state": "INSPECTION_UNRESOLVED_NO_REPLAY", "grant_effect": effect,
+                  "execution_limitations": list(contract.EXECUTION_LIMITATIONS),
                   "operation_id": plan["operation_id"], "consumer_acceptance": "PENDING_RO04"}
         try:
             job = adapter.job(kind)
@@ -312,6 +391,7 @@ def inspect(root, *, source_root, inspector_factory, journal_base=spec.ARTIFACTS
                         and adapter.executions(kind) == [], "ORIGINAL_INVENTORY_DRIFT")
                 require(fingerprint(adapter.protected()) == plan["protected_sha256"], "PROTECTED_BASELINE_DRIFT")
                 output.update(state="INSPECTED_WITH_KNOWN_EFFECT", observed_stage_state="JOB_CREATED_NO_RUN_SUBMISSION")
+                output["programme_inventory"] = sealed_programme_inventory(plan, rows, inspector_factory, source_root)
                 journal.append(state=output["state"], kind=kind, effect=effect, data=deepcopy(output))
                 return output  # Never run this original job; any new attempt is distinct.
             require(type(executions) is list and len(executions) == 1, "ORIGINAL_EXECUTION_UNCONFIRMED")
@@ -332,11 +412,15 @@ def inspect(root, *, source_root, inspector_factory, journal_base=spec.ARTIFACTS
             inventory(plan, kind, adapter, prepared, seal, identity)
             require(fingerprint(adapter.protected()) == plan["protected_sha256"], "PROTECTED_BASELINE_DRIFT")
             # Do not resolve UNKNOWN from weak local flags or lack of privileges.
-            output.update(state=("INSPECTED_WITH_KNOWN_EFFECT" if body["grant_effect"] != diagnostics.UNKNOWN
+            output.update(state=("INSPECTED_WITH_KNOWN_EFFECT" if body["grant_effect"] not in (diagnostics.UNKNOWN, diagnostics.COMMITTED)
                                  else "INSPECTION_UNRESOLVED_NO_REPLAY"),
                           grant_effect=body["grant_effect"], observed_stage_state=body["state"],
                           certificate_sha256=fingerprint(certificate))
+            if output["state"] == "INSPECTED_WITH_KNOWN_EFFECT":
+                output["programme_inventory"] = sealed_programme_inventory(plan, rows, inspector_factory, source_root)
         except BaseException as error:
+            output["state"] = "INSPECTION_UNRESOLVED_NO_REPLAY"
+            output.pop("programme_inventory", None)
             output["diagnostic"] = diagnostics.report(error, stage="transport", prior_effect=effect,
                                                         worker=False, dispatch_possible=True)
         journal.append(state=output["state"], kind=kind, effect=output["grant_effect"], data=deepcopy(output))

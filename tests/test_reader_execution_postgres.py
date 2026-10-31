@@ -19,6 +19,7 @@ from test_ro01_reader_policy_postgres import ro01_db as ro01_db
 from test_reader_source_variants_postgres import source_variant_db as source_variant_db
 from test_reader_source_reference_postgres import source_reference_db as source_reference_db
 from reader_execution_native_fixture import populate
+from reader_execution_fixtures import execution_custody as execution_custody
 
 pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[1]

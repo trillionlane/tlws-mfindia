@@ -46,8 +46,24 @@ versioned worker is used for all stages; release identity is separately bound.
 
 RO-04 may supply **one directly approved bounded plan authority** covering this
 complete deterministic sequence, not three repeated human fingerprint prompts.
-`execute --plan <...> --expected-git <...> --authority <...> --trust <...>` is
-dormant here. Authority, canonical public trust and existing delegated read
+`execute --plan <...> --expected-git <...> --trust <...>` is dormant here.
+Authority is loaded from the **fixed independently custodied**
+`/private/etc/mfdataindia/reader-programme-anchor.json` and
+`/private/etc/mfdataindia/reader-programme-approval.json`, not from an HTTP flag,
+CLI-selected file/key, or caller-asserted approval hash. No such OS records are
+installed or generated in this sprint. An unprivileged executor must read both
+through per-component no-follow directory descriptors, with root ownership and
+no executor/group/world write authority. Complete canonical closed schemas bind
+the actual full plan, direct-human record provenance, existing operator, all
+three stages, fixed journal directory identity/modes, externally provisioned
+genesis, next epoch, and exact settled prior lineage/inventory digests. Missing,
+changed, stale or self-asserted authority rejects before provider preflight or
+operation allocation. The same opened-record seals/canonical bytes are rechecked
+before every create; installing another approval cannot silently change an
+in-flight chain. There is no executor API for provisioning/resetting genesis,
+issuing an approval, obtaining a signer or changing custody.
+
+Canonical public application trust and existing delegated read **and read+admin**
 assertions/current configured reader DSN must be supplied before dispatch. This
 sprint creates no runnable approval and provisions no credentials or network.
 The operator preflight independently verifies clean merged Git, explicit
@@ -105,6 +121,26 @@ each create/run ambiguity boundary. Neither existing operation roots nor intents
 are reset, resumed, overwritten or deleted. Unresolved prior work blocks a new
 write, including a different operation nonce. No automatic create/run retry,
 grant retry or reverse action exists.
+
+Before allocation and every create, the backend makes two stable, bounded,
+exhaustive inventories of the fixed `mf-reader-internal-` DEV programme prefix,
+not just the proposed nonce. All cloud jobs/executions must exactly equal the
+resolved durable journal seals, including deterministic progress in the current
+operation; the next target must be absent. Extra/missing/changed/pruned records,
+unknown prefix names, truncation (more than 1,000 jobs), unstable observations,
+lost local history, `MUTATION_OUTCOME_UNKNOWN` or `COMMITTED_UNVERIFIED` stop a
+new write. A new nonce or host cannot silently evade existing cloud evidence.
+Settled lineage includes full validated inventory hashes and terminal event
+hashes; merely appending a local “known” string is insufficient.
+
+This is explicitly **`SINGLE_AUTHORITATIVE_EXECUTOR_REQUIRED`** and
+**`NO_DISTRIBUTED_EXCLUSION`**. The file lock serializes that executor, not two
+independently administered hosts. Fixed root custody authenticates approval;
+the evolving journal remains at the existing fixed executor-owned artifacts
+path. No administrator immunity or permanence is claimed. Privileged deletion
+of both all cloud resources and all historical evidence is explicitly
+**`PRIVILEGED_HISTORY_DELETION_NOT_RECOVERABLE_RO05`**, not an automatic first-run
+reset or a safety guarantee. RO-05 owns full backup/provisioning lifecycle.
 
 `inspect --operation-root <original immutable root>` uses a read-only adapter.
 It rederives the complete original fixed request from the sealed plan, verifies

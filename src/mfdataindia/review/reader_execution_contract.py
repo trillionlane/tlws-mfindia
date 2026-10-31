@@ -19,6 +19,8 @@ from .policy import canonical, fingerprint
 
 FORMAT = "mf-reader-execution-plan-v1"
 STAGE_FORMAT = "mf-reader-execution-stage-v1"
+EXECUTION_LIMITATIONS = ("SINGLE_AUTHORITATIVE_EXECUTOR_REQUIRED", "NO_DISTRIBUTED_EXCLUSION",
+                        "PRIVILEGED_HISTORY_DELETION_NOT_RECOVERABLE_RO05")
 KINDS = ("capture", "grant", "reader")
 STAGES = {"capture": "direct-capture-readonly", "grant": "direct-grant-transaction",
           "reader": "direct-authenticated-reader"}
@@ -27,7 +29,7 @@ TARGET = {"project": spec.PROJECT, "region": spec.REGION, "operator": spec.OPERA
           "owner": spec.OWNER_ROLE, "reader": spec.READER_ROLE,
           "schemas": list(policy.SCHEMAS)}
 _NEW = ("contract", "evidence", "diagnostics", "journal", "worker", "controller",
-        "backend", "application")
+        "backend", "application", "authority")
 _EXISTING = (
     "broad_reader_direct_delivery_spec", "broad_reader_direct_delivery_backend",
     "broad_reader_direct_grant", "broad_reader_direct_plan", "broad_reader_direct_capacity",
@@ -217,9 +219,10 @@ def dry_run(plan, *, source_root, expected_git):
     prepared = prepare_request(checked, "capture", [], source_root=source_root,
                                expected_git=expected_git)
     return {"format": "mf-reader-execution-validation-v1", "state": "LOCAL_VALIDATION_PASSED_NO_DISPATCH",
+            "execution_limitations": list(EXECUTION_LIMITATIONS),
             "operation_id": checked["operation_id"], "plan_sha256": fingerprint(checked),
             "capture_request_sha256": prepared["request_sha256"], "dispatches": 0,
             "mutation_intents_written": 0, "consumer_acceptance": "PENDING_RO04",
-            "unverified": ["runtime_images_twice", "protected_baseline", "target_inventory",
+            "unverified": ["actual_merged_checkout", "runtime_images_twice", "protected_baseline", "target_inventory",
                            "prior_operation_effects", "live_window", "derived_stage_capacity",
                            "RO04_bounded_plan_authority", "database_and_application_readiness"]}

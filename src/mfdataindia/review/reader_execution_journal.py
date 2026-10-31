@@ -21,8 +21,17 @@ def _require(condition):
 
 def _directory(path):
     path = Path(path)
-    _require(path.is_absolute() and path.resolve() == path and path.is_dir() and not path.is_symlink())
-    return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    _require(path.is_absolute() and all(part not in (".", "..") for part in path.parts))
+    fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for part in path.parts[1:]:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
 
 
 class ProgramLock:
@@ -49,6 +58,27 @@ class ProgramLock:
         return [self.base / name for name in sorted(os.listdir(self.directory))
                 if name.startswith("mf-reader-internal-")]
 
+    def identity(self):
+        mode = os.fstat(self.directory)
+        _require(mode.st_uid == os.getuid() and not mode.st_mode & 0o022)
+        return {"device": mode.st_dev, "inode": mode.st_ino, "uid": mode.st_uid,
+                "mode": stat.S_IMODE(mode.st_mode)}
+
+    def genesis(self):
+        # Independently provisioned/anchored by RO-04. Never auto-initialize a
+        # fresh history after missing local records. This is not an execution.
+        proxy = object.__new__(Journal)
+        proxy.fd = self.directory
+        try:
+            value = proxy._read(".reader-execution-genesis.json")
+            _require(type(value) is dict and set(value) == {"format", "programme", "genesis_id"}
+                and value["format"] == "mf-reader-execution-genesis-v1"
+                and value["programme"] == "tlws-mfdata-internal-reader-dev-v1")
+            contract.spec.sha(value["genesis_id"])
+            return value
+        except (OSError, ValueError, TypeError):
+            raise JournalError("PROGRAMME_HISTORY_MISSING_NO_AUTOMATIC_RESET") from None
+
     def create(self, plan):
         _require(self.fd is not None)
         name = "mf-reader-internal-" + plan["operation_id"]
@@ -56,7 +86,7 @@ class ProgramLock:
         # No exist_ok, cleanup delete, or reuse of a spent operation.
         os.mkdir(name, 0o700, dir_fd=self.directory)
         os.fsync(self.directory)  # Root allocation durable before any cloud mutation.
-        journal = Journal(self.base / name)
+        journal = Journal(self.base / name, parent_fd=self.directory)
         try:
             journal._exclusive("plan.json", plan)
             return journal
@@ -80,10 +110,11 @@ class ProgramLock:
 
 
 class Journal:
-    def __init__(self, root):
+    def __init__(self, root, *, parent_fd=None):
         self.root = Path(root)
         _require(re.fullmatch(r"mf-reader-internal-op-[a-z0-9]{12,24}", self.root.name))
-        self.fd = _directory(self.root)
+        self.fd = (_directory(self.root) if parent_fd is None else
+            os.open(self.root.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd))
         mode = os.fstat(self.fd)
         try:
             _require(mode.st_uid == os.getuid() and not mode.st_mode & 0o077)
