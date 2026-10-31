@@ -1,11 +1,16 @@
 # RO-02 — reliable internal-reader execution
 
-Implementation in progress; not acceptance or live enablement. Actual merged
-base: `69037c0ec078ad67a8dfd708bc3cf86040b655e6`. Its release verification is
-blocked by the separately reviewed CI-only source-attempt repair in PR138.
-Independent implementation proceeds here without claiming that base is CI green.
-Final readiness requires reconciliation with verified merged main and the final
-head's complete required checks. No RO-02 merge or live action is authorized.
+Implementation delivered for independent acceptance review, not live enablement.
+Actual verified merged base: `d0deb7102d505a8a0ffb8c2af802ba2b4c121dab`, including
+PR138's CI-only actual-attempt repair. Its own automatic MAIN Verify
+[41223180694](https://github.com/trillionlane/tlws-mfindia/actions/runs/41223180694)
+passed all required phases. This branch integrates that base with both finite
+historical-test inverses retained; production policy, SQL and worker behavior
+are unchanged by the integration. Exact final head and its local/native/image
+results are recorded in [PR139](https://github.com/trillionlane/tlws-mfindia/pull/139).
+Passing base or earlier-head checks do not certify a changed head. PR139 remains
+unmerged pending the user's independent acceptance; no RO-03 or live action is
+authorized by this sprint.
 
 The implementation reuses RO-01's selected broad policy, the direct grant's
 full catalogue/source/function/recursive-lock/transaction checks and the existing

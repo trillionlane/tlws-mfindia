@@ -1,0 +1,38 @@
+{
+  "base": "69037c0ec078ad67a8dfd708bc3cf86040b655e6",
+  "format": "test-only-current-CI-source-version-v1",
+  "historical_only": true,
+  "modified": {
+    "tests/reader_source_packets.py": {
+      "current_bytes": 15910,
+      "current_sha256": "8dd094a6cb77ea05631e985a83acd91139b6c1eaa60755b6d4a640036c493cf1",
+      "previous_bytes": 13276,
+      "previous_sha256": "a1f280e1fce24bdc2fe7a4dc25d6e7ccdc5d3a1256c54fac34a203970645cf38"
+    },
+    "tests/ro01_historical_source.py": {
+      "current_bytes": 1901,
+      "current_sha256": "0ea27a5668a4569588db2f3f3a8e98607bb312f90779e254e19c5bda03aa62b9",
+      "previous_bytes": 1786,
+      "previous_sha256": "88486f86641c38f2fce194c5f4cda2cb9dce474e4c79cb7d953ff8557a0ea1f9"
+    },
+    "tests/test_reader_source_packets.py": {
+      "current_bytes": 11058,
+      "current_sha256": "103518b0b894527f59d42febe2631a18f4360bf2e6e00ee0f38e9de0a5d24930",
+      "previous_bytes": 10911,
+      "previous_sha256": "9572893e6391b66b1134f004b5e761fa98708001ff730195eff7ce9ff25638a4"
+    },
+    "tests/test_reader_source_reference_postgres.py": {
+      "current_bytes": 5775,
+      "current_sha256": "231ebc4e683a63dea546dbf000ae0325d7b158a7e34b016bc5e53eb54c2bee28",
+      "previous_bytes": 5755,
+      "previous_sha256": "7aeb7a0e095e19ec59d8cf04872990795bfc3f784df2c0a011db5950248160b7"
+    },
+    "tests/test_reader_source_variants_postgres.py": {
+      "current_bytes": 12412,
+      "current_sha256": "b15024c19a8cbba1f6889be94fdb25977c1433dc981850ef3a041d4e41b38ce3",
+      "previous_bytes": 12392,
+      "previous_sha256": "845b99fd8778b9fdc74d53945bb6242b07828e79adda2cef3a2679ad5cf57f58"
+    }
+  },
+  "runtime_authority": false
+}

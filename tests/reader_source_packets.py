@@ -27,8 +27,10 @@ _policy_spec.loader.exec_module(ci_policy)
 
 PROFILES = ("LEGACY_BASE44", *variants.PROFILES)
 PARTS = ("A", "B")
-MARKERS = {(profile, part): f"SOURCE_REFERENCE_{profile}_{part}_V4:"
+MARKERS = {(profile, part): f"SOURCE_REFERENCE_{profile}_{part}_V5:"
            for profile in PROFILES for part in PARTS}
+_HISTORICAL_V4_MARKERS = {(profile, part): f"SOURCE_REFERENCE_{profile}_{part}_V4:"
+                         for profile in PROFILES for part in PARTS}
 MAX_PACKETS = 6
 MAX_RAW_TOTAL = MAX_PACKETS * old.MAX_RAW
 MAX_CHUNKS_TOTAL = MAX_PACKETS * old.MAX_CHUNKS
@@ -36,7 +38,7 @@ MAX_ENCODED_CHARS = MAX_CHUNKS_TOTAL * old.CHUNK
 MAX_PART = 32 * 1024 * 1024
 MAX_PROFILE = 40 * 1024 * 1024
 MAX_LOGICAL_TOTAL = 128 * 1024 * 1024
-FORMAT = "source-reference-compressed-fixed-packet-v4"
+FORMAT = "source-reference-compressed-fixed-packet-v5"
 BODY_FORMAT = "bounded-gzip-canonical-json-v1"
 
 
@@ -48,17 +50,37 @@ def sha(value):
     return old.digest(old.canonical(value).encode())
 
 
-def require_bundle(bundle, *, expected_git):
+def _wire(version):
+    require(type(version) is int and version in (4, 5))
+    return (("source-reference-compressed-fixed-packet-v4", _HISTORICAL_V4_MARKERS)
+            if version == 4 else (FORMAT, MARKERS))
+
+
+def _require_bundle(bundle, *, expected_git, version):
+    _wire(version)
     require(type(bundle) is dict and set(bundle) ==
             {"run_id", "attempt", "head", "checkout", "ci_binding"})
     require(type(bundle["run_id"]) is int and bundle["run_id"] > 0)
-    require(type(bundle["attempt"]) is int and bundle["attempt"] == 1)
+    require(type(bundle["attempt"]) is int and
+            (bundle["attempt"] == 1 if version == 4 else 1 <= bundle["attempt"] <= 999999))
     require(type(bundle["head"]) is str
             and re.fullmatch(r"[0-9a-f]{40}", bundle["head"]))
     require(type(bundle["checkout"]) is str and bundle["checkout"] == expected_git
             and re.fullmatch(r"[0-9a-f]{40}", bundle["checkout"]))
     require(type(bundle["ci_binding"]) is str
             and re.fullmatch(r"[0-9a-f]{64}", bundle["ci_binding"]))
+
+
+def require_bundle(bundle, *, expected_git):
+    """Current v5: caller supplies the independently observed exact CI bundle."""
+    _require_bundle(bundle, expected_git=expected_git, version=5)
+
+
+def bundle_identity(bundle):
+    """One deterministic CI-only identity for six freshly generated packets."""
+    require(type(bundle) is dict)
+    require_bundle(bundle, expected_git=bundle.get("checkout"))
+    return sha(bundle)[:32]
 
 
 def normal_ci_bundle(checkout):
@@ -68,11 +90,12 @@ def normal_ci_bundle(checkout):
             and os.environ.get("GITHUB_EVENT_NAME") in ("pull_request", "push"))
     run = os.environ.get("GITHUB_RUN_ID", "")
     attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
-    require(run.isdecimal() and attempt == "1")
+    require(re.fullmatch(r"[1-9][0-9]{0,19}", run) is not None
+            and re.fullmatch(r"[1-9][0-9]{0,5}", attempt) is not None)
     plan = ci_policy.verify_plan(ci_policy.environment_plan())
     require(plan["checkout"] == checkout and plan["mode"] == "full"
-            and plan["event"] in ("pull_request", "push"))
-    bundle = {"run_id": int(run), "attempt": 1, "head": plan["head"],
+            and plan["event"] == os.environ["GITHUB_EVENT_NAME"])
+    bundle = {"run_id": int(run), "attempt": int(attempt), "head": plan["head"],
               "checkout": plan["checkout"], "ci_binding": ci_policy.digest(plan)}
     require_bundle(bundle, expected_git=checkout)
     return bundle
@@ -181,14 +204,15 @@ def _validate(payload, profile, *, expected_git):
         variants_v2.validate_payload(payload, profile, expected_git=expected_git)
 
 
-def pair(payload, profile, *, identity, bundle):
+def _pair(payload, profile, *, identity, bundle, version):
     require(profile in PROFILES and type(identity) is str
             and re.fullmatch(r"[0-9a-f]{32}", identity))
-    require_bundle(bundle, expected_git=payload["compiler_git"])
+    wire_format, markers = _wire(version)
+    _require_bundle(bundle, expected_git=payload["compiler_git"], version=version)
     first, second = _split(payload, profile)
     require(len(old.canonical(first).encode()) + len(old.canonical(second).encode()) <=
             MAX_PROFILE)
-    common = {"format": FORMAT, "profile": profile, "identity": identity,
+    common = {"format": wire_format, "profile": profile, "identity": identity,
               "git": payload["compiler_git"], "authority_sha256": old.AUTHORITY_SHA,
               "compiler_pin_sha256": _compiler_pin(payload, profile),
               "bundle": deepcopy(bundle)}
@@ -200,18 +224,19 @@ def pair(payload, profile, *, identity, bundle):
     }
     lines = []
     for part in PARTS:
-        marker = MARKERS[profile, part]
+        marker = markers[profile, part]
         lines.extend(line.replace(old.MARKER, marker, 1)
                      for line in old.reference_envelope(packets[part], identity=identity))
     return lines
 
 
-def extract_pair(lines, profile, *, expected_git, bundle):
+def _extract_pair(lines, profile, *, expected_git, bundle, version):
     require(profile in PROFILES)
-    require_bundle(bundle, expected_git=expected_git)
+    wire_format, markers = _wire(version)
+    _require_bundle(bundle, expected_git=expected_git, version=version)
     selected = {}
     for part in PARTS:
-        marker = MARKERS[profile, part]
+        marker = markers[profile, part]
         source = [line for line in lines if marker in line]
         exact = [line.replace(marker, old.MARKER, 1) for line in source]
         selected[part] = old.extract_envelope(exact)
@@ -223,7 +248,7 @@ def extract_pair(lines, profile, *, expected_git, bundle):
         require(type(packet) is dict and set(packet) ==
                 {"format", "profile", "identity", "git", "authority_sha256",
                  "compiler_pin_sha256", "part", "body", "peer_sha256", "bundle"})
-        require(packet["format"] == FORMAT and packet["profile"] == profile
+        require(packet["format"] == wire_format and packet["profile"] == profile
                 and packet["part"] == part and packet["git"] == expected_git
                 and packet["authority_sha256"] == old.AUTHORITY_SHA
                 and packet["bundle"] == bundle)
@@ -241,11 +266,11 @@ def extract_pair(lines, profile, *, expected_git, bundle):
     return payload
 
 
-def extract_bundle(lines, *, expected_git, bundle):
+def _extract_bundle(lines, *, expected_git, bundle, version):
     """Require the complete three-profile, six-packet set from one run."""
     require(type(lines) is list)
-    require_bundle(bundle, expected_git=expected_git)
-    markers = tuple(MARKERS.values())
+    _require_bundle(bundle, expected_git=expected_git, version=version)
+    markers = tuple(_wire(version)[1].values())
     selected = [line for line in lines if "SOURCE_REFERENCE_" in line
                 or "SOURCE_SEMANTIC_REFERENCE_" in line]
     require(all(sum(marker in line for marker in markers) == 1 for line in selected))
@@ -254,15 +279,23 @@ def extract_bundle(lines, *, expected_git, bundle):
              for line in selected]
     require(order == sorted(order) and set(order) == set(range(MAX_PACKETS)))
     chunk_count = encoded_chars = 0
+    identities = set()
     for line in selected:
         marker = next(marker for marker in markers if marker in line)
         record = json.loads(line.split(marker, 1)[1], object_pairs_hook=old.unique)
+        if set(record) == {"header"}:
+            require(type(record["header"]) is dict
+                    and type(record["header"].get("identity")) is str
+                    and re.fullmatch(r"[0-9a-f]{32}", record["header"]["identity"]))
+            identities.add(record["header"]["identity"])
         if set(record) == {"chunk"}:
             chunk_count += 1
             encoded_chars += record["chunk"]["chars"]
     require(chunk_count <= MAX_CHUNKS_TOTAL and encoded_chars <= MAX_ENCODED_CHARS)
-    result = {profile: extract_pair(selected, profile, expected_git=expected_git,
-                                    bundle=bundle)
+    if version == 5:
+        require(len(identities) == 1)
+    result = {profile: _extract_pair(selected, profile, expected_git=expected_git,
+                                    bundle=bundle, version=version)
               for profile in PROFILES}
     require(sum(len(old.canonical(body).encode())
                 for profile, payload in result.items()
@@ -270,3 +303,29 @@ def extract_bundle(lines, *, expected_git, bundle):
     variants.assert_source_only_transition(result[variants.PROFILES[0]],
                                            result[variants.PROFILES[1]])
     return result
+
+
+def pair(payload, profile, *, identity, bundle):
+    """Current producer emits v5 only; never negotiate an older schema."""
+    return _pair(payload, profile, identity=identity, bundle=bundle, version=5)
+
+
+def extract_pair(lines, profile, *, expected_git, bundle):
+    return _extract_pair(lines, profile, expected_git=expected_git, bundle=bundle, version=5)
+
+
+def extract_bundle(lines, *, expected_git, bundle):
+    return _extract_bundle(lines, expected_git=expected_git, bundle=bundle, version=5)
+
+
+def historical_v4_pair(payload, profile, *, identity, bundle):
+    """Explicit historical wire compatibility, still strictly attempt1."""
+    return _pair(payload, profile, identity=identity, bundle=bundle, version=4)
+
+
+def historical_v4_extract_pair(lines, profile, *, expected_git, bundle):
+    return _extract_pair(lines, profile, expected_git=expected_git, bundle=bundle, version=4)
+
+
+def historical_v4_extract_bundle(lines, *, expected_git, bundle):
+    return _extract_bundle(lines, expected_git=expected_git, bundle=bundle, version=4)

@@ -48,6 +48,34 @@ def test_both_images_add_actual_current_entrypoint_smoke_without_changing_old_bo
     assert before.rfind(b'for target in "$image" "$tools_image"; do') > before.rfind(b"      - name:")
 
 
+@pytest.mark.parametrize("name", [
+    "tests/reader_source_packets.py", "tests/ro01_historical_source.py",
+    "tests/test_reader_source_packets.py", "tests/test_reader_source_reference_postgres.py",
+    "tests/test_reader_source_variants_postgres.py",
+])
+def test_verified_main_ci_and_ro02_full_byte_inverses_compose_and_reject_tamper(name):
+    import subprocess
+    from ci_source_attempt_historical import BASE as ci_base, restore_ci_source_parent
+    raw = (ROOT / name).read_bytes()
+    expected = subprocess.check_output(["git", "show", ci_base + ":" + name], cwd=ROOT)
+    assert restore_ci_source_parent(ROOT / name, raw) == expected
+    assert restore_ci_source_parent(ROOT / name, previous(ROOT / name, raw)) == expected
+    for changed in (raw + b"\n#tamper", raw[:-1], raw + raw):
+        with pytest.raises(AssertionError):
+            restore_ci_source_parent(ROOT / name, changed)
+
+
+def test_ci_release_authority_remains_immutable_and_ro02_uses_verified_main():
+    import subprocess
+    from ro02_historical_source import BASE
+    from ci_source_attempt_historical import authority as ci_authority
+    assert BASE == "d0deb7102d505a8a0ffb8c2af802ba2b4c121dab"
+    name = "docs/CI_SOURCE_ATTEMPT_CURRENT_CHANGES_20261031.json"
+    assert (ROOT / name).read_bytes() == subprocess.check_output(
+        ["git", "show", BASE + ":" + name], cwd=ROOT)
+    assert len(ci_authority()) == 5
+
+
 def test_actual_packaged_parse_and_all_three_main_boundaries_without_provider_or_db():
     found = importlib.util.spec_from_file_location("_ro02_image_smoke", ROOT / "scripts/smoke_reader_execution_dev.py")
     module = importlib.util.module_from_spec(found)

@@ -13,6 +13,8 @@ from pathlib import Path
 import subprocess
 from ro02_historical_source import previous as ro02_previous
 
+from ci_source_attempt_historical import restore_ci_source_parent
+
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "89af628c88f4b905d2136acc7a222683c672fa44"
 MANIFEST_SHA = "b1b73b1d09d24971412c45181ebc6b33f5ff3a1a271dd0b8e61058e59991d0e8"
@@ -29,6 +31,7 @@ def authority():
 def historical_parent(path, data):
     assert type(data) is bytes
     data = ro02_previous(path, data)
+    data = restore_ci_source_parent(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:

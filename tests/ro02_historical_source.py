@@ -10,8 +10,8 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "69037c0ec078ad67a8dfd708bc3cf86040b655e6"
-MANIFEST_SHA = "1b51b03e26382a8569481545854c059ac78b94efb2f3c024001591b77c6eb834"
+BASE = "d0deb7102d505a8a0ffb8c2af802ba2b4c121dab"
+MANIFEST_SHA = "19329bab7ccd0fba6fc14e5d39d14cc08de751211dc8d2c30062817c7f182acb"
 
 
 def authority():

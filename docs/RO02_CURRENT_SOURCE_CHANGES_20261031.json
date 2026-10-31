@@ -1,5 +1,5 @@
 {
-  "base": "69037c0ec078ad67a8dfd708bc3cf86040b655e6",
+  "base": "d0deb7102d505a8a0ffb8c2af802ba2b4c121dab",
   "format": "RO02_FINITE_CURRENT_SOURCE_MAP_V1",
   "historical_only": true,
   "modified": {
@@ -83,14 +83,19 @@
       "previous_sha256": "b72204c42910f2767fff8d83055c46b20a6724a6bbfd99fcf6de5068bc948b61",
       "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
     },
+    "tests/ci_source_attempt_historical.py": {
+      "current_sha256": "d06bd0995cdbfa3c25b4c223704196c1be3987c565bb334c2e4099f20441eae0",
+      "previous_sha256": "3979913f81c680ea3ea02afcd5d89e8bcb63c6a4e8fadce87a161036af15cd2b",
+      "scope": "Compose exact RO02 inverse before unchanged CI release proof; no assertion or historical authority weakening"
+    },
     "tests/reader_source_variants.py": {
       "current_sha256": "bccc0c5a2469786915d1dcdda4fa8bebb888fce34ad2211eb358b02d7dab4e7a",
       "previous_sha256": "f63fc43f149f7ea8905b49918c2ec05c5e2aa28ab12306f3797bbce37679435f",
       "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
     },
     "tests/ro01_historical_source.py": {
-      "current_sha256": "e447bcfb477828402cfbb67cd0d54301a13846fd4ff867250598dd3cef00a9a5",
-      "previous_sha256": "88486f86641c38f2fce194c5f4cda2cb9dce474e4c79cb7d953ff8557a0ea1f9",
+      "current_sha256": "39bae7563a6e7e5153a107b66a890d0966f4e39539c9f736af1db57e26aa7c9b",
+      "previous_sha256": "0ea27a5668a4569588db2f3f3a8e98607bb312f90779e254e19c5bda03aa62b9",
       "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
     },
     "tests/test_broad_reader_direct_delivery_binding.py": {
@@ -107,6 +112,11 @@
       "current_sha256": "a55a62fdba9cf13f5a297578f5ebac937bf8e47011a33a036745c1e2407f2b3c",
       "previous_sha256": "dff003f8d45c6ad5ffc7fc3deb151528c5edc8d35d9fe78012b60381256f8112",
       "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/test_ci_source_attempt_provenance.py": {
+      "current_sha256": "11351ff827516d731fa68e25ce0271cbfd1ed9fd8ca5729fa34bc636cf36d327",
+      "previous_sha256": "cfdb79daa48dce55a511ad0921e77ed7e91cca0e3a864e605b83206c1a127dfe",
+      "scope": "Compose exact RO02 inverse before unchanged CI release proof; no assertion or historical authority weakening"
     },
     "tests/test_ro01_current_authority.py": {
       "current_sha256": "f54c45323b9bf21d50c075f39aaef9d9aff4e66f6a1ef91d60aa4cae378d14bf",
