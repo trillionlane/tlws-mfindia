@@ -129,7 +129,7 @@ def verify_profile_helpers(rows, state, *, restricted, callee_execute_allowed):
     function is invoked and this result is not operational grant admission.
     """
     _require(type(restricted) is bool and callee_execute_allowed is True)
-    value = _verify(rows, state, restricted=restricted, require_usage=False)
+    value = _verify(rows, state, restricted=restricted, require_usage=restricted)
     return {**value, "format": "mf-reader-profile-helper-declarations-v1-nonexecutable"}
 
 

@@ -74,7 +74,7 @@ def ro01_db(pg_dsn, monkeypatch, request):
                 store.apply_migrations(ROOT / "sql/optional", files=("023_verified_fund_review.sql",))
             # Establish the unchanged restricted base in this disposable fixture
             # only. The supported RO-01 install path must not call this reset.
-            with connect(dsn, autocommit=False) as conn:
+            with psycopg.connect(make_conninfo(pg_dsn, dbname="mfdataindia"), row_factory=dict_row) as conn:
                 conn.execute((ROOT / "scripts/sql/reconcile_verified_review_privileges.sql").read_text())
             if getattr(request, "param", None) == "core":
                 yield dsn
@@ -125,9 +125,9 @@ def catalogue(dsn):
         return conn.execute(planner.STATE_SQL).fetchone()["value"]
 
 
-def values(dsn):
+def values(dsn, *, fixture_admin=False):
     result = {}
-    with connect(dsn) as conn:
+    with (psycopg.connect(dsn, autocommit=True, row_factory=dict_row) if fixture_admin else connect(dsn)) as conn:
         relations = conn.execute("SELECT n.nspname,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY(%s) AND c.relkind IN('r','p','m') ORDER BY n.nspname,c.relname", (list(planner.SCHEMAS),)).fetchall()
         for row in relations:
             rows = conn.execute(sql.SQL("SELECT to_jsonb(t)::text AS value FROM {}.{} t ORDER BY to_jsonb(t)::text").format(
@@ -332,6 +332,19 @@ def test_native_historical_independent_owners_require_actual_callee_execution(ro
         with connect(dsn, planner.READER) as conn:
             verify_runtime(conn, "api")
             fact_review_store.verify_acl(conn)
+            document, checksum = fact_review_store.dependencies(conn, 1)
+            assert set(document) == {"format", "code", "identity", "policy_hash", "fields"}
+            assert document["format"] == "official-facts-review-dependencies-v1"
+            assert document["code"] == document["identity"]["code"] == 1
+            assert isinstance(document["fields"], dict) and len(checksum) == 64
+        original_catalogue = catalogue(dsn)
+        original_values = values(admin_dsn, fixture_admin=True)
+        # Existing supported historical restricted owner path, not an elevated
+        # mfdata_admin or a new grant to let it read postgres-owned private rows.
+        result = install_and_reconcile(admin_dsn, ROOT, manifest(), {}, reader_profile=profiles.RESTRICTED)
+        assert result["source_values_preserved"]
+        assert catalogue(dsn) == original_catalogue
+        assert values(admin_dsn, fixture_admin=True) == original_values
         for schema in ("mf_review", "mf_fact_review"):
             original = "mfdata_admin" if schema == "mf_review" else "postgres"
             admin.execute(sql.SQL("ALTER SCHEMA {} OWNER TO mfdata_ingest").format(sql.Identifier(schema)))
@@ -350,3 +363,20 @@ def test_native_historical_independent_owners_require_actual_callee_execution(ro
             with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
                 verify_runtime(conn, "api")
         assert admin.execute("SELECT to_jsonb(f)::text AS value FROM mf.funds f ORDER BY amfi_scheme_code").fetchall() == before
+
+
+def test_native_restricted_missing_helper_schema_usage_rejects_before_reconciliation(ro01_db):
+    dsn = ro01_db
+    from mfdataindia.review.privileges import verify_runtime
+    with connect(dsn) as conn:
+        conn.execute("REVOKE USAGE ON SCHEMA mf_fact_review FROM mfdata_verified_reader")
+    before, records = catalogue(dsn), values(dsn)
+    with connect(dsn, planner.READER) as conn:
+        assert not conn.execute("SELECT has_schema_privilege(current_user,'mf_fact_review','USAGE') AS allowed").fetchone()["allowed"]
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute("SELECT mf_fact_review.dependencies(1)")
+        with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+            verify_runtime(conn, "api")
+    with pytest.raises(profiles.ReaderAccessError, match="UNREVIEWED_READER_FUNCTION"):
+        install_and_reconcile(dsn, ROOT, manifest(), {}, reader_profile=profiles.RESTRICTED)
+    assert catalogue(dsn) == before and values(dsn) == records

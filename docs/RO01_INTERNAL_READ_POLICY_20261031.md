@@ -136,7 +136,7 @@ nested feature/preservation guard. Historical restricted PostgreSQL-owner
 installations remain supported; the broad profile still requires mfdata_admin.
 Four additional native helper body/configuration/ACL/declaration drift cases
 plus complete callee declaration and independent-owner regressions bring RO-01
-coverage to thirteen disposable PostgreSQL cases. The existing full
+coverage to fourteen disposable PostgreSQL cases. The existing full
 `broad_reader_function_closure` SQL/validator is shared rather than duplicating a
 weaker callee proof. Restricted namespace owners are independently bounded to the
 two existing installer owners, and actual helper-owner callee EXECUTE is checked;
@@ -149,6 +149,19 @@ final-head proof. Candidate `67846cb` subsequently passed all 26 local checks:
 credential scan and diff check in 207.349s. That is not evidence for the later
 owner/complete-callee correction; final validation runs against its unchanging
 replacement candidate and is linked in PR137.
+
+The restricted helper gate requires actual helper-schema USAGE; a missing grant
+is rejected by startup and restricted installation, with an explicit denied
+invocation regression. Broad preparation alone may discover/reapply that missing
+USAGE through its existing planner. The mixed-owner positive regression also
+invokes the real read helper and reruns the supported historical restricted
+installer as its existing postgres administrator, proving unchanged complete
+catalogue and source rows. Ordinary current installations and broad grants use
+mfdata_admin; no role is elevated to make a fixture pass. Historical fixture
+baseline role reset runs only through the existing disposable administrator.
+Candidate `cfbf815` passed all 26 local checks in 212.385s (5272 non-PG, 559 PG
+deselected, 38 subtests); that predecessor result does not certify the final
+schema-USAGE/bootstrap correction. The final exact-head outcomes are in PR137.
 
 Hosted run `41151029340` failed CI-plan validation before substantive tests:
 non-main workflow dispatch is not supported. PR137 now targets main so the

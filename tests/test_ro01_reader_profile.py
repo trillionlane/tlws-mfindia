@@ -162,3 +162,14 @@ def test_legacy_helper_and_callee_owners_are_independent_bounded_and_callable(ow
         closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=True)
         with pytest.raises(closure.FunctionClosureError):
             closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=False)
+
+
+def test_restricted_helper_requires_schema_usage_while_broad_planner_can_repair_it():
+    from test_broad_reader_function_closure import _case
+    from mfdataindia.review import broad_reader_function_closure as closure
+    state, rows = _case()
+    rows[0]["reader_schema_usage"] = False
+    next(n for n in state["namespaces"] if n["nspname"] == "mf_fact_review")["usage"] = False
+    with pytest.raises(closure.FunctionClosureError):
+        closure.verify_profile_helpers(rows, state, restricted=True, callee_execute_allowed=True)
+    closure.verify_profile_helpers(rows, state, restricted=False, callee_execute_allowed=True)
