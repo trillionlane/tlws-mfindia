@@ -1,0 +1,120 @@
+{
+  "format": "ro01-intentional-current-source-changes-v1",
+  "base": "89af628c88f4b905d2136acc7a222683c672fa44",
+  "historical_only": true,
+  "purpose": "Historical release assertions evaluate the immutable predecessor after validating each intentional current full-file change. This is not current runtime admission or evidence that RO-01 bytes are unchanged. Current source authority and native API/profile tests independently validate the new behavior.",
+  "modified": {
+    "src/mfdataindia/analytics/overlap_store.py": {
+      "previous_sha256": "7893429e7abdf8fed56ac9b1cd577be3e2a40d13fdec4b6406083b50f1d47be1",
+      "current_sha256": "0ddbea39d15224d3de2f240c456a2c423b8a8226e2bff91fbaf66af064db66a7"
+    },
+    "src/mfdataindia/enrichment/book_store.py": {
+      "previous_sha256": "6bdcd903778a8d981adad52b767ec3902de451604d1c8c88645895b05c11f80f",
+      "current_sha256": "bc80693e937e73e0cbd95a2b4b0aac0d5dbf5878977cd4a61aee42a49387e9aa"
+    },
+    "src/mfdataindia/enrichment/distribution_store.py": {
+      "previous_sha256": "927c6b7060580fe2209d21e8e506a739e3df5880530dacaa50c7ff558a2f1aad",
+      "current_sha256": "64388eec0ec7a850124f9042ea5a54190ab679776357cb8eeddfc83b01580b94"
+    },
+    "src/mfdataindia/enrichment/fact_review_store.py": {
+      "previous_sha256": "29546cab757db4a405988be2cf874c1156b76993d8b0224f69f72f6879f1a4f0",
+      "current_sha256": "7d285f083983d4fd8f3ebed7a0ca756d32298dca8461bcd50f33a0759c27eb46"
+    },
+    "src/mfdataindia/enrichment/facts_store.py": {
+      "previous_sha256": "71bf0f6f025e0f83bfb7cefaec71824afe231f9625932e3e05eb10468f51fe87",
+      "current_sha256": "39344d4ab5cf3263dd5673aaf9ff4cca3eb09ee60487fef3a39c58f33b151d92"
+    },
+    "src/mfdataindia/enrichment/idcw_store.py": {
+      "previous_sha256": "8e7a645685f176654db538d1914c1e1c067f075ca639be2f42a7b640482efe11",
+      "current_sha256": "8999471ebe205b7e990c5e836fa1d835e4b24268352cd4a8afb799cb818eddfa"
+    },
+    "src/mfdataindia/enrichment/monthly_store.py": {
+      "previous_sha256": "83f549848b96cf8236c92f4a2e2f60ef9274f5a7cd87dbd46d737847e31b2654",
+      "current_sha256": "df455a1eedfb2a31a4d66ce579c593b5f0e9f195602a846c7b4f7ee4b21f3f36"
+    },
+    "src/mfdataindia/enrichment/multi_store.py": {
+      "previous_sha256": "a2d7543e247a7fdd00c6ac21498c38fb552309bb180c765dfce87ec5ef7cae84",
+      "current_sha256": "6ef3bd8084725416bae8f708f5c7271c77f37ef509e458250e56eef5f25adcb1"
+    },
+    "src/mfdataindia/enrichment/portfolio_store.py": {
+      "previous_sha256": "163353b32dd23396cc3f15a83e2c347da477e3d9619fb174b26e44384efad741",
+      "current_sha256": "78ca26ed769fead89a1912a4be2e19711d06d3740fa6d68c9bcd9141095e8065"
+    },
+    "src/mfdataindia/enrichment/refresh_store.py": {
+      "previous_sha256": "b6d1e18fb02e411ee4598136b4c78b3dd1488b2b151d86bfbe23e565d0b21cb1",
+      "current_sha256": "9563e967b51bf91c4aa4f044fb160ae4f0f7a24773bbf069ad13f638e9d0a152"
+    },
+    "src/mfdataindia/enrichment/store.py": {
+      "previous_sha256": "37675c9a34321a33e89220884c2b71792fca6ca4b417485e38a3125b1c0ac5b7",
+      "current_sha256": "b67fb464cf5d1f6148a9eb893b81dc6714a229497d8bfeef2f55f7f7e0b2b379"
+    },
+    "src/mfdataindia/review/app.py": {
+      "previous_sha256": "a4983a78cfcbc1c49e98ed362cb18136e89324522a0f9940cffe1bcb669d718b",
+      "current_sha256": "aafffb7c1e5ea7346a868044ad750e0756ad636407e9855d8cf4eb8a175b1ff2"
+    },
+    "src/mfdataindia/review/broad_reader_embedded_authority.py": {
+      "previous_sha256": "1678ea7aed4661a231ecbe02f0133c3805657ec0b97e1ae94482944df84b40fb",
+      "current_sha256": "994ad66c2fe8315d2e3d08858c68e0dda91cecfe0ff93b8cb4184afddac4fdff"
+    },
+    "src/mfdataindia/review/broad_reader_source_authority.py": {
+      "previous_sha256": "edfb05fea847bdf75d204bf71bf92b5cd6d10688d42d20522c1b98cc58f2e500",
+      "current_sha256": "ea4629be3bd570ec00c4d9914278b709ee4385114b55a7777f740ebdb218bf4a"
+    },
+    "src/mfdataindia/review/broad_reader_view_profile.py": {
+      "previous_sha256": "2015d989a5991465a00adb4d6629140bbfac7bd3aeae60f2a1f7870604c52800",
+      "current_sha256": "07339a8765bd0d7d19ac0b6c59711b703f0b41bfed2054a689fd5e0d2339f250"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec.py": {
+      "previous_sha256": "0c383479f03a528330f943dc42a52c002acc8297cdf6d21f849a84cc0725f18a",
+      "current_sha256": "22ceed80e15fc36f92b2da38b51bee0ed6cf4afe5932d57281a3194f6aaa065c"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec_v2.py": {
+      "previous_sha256": "fa48bc8eff625d18de0609decd3665f8aafd60427cb343ff54d7f8ccb93bec74",
+      "current_sha256": "615be432c96ee07aa9bbcf87c436220c61482106dfae8e8f9f170a1cd2e0c194"
+    },
+    "src/mfdataindia/review/core_permission_spec.py": {
+      "previous_sha256": "72ae4e44b67f6f24c883114f2645774d12de11d105ec42a55922cc83c9d13d0a",
+      "current_sha256": "dde2b21d0ec6044b5bbeecb70056c6810f556f7f52e70a9b7ce3275c744fe404"
+    },
+    "src/mfdataindia/review/preservation.py": {
+      "previous_sha256": "63c0045aa6fd3269718bbcc013991abb32ffa69e8778ff975fb044286871938d",
+      "current_sha256": "0cbbc96c7cddaf59cf5f81fbf0e82cd13b65694b30f77d9fe4a9a2831a44dd9b"
+    },
+    "src/mfdataindia/review/privileges.py": {
+      "previous_sha256": "4929964f90292e48f9d81c054e848ed835d190c71a1c54230f82d0e4eb049c33",
+      "current_sha256": "809cfb3a904c636f959bb69e7be887b4d41950d8c14ec13947dd6523e1633364"
+    },
+    "src/mfdataindia/review/rollout_database.py": {
+      "previous_sha256": "8039c5bf283f8f4baa7c0782f5c141400160c1c22bbde0d726edecbdf90e0b3b",
+      "current_sha256": "913315cc1c9421c77ade73324c9e9dd0121f1f1005deb2b0abd298fe63b849ad"
+    },
+    "tests/pypdf_patch_preservation.py": {
+      "previous_sha256": "d3178746d481698107dcd4a6fdd3ceafefea612e9f0caf16e971e26ac44c3615",
+      "current_sha256": "c81906623ddb76cf83a3a9a9650bd09ecc8c6f6272939c92963a176a53de2f80"
+    },
+    "tests/reader_source_variants.py": {
+      "previous_sha256": "1d1e9c2a316ffe4335eebd5875be7223be727bedd6924ce90f057b321cc13bdc",
+      "current_sha256": "f63fc43f149f7ea8905b49918c2ec05c5e2aa28ab12306f3797bbce37679435f"
+    },
+    "tests/test_broad_reader_direct_no_freeze_parent_preservation.py": {
+      "previous_sha256": "c8631220a526fc2906f8b862e65add3ab24dba3ea27c1fded51ead91573a0744",
+      "current_sha256": "03a44b36ac4b87e25c1423500c4091c39bb0c47fa01d45f4638e5f36bd5330f4"
+    },
+    "tests/test_broad_reader_direct_runtime_environment_parent.py": {
+      "previous_sha256": "0441fca8298ab2aa6aab5ce8973a415592a79275607697e861fc86d8cca9850c",
+      "current_sha256": "948a91bd2140d14f2f0cb729a2702655d1c5170e66d7336e89913fc23904d13d"
+    },
+    "tests/test_pypdf_patch_preservation.py": {
+      "previous_sha256": "b12335790460b1ec7c4a516d13ae46e8ef54fbfe9b6176a913191b03f8a673ac",
+      "current_sha256": "b39467591850959569029438b08a09cafbe33c20e202201e986c2ce99d34716d"
+    },
+    "tests/test_pypdf_security_20261030.py": {
+      "previous_sha256": "6258e2de907e2ed8b1b9f36b4d775aee647adf629c30718433194dc084029822",
+      "current_sha256": "2c7cef15fa14d1bbc933eceb393cb4d7ba93cfb8500a1fad1f78580ffc022be2"
+    },
+    "tests/test_reader_source_variants.py": {
+      "previous_sha256": "3b4416874c72f993f41194e4664a823465527eda5781e2a8c8c48b76659547fe",
+      "current_sha256": "3457e2a7aeb173c248f106b6a38ff2f10f9172fa4bb1aedb7c73819689430c6e"
+    }
+  }
+}

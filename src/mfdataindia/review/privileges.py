@@ -1,5 +1,9 @@
 """Fail closed on elevated identity or source DML, including column grants."""
-def verify_artifact_acl(conn) -> None:
+from mfdataindia.review import reader_access_profile as profiles
+
+
+def verify_artifact_acl(conn, *, reader_profile=profiles.RESTRICTED) -> None:
+    profiles.contract(reader_profile)
     namespace = conn.execute("SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_review'").fetchone()
     if not namespace or namespace['owner'] not in ('mfdata_admin', 'postgres'):
         raise ValueError('unexpected review namespace owner')
@@ -28,27 +32,30 @@ def verify_artifact_acl(conn) -> None:
                 allowed = {'SELECT'}
             elif kind == 'function' and name == 'mf_review.append_event(integer,text,text,text,text,text,jsonb)' and role == 'mfdata_verified_admin':
                 allowed = {'EXECUTE'}
+            if kind == 'table' and profiles.is_broad_reader(role, reader_profile):
+                allowed = {'SELECT'}
         if grant['owner'] != namespace['nspowner'] or permission not in allowed:
             if kind == 'function' and name == 'mf_review.append_event(integer,text,text,text,text,text,jsonb)':
                 raise ValueError('runtime principal has an unexpected review-execution capability')
             raise ValueError('review artifact grants escape the declared role/capability boundary')
 
 
-def verify_runtime(conn, purpose: str) -> None:
+def verify_runtime(conn, purpose: str, *, reader_profile=profiles.RESTRICTED) -> None:
     identity = conn.execute('SELECT current_user AS name,session_user=current_user AS dedicated').fetchone()
     if not identity['dedicated']:
         raise ValueError('require direct login as dedicated runtime principal, not SET ROLE from administrator')
-    verify_principal(conn, purpose, identity['name'])
+    verify_principal(conn, purpose, identity['name'], reader_profile=reader_profile)
 
 
-def verify_principal(conn, purpose: str, principal: str) -> None:
+def verify_principal(conn, purpose: str, principal: str, *, reader_profile=profiles.RESTRICTED) -> None:
     """Inspect effective privileges before provisioning commits; no impersonation.
 
     Runtime still requires verify_runtime's actual dedicated-session check.
     """
     allowed = {"generator": {"mfdata_verified_generator"},
                "api": {"mfdata_verified_reader", "mfdata_verified_admin"}}
-    verify_artifact_acl(conn)
+    profiles.verify_selection(conn, reader_profile, principal)
+    verify_artifact_acl(conn, reader_profile=reader_profile)
     role = conn.execute("SELECT r.rolname AS name,r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolreplication,r.rolbypassrls "
                         "FROM pg_roles r WHERE rolname=%s", (principal,)).fetchone()
     if not role or role["name"] not in allowed[purpose] or any(role[k] for k in role if k != "name"):

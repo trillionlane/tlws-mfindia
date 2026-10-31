@@ -14,6 +14,7 @@ from mfdataindia.enrichment import (
 from mfdataindia.enrichment import store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_principal, verify_runtime
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -21,11 +22,12 @@ MIGRATION = "034_official_monthly_facts.sql"
 SCHEMA_SHA256 = "1363ec9ddddbb331e0f822dc3262777b0725cf48da8ebcc61adc46154d60e631"
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
+    profiles.verify_selection(conn, reader_profile, principal)
     if principal not in evidence.ROLES:
         raise ValueError("dedicated monthly-reporting principal required")
-    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal)
+    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     row = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_monthly_facts'"
     ).fetchone()
@@ -70,7 +72,7 @@ def verify_acl(conn, *, principal=None):
         "SELECT has_column_privilege(%s,'mf_monthly_facts.sources','content','SELECT') AS allowed",
         (principal,),
     ).fetchone()["allowed"]
-    if raw != (principal == evidence.ROLES[0]):
+    if raw != profiles.source_read_expected(principal, reader_profile):
         raise ValueError("monthly original-byte capability differs")
     if conn.execute(
         "SELECT has_schema_privilege(%s,'mf_monthly_facts','CREATE') AS allowed", (principal,)
@@ -101,10 +103,10 @@ def verify_acl(conn, *, principal=None):
         raise ValueError("monthly reporting policy missing or differs")
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not conn.execute("SELECT to_regnamespace('mf_monthly_facts') AS name").fetchone()["name"]:
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     result = {
         "function_hash": fingerprint(
             conn.execute(
@@ -318,9 +320,9 @@ def publish(conn, selection: schemas.Selection, content: bytes):
         return result
 
 
-def get(conn, code, *, snapshot_id=None):
+def get(conn, code, *, snapshot_id=None, reader_profile=profiles.RESTRICTED):
     identity = evidence.identity(conn, code)
-    verify_acl(conn)
+    verify_acl(conn, **profiles.guard_options(reader_profile))
     base = {
         "format": "official-monthly-fund-facts-response-v1",
         "code": code,

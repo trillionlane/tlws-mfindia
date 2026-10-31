@@ -142,10 +142,10 @@ def test_exact_eight_source_pins_and_selection_only_activation():
 def test_exact_nine_source_pins_and_source_classification():
     authority = v.variant_authority(ROOT)
     rows = authority["variant"]["files"]
-    assert len(rows) == 9 and sum(r["bytes"] for r in rows) == 95068
+    assert len(rows) == 9 and sum(r["bytes"] for r in rows) == 95543
     assert [r["path"] for r in rows] == list(v.SOURCE_PATHS)
     assert rows[-1]["path"] == "src/mfdataindia/enrichment/book_store.py"
-    assert rows[-1]["bytes"] == 18662
+    assert rows[-1]["bytes"] == 19137
     assert authority["variant"]["execution_order"] == list(v.EXECUTION_ORDER)
     assert authority["variant"]["selection_only_not_invoked"] == list(v.SELECTION_ONLY)
     assert "book_activation" not in authority["variant"]["execution_order"]

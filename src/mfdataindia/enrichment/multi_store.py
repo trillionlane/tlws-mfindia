@@ -9,6 +9,7 @@ from mfdataindia.enrichment import multi_facts, current_facts_store as current, 
 from mfdataindia.enrichment import store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_principal
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -21,9 +22,10 @@ def installed(conn):
     return bool(conn.execute("SELECT to_regnamespace('mf_multi_facts') AS name").fetchone()["name"])
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
-    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal)
+    profiles.verify_selection(conn, reader_profile, principal)
+    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     namespace = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_multi_facts'"
     ).fetchone()
@@ -91,7 +93,7 @@ def verify_acl(conn, *, principal=None):
         "SELECT has_column_privilege(%s,'mf_multi_facts.sources','content','SELECT') AS allowed,has_schema_privilege(%s,'mf_multi_facts','CREATE') AS ddl",
         (principal, principal),
     ).fetchone()
-    if raw != {"allowed": principal == evidence.ROLES[0], "ddl": False}:
+    if raw != {"allowed": profiles.source_read_expected(principal, reader_profile), "ddl": False}:
         raise ValueError("registered facts raw/DDL capabilities differ")
     cfg = conn.execute(
         "SELECT registry_hash,registry,policy_hash FROM mf_multi_facts.configuration ORDER BY generation DESC LIMIT 1"
@@ -114,10 +116,10 @@ def verify_acl(conn, *, principal=None):
         raise ValueError("retained pilot assertion graph differs")
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not installed(conn):
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     result = {
         "functions": fingerprint(
             conn.execute(
@@ -276,8 +278,8 @@ def append_run(conn, body):
     )
 
 
-def status(conn):
-    verify_acl(conn, principal=evidence.ROLES[1])
+def status(conn, *, reader_profile=profiles.RESTRICTED):
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     pilot = conn.execute(
         "SELECT document FROM mf_fact_refresh.runs ORDER BY observed_at DESC,run_id DESC LIMIT 1"
     ).fetchone()
@@ -305,8 +307,8 @@ def status(conn):
     }
 
 
-def get(conn, code):
-    verify_acl(conn, principal=evidence.ROLES[1])
+def get(conn, code, *, reader_profile=profiles.RESTRICTED):
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     identity = evidence.identity(conn, code)
     rows = conn.execute(
         "SELECT s.document,EXISTS(SELECT 1 FROM mf_multi_facts.runs r WHERE r.status<>'failed' AND r.document->'snapshot_ids' ? s.snapshot_id) AS published FROM mf_multi_facts.snapshots s WHERE s.amfi_scheme_code=%s ORDER BY s.disclosure_as_of DESC,s.snapshot_id LIMIT 101",

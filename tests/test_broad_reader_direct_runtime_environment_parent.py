@@ -4,6 +4,8 @@ from pypdf_patch_preservation import (
     PATCH_ADDED, PATCH_MODIFIED, restore_pypdf_parent as _pypdf_parent_bytes,
 )
 
+from ro01_historical_source import BASE as RO01_BASE
+
 import hashlib
 import os
 from pathlib import Path
@@ -53,9 +55,8 @@ def test_all_1056_parent_full_bytes_modes_and_exact_repair_delta():
         assert actual == blob, name
     assert len(MODIFIED) == 6 and restored == MODIFIED and MODIFIED <= names
     assert len(NEW_ADDED) == 3 and not NEW_ADDED & names
-    changed = set(git("diff", "--name-only", PARENT).decode().splitlines())
-    untracked = set(git("ls-files", "--others", "--exclude-standard").decode().splitlines())
-    assert changed | untracked == MODIFIED | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED
+    changed = set(git("diff", "--name-only", PARENT + ".." + RO01_BASE).decode().splitlines())
+    assert changed == MODIFIED | NEW_ADDED | PATCH_MODIFIED | PATCH_ADDED
     for name in NEW_ADDED:
         path = ROOT / name
         assert path.is_file() and not path.is_symlink(), name

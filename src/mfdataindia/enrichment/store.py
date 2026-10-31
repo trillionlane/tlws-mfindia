@@ -7,6 +7,7 @@ from psycopg.types.json import Jsonb
 from mfdataindia.enrichment import evidence, schemas
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
 ROLES = ("mfdata_verified_generator", "mfdata_verified_reader", "mfdata_verified_admin")
@@ -22,8 +23,9 @@ def installed_policy(conn):
     return document
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
+    profiles.verify_selection(conn, reader_profile, principal)
     if principal not in ROLES:
         raise ValueError("dedicated enrichment runtime required")
     if not conn.execute(
@@ -78,7 +80,8 @@ def verify_acl(conn, *, principal=None):
             if grant["kind"] == "schema":
                 allowed = {"USAGE"}
             elif grant["kind"] == "table":
-                if grant["name"] != "blobs" or grant["grantee"] == ROLES[0]:
+                if (grant["name"] != "blobs" or grant["grantee"] == ROLES[0]
+                        or profiles.is_broad_reader(grant["grantee"], reader_profile)):
                     allowed = {"SELECT"}
                 if grant["grantee"] == ROLES[0]:
                     allowed.add("INSERT")

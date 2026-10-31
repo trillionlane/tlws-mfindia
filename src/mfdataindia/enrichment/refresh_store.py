@@ -9,6 +9,7 @@ from mfdataindia.enrichment import monthly_current, refresh_policy
 from mfdataindia.enrichment import store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_principal
 from mfdataindia.review.preservation import capture_preservation, compare_preservation_structure
 from mfdataindia.review.publication_operations import capture_review
@@ -21,11 +22,12 @@ PROJECTION_SHA256 = "94069720889ef5893073f02f2cebcf7ac4666f9fd510386fff3d0510799
 TABLES = {"catalogs", "runs", "publications", "transitions"}
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
+    profiles.verify_selection(conn, reader_profile, principal)
     if principal not in evidence.ROLES:
         raise ValueError("dedicated source refresh principal required")
-    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal)
+    verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_fact_refresh'"
     ).fetchone()
@@ -66,7 +68,7 @@ def verify_acl(conn, *, principal=None):
         "SELECT has_column_privilege(%s,'mf_fact_refresh.catalogs','content','SELECT') AS allowed",
         (principal,),
     ).fetchone()["allowed"]
-    if raw != (principal == evidence.ROLES[0]):
+    if raw != profiles.source_read_expected(principal, reader_profile):
         raise ValueError("refresh raw catalog capability differs")
     if conn.execute(
         "SELECT has_schema_privilege(%s,'mf_fact_refresh','CREATE') AS allowed", (principal,)
@@ -110,10 +112,10 @@ def verify_acl(conn, *, principal=None):
             raise ValueError("refresh/current policy missing or differs")
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not conn.execute("SELECT to_regnamespace('mf_fact_refresh') AS ns").fetchone()["ns"]:
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     conn.execute("SET LOCAL TimeZone='UTC'")
     result = {}
     for table, key in (
@@ -267,8 +269,8 @@ def append_run(conn, body):
     return record
 
 
-def status(conn):
-    verify_acl(conn)
+def status(conn, *, reader_profile=profiles.RESTRICTED):
+    verify_acl(conn, **profiles.guard_options(reader_profile))
     rows = conn.execute(
         "SELECT document FROM mf_fact_refresh.runs ORDER BY observed_at DESC,run_id DESC LIMIT 10"
     ).fetchall()

@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from mfdataindia.calculators import schemas as calculator_schemas
 from mfdataindia.calculators import historical_schemas
 from mfdataindia.enrichment import fact_review_schemas
-from mfdataindia.review import publication, schemas, store
+from mfdataindia.review import publication, schemas, store, reader_access_profile as profiles
 from mfdataindia.review.auth import AssertionVerifier, Principal
 from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.store.dsn import resolve_dsn
@@ -27,7 +27,8 @@ Code = Annotated[int, Path(gt=0, le=2147483647)]
 IdempotencyKey = Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")]
 
 
-def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False, fact_refresh: bool = False, fact_verification: bool = False, amc_coverage: bool = False, multi_amc: bool = False, amc_books: bool = False) -> FastAPI:
+def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | None = None, research: bool = False, calendar: bool = False, rolling: bool = False, calculators: bool = False, historical: bool = False, enrichment: bool = False, official_facts: bool = False, portfolios: bool = False, overlap: bool = False, distributions: bool = False, idcw_catalog: bool = False, current_facts: bool = False, monthly_facts: bool = False, fact_refresh: bool = False, fact_verification: bool = False, amc_coverage: bool = False, multi_amc: bool = False, amc_books: bool = False, reader_profile: str = profiles.RESTRICTED) -> FastAPI:
+    profiles.contract(reader_profile)
     # One optional mounted trust file, not one flag/environment variable per gate.
     trust_file = os.environ.get("MFDATAINDIA_REVIEW_TRUST_FILE")
     if verifier is None and trust_file:
@@ -44,7 +45,7 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             try:
                 pool.wait(timeout=10)
                 with pool.connection() as conn:
-                    verify_runtime(conn, "api")
+                    verify_runtime(conn, "api", **profiles.guard_options(reader_profile))
                     if research:
                         publication.verify_installation(conn)
                     if calendar:
@@ -61,43 +62,43 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
                         installed_historical_policy(conn)
                     if enrichment:
                         from mfdataindia.enrichment.store import verify_acl as verify_enrichment_acl
-                        verify_enrichment_acl(conn)
+                        verify_enrichment_acl(conn, **profiles.guard_options(reader_profile))
                     if official_facts:
                         from mfdataindia.enrichment.facts_store import verify_acl as verify_facts_acl
-                        verify_facts_acl(conn)
+                        verify_facts_acl(conn, **profiles.guard_options(reader_profile))
                     if portfolios:
                         from mfdataindia.enrichment.portfolio_store import verify_acl as verify_portfolio_acl
-                        verify_portfolio_acl(conn)
+                        verify_portfolio_acl(conn, **profiles.guard_options(reader_profile))
                     if overlap:
                         from mfdataindia.analytics.overlap_store import verify_acl as verify_overlap_acl
-                        verify_overlap_acl(conn)
+                        verify_overlap_acl(conn, **profiles.guard_options(reader_profile))
                     if distributions:
                         from mfdataindia.enrichment.distribution_store import verify_acl as verify_distribution_acl
-                        verify_distribution_acl(conn)
+                        verify_distribution_acl(conn, **profiles.guard_options(reader_profile))
                     if idcw_catalog:
                         from mfdataindia.enrichment.idcw_store import verify_acl as verify_idcw_acl
-                        verify_idcw_acl(conn)
+                        verify_idcw_acl(conn, **profiles.guard_options(reader_profile))
                     if current_facts:
                         from mfdataindia.enrichment.current_facts_store import verify_acl as verify_current_facts_acl
                         verify_current_facts_acl(conn)
                     if monthly_facts:
                         from mfdataindia.enrichment.monthly_store import verify_acl as verify_monthly_acl
-                        verify_monthly_acl(conn)
+                        verify_monthly_acl(conn, **profiles.guard_options(reader_profile))
                     if fact_refresh:
                         from mfdataindia.enrichment.refresh_store import verify_acl as verify_refresh_acl
-                        verify_refresh_acl(conn)
+                        verify_refresh_acl(conn, **profiles.guard_options(reader_profile))
                     if fact_verification:
                         from mfdataindia.enrichment.fact_review_store import verify_acl as verify_fact_review_acl
-                        verify_fact_review_acl(conn)
+                        verify_fact_review_acl(conn, **profiles.guard_options(reader_profile))
                     if amc_coverage:
                         from mfdataindia.enrichment.amc_register import load_register
                         load_register()
                     if multi_amc:
                         from mfdataindia.enrichment.multi_store import verify_acl as verify_multi_acl
-                        verify_multi_acl(conn)
+                        verify_multi_acl(conn, **profiles.guard_options(reader_profile))
                     if amc_books:
                         from mfdataindia.enrichment.book_store import verify_acl as verify_book_acl
-                        verify_book_acl(conn)
+                        verify_book_acl(conn, **profiles.guard_options(reader_profile))
                 yield
             finally:
                 pool.close()
@@ -121,7 +122,7 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         return principal
 
     def administrator(principal: Principal = Depends(identity)) -> Principal:
-        if "review:admin" not in principal.scopes:
+        if reader_profile == profiles.BROAD or "review:admin" not in principal.scopes:
             raise HTTPException(403, "admin assertion required")
         return principal
 
@@ -136,6 +137,7 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             with pool.connection() as conn, conn.transaction():
                 conn.execute("SET TRANSACTION ISOLATION LEVEL " + ("READ COMMITTED" if write else "REPEATABLE READ, READ ONLY"))
                 conn.execute("SET LOCAL statement_timeout='10s'")
+                profiles.verify_selection(conn, reader_profile)
                 return callback(conn)
         except store.NotFound:
             raise HTTPException(404, "fund, policy or result not found") from None
@@ -143,6 +145,8 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             raise HTTPException(409, "inputs/version changed or operation busy; refresh before retry") from None
         except psycopg.errors.InsufficientPrivilege:
             raise HTTPException(503, "review runtime privileges not ready") from None
+        except profiles.ReaderAccessError:
+            raise HTTPException(503, "review reader profile not ready") from None
         except ValueError:
             raise HTTPException(422, "unsupported or oversized source input") from None
 
@@ -394,7 +398,7 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
 
         @app.get('/api/enrichment/v4/funds/{code}/facts', response_model=monthly_schemas.MonthlyResponse)
         def monthly_reported_facts(code: Code, snapshot_id: Annotated[str | None, Query(pattern=r'^[0-9a-f]{64}$')] = None, principal: Principal = Depends(identity)):
-            return run(lambda conn: monthly_store.get(conn,code,snapshot_id=snapshot_id))
+            return run(lambda conn: monthly_store.get(conn,code,snapshot_id=snapshot_id, **profiles.guard_options(reader_profile)))
 
     if fact_refresh:
         from mfdataindia.enrichment import refresh_store, refresh_policy, refresh_schemas
@@ -406,7 +410,7 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
 
         @app.get('/api/enrichment/v5/status', response_model=refresh_schemas.RefreshStatus)
         def refresh_status(principal: Principal = Depends(identity)):
-            return run(refresh_store.status)
+            return run(lambda conn: refresh_store.status(conn, **profiles.guard_options(reader_profile)))
 
     if fact_verification:
         from mfdataindia.enrichment import fact_review_store as fact_reviews
@@ -462,11 +466,11 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
 
         @app.get('/api/enrichment/v8/refresh/status', response_model=multi_schemas.RegisteredStatus)
         def registered_source_status(principal: Principal = Depends(identity)):
-            return run(multi_store.status)
+            return run(lambda conn: multi_store.status(conn, **profiles.guard_options(reader_profile)))
 
         @app.get('/api/enrichment/v8/funds/{code}/facts', response_model=multi_schemas.RegisteredFacts)
         def registered_source_facts(code: Code,principal: Principal = Depends(identity)):
-            return run(lambda conn:multi_store.get(conn,code))
+            return run(lambda conn:multi_store.get(conn,code, **profiles.guard_options(reader_profile)))
 
     if amc_books:
         from mfdataindia.enrichment import book_store, book_schemas
@@ -475,18 +479,18 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
         @app.get('/api/enrichment/v9/policy', response_model=book_schemas.BookPolicy)
         def amc_book_policy(principal: Principal = Depends(identity)):
             def installed_policy(conn):
-                book_store.verify_acl(conn)
+                book_store.verify_acl(conn, **profiles.guard_options(reader_profile))
                 row = book_store.installed_configuration(conn)
                 return {'configuration_hash': row['configuration_hash'], 'document': row['document']}
             return run(installed_policy)
 
         @app.get('/api/enrichment/v9/coverage', response_model=book_schemas.BookStatus)
         def amc_book_coverage(principal: Principal = Depends(identity)):
-            return run(book_store.status)
+            return run(lambda conn: book_store.status(conn, **profiles.guard_options(reader_profile)))
 
         @app.get('/api/enrichment/v9/funds/{code}/facts', response_model=book_schemas.BookFund)
         def amc_book_fund(code: Code, principal: Principal = Depends(identity)):
-            return run(lambda conn: book_store.fund(conn, code))
+            return run(lambda conn: book_store.fund(conn, code, **profiles.guard_options(reader_profile)))
 
     return app
 

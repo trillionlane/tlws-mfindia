@@ -6,6 +6,7 @@ from psycopg.types.json import Jsonb
 from mfdataindia.enrichment import facts, facts_schemas as schemas, store as evidence
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -18,11 +19,12 @@ def installed_policy(conn):
     return policy
 
 
-def verify_acl(conn, *, principal=None):
+def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
+    profiles.verify_selection(conn, reader_profile, principal)
     if principal not in evidence.ROLES:
         raise ValueError("dedicated official facts principal required")
-    evidence.verify_acl(conn, principal=principal)
+    evidence.verify_acl(conn, principal=principal, **profiles.guard_options(reader_profile))
     namespace = conn.execute("SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_official_facts'").fetchone()
     if not namespace or namespace["owner"] not in ("postgres", "mfdata_admin"):
         raise ValueError("official facts namespace ownership differs")
@@ -59,10 +61,10 @@ def verify_acl(conn, *, principal=None):
     installed_policy(conn)
 
 
-def capture(conn):
+def capture(conn, *, reader_profile=profiles.RESTRICTED):
     if not conn.execute("SELECT to_regnamespace('mf_official_facts') AS name").fetchone()["name"]:
         return None
-    verify_acl(conn, principal=evidence.ROLES[1])
+    verify_acl(conn, principal=evidence.ROLES[1], **profiles.guard_options(reader_profile))
     digest, count = hashlib.sha256(), 0
     with conn.cursor() as cur, cur.copy("COPY (SELECT snapshot_id,encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') FROM mf_official_facts.snapshots t ORDER BY snapshot_id) TO STDOUT (FORMAT BINARY)") as stream:
         stream.set_types(["text", "text"])

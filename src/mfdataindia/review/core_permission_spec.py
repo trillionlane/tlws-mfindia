@@ -5,6 +5,7 @@ import hashlib
 from pathlib import Path
 
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.review.reader_policy_source_version import current_attribution
 
 IDENTITY = "dev-core-perm-261022a"
 STAGE = "core-permission-diagnostic-not-acceptance"
@@ -15,12 +16,13 @@ RELATIONS = tuple(sorted(
        ("configuration", "baseline", "field_versions", "field_heads", "selected_fields", "current_values", "resolved")]
     + [("mf_review", name, "r") for name in ("policies", "snapshots", "results", "events", "certifications")]
 ))
-SOURCE_HASHES = {
+HISTORICAL_SOURCE_HASHES = {
     "scripts/diagnose_core_fund_plan_dev.py": "7ef6110a5032566b8ab42418134c9bbdd45780bb0978624c336ebac5ae4484ab",
     "src/mfdataindia/api/queries.py": "c2043667ab261be1ae02eb9e5f32658c142e325739487582a555530f0e3f691e",
     "src/mfdataindia/review/privileges.py": "4929964f90292e48f9d81c054e848ed835d190c71a1c54230f82d0e4eb049c33",
     "src/mfdataindia/enrichment/current_facts_store.py": "380f656f5d70a4870c9c86d2f821cc14c418128a1ffb51cf9124c5e3b8b5afc0",
 }
+SOURCE_HASHES = current_attribution(HISTORICAL_SOURCE_HASHES)
 CONTEXT_SQL = """SELECT current_user::text AS effective, session_user::text AS authenticated,
        current_database()::text AS database,
        current_setting('transaction_read_only') AS read_only,

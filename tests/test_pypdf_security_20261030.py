@@ -14,6 +14,7 @@ import pypdf
 import pytest
 
 from pypdf_patch_preservation import PLAN, ROOT
+from ro01_historical_source import historical_parent
 
 BASE = "03f3932eb22218478f82e7985e1d0ba527f22cde"
 
@@ -148,7 +149,7 @@ def test_all_historical_pdf_source_and_smoke_bytes_modes_remain_exact():
         if name.startswith("src/mfdataindia/enrichment/") or name == "scripts/smoke_pdf_security_compatibility.py":
             assert name not in PLAN["modified"]
             mode, kind, blob = identity.decode().split()
-            raw = (ROOT / name).read_bytes()
+            raw = historical_parent(ROOT / name, (ROOT / name).read_bytes())
             assert kind == "blob" and not (ROOT / name).is_symlink()
             assert bool((ROOT / name).stat().st_mode & 0o111) == (mode == "100755")
             assert hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest() == blob
