@@ -38,6 +38,25 @@ def test_shared_prepare_uses_actual_planner_exact_plan_and_does_not_mutate_input
     assert before == saved
 
 
+def test_reconciliation_uses_existing_canonical_defaults_but_keeps_raw_oid_evidence():
+    from test_broad_reader_policy import state
+    canonical = profiles.prepare(state())["after"]
+    raw = deepcopy(canonical)
+    assert raw["defaults"]
+    for index, row in enumerate(raw["defaults"]):
+        row["oid"] = 900000 + index
+    saved = deepcopy(raw)
+    assert raw != canonical
+    assert profiles.prepare(raw)["before"] == canonical
+    assert raw == saved  # Existing planner does not discard the caller's raw OIDs.
+    for group in raw.keys() - {"defaults"}:
+        assert raw[group] == canonical[group]
+    drifted = deepcopy(raw)
+    drifted["namespaces"][0]["oid"] += 1
+    with pytest.raises(profiles.ReaderAccessError):
+        profiles.prepare(drifted)
+
+
 @pytest.mark.parametrize("change", ["grant_option", "write", "membership", "schema_create",
                                     "database_create", "wrong_database", "missing_roles"])
 def test_current_profile_rejects_unsafe_or_incomplete_effective_state(change):

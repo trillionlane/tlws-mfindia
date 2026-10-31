@@ -175,6 +175,15 @@ new earlier stable `UNREVIEWED_READER_FUNCTION` rejection while retaining all ro
 unrelated-ACL/default and login assertions. No production policy/SQL changed, no
 catalogue differences are ignored and no failure is retroactively accepted.
 
+Corrected run `41157313630` had 13 focused passes, then 5819 passes/one failure/one
+existing skip. The private-setting and original rollback cases passed. The remaining
+fixture comparison mixed raw default-ACL row OIDs with the existing planner's
+documented canonical form. Recovery now uses the same complete canonical comparison
+as production reconciliation and separately verifies exact raw default rows, OIDs
+and ACLs against the enrolled state. Full raw idempotence and source equality remain;
+a pure regression documents this existing boundary without adding normalization.
+The failed run is not accepted and production code/SQL is unchanged by this correction.
+
 Hosted run `41151029340` failed CI-plan validation before substantive tests:
 non-main workflow dispatch is not supported. PR137 now targets main so the
 unchanged supported PR workflow can run. Its GitHub comparison includes the

@@ -252,7 +252,11 @@ def test_native_broad_does_not_mutate_or_elevate_and_rejects_missing_or_unsafe_g
             profiles.verify_selection(conn, profiles.BROAD)
     adopt(dsn)
     repaired = catalogue(dsn)
-    assert repaired == expected["after"] and values(dsn) == original_values
+    # Same documented canonical comparison as production reconciliation; also
+    # retain every raw default-ACL row OID and ACL independently, without masking.
+    assert profiles.prepare(repaired)["before"] == expected["after"]
+    assert repaired["defaults"] == enrolled["defaults"]
+    assert values(dsn) == original_values
     adopt(dsn)
     assert catalogue(dsn) == repaired and values(dsn) == original_values
     with connect(dsn, "mfdata_verified_admin") as conn:
@@ -263,7 +267,7 @@ def test_native_broad_does_not_mutate_or_elevate_and_rejects_missing_or_unsafe_g
     unsafe = catalogue(dsn)
     with pytest.raises(ValueError, match="INCOMPLETE_READER_ACCESS_PROFILE"):
         adopt(dsn)
-    assert catalogue(dsn) == unsafe
+    assert catalogue(dsn) == unsafe and values(dsn) == original_values
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
