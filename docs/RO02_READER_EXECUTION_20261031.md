@@ -142,6 +142,16 @@ of both all cloud resources and all historical evidence is explicitly
 **`PRIVILEGED_HISTORY_DELETION_NOT_RECOVERABLE_RO05`**, not an automatic first-run
 reset or a safety guarantee. RO-05 owns full backup/provisioning lifecycle.
 
+If allocation succeeds but a final read-only check fails **before any durable
+CREATE intent**, the complete journal settles `STOPPED_BEFORE_DISPATCH` with
+known no submission and an empty operation inventory. Read-only inspection may
+confirm that local fact without pretending cloud absence or consumer acceptance.
+The failed operation identity remains permanently spent. A corrected **new**
+plan can proceed only at the next approved epoch with exact prior lineage and
+fresh complete cloud inventory; no evidence is erased. Incomplete/corrupted
+durable storage is different: it stays stopped, never auto-reset as a local
+candidate correction.
+
 `inspect --operation-root <original immutable root>` uses a read-only adapter.
 It rederives the complete original fixed request from the sealed plan, verifies
 job/execution/task identity, original certificate and final protected profiles,

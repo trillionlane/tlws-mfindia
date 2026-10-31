@@ -170,6 +170,14 @@ def _verified(plan, kind, predecessors, certificate):
     return body, True
 
 
+def _no_dispatch(rows):
+    return bool(rows) and rows[0]["state"] == "BOUNDED_PLAN_STARTED" and all(
+        row["kind"] is None and row["grant_effect"] == diagnostics.NO_GRANT
+        and row["state"] in {"BOUNDED_PLAN_STARTED", "STOPPED_UNRESOLVED",
+                             "STOPPED_BEFORE_DISPATCH", "INSPECTED_BEFORE_DISPATCH"}
+        for row in rows) and sum(r["state"] == "BOUNDED_PLAN_STARTED" for r in rows) == 1
+
+
 def _unresolved(lock):
     # A different operation must never conceal unresolved prior mutation effects.
     genesis = lock.genesis()
@@ -179,13 +187,15 @@ def _unresolved(lock):
             plan = prior.plan()
             rows = prior.events()
             require(rows and rows[-1]["state"] in {
-                "OPERATION_APPLICATION_VERIFIED", "STOPPED_WITH_KNOWN_EFFECT", "INSPECTED_WITH_KNOWN_EFFECT"}
+                "OPERATION_APPLICATION_VERIFIED", "STOPPED_WITH_KNOWN_EFFECT", "INSPECTED_WITH_KNOWN_EFFECT",
+                "STOPPED_BEFORE_DISPATCH", "INSPECTED_BEFORE_DISPATCH"}
                 and rows[-1]["grant_effect"] in (diagnostics.NO_GRANT, diagnostics.ROLLED_BACK, diagnostics.VERIFIED),
                 "PRIOR_OPERATION_REQUIRES_READ_ONLY_INSPECTION")
             settled = rows[-1]["data"].get("programme_inventory")
             expected = {spec.role_for(r["kind"], operation_id=plan["operation_id"]).job
                         for r in rows if r["state"] == "CREATE_OUTCOME_UNKNOWN"}
-            require(type(settled) is dict and set(settled) == expected and expected,
+            require(type(settled) is dict and set(settled) == expected
+                    and (bool(expected) or _no_dispatch(rows)),
                     "PROGRAMME_INVENTORY_REQUIRES_RECONCILIATION")
             for name, seals in settled.items():
                 require(name not in inventory and type(seals) is dict
@@ -323,6 +333,15 @@ def execute(plan, authority, application, *, source_root, expected_git, backend_
                         "operation_id": checked["operation_id"], "consumer_acceptance": "PENDING_RO04"}
             except BaseException as error:
                 rows = journal.events()
+                if _no_dispatch(rows):
+                    # The complete durable history proves this controller never
+                    # reached its CREATE intent, and therefore never submitted.
+                    # Keep the identity spent; a corrected NEW plan may proceed
+                    # only with new epoch/lineage and full cloud reconciliation.
+                    report = diagnostics.report(error, stage="preflight", worker=False)
+                    journal.append(state="STOPPED_BEFORE_DISPATCH", effect=diagnostics.NO_GRANT,
+                        data={"diagnostic": report, "programme_inventory": {}})
+                    return {**report, "operation_id": checked["operation_id"]}
                 # Durable pre-ambiguity intent, not stale in-memory progress, is authoritative.
                 if rows:
                     effect = rows[-1]["grant_effect"]
@@ -365,7 +384,14 @@ def inspect(root, *, source_root, inspector_factory, journal_base=spec.ARTIFACTS
         rows = journal.events()
         require(rows, "INCOMPLETE_IMMUTABLE_OPERATION")
         creates = [row for row in rows if row["state"] == "CREATE_OUTCOME_UNKNOWN"]
-        require(creates, "NO_ORIGINAL_DISPATCH_TO_INSPECT")
+        if not creates:
+            require(_no_dispatch(rows), "NO_ORIGINAL_DISPATCH_TO_INSPECT")
+            output = {"state": "INSPECTED_BEFORE_DISPATCH", "grant_effect": diagnostics.NO_GRANT,
+                "operation_id": plan["operation_id"], "programme_inventory": {},
+                "observed_stage_state": "LOCAL_RECORD_PROVES_NO_CREATE_INTENT_NOT_CLOUD_ABSENCE",
+                "consumer_acceptance": "PENDING_RO04", "execution_limitations": list(contract.EXECUTION_LIMITATIONS)}
+            journal.append(state=output["state"], effect=diagnostics.NO_GRANT, data=deepcopy(output))
+            return output  # No provider call, no resume, no reuse of this identity.
         original = creates[-1]
         kind, data = original["kind"], original["data"]
         predecessors = data["predecessors"]

@@ -170,3 +170,41 @@ def test_self_asserted_hash_is_not_a_trusted_direct_approval_record(monkeypatch,
     claimed["direct_human_approval_record_sha256"] = "f" * 64
     with pytest.raises(ValueError, match="RO04_DIRECT_BOUNDED_PLAN_AUTHORITY_REQUIRED"):
         controller.validate_authority(value, claimed)
+
+
+def test_post_allocation_precreate_failure_is_known_no_dispatch_not_a_programme_dead_end(monkeypatch, tmp_path):
+    monkeypatch.setattr(spec, "ARTIFACTS", tmp_path)
+    value, verifier, private = plan()
+    adapters = []
+    class NoDispatch(FakeProvider):
+        def recheck_programme_inventory(self, **_kwargs):
+            raise contract.ContractError("CURRENT_TARGET_NOT_EMPTY")
+    def factory(p, kind, repo, prepared):
+        adapter = NoDispatch(p, kind, repo, prepared)
+        adapters.append(adapter)
+        return adapter
+    result = controller.execute(value, authority(value), app_context(value, verifier, private),
+        source_root=ROOT, expected_git=GIT, backend_factory=factory, journal_base=tmp_path)
+    assert result["state"] == "LOCAL_VALIDATION_FAILED_NO_DISPATCH"
+    assert result["grant_effect"] == diagnostics.NO_GRANT
+    assert all(not adapter.created and not adapter.ran for adapter in adapters)
+    with Journal(contract.operation_root(value)) as journal:
+        rows = journal.events()
+        assert [r["state"] for r in rows] == ["BOUNDED_PLAN_STARTED", "STOPPED_BEFORE_DISPATCH"]
+        assert rows[-1]["data"]["programme_inventory"] == {}
+    inspected = controller.inspect(contract.operation_root(value), source_root=ROOT,
+        inspector_factory=lambda *_: pytest.fail("there was no provider dispatch"), journal_base=tmp_path)
+    assert inspected["state"] == "INSPECTED_BEFORE_DISPATCH"
+    other = {**deepcopy(value), "operation_id": "op-fedcba9876543210"}
+    # New nonce is not blocked by the known no-dispatch history. This fake
+    # provider deliberately loses its create response, proving reachability
+    # without pretending this later operation succeeded.
+    new = []
+    def ambiguous(p, kind, repo, prepared):
+        adapter = FakeProvider(p, kind, repo, prepared)
+        adapter.fail_at = "create"
+        new.append(adapter)
+        return adapter
+    controller.execute(other, authority(other), app_context(other, verifier, private),
+        source_root=ROOT, expected_git=GIT, backend_factory=ambiguous, journal_base=tmp_path)
+    assert len(new) == 1 and new[0].calls.count("create") == 1
