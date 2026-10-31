@@ -45,7 +45,7 @@ def connect(dsn, role="mfdata_admin", *, autocommit=True):
 
 
 @pytest.fixture
-def ro01_db(pg_dsn, monkeypatch):
+def ro01_db(pg_dsn, monkeypatch, request):
     if not pg_dsn:
         pytest.skip("MF_TEST_DSN not set")
     assert os.environ.get("GITHUB_ACTIONS") == "true", "RO01 requires disposable hosted CI"
@@ -76,6 +76,9 @@ def ro01_db(pg_dsn, monkeypatch):
             # only. The supported RO-01 install path must not call this reset.
             with connect(dsn, autocommit=False) as conn:
                 conn.execute((ROOT / "scripts/sql/reconcile_verified_review_privileges.sql").read_text())
+            if getattr(request, "param", None) == "core":
+                yield dsn
+                return
             identities, inputs, _ = prepared(dsn, monkeypatch)
             publish(dsn, identities, inputs)
             # Directly related sibling source guards are real installed modules,
@@ -102,6 +105,13 @@ def baseline_guard(name):
     module = module_from_spec(spec_from_loader("ro01_baseline_" + name, loader=None))
     module.__file__ = str(ROOT / relative)
     exec(compile(raw, relative, "exec"), module.__dict__)
+    # Reproduce the original guard together with its original privilege helper,
+    # not today's stricter selected-profile helper that rejects earlier.
+    dependency = "src/mfdataindia/review/privileges.py"
+    prior = module_from_spec(spec_from_loader("ro01_baseline_privileges", loader=None))
+    prior_raw = subprocess.check_output(["git", "show", BASE + ":" + dependency], cwd=ROOT)
+    exec(compile(prior_raw, dependency, "exec"), prior.__dict__)
+    module.verify_principal = prior.verify_principal
     return module.verify_acl
 
 
@@ -245,3 +255,19 @@ def test_native_broad_does_not_mutate_or_elevate_and_rejects_missing_or_unsafe_g
     with pytest.raises(ValueError, match="INCOMPLETE_READER_ACCESS_PROFILE"):
         adopt(dsn)
     assert catalogue(dsn) == unsafe
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_native_core_only_cannot_silently_label_broad_current_and_future_reads_restricted(ro01_db):
+    dsn = ro01_db
+    adopt(dsn)
+    enrolled, before = catalogue(dsn), values(dsn)
+    assert profiles.prepare(enrolled)["coverage"]["present_schemas"] == ["mf", "mf_review"]
+    assert not any(row["nspname"] == "mf_monthly_facts" for row in enrolled["namespaces"])
+    with pytest.raises(profiles.ReaderAccessError, match="READER_PROFILE_SELECTION_CONFLICT"):
+        install_and_reconcile(dsn, ROOT, manifest(), {}, reader_profile=profiles.RESTRICTED)
+    with connect(dsn, planner.READER) as conn:
+        from mfdataindia.review.privileges import verify_runtime
+        with pytest.raises(profiles.ReaderAccessError, match="READER_PROFILE_SELECTION_CONFLICT"):
+            verify_runtime(conn, "api")
+    assert catalogue(dsn) == enrolled and values(dsn) == before

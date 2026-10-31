@@ -74,3 +74,24 @@ def test_untrusted_factory_profile_is_rejected_before_pool_or_database():
     from mfdataindia.review.app import create_review_app
     with pytest.raises(profiles.ReaderAccessError, match="INVALID_READER_ACCESS_PROFILE"):
         create_review_app("postgresql://fixture@127.0.0.1:1/fixture", reader_profile={"broad": True})
+
+
+@pytest.mark.parametrize("change", ["core_broad", "future_owner", "future_other_creator",
+                                    "unknown_relation", "raw_column"])
+def test_restricted_profile_rejects_complete_core_and_future_read_drift(change):
+    from test_broad_reader_policy import state
+    value = state()
+    profiles.verify_restricted_catalogue(value)
+    if change == "core_broad":
+        value = planner.prepare(value)["after"]
+    elif change.startswith("future"):
+        value["defaults"].append(dict(oid=123, defaclrole=16587 if change == "future_owner" else 49999,
+                                      defaclnamespace=16595, defaclobjtype="r",
+                                      acl=[[16587, 40032, "SELECT", False]]))
+    elif change == "unknown_relation":
+        value["relations"][0]["relname"] = "unadopted"
+        value["relations"][0]["capabilities"][0] = True
+    else:
+        value["columns"][-1]["capabilities"][0] = True
+    with pytest.raises(profiles.ReaderAccessError, match="READER_PROFILE_SELECTION_CONFLICT"):
+        profiles.verify_restricted_catalogue(value)

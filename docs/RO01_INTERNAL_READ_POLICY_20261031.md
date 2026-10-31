@@ -1,6 +1,7 @@
 # RO-01 — consistent internal reader policy
 
-Status: implemented; final-head native/full/image verification pending.
+Status: implemented; completion is determined by final-head native/full/image
+results linked from [PR137](https://github.com/trillionlane/tlws-mfindia/pull/137).
 Not live access or internal-consumer acceptance.
 
 Remote main inspected: `03f3932eb22218478f82e7985e1d0ba527f22cde` (PR135).
@@ -16,7 +17,7 @@ to merge or deploy by this feed. All earlier scheduled continuations were delete
 | Runtime identity | Existing dedicated generator/reader/admin checks | Direct, non-elevated `mfdata_verified_reader` |
 | Fund source-content SELECT | Existing generator-only boundary | All rows/columns of enrolled fund/research relations |
 | Business writes, ownership, DDL, memberships, grant options | Existing prohibitions | Prohibited; generator/admin powers are not reader powers |
-| Functions | Existing role-specific checks | Retain only the reviewed existing helper; never grant EXECUTE |
+| Functions | Existing role-specific checks | Unchanged invoker helpers; only the reviewed pre-existing SECURITY DEFINER helper; never grant EXECUTE |
 | Future objects | Existing installation contract | Schema-local defaults for `mfdata_admin`; not new schemas/other creators |
 
 Reuse `broad_reader_policy.profile()` and its generated schema/table/default
@@ -40,7 +41,7 @@ grants to make validation pass. Restricted selection must remain restricted.
 
 `reader_access_profile` reuses the existing broad planner, its exact sixteen
 schemas and owner-specific default-SELECT plan. The reviewed existing
-`mf_fact_review.dependencies(integer)` is checked against its actual catalogue
+SECURITY DEFINER helper `mf_fact_review.dependencies(integer)` is checked against its actual catalogue
 identity, complete committed declaration seals and existing callee boundary;
 no EXECUTE is proposed and no helper is invoked by policy verification.
 
@@ -51,7 +52,10 @@ compares the complete planned/actual catalogue and runs capability verification
 before commit. Existing unrelated grants are not revoked. Unsafe capabilities or
 a requested restricted downgrade of an already-broad reader reject/roll back.
 Initial optional-role creation retains the original baseline role capabilities;
-existing generator/admin grants are not rebuilt or expanded. The historical
+existing generator/admin grants are not rebuilt or expanded. Restricted
+validation checks the complete current relation/column/schema/function/default
+population against the historical restricted recipe, including a core-only
+database; it cannot label leftover broad SELECT/defaults as restricted. The historical
 reset script and every numbered migration remain unchanged and are never called
 by this current installer. The native fixture uses the old reset only to establish
 the disposable restricted baseline that reproduces the original conflict.
@@ -74,9 +78,11 @@ predecessor/reason/regression. Repository and embedded installed-image bytes
 must match the new complete descriptor. The historical descriptor is unchanged.
 
 `reader_policy_source_version` preserves the three diagnostic specs' historical
-attribution mappings and explicitly versions their current `privileges.py` pin.
-Other attribution sources, queries, worker identities and runtime bounds are
-unchanged. Existing image smokes validate the new source/spec fingerprints;
+attribution mappings and explicitly versions their current `privileges.py` pin,
+including complete pins for the new profile and version modules. Their existing
+controllers bind the new exact spec hashes. Other attribution sources, queries,
+worker identities and runtime bounds are unchanged. Existing image smokes validate
+the new source/spec fingerprints;
 consumed diagnostic receipts are neither replayed nor re-admitted.
 
 Older release-preservation tests now validate each listed intentional current
@@ -104,8 +110,22 @@ diagnosing current-versus-historical attribution mismatches, 332 related tests
 and all three provider-free diagnostic image-binding smokes passed. An initial
 full local run reported 24 failures/5203 passes/550 PostgreSQL deselections; those
 failures remain failures, not retroactive success. All 21 contracts, dependency
-audit, credential scan and diff check independently passed. Full stable local
-and final-head CI outcomes will be recorded after they actually finish.
+audit, credential scan and diff check independently passed. A second full run
+exposed 23 additional dependent spec binding failures (5209 passes); those were
+repaired, not waived. The latest corrected targeted set has 413 passes.
+Independent review identified a P1 core-only restricted-downgrade gap; complete
+catalogue/default validation and a fifth native regression address it. The
+function-access P2 was withdrawn after reconciling the exact approved intent;
+documentation now distinguishes unchanged invoker helpers from the single
+approved privileged helper. No function grant or revoke was introduced.
+
+Hosted run `41151029340` failed CI-plan validation before substantive tests:
+non-main workflow dispatch is not supported. PR137 now targets main so the
+unchanged supported PR workflow can run. Its GitHub comparison includes the
+separate prerequisite until PR136 merges; the focused RO-01 review range is
+`89af628..HEAD`. This changes neither rulesets nor CI routing. Final exact-head
+results, SHA and run links are maintained in the PR description/checks rather
+than forcing another expensive unchanged CI run for a documentation-only update.
 
 ### RO-02 handoff seam and residual boundary
 
@@ -117,5 +137,5 @@ sprint does not authorize any live capture, grant, image deployment or consumer
 acceptance. RO-05 must still verify deployment lifecycle/default privileges for
 new schemas and other creators; this contract deliberately makes no such claim.
 
-Final RO-01 head, PR/run links, actual outcomes and remaining blockers will be
-recorded here. Unit doubles are not native PostgreSQL or live consumer evidence.
+Final RO-01 head, exact CI outcomes and remaining blockers are linked through
+PR137. Unit doubles are not native PostgreSQL or live consumer evidence.

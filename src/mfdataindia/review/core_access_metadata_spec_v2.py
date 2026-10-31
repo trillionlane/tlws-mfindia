@@ -16,7 +16,10 @@ HISTORICAL_SOURCE_HASHES = {
     "src/mfdataindia/review/privileges.py": "4929964f90292e48f9d81c054e848ed835d190c71a1c54230f82d0e4eb049c33",
     "src/mfdataindia/enrichment/current_facts_store.py": "380f656f5d70a4870c9c86d2f821cc14c418128a1ffb51cf9124c5e3b8b5afc0",
 }
-SOURCE_HASHES = current_attribution(HISTORICAL_SOURCE_HASHES)
+SOURCE_HASHES = {**current_attribution(HISTORICAL_SOURCE_HASHES),
+    'src/mfdataindia/review/reader_access_profile.py': '0e2c4e2fd151a93e50c2428d6dd9eac405760e3b658781b5fed6ab2a7418a3e6',
+    'src/mfdataindia/review/reader_policy_source_version.py': '4119daef42299025fea29180b65bc80b75ee666433dad9fbc18a5cb46c3c0900',
+}
 # These are PostgreSQL 18 bootstrap catalogue identities, not caller input.
 PG_CLASS, PG_PROC, PG_OPERATOR = 1259, 1255, 2617
 PG_REWRITE, PG_POLICY = 2618, 3256

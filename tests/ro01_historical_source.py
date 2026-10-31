@@ -14,7 +14,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "89af628c88f4b905d2136acc7a222683c672fa44"
-MANIFEST_SHA = "393c27e796fe577e0c60c6dee6d302b322e53550456322c840b1c760721fabf7"
+MANIFEST_SHA = "7f502f9bc719c1c5cc2c9a00eef534d28ff770ba4ab8a96aa52e0ec2322305ff"
 
 
 def authority():

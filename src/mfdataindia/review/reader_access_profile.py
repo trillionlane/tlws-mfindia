@@ -18,6 +18,38 @@ from .reader_function_attestation_inventory import ATTESTATION_SQL
 RESTRICTED = "mf-review-restricted-read-v1"
 BROAD = "mf-fund-research-read-v1"
 
+# Upper bounds from the existing restricted installation recipes, not grants.
+# Unknown/new relations require explicit adoption, not a silent broad default.
+RESTRICTED_TABLES = {
+    "mf": frozenset("funds fund_facts nav_history nav_source_revisions dataset_summary source_snapshot_runs quality_flags nav_quality_assessments current_fund_facts".split()),
+    "mf_review": frozenset("policies snapshots results events certifications".split()),
+    "mf_analytics": frozenset("calendar_results calendar_certifications".split()),
+    "mf_rolling": frozenset("rolling_results rolling_certifications".split()),
+    "mf_enrichment": frozenset("documents mappings".split()),
+    "mf_official_facts": frozenset({"snapshots"}),
+    "mf_portfolios": frozenset({"snapshots"}),
+    "mf_overlap": frozenset({"results"}),
+    "mf_distributions": frozenset({"snapshots"}),
+    "mf_idcw": frozenset({"snapshots"}),
+    "mf_live_facts": frozenset("configuration baseline field_versions field_heads selected_fields current_values resolved".split()),
+    "mf_monthly_facts": frozenset({"snapshots"}),
+    "mf_fact_refresh": frozenset("runs publications transitions".split()),
+    "mf_fact_review": frozenset({"events"}),
+    "mf_multi_facts": frozenset("configuration snapshots runs transitions".split()),
+    "mf_book_facts": frozenset("configuration batches runs transitions prior_field_versions".split()),
+}
+RESTRICTED_COLUMNS = {
+    ("mf", "amcs"): frozenset({"amc_id", "amfi_amc_name"}),
+    ("mf", "fund_variants"): frozenset({"amfi_scheme_code", "group_key"}),
+    ("mf_portfolios", "sources"): frozenset({"source_id", "content_hash", "intake"}),
+    ("mf_distributions", "sources"): frozenset({"source_id", "metadata"}),
+    ("mf_idcw", "sources"): frozenset({"source_id", "metadata"}),
+    ("mf_monthly_facts", "sources"): frozenset({"content_hash", "byte_length", "intake"}),
+    ("mf_fact_refresh", "catalogs"): frozenset({"catalog_id", "source_url", "media_type", "content_hash"}),
+    ("mf_multi_facts", "sources"): frozenset({"content_hash", "source_url", "byte_length"}),
+    ("mf_book_facts", "sources"): frozenset({"source_key", "content_hash", "source_url", "media_type", "byte_length"}),
+}
+
 
 class ReaderAccessError(ValueError):
     """Stable, value-free profile/configuration failure."""
@@ -29,6 +61,9 @@ def contract(selected=RESTRICTED):
     if selected == BROAD:
         return policy.profile()
     return {"format": RESTRICTED, "reader": policy.READER,
+            "schemas": list(policy.SCHEMAS),
+            "relation_read_upper_bounds": {k: sorted(v) for k, v in RESTRICTED_TABLES.items()},
+            "column_read_upper_bounds": {".".join(k): sorted(v) for k, v in RESTRICTED_COLUMNS.items()},
             "source_content_select": False, "writes": False,
             "administrative_access": False}
 
@@ -53,7 +88,9 @@ def guard_options(selected):
 
 
 def _existing_helper(state):
-    """Retain the reviewed helper only; never propose additional EXECUTE.
+    """Retain the reviewed privileged helper only; never add EXECUTE.
+
+    Existing non-privileged invoker helpers are not revoked or expanded.
 
     This checks real catalogue OIDs and the committed body/declaration seals.
     It does not manufacture a live capture receipt or invoke the helper.
@@ -123,6 +160,8 @@ def verify_selection(conn, selected=RESTRICTED, principal=None):
     """An explicit broad choice is effective only with a matching real database."""
     contract(selected)
     if selected == RESTRICTED:
+        if principal == policy.READER:
+            verify_restricted_catalogue(conn.execute(policy.STATE_SQL).fetchone()["value"])
         return
     identity = conn.execute(
         "SELECT current_database() AS database,current_user AS principal,session_user AS session"
@@ -136,6 +175,54 @@ def verify_selection(conn, selected=RESTRICTED, principal=None):
     planned = prepare(_catalogue(conn))
     if planned["sql"] or any(planned["delta"].values()):
         raise ReaderAccessError("READER_PROFILE_READ_GRANTS_MISSING")
+
+
+def verify_restricted_catalogue(state):
+    """Reject residual broad/current/future capabilities, even core-only state.
+
+    A restricted selection cannot revoke capabilities or pretend broad defaults
+    are restricted. Existing invoker helpers are unchanged; no EXECUTE is added.
+    """
+    try:
+        reader = next(row for row in state["roles"] if row["rolname"] == policy.READER)
+        oid = reader["oid"]
+        if any(reader[k] for k in ("rolsuper", "rolinherit", "rolcreaterole", "rolcreatedb", "rolreplication", "rolbypassrls")):
+            raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        if any(row["member"] == oid for row in state["memberships"]):
+            raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        namespaces = {row["oid"]: row["nspname"] for row in state["namespaces"]}
+        for row in state["namespaces"]:
+            if row["create_allowed"] or row["owner"] == oid or row["nspname"] not in set(policy.SCHEMAS) | {"public"}:
+                raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        if any(row["create_allowed"] or row["owner"] == oid for row in state["databases"]):
+            raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        relations = {row["oid"]: row for row in state["relations"]}
+        for row in relations.values():
+            full = row["relname"] in RESTRICTED_TABLES.get(row["nspname"], ())
+            caps = row["capabilities"]
+            if (row["owner"] == oid or (caps is not None and (any(caps[1:3]) or (caps[0] and not full)))
+                    or (row["sequence_capabilities"] is not None and any(row["sequence_capabilities"][i] for i in (0, 2)))):
+                raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        for row in state["columns"]:
+            relation = relations[row["oid"]]
+            caps = row["capabilities"]
+            full = relation["relname"] in RESTRICTED_TABLES.get(relation["nspname"], ())
+            column = row["name"] in RESTRICTED_COLUMNS.get((relation["nspname"], relation["relname"]), ())
+            if caps is not None and (any(caps[1:]) or (caps[0] and not (full or column))):
+                raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        for row in state["functions"]:
+            helper = (namespaces[row["pronamespace"]], row["proname"], row["proargtypes"]) == ("mf_fact_review", "dependencies", "23")
+            if row["proowner"] == oid or (row["prosecdef"] and row["execute_allowed"] and not helper):
+                raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        for row in state["defaults"]:
+            if row["defaclnamespace"] == 0 or row["defaclnamespace"] in namespaces:
+                if any(atom[1] in (0, oid) for atom in row["acl"]):
+                    raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        for group in ("namespaces", "databases", "functions", "relations", "columns"):
+            if any(atom[1] == oid and atom[3] for row in state[group] for atom in row["acl"]):
+                raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+    except (KeyError, TypeError, StopIteration):
+        raise ReaderAccessError("INCOMPLETE_READER_ACCESS_PROFILE") from None
 
 
 def _catalogue(conn):
@@ -174,14 +261,7 @@ def reconcile(conn, selected=RESTRICTED, *, initialize_roles=()):
     if selected == BROAD:
         prepare(_catalogue(conn))
     else:
-        for relation in ("mf_monthly_facts.sources", "mf_book_facts.sources",
-                         "mf_multi_facts.sources", "mf_fact_refresh.catalogs",
-                         "mf_portfolios.sources", "mf_distributions.sources",
-                         "mf_idcw.sources", "mf_enrichment.blobs"):
-            if conn.execute("SELECT to_regclass(%s) AS relation", (relation,)).fetchone()["relation"]:
-                if conn.execute("SELECT has_column_privilege(%s,%s,'content','SELECT') AS allowed",
-                                (policy.READER, relation)).fetchone()["allowed"]:
-                    raise ReaderAccessError("READER_PROFILE_SELECTION_CONFLICT")
+        verify_restricted_catalogue(conn.execute(policy.STATE_SQL).fetchone()["value"])
     # Existing supported principal roles keep their original capabilities. This
     # is additive baseline provisioning, not a role reset or credential rotation.
     from .privileges import verify_principal
