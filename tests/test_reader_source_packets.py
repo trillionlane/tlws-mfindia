@@ -223,8 +223,10 @@ def test_normal_ci_bundle_requires_exact_trusted_run_context(monkeypatch):
     with pytest.raises(ValueError):
         packets.normal_ci_bundle("f" * 40)
     monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
+    actual = packets.normal_ci_bundle(GIT)
+    assert actual == {**BUNDLE, "attempt": 2}
     with pytest.raises(ValueError):
-        packets.normal_ci_bundle(GIT)
+        packets.historical_v4_pair(legacy(), "LEGACY_BASE44", identity=IDENTITY, bundle=actual)
     monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "1")
     monkeypatch.setenv("GITHUB_REPOSITORY", "unrelated/repo")
     with pytest.raises(ValueError):

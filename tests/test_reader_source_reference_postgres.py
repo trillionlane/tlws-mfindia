@@ -88,7 +88,7 @@ def test_native_complete_committed_source_reference_and_numbered_lossless_output
                    "permission_acceptance": False, "runtime_authority": False}
     import reader_source_packets as packets
     bundle = packets.normal_ci_bundle(payload["compiler_git"])
-    lines = packets.pair(payload, "LEGACY_BASE44", identity=uuid4().hex,
+    lines = packets.pair(payload, "LEGACY_BASE44", identity=packets.bundle_identity(bundle),
                          bundle=bundle)
     assert packets.extract_pair(lines, "LEGACY_BASE44",
                                 expected_git=payload["compiler_git"],
