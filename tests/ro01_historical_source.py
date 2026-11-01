@@ -11,6 +11,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 import subprocess
+from ro02_historical_source import previous as ro02_previous
 
 from ci_source_attempt_historical import restore_ci_source_parent
 
@@ -29,6 +30,7 @@ def authority():
 
 def historical_parent(path, data):
     assert type(data) is bytes
+    data = ro02_previous(path, data)
     data = restore_ci_source_parent(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()

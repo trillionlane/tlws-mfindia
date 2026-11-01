@@ -1,0 +1,127 @@
+{
+  "base": "d0deb7102d505a8a0ffb8c2af802ba2b4c121dab",
+  "format": "RO02_FINITE_CURRENT_SOURCE_MAP_V1",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/verify.yml": {
+      "current_sha256": "ad8c06634c0200210d6de1bdd8492b89ed825f04c4f634c69edb6605344ea348",
+      "previous_sha256": "a7b7992177822de45bbd56750e84b72c11cb734b1dbd1ecb5226fcff16e1cb5c",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/enrichment/book_store.py": {
+      "current_sha256": "8de21e08d12e2dde50e7954cb82dbc0282a419c4516c8c3882bcbf70160fd69a",
+      "previous_sha256": "bc80693e937e73e0cbd95a2b4b0aac0d5dbf5878977cd4a61aee42a49387e9aa",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/enrichment/current_facts_store.py": {
+      "current_sha256": "700f1e53771ac9212fcd57805788bf0b0753b8cb5b57ca9970304fb25556149c",
+      "previous_sha256": "380f656f5d70a4870c9c86d2f821cc14c418128a1ffb51cf9124c5e3b8b5afc0",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/enrichment/multi_store.py": {
+      "current_sha256": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254",
+      "previous_sha256": "6ef3bd8084725416bae8f708f5c7271c77f37ef509e458250e56eef5f25adcb1",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/broad_reader_direct_delivery_backend.py": {
+      "current_sha256": "14cc05ac54fb4aac2518eec3fddf595c435f76ade4c72bc5eaa9adc3ebfffe2a",
+      "previous_sha256": "582d31ab389d6045654fe83ed27d882c04845f04981137850dbb33449a85eaa6",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/broad_reader_direct_delivery_spec.py": {
+      "current_sha256": "53f2f69c8d8faf9df2380d09fe7a94c98b8da477594e7310a54480f754265bd1",
+      "previous_sha256": "1fa2a48952bb99b235bfa96fbed6f1c15d29ea087bc23643cd8beed075d75a66",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/broad_reader_direct_reader_check.py": {
+      "current_sha256": "b9bfdde33350da014f4fb330193ce2a36ec9680afd97a43d59bae41c4b69d568",
+      "previous_sha256": "aac943e25b093acd19d7fc2bd6cb051770c3f88daab56b2f481766722922d539",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/broad_reader_source_authority.py": {
+      "current_sha256": "3d944400841dd3026b13383ed608fb13886d860ea56a95ff5fcbf89ad37b97f7",
+      "previous_sha256": "ea4629be3bd570ec00c4d9914278b709ee4385114b55a7777f740ebdb218bf4a",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/broad_reader_view_profile.py": {
+      "current_sha256": "a78d8f364707c324776609cf7e40bfc289e87db4be2e765e6aa92b090efe9c60",
+      "previous_sha256": "07339a8765bd0d7d19ac0b6c59711b703f0b41bfed2054a689fd5e0d2339f250",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/core_access_metadata_controller.py": {
+      "current_sha256": "a22172492b6226c413f591fa1ae396b9d4e4f58bb7cb6ce7c6ae6e59a8ea0c6f",
+      "previous_sha256": "ad749a642002daea5dc2d9d49e6ccb68891acb4868f231d8124103e5d16f97f0",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/core_access_metadata_controller_v2.py": {
+      "current_sha256": "1f503ab216890edd8b5e2724aec8da06f03169ae4b0fc5ae4bd3391928bc9946",
+      "previous_sha256": "5768314b02e2aa0103860d3d25339d2fb7301ed7b9cfc83bd617559a3a79655d",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec.py": {
+      "current_sha256": "fcf23dba0f58fdbb1b88cf1ec336f8b9089c282de548e99f5ee4d670478c80d0",
+      "previous_sha256": "e88593b96efb9b44978f0cd1566dbe05cf672378e6a92b07aa37f6e63e740b08",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec_v2.py": {
+      "current_sha256": "8f0abd4d2cbe721e4cd97558c76edaf95fc6ecb66885a6a314ed508304095580",
+      "previous_sha256": "c36bbf6e420fa5fb65f60cbb4897f6000bce5985117a8a4201ec34a825ba6b70",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/core_permission_controller.py": {
+      "current_sha256": "2f7901805ee3a8df2c68a397c597e50d0be58ef01cb7d7dbaf3650ca1ece2c0e",
+      "previous_sha256": "af8c11a3125de933f277daad8fb6fd995ebfd19f8a300550afee6997bbbaa899",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/core_permission_spec.py": {
+      "current_sha256": "e93e09e0a4fb133b509c06963b21bb424d157e7d103259ae85fd89bdc877eafd",
+      "previous_sha256": "37df02c9e747f0c180fb1cdad0adda216ac3f5ef7811c202ab46017e332e8d79",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "src/mfdataindia/review/reader_policy_source_version.py": {
+      "current_sha256": "9067edd784f70be59a30d236b98810df579da95576a8dd178bdbbfb6a9d9eae6",
+      "previous_sha256": "b72204c42910f2767fff8d83055c46b20a6724a6bbfd99fcf6de5068bc948b61",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/ci_source_attempt_historical.py": {
+      "current_sha256": "d06bd0995cdbfa3c25b4c223704196c1be3987c565bb334c2e4099f20441eae0",
+      "previous_sha256": "3979913f81c680ea3ea02afcd5d89e8bcb63c6a4e8fadce87a161036af15cd2b",
+      "scope": "Compose exact RO02 inverse before unchanged CI release proof; no assertion or historical authority weakening"
+    },
+    "tests/reader_source_variants.py": {
+      "current_sha256": "bccc0c5a2469786915d1dcdda4fa8bebb888fce34ad2211eb358b02d7dab4e7a",
+      "previous_sha256": "f63fc43f149f7ea8905b49918c2ec05c5e2aa28ab12306f3797bbce37679435f",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/ro01_historical_source.py": {
+      "current_sha256": "39bae7563a6e7e5153a107b66a890d0966f4e39539c9f736af1db57e26aa7c9b",
+      "previous_sha256": "0ea27a5668a4569588db2f3f3a8e98607bb312f90779e254e19c5bda03aa62b9",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/test_broad_reader_direct_delivery_binding.py": {
+      "current_sha256": "7a3652205539585ac4fd2b0c56f79619d04bddbfbcd02e141f0896ed58858310",
+      "previous_sha256": "7baae81585d7ed56cf932232281c4fd65aa03aac3c52026727489f19f5bc34ff",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/test_broad_reader_direct_delivery_spec.py": {
+      "current_sha256": "8dd217d0e1d3fe66cce2264973efaa77220234e0540de04925a71115bb2576dd",
+      "previous_sha256": "9d2b1c02f4c086a7e8c2c53a81a076c8ada8252102a074867de691f4b002f696",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/test_broad_reader_source_authority.py": {
+      "current_sha256": "a55a62fdba9cf13f5a297578f5ebac937bf8e47011a33a036745c1e2407f2b3c",
+      "previous_sha256": "dff003f8d45c6ad5ffc7fc3deb151528c5edc8d35d9fe78012b60381256f8112",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    },
+    "tests/test_ci_source_attempt_provenance.py": {
+      "current_sha256": "11351ff827516d731fa68e25ce0271cbfd1ed9fd8ca5729fa34bc636cf36d327",
+      "previous_sha256": "cfdb79daa48dce55a511ad0921e77ed7e91cca0e3a864e605b83206c1a127dfe",
+      "scope": "Compose exact RO02 inverse before unchanged CI release proof; no assertion or historical authority weakening"
+    },
+    "tests/test_ro01_current_authority.py": {
+      "current_sha256": "f54c45323b9bf21d50c075f39aaef9d9aff4e66f6a1ef91d60aa4cae378d14bf",
+      "previous_sha256": "36b29b71bd72489442f2d6f788dead1e203d692674fc9eb3f54a065c42632741",
+      "scope": "Intentional current RO02 change; full predecessor bytes only for historical release assertions"
+    }
+  }
+}

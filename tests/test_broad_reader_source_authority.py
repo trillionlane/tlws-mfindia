@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_exact_repo_source_files_match_reviewed_ledgers():
     result = source.verify_packaged_source(ROOT)
-    assert result["base_files"] == 44 and result["variant_files"] == 9
+    assert result["base_files"] == 44 and result["variant_files"] == 10
     assert result["live_migration_ledger_compared"] is False
     assert result["permission_enabled"] is False
     assert len(result["migration_ledger"]) == 44
@@ -49,7 +49,7 @@ def test_final_image_layout_uses_embedded_full_docs_and_installed_python(tmp_pat
     assert not (tmp_path / "docs").exists()
     assert not (tmp_path / "src").exists()
     result = source.verify_packaged_source(tmp_path)
-    assert result["base_files"] == 44 and result["variant_files"] == 9
+    assert result["base_files"] == 44 and result["variant_files"] == 10
     assert result["permission_enabled"] is False
 
 

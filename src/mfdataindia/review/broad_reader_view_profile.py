@@ -7,6 +7,7 @@ function/callee attestation, dependency graph, or actual lock witness.
 
 from hashlib import sha256
 import json
+from .reader_execution_source_reference import SHA256 as RO02_AUTHORITY_SHA256
 
 
 BASE_AUTHORITY_SHA256 = "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372"
@@ -16,6 +17,10 @@ _PROFILES = {
     "BASE44_EXTENDED": (15, "3c5ec8ce41302dd33f43541143ae1a234d3d27585d92ba94cc93210eef43721b"),
     "BASE44_BOOK_V2_SINGLE_PASS": (15, "3fc3053b2491772b66c843fbde77ef98f346c811c886267448bacc7b02ffee74"),
 }
+RO02_POPULATED_PROFILE = "BASE44_RO02_REGISTERED_AND_BOOK_V5_POPULATED"
+_BY_AUTHORITY = {VARIANT_AUTHORITY_SHA256: _PROFILES,
+                 RO02_AUTHORITY_SHA256: {**_PROFILES, RO02_POPULATED_PROFILE: (
+                     16, "e2fca3236a4372cb705ba1eda686763221a60354837df3419743fbe643ee664c")}}
 
 
 class ViewProfileError(ValueError):
@@ -27,17 +32,15 @@ def _require(condition):
         raise ViewProfileError("UNMATCHED_BROAD_READER_SOURCE_PROFILE")
 
 
-def select(state, candidates, *, base_authority_sha256, variant_authority_sha256):
-    """Return one source candidate; every later live gate remains required."""
-    _require(base_authority_sha256 == BASE_AUTHORITY_SHA256
-             and variant_authority_sha256 == VARIANT_AUTHORITY_SHA256)
+def definition_projection(state, candidates):
+    """Complete source-compiler projection; this alone never admits a graph."""
     _require(type(state) is dict and type(candidates) is list)
     state_views = [row for row in state.get("relations", [])
                    if type(row) is dict and row.get("relkind") == "v"]
     candidate_views = [row for row in candidates
                        if type(row) is dict and row.get("relkind") == "v"]
     _require(len(state_views) == len(candidate_views)
-             and len(state_views) in {count for count, _ in _PROFILES.values()})
+             and len(state_views) > 0)
     state_by_name = {(r.get("nspname"), r.get("relname")): r for r in state_views}
     candidate_by_name = {(r.get("nspname"), r.get("relname")): r for r in candidate_views}
     _require(len(state_by_name) == len(candidate_by_name) == len(state_views)
@@ -53,10 +56,19 @@ def select(state, candidates, *, base_authority_sha256, variant_authority_sha256
                  and len(seal["sha256"]) == 64 and type(seal["utf8_bytes"]) is int
                  and seal["utf8_bytes"] > 0)
         projection.append({"nspname": name[0], "relname": name[1], "definition": seal})
+    return projection
+
+
+def select(state, candidates, *, base_authority_sha256, variant_authority_sha256):
+    """One exact authority/profile pair; no cross-product or learned runtime pin."""
+    _require(base_authority_sha256 == BASE_AUTHORITY_SHA256
+             and variant_authority_sha256 in _BY_AUTHORITY)
+    profiles = _BY_AUTHORITY[variant_authority_sha256]
+    projection = definition_projection(state, candidates)
     raw = json.dumps(projection, sort_keys=True, separators=(",", ":"),
                      ensure_ascii=False, allow_nan=False).encode()
     digest = sha256(raw).hexdigest()
-    matches = [name for name, (count, expected) in _PROFILES.items()
+    matches = [name for name, (count, expected) in profiles.items()
                if len(projection) == count and digest == expected]
     _require(len(matches) == 1)
     return {"profile": matches[0], "views_sha256": digest, "views": len(projection),

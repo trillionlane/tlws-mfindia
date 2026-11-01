@@ -24,7 +24,7 @@ HISTORICAL_SOURCE_HASHES = {
 }
 SOURCE_HASHES = {**current_attribution(HISTORICAL_SOURCE_HASHES),
     'src/mfdataindia/review/reader_access_profile.py': '579d1e44da04f9419d684f1aef17b4c5cea49d057c45708c1516b1f8943587b1',
-    'src/mfdataindia/review/reader_policy_source_version.py': 'b72204c42910f2767fff8d83055c46b20a6724a6bbfd99fcf6de5068bc948b61',
+    'src/mfdataindia/review/reader_policy_source_version.py': '9067edd784f70be59a30d236b98810df579da95576a8dd178bdbbfb6a9d9eae6',
     'src/mfdataindia/review/broad_reader_function_closure.py': 'a7542842bb3bdb899ed96de8094ceb83f5096b0439864b30db0c6b66b87d6977',
 }
 CONTEXT_SQL = """SELECT current_user::text AS effective, session_user::text AS authenticated,

@@ -148,6 +148,24 @@ def verify_acl(conn):
         raise ValueError("current-facts configuration immutability drift")
 
 
+def _initialize_configuration(conn, *, baseline, policy_hash):
+    """Post-DDL constructor shared with complete migrated installation tests.
+
+    Requires the existing owner's transaction and an empty configuration;
+    never upgrades, replaces or activates an installed projection.
+    """
+    who = conn.execute("SELECT session_user AS name,current_user=session_user AS direct").fetchone()
+    if not who["direct"] or who["name"] not in ("postgres", "mfdata_admin") or conn.info.transaction_status.name != "INTRANS":
+        raise ValueError("direct transactional configuration owner required")
+    if conn.execute("SELECT 1 FROM mf_live_facts.configuration LIMIT 1").fetchone():
+        raise ValueError("empty current configuration required")
+    definitions = {name: view_definition(conn, "mf_live_facts." + name) for name in sorted(VIEWS)}
+    view_hashes = {name: fingerprint(definition) for name, definition in definitions.items()}
+    conn.execute("INSERT INTO mf_live_facts.configuration VALUES(1,%s,%s,%s,%s,%s)",
+        (baseline, hashlib.sha256(baseline.encode()).hexdigest(), policy_hash,
+         Jsonb(view_hashes), Jsonb(definitions)))
+
+
 def install(conn, root: Path):
     with conn.transaction():
         owner = conn.execute(
@@ -189,20 +207,7 @@ def install(conn, root: Path):
         ):
             raise ValueError("current-facts migration differs from reviewed pin")
         conn.execute(ddl.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
-        definitions = {
-            name: view_definition(conn, "mf_live_facts." + name) for name in sorted(VIEWS)
-        }
-        view_hashes = {name: fingerprint(definition) for name, definition in definitions.items()}
-        conn.execute(
-            "INSERT INTO mf_live_facts.configuration VALUES(1,%s,%s,%s,%s,%s)",
-            (
-                baseline,
-                hashlib.sha256(baseline.encode()).hexdigest(),
-                ph,
-                Jsonb(view_hashes),
-                Jsonb(definitions),
-            ),
-        )
+        _initialize_configuration(conn, baseline=baseline, policy_hash=ph)
         verify_acl(conn)
         compare_preservation_structure(before, capture_preservation(conn, structure_only=True))
         compare_review(prior, capture_review(conn), added_policy=ph)

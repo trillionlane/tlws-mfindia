@@ -29,7 +29,7 @@ IDENTITY = "dev-core-aclmeta-261022a"
 WORKER = "scripts/collect_core_access_metadata_dev.py"
 WORKER_SHA = "8e3d00a212b251487ec0f5d4061fbe1a74f27e59e4fae647026be64afae949ef"
 # RO-01 current source-attribution version; historical receipts remain consumed.
-SPEC_SHA = 'e88593b96efb9b44978f0cd1566dbe05cf672378e6a92b07aa37f6e63e740b08'
+SPEC_SHA = 'fcf23dba0f58fdbb1b88cf1ec336f8b9089c282de548e99f5ee4d670478c80d0'
 INVENTORY_SHA = "abbdfa18ed7923669447dd077e30b91c89ab8da542a0cfe64582b8948c059eb1"
 STAGE = "core-access-metadata-not-acceptance"
 ARTIFACTS = Path("/Users/deviojha/projects/codex/artifacts")

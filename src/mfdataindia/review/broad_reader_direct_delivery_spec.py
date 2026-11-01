@@ -85,6 +85,19 @@ OLD_CONSUMED_JOBS = frozenset({
 })
 
 
+def role_for(kind, *, operation_id=None):
+    """Explicit current composition; legacy callers keep their exact identity."""
+    require(kind in ROLES, "UNKNOWN_DIRECT_DELIVERY_JOB")
+    if operation_id is None:
+        return ROLES[kind]
+    require(type(operation_id) is str and re.fullmatch(r"op-[a-z0-9]{12,24}", operation_id),
+            "INVALID_READER_OPERATION_ID")
+    old = ROLES[kind]
+    return Role("dev-reader-" + kind + "-" + operation_id,
+                "mf-reader-internal-" + kind + "-" + operation_id,
+                "scripts/reader_execution_dev.py", old.service_account, old.secret)
+
+
 class DeliverySpecError(ValueError):
     """No runtime permission may be inferred from an invalid candidate."""
 
@@ -106,30 +119,34 @@ def git_sha(value):
     return value
 
 
-def intent_preimage(kind, root, payload):
+def intent_preimage(kind, root, payload, *, operation_id=None):
     """Cycle-free leaf: exact root and all payload bytes except its own hash."""
     require(kind in ROLES and type(root) is str and type(payload) is dict
             and "create_only_intent_sha256" in payload,
             "EXACT_DIRECT_CREATE_INTENT_PREIMAGE_REQUIRED")
     path = Path(root)
+    role = role_for(kind, operation_id=operation_id)
+    pattern = (re.escape(ROOT_PREFIXES[kind]) + r"[A-Za-z0-9]{6,16}"
+               if operation_id is None else re.escape("mf-reader-internal-" + operation_id))
     require(path.is_absolute() and path.parent == ARTIFACTS
             and not path.is_symlink() and path.resolve() == path
-            and re.fullmatch(re.escape(ROOT_PREFIXES[kind]) +
-                             r"[A-Za-z0-9]{6,16}", path.name),
+            and re.fullmatch(pattern, path.name),
             "EXACT_NEW_DIRECT_EVIDENCE_ROOT_REQUIRED")
     preimage = {
         "format": "mf-broad-reader-direct-create-intent-preimage-v1",
-        "kind": kind, "job": ROLES[kind].job, "root": root,
+        "kind": kind, "job": role.job, "root": root,
         "payload_without_create_only_intent_sha256": {
             key: value for key, value in payload.items()
             if key != "create_only_intent_sha256"},
     }
+    if operation_id is not None:
+        preimage.update(format="mf-reader-execution-create-intent-v1", operation_id=operation_id)
     digest = hashlib.sha256(canonical(preimage).encode()).hexdigest()
     return preimage, digest
 
 
-def require_intent(kind, root, payload):
-    preimage, digest = intent_preimage(kind, root, payload)
+def require_intent(kind, root, payload, *, operation_id=None):
+    preimage, digest = intent_preimage(kind, root, payload, operation_id=operation_id)
     require(payload["create_only_intent_sha256"] == digest,
             "DIRECT_CREATE_INTENT_HASH_DRIFT")
     return preimage, digest
@@ -323,15 +340,15 @@ def validate_reader_payload(payload, *, final_git_sha, source_root):
 
 
 def request(kind, *, root, final_git_sha, image, payload, worker_sha256,
-            controller_sha256, spec_sha256, source_sha256):
+            controller_sha256, spec_sha256, source_sha256, operation_id=None):
     """Build one complete fixed job candidate; provider I/O is elsewhere."""
     require(kind in ROLES, "UNKNOWN_DIRECT_DELIVERY_JOB")
-    role = ROLES[kind]
+    role = role_for(kind, operation_id=operation_id)
     require(role.job not in OLD_CONSUMED_JOBS
             and len({item.job for item in ROLES.values()}) == len(ROLES),
             "CONSUMED_OR_ALIASED_JOB_IDENTITY")
     git_sha(final_git_sha)
-    require_intent(kind, root, payload)
+    require_intent(kind, root, payload, operation_id=operation_id)
     image_ref = image_binding(image, expected_git_sha=final_git_sha)
     hashes = {"BROAD_DIRECT_WORKER_SHA256": sha(worker_sha256),
               "BROAD_DIRECT_CONTROLLER_SHA256": sha(controller_sha256),
@@ -342,6 +359,14 @@ def request(kind, *, root, final_git_sha, image, payload, worker_sha256,
                    "BROAD_DIRECT_ROLE": kind,
                    "BROAD_DIRECT_ROOT": root,
                    **payload_variables(encoded), **hashes}
+    if operation_id is not None:
+        require(payload.get("format") == "mf-reader-execution-stage-v1"
+                and payload.get("kind") == kind and type(payload.get("plan")) is dict
+                and payload["plan"].get("operation_id") == operation_id,
+                "CURRENT_OPERATION_PAYLOAD_REQUIRED")
+        environment.update(READER_EXECUTION_OPERATION_ID=operation_id,
+                           READER_EXECUTION_PLAN_SHA256=broad_policy.fingerprint(payload["plan"]),
+                           READER_EXECUTION_PAYLOAD_SHA256=encoded["raw_sha256"])
     env = [{"name": name, "value": value} for name, value in sorted(environment.items())]
     env.append({"name": "MFDATAINDIA_DSN", "valueFrom": {
         "secretKeyRef": {"name": role.secret, "key": "1"}}})
@@ -381,7 +406,7 @@ def request(kind, *, root, final_git_sha, image, payload, worker_sha256,
 
 
 def worker_environment(kind, environment, *, final_git_sha, worker_sha256,
-                       controller_sha256, spec_sha256, source_sha256):
+                       controller_sha256, spec_sha256, source_sha256, operation_id=None):
     """Validate the entire fixed injected environment before reading its DSN.
 
     The Cloud Run variables are service metadata, not authorization. The
@@ -396,6 +421,11 @@ def worker_environment(kind, environment, *, final_git_sha, worker_sha256,
                 "BROAD_DIRECT_CONTROLLER_SHA256": sha(controller_sha256),
                 "BROAD_DIRECT_SPEC_SHA256": sha(spec_sha256),
                 "BROAD_DIRECT_SOURCE_SHA256": sha(source_sha256)}
+    role = role_for(kind, operation_id=operation_id)
+    if operation_id is not None:
+        expected.update(READER_EXECUTION_OPERATION_ID=operation_id,
+                        READER_EXECUTION_PLAN_SHA256=sha(environment.get("READER_EXECUTION_PLAN_SHA256")),
+                        READER_EXECUTION_PAYLOAD_SHA256=sha(environment.get("READER_EXECUTION_PAYLOAD_SHA256")))
     require(all(type(key) is str for key in environment),
             "EXACT_DIRECT_WORKER_ENVIRONMENT_REQUIRED")
     count = environment.get("BROAD_DIRECT_PAYLOAD_COUNT")
@@ -404,14 +434,14 @@ def worker_environment(kind, environment, *, final_git_sha, worker_sha256,
     payload_names = {"BROAD_DIRECT_PAYLOAD_COUNT", "BROAD_DIRECT_PAYLOAD_SHA256"} | {
         f"BROAD_DIRECT_PAYLOAD_{i}" for i in range(int(count))}
     configured = {key for key in environment
-                  if key.startswith("BROAD_DIRECT_") or key in (
+                  if key.startswith(("BROAD_DIRECT_", "READER_EXECUTION_")) or key in (
                       "DEPLOYMENT_GIT_SHA", "MFDATAINDIA_DSN")}
     require(configured == set(expected) | payload_names | {"MFDATAINDIA_DSN"}
             and not any(key.startswith("PG") for key in environment)
             and all(environment.get(key) == value for key, value in expected.items())
-            and environment.get("CLOUD_RUN_JOB") == ROLES[kind].job
+            and environment.get("CLOUD_RUN_JOB") == role.job
             and type(environment.get("CLOUD_RUN_EXECUTION")) is str
-            and re.fullmatch(re.escape(ROLES[kind].job) + r"-[a-z0-9]{5,10}",
+            and re.fullmatch(re.escape(role.job) + r"-[a-z0-9]{5,10}",
                              environment["CLOUD_RUN_EXECUTION"])
             and environment.get("CLOUD_RUN_TASK_INDEX") == "0"
             and environment.get("CLOUD_RUN_TASK_ATTEMPT") == "0"
@@ -420,7 +450,13 @@ def worker_environment(kind, environment, *, final_git_sha, worker_sha256,
             and 0 < len(environment["MFDATAINDIA_DSN"].encode()) <= 32768,
             "EXACT_DIRECT_WORKER_ENVIRONMENT_REQUIRED")
     payload = payload_from_variables(environment)
-    require_intent(kind, environment["BROAD_DIRECT_ROOT"], payload)
+    require_intent(kind, environment["BROAD_DIRECT_ROOT"], payload, operation_id=operation_id)
+    if operation_id is not None:
+        require(type(payload.get("plan")) is dict
+                and payload["plan"].get("operation_id") == operation_id
+                and broad_policy.fingerprint(payload["plan"]) == expected["READER_EXECUTION_PLAN_SHA256"]
+                and broad_policy.fingerprint(payload) == expected["READER_EXECUTION_PAYLOAD_SHA256"],
+                "CURRENT_OPERATION_ENVIRONMENT_DRIFT")
     return payload
 
 
@@ -500,7 +536,7 @@ def _timestamp(value):
 
 
 def validate_job_export(kind, actual, prepared, *, namespace,
-                        expected_executions=0):
+                        expected_executions=0, operation_id=None):
     """Full first-generation created JobSpec, not a name-only comparison."""
     require(kind in ROLES and type(actual) is dict
             and set(actual) <= {"apiVersion", "kind", "metadata", "spec", "status"}
@@ -509,10 +545,11 @@ def validate_job_export(kind, actual, prepared, *, namespace,
             and namespace == PROJECT_NUMBER,
             "EXACT_DIRECT_JOB_EXPORT_REQUIRED")
     metadata = actual.get("metadata")
+    role = role_for(kind, operation_id=operation_id)
     require(type(metadata) is dict and set(metadata) <= {
         "name", "namespace", "uid", "creationTimestamp", "generation",
         "resourceVersion", "selfLink", "labels", "annotations"}
-        and metadata.get("name") == ROLES[kind].job
+        and metadata.get("name") == role.job
         and metadata.get("namespace") in (namespace, PROJECT)
         and type(metadata.get("uid")) is str
         and re.fullmatch(r"[a-z0-9][a-z0-9-]{15,127}", metadata["uid"])
@@ -523,7 +560,7 @@ def validate_job_export(kind, actual, prepared, *, namespace,
     if "selfLink" in metadata:
         require(metadata["selfLink"] == (
             f"/apis/run.googleapis.com/v1/namespaces/{metadata['namespace']}"
-            f"/jobs/{ROLES[kind].job}"), "DIRECT_JOB_LINK_DRIFT")
+            f"/jobs/{role.job}"), "DIRECT_JOB_LINK_DRIFT")
     labels = metadata.get("labels", {})
     require(type(labels) is dict
             and labels.get("cloud.googleapis.com/location") == REGION
@@ -618,20 +655,21 @@ def verify_certificate(document, *, payload_sha256, stage):
 
 
 def validate_execution_export(kind, actual, prepared, *, job, image,
-                              original_identity=None):
+                              original_identity=None, operation_id=None):
     """Bind one Execution's immutable UID, parent and complete task profile."""
     require(kind in ROLES and type(actual) is dict
             and set(actual) <= {"apiVersion", "kind", "metadata", "spec", "status"}
             and actual.get("apiVersion") == "run.googleapis.com/v1"
             and actual.get("kind") == "Execution", "EXACT_DIRECT_EXECUTION_REQUIRED")
     image_binding(image, expected_git_sha=_git_from_prepared(prepared))
+    role = role_for(kind, operation_id=operation_id)
     metadata = actual.get("metadata")
     require(type(metadata) is dict
             and set(metadata) <= {"name", "namespace", "uid", "creationTimestamp",
                                   "generation", "resourceVersion", "selfLink", "labels",
                                   "annotations", "ownerReferences"}
             and type(metadata.get("name")) is str
-            and re.fullmatch(re.escape(ROLES[kind].job) + r"-[a-z0-9]{5,10}",
+            and re.fullmatch(re.escape(role.job) + r"-[a-z0-9]{5,10}",
                              metadata["name"])
             and metadata.get("namespace") in (PROJECT, PROJECT_NUMBER)
             and type(metadata.get("uid")) is str
@@ -642,14 +680,14 @@ def validate_execution_export(kind, actual, prepared, *, job, image,
             "EXACT_DIRECT_EXECUTION_IDENTITY_REQUIRED")
     _timestamp(metadata.get("creationTimestamp"))
     expected_owner = {"apiVersion": "serving.knative.dev/v1", "kind": "Job",
-                      "name": ROLES[kind].job, "uid": job["job_uid"],
+                      "name": role.job, "uid": job["job_uid"],
                       "controller": True, "blockOwnerDeletion": True}
     owners = metadata.get("ownerReferences", [])
     require(owners in ([], [expected_owner]), "DIRECT_EXECUTION_PARENT_DRIFT")
     labels = metadata.get("labels", {})
     require(type(labels) is dict
             and labels.get("cloud.googleapis.com/location") == REGION
-            and labels.get("run.googleapis.com/job") == ROLES[kind].job
+            and labels.get("run.googleapis.com/job") == role.job
             and labels.get("run.googleapis.com/jobUid") == job["job_uid"]
             and labels.get("run.googleapis.com/jobGeneration") == "1"
             and set(labels) <= {"cloud.googleapis.com/location", "run.googleapis.com/job",

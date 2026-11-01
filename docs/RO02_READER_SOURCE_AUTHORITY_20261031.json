@@ -1,0 +1,61 @@
+{
+  "base44_authority_sha256": "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372",
+  "files": [
+    {
+      "bytes": 5055,
+      "path": "sql/optional/amc_book_current_projection_v2.sql.inc",
+      "sha256": "1713c2de7427f4badfcdafffc8b78384877d18b40e65e2971083fe6493895376"
+    },
+    {
+      "bytes": 2886,
+      "path": "sql/optional/amc_book_core_projection_v1.sql.inc",
+      "sha256": "222f81c25672e66a35bbe3c17be6723ca65495d55a6af571c15bafa00f5aa4f8"
+    },
+    {
+      "bytes": 1381,
+      "path": "src/mfdataindia/enrichment/book_core_projection.py",
+      "sha256": "da324f8db06b4c93335177f1d83e1a61b4d1a811e54ef569c63fbf7542e4ce64"
+    },
+    {
+      "bytes": 18622,
+      "path": "src/mfdataindia/enrichment/current_facts_store.py",
+      "sha256": "700f1e53771ac9212fcd57805788bf0b0753b8cb5b57ca9970304fb25556149c"
+    },
+    {
+      "bytes": 12822,
+      "path": "src/mfdataindia/enrichment/book_projection.py",
+      "sha256": "d3e7cd5a167dcbf7d47896624bb5f064808859f2d1e706dc5e2d5af171810dec"
+    },
+    {
+      "bytes": 17843,
+      "path": "src/mfdataindia/enrichment/book_sources.py",
+      "sha256": "dcde01497a93ce867f475f8c707e9caf7683d0785636d03a34c2677dc64e0e12"
+    },
+    {
+      "bytes": 6656,
+      "path": "config/official-book-sources-v5-aum-row.json",
+      "sha256": "1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec"
+    },
+    {
+      "bytes": 11827,
+      "path": "src/mfdataindia/enrichment/book_activation.py",
+      "sha256": "35fd4f51893cfe0e998717ee646b90c4748a4e89a348c6205875f43dd708864e"
+    },
+    {
+      "bytes": 20135,
+      "path": "src/mfdataindia/enrichment/book_store.py",
+      "sha256": "8de21e08d12e2dde50e7954cb82dbc0282a419c4516c8c3882bcbf70160fd69a"
+    },
+    {
+      "bytes": 15406,
+      "path": "src/mfdataindia/enrichment/multi_store.py",
+      "sha256": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254"
+    }
+  ],
+  "format": "source-only-ten-file-reader-execution-authority-v4-ro02",
+  "historical_ro01_authority_sha256": "6230bcdbd2f442ca7e649be14cd0ed6d7fdb45fbbfdf2da399ae7cabf791a0e5",
+  "implementation_parent": "69037c0ec078ad67a8dfd708bc3cf86040b655e6",
+  "runtime_authority": false,
+  "scope": "Three shared empty post-DDL configuration constructors; original SQL, projections, policies, registries, historical default installer outcomes unchanged. No activation or publication authority.",
+  "total_bytes": 112633
+}

@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from ro02_historical_source import previous as ro02_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "69037c0ec078ad67a8dfd708bc3cf86040b655e6"
@@ -22,6 +23,7 @@ def authority():
 
 def restore_ci_source_parent(path, data):
     assert type(data) is bytes
+    data = ro02_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:

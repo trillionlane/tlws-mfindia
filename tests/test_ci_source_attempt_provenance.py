@@ -3,6 +3,7 @@
 import pytest
 
 import reader_source_packets as packets
+from ro02_historical_source import previous as ro02_previous
 from test_reader_source_packets import legacy, extended, IDENTITY
 
 GIT = "a" * 40
@@ -166,7 +167,7 @@ def test_intentional_parent_byte_changes_are_finite_and_tamper_checked():
     rows = authority()
     assert len(rows) == 5
     for name, row in rows.items():
-        current = (ROOT / name).read_bytes()
+        current = ro02_previous(ROOT / name, (ROOT / name).read_bytes())
         assert hashlib.sha256(current).hexdigest() == row["current_sha256"]
         previous = subprocess.check_output(["git", "show", BASE + ":" + name], cwd=ROOT)
         assert restore_ci_source_parent(ROOT / name, current) == previous
