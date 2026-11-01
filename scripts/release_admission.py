@@ -85,8 +85,6 @@ def build_packet(plan, context, job_results, *, plan_valid=True, plan_error=None
     candidate = exact_sha(plan["head"], "candidate SHA")
     exact_sha(plan["checkout"], "checkout SHA")
     blockers = []
-    if plan["checkout"] != candidate:
-        blockers.append("classifier checkout does not equal candidate head")
     if plan_error:
         blockers.append(f"CI plan rejected: {plan_error}")
     if not plan_valid:
@@ -105,7 +103,8 @@ def build_packet(plan, context, job_results, *, plan_valid=True, plan_error=None
     mode = plan.get("mode")
     source_verified = not blockers
     release_candidate = bool(source_verified and event == "push" and ref == "refs/heads/main"
-                             and mode == "full" and plan.get("base") is None)
+                             and mode == "full" and plan.get("base") is None
+                             and plan["checkout"] == candidate)
     if source_verified and not release_candidate:
         scope = f"SOURCE_VERIFIED_{str(mode).upper()}"
     elif release_candidate:
@@ -127,8 +126,10 @@ def build_packet(plan, context, job_results, *, plan_valid=True, plan_error=None
         exact_sha(context.get("workflow_sha"), "workflow SHA")
     except AdmissionError as exc:
         blockers.append(str(exc))
-    if event == "push" and context.get("workflow_sha") != plan["checkout"]:
-        blockers.append("automatic main workflow checkout identity mismatch")
+    if context.get("workflow_sha") != plan["checkout"]:
+        blockers.append("workflow checkout identity mismatch")
+    if event == "push" and plan["checkout"] != candidate:
+        blockers.append("automatic main checkout does not equal candidate head")
     if event not in {"pull_request", "push", "workflow_dispatch"}:
         blockers.append("unsupported workflow event")
     if blockers:

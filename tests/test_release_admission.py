@@ -17,18 +17,18 @@ spec.loader.exec_module(admission)
 SHA = "a" * 40
 
 
-def plan(mode="full", event="push"):
-    return {"version": 1, "event": event, "checkout": SHA, "head": SHA,
+def plan(mode="full", event="push", *, checkout=SHA):
+    return {"version": 1, "event": event, "checkout": checkout, "head": SHA,
             "base": None if event != "pull_request" else "b" * 40,
             "paths": [] if event != "pull_request" else ["README.md"], "mode": mode}
 
 
-def context(event="push"):
+def context(event="push", *, workflow_sha=SHA):
     ref = "refs/heads/main" if event != "pull_request" else "refs/pull/9/merge"
     return {"repository": admission.REPOSITORY, "repository_id": admission.REPOSITORY_ID,
             "workflow": admission.WORKFLOW_NAME,
             "workflow_ref": f"{admission.REPOSITORY}/{admission.WORKFLOW_PATH}@{ref}",
-            "workflow_sha": SHA, "run_id": 123, "run_attempt": 2,
+            "workflow_sha": workflow_sha, "run_id": 123, "run_attempt": 2,
             "event": event, "ref": ref, "candidate_sha": SHA}
 
 
@@ -117,6 +117,31 @@ def test_pr_scoped_verification_can_pass_but_never_become_release_eligibility(mo
     assert packet["source_verified"] and not packet["release_candidate_eligible"]
     assert packet["verification_scope"] == f"SOURCE_VERIFIED_{mode.upper()}"
     assert bool(packet["accepted_exclusions"]) is (mode != "full")
+
+
+def test_pr_candidate_and_merge_checkout_are_bound_separately_and_admitted():
+    merge_checkout = "c" * 40
+    packet = admission.build_packet(
+        plan("full", "pull_request", checkout=merge_checkout),
+        context("pull_request", workflow_sha=merge_checkout),
+        {"plan": "success", "tests": "success", "verify": "success"})
+    assert packet["head_sha"] == packet["candidate_sha"] == SHA
+    assert packet["checkout_sha"] == packet["workflow"]["sha"] == merge_checkout
+    assert packet["source_verified"] is True
+    assert packet["release_candidate_eligible"] is False
+    assert packet["verification_scope"] == "SOURCE_VERIFIED_FULL"
+
+
+def test_automatic_main_checkout_must_equal_candidate_head():
+    wrong_checkout = "c" * 40
+    packet = admission.build_packet(
+        plan(checkout=wrong_checkout), context(workflow_sha=wrong_checkout),
+        {"plan": "success", "tests": "success", "verify": "success"})
+    assert packet["source_verified"] is False
+    assert packet["release_candidate_eligible"] is False
+    assert packet["verification_scope"] == "REJECTED"
+    assert packet["blocking_reasons"] == [
+        "automatic main checkout does not equal candidate head"]
 
 
 @pytest.mark.parametrize("result", [None, "failure", "skipped", "cancelled", "timed_out"])
