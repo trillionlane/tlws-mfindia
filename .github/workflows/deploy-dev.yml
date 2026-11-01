@@ -1,16 +1,30 @@
 name: Deploy MFDataIndia DEV
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
   workflow_dispatch:
     inputs:
       confirm_project:
         description: "Type trillionlane-dev to confirm the DEV target"
         required: true
         type: string
+      expected_git_sha:
+        description: "Exact current main commit admitted by automatic Verify"
+        required: true
+        type: string
+      verify_run_id:
+        description: "Exact automatic main Verify run ID"
+        required: true
+        type: string
+      verify_run_attempt:
+        description: "Exact complete Verify attempt"
+        required: true
+        type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -36,21 +50,63 @@ env:
   VPC_SUBNET: tl-dev-mumbai
 
 jobs:
-  deploy:
+  admission:
     if: >-
-      github.ref == 'refs/heads/main' &&
       github.repository == 'trillionlane/tlws-mfindia' &&
       github.repository_id == '1403671867' &&
-      (github.event_name == 'workflow_dispatch' || vars.MFDATAINDIA_DEV_AUTO_DEPLOY == 'true')
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == 'trillionlane/tlws-mfindia' &&
+        vars.MFDATAINDIA_DEV_AUTO_DEPLOY == 'true') ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      candidate_sha: ${{ steps.admit.outputs.candidate_sha }}
+      packet_sha256: ${{ steps.admit.outputs.packet_sha256 }}
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.expected_git_sha }}
+      VERIFY_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.verify_run_id }}
+      VERIFY_RUN_ATTEMPT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.run_attempt || inputs.verify_run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: admit
+        name: Require exact automatic MAIN release admission
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/release_admission.py consume
+          --run-id "$VERIFY_RUN_ID"
+          --run-attempt "$VERIFY_RUN_ATTEMPT"
+          --candidate-sha "$CANDIDATE_SHA"
+          --output "$RUNNER_TEMP/consumed-release-admission.json"
+          --summary "$GITHUB_STEP_SUMMARY"
+          --github-output "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: admission
     environment: mf-data-dev
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
+    env:
+      RELEASE_CANDIDATE_SHA: ${{ needs.admission.outputs.candidate_sha }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.admission.outputs.candidate_sha }}
 
       - name: Validate immutable deployment contract
         shell: bash
@@ -92,8 +148,11 @@ jobs:
           test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
           test "$GITHUB_REPOSITORY_ID" = "$EXPECTED_REPOSITORY_ID"
           test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$RELEASE_CANDIDATE_SHA"
+          test -z "$(git status --porcelain=v1)"
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
             test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+            test "${{ inputs.expected_git_sha }}" = "$RELEASE_CANDIDATE_SHA"
           fi
 
       - id: auth
@@ -136,8 +195,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          image="$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME:$GITHUB_SHA"
-          docker build --tag "$image" .
+          image="$EXPECTED_REGION-docker.pkg.dev/$EXPECTED_PROJECT/${{ vars.GCP_ARTIFACT_REPOSITORY }}/$IMAGE_NAME:$RELEASE_CANDIDATE_SHA"
+          docker build --build-arg VCS_REF="$RELEASE_CANDIDATE_SHA" --tag "$image" .
           docker push "$image"
           pushed_ref="$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')"
           case "$pushed_ref" in
@@ -159,7 +218,7 @@ jobs:
             --service-account="${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-admin-dsn-dev:latest \
-            --set-env-vars=DEPLOYMENT_GIT_SHA=$GITHUB_SHA \
+            --set-env-vars=DEPLOYMENT_GIT_SHA=$RELEASE_CANDIDATE_SHA \
             --command=/app/.venv/bin/python \
             --args=/app/scripts/migrate.py \
             --tasks=1 \
@@ -187,7 +246,7 @@ jobs:
             --no-allow-unauthenticated \
             --add-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-runtime-dsn-dev:latest \
-            --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$GITHUB_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
+            --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$RELEASE_CANDIDATE_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
             --cpu=1 \
             --memory=512Mi \
             --concurrency=40 \
@@ -212,7 +271,7 @@ jobs:
             --no-allow-unauthenticated \
             --add-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-association-writer-dsn-dev:latest \
-            --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$GITHUB_SHA,MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=false \
+            --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$RELEASE_CANDIDATE_SHA,MFDATAINDIA_ASSOCIATION_WRITES_ENABLED=false \
             --command=/app/.venv/bin/uvicorn \
             --args=mfdataindia.api.association_app:create_association_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
             --cpu=1 \
@@ -330,7 +389,7 @@ jobs:
             *) echo "Unexpected deployed image: $deployed_image" >&2; exit 1 ;;
           esac
           deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
-          test "$deployed_sha" = "$GITHUB_SHA"
+          test "$deployed_sha" = "$RELEASE_CANDIDATE_SHA"
 
           refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
           refresh_image="$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$refresh_json")"

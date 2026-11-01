@@ -266,7 +266,7 @@ def test_real_service_context_projects_every_authored_step_and_keeps_gate_strict
 
 def test_actual_workflow_preserves_names_full_sequence_and_main_policy_without_pg_cap():
     wf = load_workflow()
-    assert set(wf['jobs']) == {'plan', 'tests', 'verify'}
+    assert set(wf['jobs']) == {'plan', 'tests', 'verify', 'admission'}
     assert wf['on'] == {'pull_request': {'branches': ['main']}, 'push': {'branches': ['main']}, 'workflow_dispatch': ''}
     assert wf['permissions'] == {'contents': 'read'}
     assert wf['jobs']['plan']['name'] == 'Plan CI coverage'
@@ -297,6 +297,21 @@ def test_actual_workflow_preserves_names_full_sequence_and_main_policy_without_p
                 assert 'if' not in step
         assert list(by_id).index('policy') == 2  # Before dependency install/test/build.
     assert wf['jobs']['tests']['services']['postgres']['image'] == "${{ needs.plan.outputs.mode != 'docs' && 'postgres:18.6-alpine' || '' }}"
+    aggregate = wf['jobs']['admission']
+    assert aggregate['name'] == 'Release admission'
+    assert aggregate['needs'] == ['plan', 'tests', 'verify']
+    assert aggregate['if'] == '${{ always() }}'
+    assert aggregate['permissions'] == {'contents': 'read'}
+    assert aggregate['env'] == {
+        'CI_MODE': '${{ needs.plan.outputs.mode }}',
+        'CI_BINDING': '${{ needs.plan.outputs.binding }}',
+        'CI_PLAN_RESULT': '${{ needs.plan.result }}',
+        'CI_TESTS_RESULT': '${{ needs.tests.result }}',
+        'CI_VERIFY_RESULT': '${{ needs.verify.result }}',
+    }
+    assert 'scripts/release_admission.py emit' in aggregate['steps'][2]['run']
+    assert aggregate['steps'][3]['if'] == '${{ always() }}'
+    assert aggregate['steps'][3]['uses'] == 'actions/upload-artifact@v4'
     assert not any('continue-on-error' in step for job in wf['jobs'].values() for step in job['steps'])
 
 
@@ -351,8 +366,14 @@ def test_full_admission_never_substitutes_targeted_or_partial_proof(defect):
         spec = spec_from_file_location('new_full_admission', ROOT / 'scripts/prepush_fs13.py')
         pre = module_from_spec(spec)
         spec.loader.exec_module(pre)
+        pre_jobs = deepcopy(jobs) + [{
+            'name': 'Release admission', 'status': 'completed', 'conclusion': 'success',
+            'steps': [{'name': name, 'status': 'completed', 'conclusion': 'success'}
+                      for name in ('Build exact release-admission decision',
+                                   'Retain the current-attempt admission result')],
+        }]
         doc = {'databaseId': 123, 'headSha': 'a' * 40, 'name': 'Verify',
-               'status': 'completed', 'conclusion': 'success', 'jobs': jobs}
+               'status': 'completed', 'conclusion': 'success', 'jobs': pre_jobs}
         assert pre.require_whole_verify(doc, run_id=123, head_sha='a' * 40)['policy'] == 'full'
     else:
         with pytest.raises(ValueError):

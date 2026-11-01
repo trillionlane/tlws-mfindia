@@ -10,8 +10,16 @@ on:
         description: Prepare image only, or execute the approved bounded DEV rollout
       expected_git_sha:
         type: string
-        required: false
-        description: Exact approved commit; required for prepare-image only
+        required: true
+        description: Exact current main commit admitted by automatic Verify
+      verify_run_id:
+        type: string
+        required: true
+        description: Exact automatic main Verify run ID
+      verify_run_attempt:
+        type: string
+        required: true
+        description: Exact complete Verify attempt
       manifest_json:
         type: string
         description: Exact rollout manifest JSON; required for execute
@@ -20,6 +28,7 @@ on:
         description: Independently approved canonical manifest hash; required for execute
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -27,8 +36,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  rollout:
+  admission:
     if: github.ref == 'refs/heads/main' && github.repository == 'trillionlane/tlws-mfindia' && github.repository_id == '1403671867'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      candidate_sha: ${{ steps.admit.outputs.candidate_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_git_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: admit
+        name: Require exact automatic MAIN release admission
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/release_admission.py consume
+          --run-id "${{ inputs.verify_run_id }}"
+          --run-attempt "${{ inputs.verify_run_attempt }}"
+          --candidate-sha "${{ inputs.expected_git_sha }}"
+          --output "$RUNNER_TEMP/consumed-release-admission.json"
+          --summary "$GITHUB_STEP_SUMMARY"
+          --github-output "$GITHUB_OUTPUT"
+
+  rollout:
+    needs: admission
     environment: mf-data-dev
     runs-on: ubuntu-latest
     timeout-minutes: 60
