@@ -40,6 +40,27 @@ class AdmissionError(ValueError):
     """A concrete fail-closed release prerequisite was not met."""
 
 
+class _EvidenceRedirect(urllib.request.HTTPRedirectHandler):
+    """Keep API credentials on their origin, not on a signed artifact URL."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        previous = urllib.parse.urlparse(req.full_url)
+        target = urllib.parse.urlparse(newurl)
+        try:
+            valid = (target.scheme == "https" and target.hostname
+                     and target.username is None and target.password is None)
+            changed = ((previous.scheme, previous.hostname, previous.port or 443)
+                       != (target.scheme, target.hostname, target.port or 443))
+        except ValueError:
+            valid = False
+        if not valid:
+            raise AdmissionError("GitHub evidence redirect requires HTTPS without URL credentials")
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None and changed:
+            redirected.remove_header("Authorization")
+        return redirected
+
+
 def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
@@ -280,7 +301,8 @@ class GitHubAPI:
             "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "tlws-mfdata-release-admission",
         })
         try:
-            with urllib.request.urlopen(request, timeout=30) as response:
+            opener = urllib.request.build_opener(_EvidenceRedirect())
+            with opener.open(request, timeout=30) as response:
                 return response.read()
         except urllib.error.HTTPError as exc:
             raise AdmissionError(f"GitHub evidence request failed with HTTP {exc.code}") from exc
