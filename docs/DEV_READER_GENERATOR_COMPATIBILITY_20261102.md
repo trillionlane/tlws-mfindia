@@ -98,6 +98,16 @@ before inserting a v4 configuration. The unchanged production guard correctly
 found a different sealing body. The fixture selection is corrected; no guard or
 historical SQL is weakened. A fast provider-free composition regression first
 failed that wrong selection and now checks the final selected SQL body.
+The second native run reached generator receipt setup and correctly rejected
+the test helper's default owner-only `retained_bootstrap` mode. The correction
+uses the existing generator `scheduled_refresh` mode, retains two synthetic
+catalogues through the production store and reports the already-published
+cohort as `unchanged`. The native case additionally asserts that the original
+owner-bootstrap attempt remains denied after broad adoption, then checks the
+scheduled receipt's idempotence before replaying the actual entrypoint. No
+production SQL, role permissions, runtime guard or workflow is changed for
+this fixture correction. A fast provider-free test checks this input contract;
+only hosted PostgreSQL establishes the real trigger/role semantics.
 The disposable compiler records the files it actually applies. It is not a live
 ledger clone: fresh read-only DEV metadata found only 23 core/review ledger rows,
 while the installed book function independently matches the exact 041 body and

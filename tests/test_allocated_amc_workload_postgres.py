@@ -23,6 +23,23 @@ pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def scheduled_replay_receipt(conn, snapshots, execution):
+    """Retain synthetic catalogues for the existing publication, as a generator.
+
+    A generator cannot submit the helper's default owner-only bootstrap mode.
+    The population already published this cohort, so the new scheduled receipt
+    must report unchanged rather than attempt to publish it a second time.
+    """
+    catalogs = [refresh_store.append_catalog(conn, url, media, raw)
+        for url, media, raw in (
+            ('https://mutualfund.adityabirlacapital.com/forms-and-downloads/factsheets',
+             'text/html', b'<html>allocated synthetic catalogue</html>'),
+            ('https://mutualfund.adityabirlacapital.com/api/sitecore/CalculatorPage/GetMonthlyFactsheetsByYear',
+             'application/json', b'{"allocated_fixture":true}'))]
+    return receipt(snapshots, execution, mode='scheduled_refresh', status='unchanged',
+                   catalog_ids=catalogs)
+
+
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
 def test_native_allocated_runtime_broad_reader_api_and_generator_coexistence(
         ro01_db, monkeypatch, capsys):
@@ -40,8 +57,17 @@ def test_native_allocated_runtime_broad_reader_api_and_generator_coexistence(
     execution = workload.JOB + '-allocated-native-fixture'
     with connect(ro01_db) as conn:
         snapshots = [r['document'] for r in conn.execute('SELECT document FROM mf_monthly_facts.snapshots ORDER BY snapshot_id')]
-    with connect(ro01_db, 'mfdata_verified_generator', autocommit=False) as conn:
-        expected = refresh_store.append_run(conn, receipt(snapshots, execution))
+    # Broad reader adoption must not make owner bootstrap available to a
+    # generator. Keep the real trigger rejection and use its supported source
+    # refresh contract below; no owner impersonation or guard relaxation.
+    with connect(ro01_db, workload.GENERATOR, autocommit=False) as conn:
+        with pytest.raises(psycopg.errors.RaiseException, match='direct owner bootstrap'):
+            refresh_store.append_run(conn, receipt(snapshots, execution + '-forged'))
+    with connect(ro01_db, workload.GENERATOR, autocommit=False) as conn:
+        body = scheduled_replay_receipt(conn, snapshots, execution)
+        expected = refresh_store.append_run(conn, body)
+        assert expected['status'] == 'unchanged' and expected['mode'] == 'scheduled_refresh'
+        assert refresh_store.append_run(conn, body) == expected
     local_generator = make_conninfo(ro01_db, user=workload.GENERATOR, password=PASSWORD)
     original = psycopg.connect
     fixed = environment(CLOUD_RUN_TASK_INDEX='0', CLOUD_RUN_EXECUTION=execution)

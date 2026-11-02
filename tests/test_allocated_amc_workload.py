@@ -33,6 +33,28 @@ def entrypoint():
     return value
 
 
+def test_native_replay_input_uses_scheduled_catalogues_not_owner_bootstrap(monkeypatch):
+    from mfdataindia.enrichment import refresh_store
+    from test_allocated_amc_workload_postgres import scheduled_replay_receipt
+    calls = []
+    connection = object()
+    def retain(conn, url, media, raw):
+        assert conn is connection
+        calls.append((url, media, raw))
+        return str(len(calls)) * 64
+    monkeypatch.setattr(refresh_store, 'append_catalog', retain)
+    snapshots = [{'snapshot_id': str(i) * 64, 'content_hash': 'a' * 64,
+                  'disclosure_as_of': '2026-08-31'} for i in (1, 2)]
+    body = scheduled_replay_receipt(connection, snapshots, JOB + '-synthetic-replay')
+    assert body['mode'] == 'scheduled_refresh' and body['status'] == 'unchanged'
+    assert body['catalog_ids'] == ['1' * 64, '2' * 64]
+    assert body['snapshot_ids'] == ['1' * 64, '2' * 64]
+    assert body['source_rows_changed'] == 0
+    assert [media for _, media, _ in calls] == ['text/html', 'application/json']
+    assert all(url.startswith('https://mutualfund.adityabirlacapital.com/')
+               and type(raw) is bytes for url, _, raw in calls)
+
+
 def test_historical_command_still_rejects_unallocated_valid_looking_invocation(monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT / 'scripts'))
     old = runpy.run_path(str(ROOT / 'scripts/refresh_amc_books_dev.py'))
