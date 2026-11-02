@@ -69,12 +69,63 @@ eligibility cannot set any of those live states.
 1. An automatic MAIN `Verify` run produces the aggregate packet after all
    required gates have finished.
 2. A release workflow starts with a read-only admission job with `actions:read`
-   and `contents:read`; it has no OIDC permission.
-3. The consumer fetches the run, exact attempt jobs, exact attempt artifact and
-   current MAIN ref once each, then validates them together.
+   and `contents:read`; it has no OIDC permission. It checks out the immutable
+   `github.workflow_sha`, not a caller's candidate ref, and verifies that clean
+   checkout before running admission. Its validator, imported CI policy and
+   step inventory all come from that same trusted main-workflow source.
+  No candidate checkout or candidate-supplied Python runs in this job.
+   Caller-supplied values enter the consumer and deployment contract as quoted
+   environment data, never GitHub-expression interpolation into shell source.
+3. The consumer fetches the latest run, exact attempt metadata, exact attempt
+   jobs, exact attempt artifact and current MAIN ref, then validates them
+   together. Run/attempt/workflow/repository identities must agree. Job IDs,
+   run/repository URLs, workflow, branch and SHA must match; the four jobs must
+   be distinct and successful with all required steps. Job-level `run_attempt`
+   is not required by the documented response: it is checked only if present.
+   Isolation is supplied by `/runs/{id}/attempts/{attempt}` and its `/jobs`
+   endpoint, plus the exact-attempt artifact and packet, never a merged jobs
+   inventory across attempts.
 4. Only the downstream job has `id-token:write` and release commands. `needs:
    admission` guarantees a rejected/incomplete decision produces zero cloud
    authentication, image publication, deployment or grant calls.
+5. Both verified-review operations (image preparation **and** execution) require
+   caller expected SHA = admitted output SHA = workflow event SHA before
+   candidate checkout, then require that exact clean checkout before tooling
+   or authentication. Checkout explicitly uses the admission output; manifest
+   validation, image labels/tags and execution use `RELEASE_CANDIDATE_SHA`.
+   An event/main race is a rejection, not permission to use another revision.
+
+## Acceptance correction at reviewed head `2b823d4`
+
+The original consumer could execute the candidate's own admission script, and
+the rollout's execution mode ignored the admitted SHA. New regressions run the
+actual workflow shell against disposable Git: a candidate replaces the validator
+with unconditional success, and mismatched admitted/input/event/checkout SHAs
+try to reach tooling/authentication. Before correction both candidate scripts
+returned success for an invalid run ID; execution mismatches reached tooling;
+the validate/execute commands used the event SHA instead of the admitted SHA.
+The documented attempt-jobs response (without job `run_attempt`) was rejected.
+These are provider-free reproductions, not live release workflow executions.
+
+The correction keeps all historical predecessor digests and assertions. Only
+the two current release workflow digests and the current image-guard test digest
+change in `RO03_CURRENT_SOURCE_CHANGES_20261101.json`; its pinned digest changes
+accordingly. Current tests exercise the changed real boundaries; older release
+proofs still receive their exact whole-file predecessor, not normalized bytes.
+No producer packet meaning, native/image gate, timeout, grant, RO-01/RO-02
+capability, or repository setting is relaxed.
+
+Response-fixture provenance: the projection in
+`tests/fixtures/github_attempt_job_documented.json` retains documented fields
+from [GitHub's attempt-jobs response](https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run-attempt).
+Tests explicitly substitute synthetic repository/run/job/head bindings and the
+required step inventory. A read-only observation of Verify `41334633884/1` on
+1 November found job `run_attempt` present; it is still not a portable mandatory
+field. Both documented absence and optional hosted presence are covered.
+
+Final-head validation is reported in the PR handoff, not inferred from the
+superseded `41334633884` success. PR140 remains unmerged pending acceptance;
+no live workflow or RO-04 action is performed by these regression tests.
 
 ## Remote enforcement status
 

@@ -17,6 +17,18 @@ spec.loader.exec_module(admission)
 SHA = "a" * 40
 
 
+def documented_job(number, **fields):
+    template = json.loads((ROOT / "tests/fixtures/github_attempt_job_documented.json").read_text())
+    job = deepcopy(template["job"])
+    job.update(id=number, run_id=123,
+               run_url=f"https://api.github.com/repos/{admission.REPOSITORY}/actions/runs/123",
+               url=f"https://api.github.com/repos/{admission.REPOSITORY}/actions/jobs/{number}",
+               head_sha=SHA, workflow_name=admission.WORKFLOW_NAME, head_branch="main")
+    job.update(fields)
+    assert "run_attempt" not in job
+    return job
+
+
 def plan(mode="full", event="push", *, checkout=SHA):
     return {"version": 1, "event": event, "checkout": checkout, "head": SHA,
             "base": None if event != "pull_request" else "b" * 40,
@@ -34,18 +46,16 @@ def context(event="push", *, workflow_sha=SHA):
 
 def core_jobs():
     inventory = json.loads((ROOT / "docs/CI_RISK_POLICY_STEP_INVENTORY_20261026.json").read_text())
-    jobs = [{"name": admission.CORE_JOBS["plan"], "status": "completed",
-             "conclusion": "success", "run_attempt": 2, "head_sha": SHA,
-             "steps": [{"name": name, "status": "completed", "conclusion": "success"}
-                       for name in ("Classify exact change", "CI plan: full")]}]
-    for key in ("tests", "verify"):
+    jobs = [documented_job(1, name=admission.CORE_JOBS["plan"],
+                          steps=[{"name": name, "status": "completed", "conclusion": "success"}
+                                 for name in ("Classify exact change", "CI plan: full")])]
+    for number, key in enumerate(("tests", "verify"), 2):
         labels = [row["label"] for row in inventory[key]]
         labels += ["Validate CI plan", "Run reduced PR checks", "CI policy admitted: full"]
-        jobs.append({"name": admission.CORE_JOBS[key], "status": "completed",
-                     "conclusion": "success", "run_attempt": 2, "head_sha": SHA,
-                     "steps": [{"name": label, "status": "completed",
+        jobs.append(documented_job(number, name=admission.CORE_JOBS[key],
+                     steps=[{"name": label, "status": "completed",
                                 "conclusion": "skipped" if label == "Run reduced PR checks"
-                                else "success"} for label in labels]})
+                                else "success"} for label in labels]))
     return jobs
 
 
@@ -60,14 +70,16 @@ class FakeAPI:
     def __init__(self, *, packet=None):
         self.run = {"id": 123, "run_attempt": 2, "name": admission.WORKFLOW_NAME,
                     "path": admission.WORKFLOW_PATH, "workflow_id": 99,
-                    "repository": {"full_name": admission.REPOSITORY},
-                    "head_repository": {"full_name": admission.REPOSITORY},
+                    "repository": {"full_name": admission.REPOSITORY, "id": admission.REPOSITORY_ID},
+                    "head_repository": {"full_name": admission.REPOSITORY, "id": admission.REPOSITORY_ID},
                     "event": "push", "head_branch": "main", "head_sha": SHA,
                     "status": "completed", "conclusion": "success"}
-        aggregate = {"name": admission.AGGREGATE_JOB, "status": "completed",
-                     "conclusion": "success", "run_attempt": 2, "head_sha": SHA,
-                     "steps": [{"name": "Build exact release-admission decision",
-                                "status": "completed", "conclusion": "success"}]}
+        self.run["url"] = f"https://api.github.com/repos/{admission.REPOSITORY}/actions/runs/123"
+        self.attempt = deepcopy(self.run)
+        self.attempt["jobs_url"] = self.run["url"] + "/attempts/2/jobs"
+        aggregate = documented_job(4, name=admission.AGGREGATE_JOB,
+                     steps=[{"name": "Build exact release-admission decision",
+                             "status": "completed", "conclusion": "success"}])
         self.jobs = core_jobs() + [aggregate]
         self.packet = packet or admission.build_packet(
             plan(), context(), {"plan": "success", "tests": "success", "verify": "success"})
@@ -81,6 +93,8 @@ class FakeAPI:
         self.calls.append(("json", path))
         if path.endswith("/actions/runs/123"):
             return deepcopy(self.run)
+        if path.endswith("/actions/runs/123/attempts/2"):
+            return deepcopy(self.attempt)
         if "/attempts/2/jobs" in path:
             return {"total_count": len(self.jobs), "jobs": deepcopy(self.jobs)}
         if path.endswith("/actions/runs/123/artifacts?per_page=100"):
@@ -180,7 +194,7 @@ def test_wrong_stale_mixed_or_incomplete_provider_evidence_rejected(defect):
     elif defect == "missing_job":
         api.jobs.pop()
     elif defect == "attempt":
-        api.jobs[0]["run_attempt"] = 1
+        api.attempt["run_attempt"] = 1
     elif defect == "artifact_run":
         api.artifact["workflow_run"]["id"] = 999
     elif defect == "packet_run":
@@ -211,6 +225,51 @@ def test_partial_rerun_cannot_launder_success_from_an_older_attempt():
     with pytest.raises(admission.AdmissionError, match="complete distinct job set"):
         admission.consume(api, repository=admission.REPOSITORY,
                           run_id=123, run_attempt=2, candidate_sha=SHA)
+
+
+def test_documented_job_shape_without_attempt_field_is_accepted_using_attempt_endpoint():
+    api = FakeAPI()
+    assert all("run_attempt" not in job for job in api.jobs)
+    assert admission.consume(api, repository=admission.REPOSITORY, run_id=123,
+                             run_attempt=2, candidate_sha=SHA)["release_admitted"]
+    paths = [path for kind, path in api.calls if kind == "json"]
+    assert f"repos/{admission.REPOSITORY}/actions/runs/123/attempts/2" in paths
+    assert f"repos/{admission.REPOSITORY}/actions/runs/123/attempts/2/jobs?per_page=100" in paths
+    assert not any(path.endswith("/runs/123/jobs?per_page=100") for path in paths)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("run_id", 999), ("head_sha", "b" * 40), ("head_branch", "wrong"),
+    ("workflow_name", "Other"), ("id", 2),
+    ("run_url", "https://api.github.com/repos/other/repo/actions/runs/123"),
+    ("url", "https://api.github.com/repos/other/repo/actions/jobs/1"),
+    ("run_attempt", 1),
+])
+def test_attempt_jobs_mixed_run_repository_workflow_or_optional_attempt_are_rejected(field, value):
+    api = FakeAPI()
+    api.jobs[0][field] = value
+    with pytest.raises(admission.AdmissionError):
+        admission.consume(api, repository=admission.REPOSITORY, run_id=123,
+                          run_attempt=2, candidate_sha=SHA)
+
+
+@pytest.mark.parametrize("field,value", [("run_attempt", 1), ("workflow_id", 100),
+                                        ("head_sha", "b" * 40), ("id", 999),
+                                        ("jobs_url", "https://example.invalid/jobs")])
+def test_attempt_metadata_must_match_latest_successful_run(field, value):
+    api = FakeAPI()
+    api.attempt[field] = value
+    with pytest.raises(admission.AdmissionError):
+        admission.consume(api, repository=admission.REPOSITORY, run_id=123,
+                          run_attempt=2, candidate_sha=SHA)
+
+
+def test_optional_hosted_job_attempt_is_checked_when_supplied_but_not_required():
+    api = FakeAPI()
+    for job in api.jobs:
+        job["run_attempt"] = 2
+    assert admission.consume(api, repository=admission.REPOSITORY, run_id=123,
+                             run_attempt=2, candidate_sha=SHA)["release_admitted"]
 
 
 def test_rejected_consumer_evidence_causes_zero_release_mutations():

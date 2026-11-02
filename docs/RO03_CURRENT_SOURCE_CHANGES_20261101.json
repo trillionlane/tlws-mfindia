@@ -3,14 +3,14 @@
   "historical_only": true,
   "modified": {
     ".github/workflows/deploy-dev.yml": {
-      "current_sha256": "ad5e294c56e057f71eae789663edfb8da5b4a69d90a085607dbcf838e8ee1001",
+      "current_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421",
       "previous_sha256": "f234fb5fe336460e3862dda2db19ed1021baa40f8015ba44ac594e5e78c91864",
-      "scope": "RO-03 release admission precedes every application deployment mutation"
+      "scope": "RO-03 admission runs from immutable trusted workflow source before candidate checkout and application deployment"
     },
     ".github/workflows/rollout-verified-review-dev.yml": {
-      "current_sha256": "2448a655183507a762a16ac67e32768c90d0d0adb18465310e89122eb8638bc2",
+      "current_sha256": "8f2c881ca778707ebde7f4c78fcf7e1399c9b3c4f10583d41e0ea5db17a9e8fc",
       "previous_sha256": "c937716777406343d11b97214e4fcfc68ef41ebae8322ee8d7a61989c703a283",
-      "scope": "RO-03 release admission precedes verified-review image or execution mutations"
+      "scope": "RO-03 trusted-workflow-source admission binds checkout, manifest validation, images and execution to the admitted SHA for both operations before cloud authentication"
     },
     ".github/workflows/verify.yml": {
       "current_sha256": "acc79da6e8bca20977f59875b0760faf332873e7e63a58ce940f10dbcc052eaa",
@@ -28,7 +28,7 @@
       "scope": "RO-03 whole-file inverse runs before unchanged RO-02 historical assertions"
     },
     "tests/test_image_preparation_revision_guard.py": {
-      "current_sha256": "cf18ce82da114b19ca7cb8002fce0ade3e9a6902718baf294e66c590f5d36a1a",
+      "current_sha256": "4644f25ce7b3614e50277bbb54716fda1c19b18b47ff9604abeb3a0d808504b2",
       "previous_sha256": "53ba0500978baa22d3dea505f41fc6643dff1583aa4742eda8544e83cea4578a",
       "scope": "Current release inputs are asserted while the prior image-guard proof receives exact predecessor bytes"
     },

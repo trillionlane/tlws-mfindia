@@ -75,7 +75,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.CANDIDATE_SHA }}
+          # Trust the immutable source of this main-branch workflow, not the candidate.
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Verify trusted admission source before running repository code
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$GITHUB_WORKFLOW_SHA"
+          test -z "$(git status --porcelain=v1)"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -121,6 +129,8 @@ jobs:
           ASSOCIATION_WRITER_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_ASSOCIATION_WRITER_SERVICE_ACCOUNT }}
           MIGRATE_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}
           CLOUD_SQL_INSTANCE: ${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}
+          CONFIRM_PROJECT: ${{ inputs.confirm_project }}
+          EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}
         run: |
           set -euo pipefail
           for name in PROJECT_ID REGION ARTIFACT_REPOSITORY WORKLOAD_IDENTITY_PROVIDER DEPLOY_SERVICE_ACCOUNT RUNTIME_SERVICE_ACCOUNT INGEST_SERVICE_ACCOUNT MIGRATE_SERVICE_ACCOUNT CLOUD_SQL_INSTANCE; do
@@ -151,8 +161,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "$RELEASE_CANDIDATE_SHA"
           test -z "$(git status --porcelain=v1)"
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
-            test "${{ inputs.expected_git_sha }}" = "$RELEASE_CANDIDATE_SHA"
+            test "$CONFIRM_PROJECT" = "$EXPECTED_PROJECT"
+            test "$EXPECTED_GIT_SHA" = "$RELEASE_CANDIDATE_SHA"
           fi
 
       - id: auth

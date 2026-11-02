@@ -48,7 +48,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.expected_git_sha }}
+          # The candidate must never supply its own admission implementation/policy.
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Verify trusted admission source before running repository code
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$GITHUB_WORKFLOW_SHA"
+          test -z "$(git status --porcelain=v1)"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -56,11 +64,14 @@ jobs:
         name: Require exact automatic MAIN release admission
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          VERIFY_RUN_ID: ${{ inputs.verify_run_id }}
+          VERIFY_RUN_ATTEMPT: ${{ inputs.verify_run_attempt }}
+          CANDIDATE_SHA: ${{ inputs.expected_git_sha }}
         run: >-
           python scripts/release_admission.py consume
-          --run-id "${{ inputs.verify_run_id }}"
-          --run-attempt "${{ inputs.verify_run_attempt }}"
-          --candidate-sha "${{ inputs.expected_git_sha }}"
+          --run-id "$VERIFY_RUN_ID"
+          --run-attempt "$VERIFY_RUN_ATTEMPT"
+          --candidate-sha "$CANDIDATE_SHA"
           --output "$RUNNER_TEMP/consumed-release-admission.json"
           --summary "$GITHUB_STEP_SUMMARY"
           --github-output "$GITHUB_OUTPUT"
@@ -73,6 +84,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      RELEASE_CANDIDATE_SHA: ${{ needs.admission.outputs.candidate_sha }}
     services:
       postgres:
         image: postgres:18.6-alpine
@@ -84,25 +97,29 @@ jobs:
         options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - name: Require exact approved image revision before checkout
-        if: inputs.operation == 'prepare-image'
         env:
           EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}
           LC_ALL: C
         run: |
           set -euo pipefail
           [[ "$EXPECTED_GIT_SHA" =~ ^[0-9a-f]{40}$ ]]
-          test "$EXPECTED_GIT_SHA" = "$GITHUB_SHA"
+          [[ "$RELEASE_CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_GIT_SHA" = "$RELEASE_CANDIDATE_SHA"
+          test "$RELEASE_CANDIDATE_SHA" = "$GITHUB_SHA"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.admission.outputs.candidate_sha }}
       - name: Verify checked-out image revision before tooling and cloud authentication
-        if: inputs.operation == 'prepare-image'
         env:
           EXPECTED_GIT_SHA: ${{ inputs.expected_git_sha }}
           LC_ALL: C
         run: |
           set -euo pipefail
           [[ "$EXPECTED_GIT_SHA" =~ ^[0-9a-f]{40}$ ]]
-          test "$EXPECTED_GIT_SHA" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD)" = "$EXPECTED_GIT_SHA"
+          [[ "$RELEASE_CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_GIT_SHA" = "$RELEASE_CANDIDATE_SHA"
+          test "$RELEASE_CANDIDATE_SHA" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$RELEASE_CANDIDATE_SHA"
           test -z "$(git status --porcelain=v1)"
       - uses: actions/setup-python@v5
         with:
@@ -120,7 +137,7 @@ jobs:
             prepare-image) ;;
             execute)
               python -c 'import os,pathlib; pathlib.Path("rollout-manifest.json").write_text(os.environ["MANIFEST_JSON"])'
-              uv run python scripts/rollout_verified_review_dev.py validate --manifest rollout-manifest.json --approved-hash "$APPROVED_HASH" --git-sha "$GITHUB_SHA"
+              uv run python scripts/rollout_verified_review_dev.py validate --manifest rollout-manifest.json --approved-hash "$APPROVED_HASH" --git-sha "$RELEASE_CANDIDATE_SHA"
               ;;
             *) exit 1 ;;
           esac
@@ -140,12 +157,12 @@ jobs:
         run: |
           set -euo pipefail
           gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-          image="asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia:review-$GITHUB_SHA"
-          docker build --build-arg VCS_REF="$GITHUB_SHA" --tag "$image" .
+          image="asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia:review-$RELEASE_CANDIDATE_SHA"
+          docker build --build-arg VCS_REF="$RELEASE_CANDIDATE_SHA" --tag "$image" .
           docker push "$image"
           docker image inspect "$image" --format '{{index .RepoDigests 0}}' >> "$GITHUB_STEP_SUMMARY"
-          tools_image="asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools:review-$GITHUB_SHA"
-          docker build --build-arg VCS_REF="$GITHUB_SHA" --file Dockerfile.review-tools --tag "$tools_image" .
+          tools_image="asia-south1-docker.pkg.dev/trillionlane-dev/tlws-mf-data-dev/mfdataindia-review-tools:review-$RELEASE_CANDIDATE_SHA"
+          docker build --build-arg VCS_REF="$RELEASE_CANDIDATE_SHA" --file Dockerfile.review-tools --tag "$tools_image" .
           docker push "$tools_image"
           docker image inspect "$tools_image" --format '{{index .RepoDigests 0}}' >> "$GITHUB_STEP_SUMMARY"
       - name: Start pinned Cloud SQL proxy for approved source only
@@ -165,7 +182,7 @@ jobs:
         run: |
           set -euo pipefail
           gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
-          uv run python scripts/rollout_verified_review_dev.py execute --manifest rollout-manifest.json --approved-hash "$APPROVED_HASH" --git-sha "$GITHUB_SHA" --evidence-directory rollout-evidence
+          uv run python scripts/rollout_verified_review_dev.py execute --manifest rollout-manifest.json --approved-hash "$APPROVED_HASH" --git-sha "$RELEASE_CANDIDATE_SHA" --evidence-directory rollout-evidence
       - name: Retain certificates, including failure evidence; never backup bytes or credentials
         if: always() && inputs.operation == 'execute'
         uses: actions/upload-artifact@v4

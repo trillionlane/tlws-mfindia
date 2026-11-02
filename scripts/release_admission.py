@@ -376,7 +376,9 @@ def consume(api, *, repository, run_id, run_attempt, candidate_sha):
     repository_doc = run.get("repository") or {}
     head_repository = run.get("head_repository") or {}
     if repository_doc.get("full_name") != REPOSITORY \
-            or head_repository.get("full_name") != REPOSITORY:
+            or head_repository.get("full_name") != REPOSITORY \
+            or repository_doc.get("id") != REPOSITORY_ID \
+            or head_repository.get("id") != REPOSITORY_ID:
         raise AdmissionError("GitHub run repository mismatch")
     if run.get("event") != "push" or run.get("head_branch") != "main" \
             or run.get("head_sha") != candidate_sha:
@@ -384,15 +386,40 @@ def consume(api, *, repository, run_id, run_attempt, candidate_sha):
     if run.get("status") != "completed" or run.get("conclusion") != "success":
         raise AdmissionError("GitHub run is incomplete or unsuccessful")
 
-    job_doc = api.json(
-        f"repos/{encoded_repo}/actions/runs/{run_id}/attempts/{run_attempt}/jobs?per_page=100")
+    # Attempt isolation comes from GitHub's attempt-specific endpoints, not an
+    # undocumented mandatory job.run_attempt field. Bind the attempt metadata
+    # back to the current successful run before using its complete job set.
+    run_path = f"repos/{encoded_repo}/actions/runs/{run_id}"
+    run_url = "https://api.github.com/" + run_path
+    attempt_path = f"{run_path}/attempts/{run_attempt}"
+    attempt = api.json(attempt_path)
+    bound_fields = ("id", "run_attempt", "name", "path", "workflow_id", "event",
+                    "head_branch", "head_sha", "status", "conclusion", "url")
+    if any(attempt.get(key) != run.get(key) for key in bound_fields) \
+            or run.get("url") != run_url \
+            or attempt.get("jobs_url") != "https://api.github.com/" + attempt_path + "/jobs":
+        raise AdmissionError("GitHub attempt provenance mismatch")
+    for key in ("repository", "head_repository"):
+        if (attempt.get(key) or {}).get("full_name") != REPOSITORY \
+                or (attempt.get(key) or {}).get("id") != REPOSITORY_ID:
+            raise AdmissionError("GitHub attempt repository mismatch")
+    job_doc = api.json(attempt_path + "/jobs?per_page=100")
     jobs = job_doc.get("jobs")
     expected_names = set(CORE_JOBS.values()) | {AGGREGATE_JOB}
     if job_doc.get("total_count") != len(expected_names) or not isinstance(jobs, list) \
             or len(jobs) != len(expected_names) or {job.get("name") for job in jobs} != expected_names:
         raise AdmissionError("attempt does not contain the complete distinct job set")
+    job_ids = set()
     for job in jobs:
-        if job.get("run_attempt") != run_attempt or job.get("head_sha") != candidate_sha \
+        job_id = positive_int(job.get("id"), "job ID")
+        if job_id in job_ids:
+            raise AdmissionError("attempt contains duplicate job identities")
+        job_ids.add(job_id)
+        if job.get("run_id") != run_id or job.get("run_url") != run_url \
+                or job.get("url") != f"https://api.github.com/repos/{encoded_repo}/actions/jobs/{job_id}" \
+                or job.get("head_sha") != candidate_sha or job.get("head_branch") != "main" \
+                or job.get("workflow_name") != WORKFLOW_NAME \
+                or ("run_attempt" in job and job["run_attempt"] != run_attempt) \
                 or job.get("status") != "completed" or job.get("conclusion") != "success":
             raise AdmissionError(f"required job {job.get('name')} is stale, partial or unsuccessful")
     core = [job for job in jobs if job.get("name") in set(CORE_JOBS.values())]
