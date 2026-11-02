@@ -8,6 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from ro03_historical_source import previous as ro03_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "d0deb7102d505a8a0ffb8c2af802ba2b4c121dab"
@@ -35,8 +36,14 @@ def previous(path, data):
         return data
     row = authority().get(name)
     if row is None:
-        return data
+        return ro03_previous(path, data)
     digest = hashlib.sha256(data).hexdigest()
+    # Historical chains may call this layer more than once.  Preserve either
+    # known RO-02 state directly; only ask the RO-03 inverse to translate an
+    # actual current RO-03 file into the reviewed RO-02 current state.
+    if digest not in {row["previous_sha256"], row["current_sha256"]}:
+        data = ro03_previous(path, data)
+        digest = hashlib.sha256(data).hexdigest()
     if digest == row["previous_sha256"]:
         return data
     assert digest == row["current_sha256"], name

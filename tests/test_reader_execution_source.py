@@ -10,6 +10,7 @@ from mfdataindia.review import broad_reader_source_authority as source
 from mfdataindia.review import reader_execution_source_reference as current
 from mfdataindia.review import broad_reader_view_profile as views
 from ro02_historical_source import ROOT, authority, previous
+from ro03_historical_source import previous as ro03_previous
 
 
 def test_current_source_is_ten_complete_files_and_prior_nine_file_doc_immutable():
@@ -41,10 +42,11 @@ def test_only_listed_complete_current_files_restore_and_every_byte_tamper_reject
 def test_both_images_add_actual_current_entrypoint_smoke_without_changing_old_body():
     path = ROOT / ".github/workflows/verify.yml"
     raw = path.read_bytes()
+    ro02 = ro03_previous(path, raw)
     command = b'            docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_execution_dev.py\n'
-    assert raw.count(command) == 1
-    assert raw.replace(command, b"", 1) == previous(path, raw)
-    before = raw.split(command)[0]
+    assert ro02.count(command) == 1
+    assert ro02.replace(command, b"", 1) == previous(path, ro02)
+    before = ro02.split(command)[0]
     assert before.rfind(b'for target in "$image" "$tools_image"; do') > before.rfind(b"      - name:")
 
 

@@ -17,6 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "trillionlane/tlws-mfindia"
 JOBS = {"PostgreSQL tests, contracts, and audit", "Test, audit, and build"}
+AGGREGATE_JOB = "Release admission"
 TARGETED = (
     "tests/test_certification_input_transport.py",
     "tests/test_certification_input_smoke.py",
@@ -67,11 +68,29 @@ def require_whole_verify(document, *, run_id, head_sha):
     spec = spec_from_file_location("ci_policy_full_admission", ROOT / "scripts/ci_risk_policy.py")
     policy = module_from_spec(spec)
     spec.loader.exec_module(policy)
+    jobs = document.get("jobs")
+    names = {"Plan CI coverage", *JOBS, AGGREGATE_JOB}
+    if (not isinstance(jobs, list) or len(jobs) != 4
+            or any(not isinstance(job, dict) for job in jobs)
+            or {job.get("name") for job in jobs} != names):
+        raise ValueError("complete current four-job Verify required")
+    aggregate = next(job for job in jobs if job["name"] == AGGREGATE_JOB)
+    if aggregate.get("status") != "completed" or aggregate.get("conclusion") != "success":
+        raise ValueError("release-admission aggregate must succeed")
+    steps = aggregate.get("steps")
+    required = {"Build exact release-admission decision",
+                "Retain the current-attempt admission result"}
+    if (not isinstance(steps, list) or not required <= {step.get("name") for step in steps}
+            or any(step.get("status") != "completed" or step.get("conclusion") != "success"
+                   for step in steps)):
+        raise ValueError("complete release-admission aggregate steps required")
     # All historical admissions are complete. No legacy-shape fallback is
     # permitted at a current or future head, even with successful old jobs.
     return {"run": run_id, "head_sha": head_sha, "read_only": True,
-            "merge_or_deployment_started": False,
-            **policy.require_full_policy_jobs(document.get("jobs"))}
+            "merge_or_deployment_started": False, "source_verified": True,
+            "release_candidate_eligible": False,
+            **policy.require_full_policy_jobs(
+                [job for job in jobs if job.get("name") != AGGREGATE_JOB])}
 
 
 def inspect_verify(run_id, head_sha):

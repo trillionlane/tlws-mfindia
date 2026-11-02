@@ -12,6 +12,7 @@ import subprocess
 
 import pytest
 import yaml
+from ro03_historical_source import previous as ro03_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/rollout-verified-review-dev.yml"
@@ -40,6 +41,7 @@ def environment(expected, actual):
         "GIT_CONFIG_SYSTEM": "/dev/null",
         "GIT_TERMINAL_PROMPT": "0",
         "GITHUB_SHA": actual,
+        "RELEASE_CANDIDATE_SHA": expected or "",
     }
     if expected is not None:
         value["EXPECTED_GIT_SHA"] = expected
@@ -155,7 +157,7 @@ def simulate_prepare_prefix(document, expected, actual, directory):
     """Only guards run; never checkout/auth/tooling/Docker or a provider."""
     for step in document["jobs"]["rollout"]["steps"]:
         if step.get("name") in GUARDS:
-            assert step["if"] == "inputs.operation == 'prepare-image'"
+            assert "if" not in step  # Both image preparation and execution are now bound.
             result = subprocess.run(
                 ["bash", "-c", step["run"]],
                 cwd=directory,
@@ -184,12 +186,13 @@ def test_guards_execute_before_checkout_tooling_auth_and_image_side_effects():
     document = workflow()
     steps = document["jobs"]["rollout"]["steps"]
     assert steps[0] == guard(FIRST)
-    assert steps[1] == {"uses": "actions/checkout@v4"}
+    assert steps[1] == {"uses": "actions/checkout@v4",
+                        "with": {"ref": "${{ needs.admission.outputs.candidate_sha }}"}}
     assert steps[2] == guard(SECOND)
     assert steps[3]["uses"] == "actions/setup-python@v5"
     for label in GUARDS:
         value = guard(label)
-        assert value["if"] == "inputs.operation == 'prepare-image'"
+        assert "if" not in value
         assert value["env"] == {
             "EXPECTED_GIT_SHA": "$" + "{{ inputs.expected_git_sha }}",
             "LC_ALL": "C",
@@ -200,16 +203,18 @@ def test_guards_execute_before_checkout_tooling_auth_and_image_side_effects():
     inputs = document["on"]["workflow_dispatch"]["inputs"]
     assert inputs["expected_git_sha"] == {
         "type": "string",
-        "required": "false",
-        "description": "Exact approved commit; required for prepare-image only",
+        "required": "true",
+        "description": "Exact current main commit admitted by automatic Verify",
     }
+    assert inputs["verify_run_id"]["required"] == "true"
+    assert inputs["verify_run_attempt"]["required"] == "true"
 
 
 def test_entire_old_workflow_restores_exactly_and_execute_mode_is_unchanged():
     authority = json.loads(AUTHORITY.read_text())
     baseline = gzip.decompress(base64.b64decode(authority["rollout_workflow"]["gzip_base64"]))
     plan = json.loads(PLAN.read_text())
-    current = WORKFLOW.read_text()
+    current = ro03_previous(WORKFLOW, WORKFLOW.read_bytes()).decode()
     restored = current
     for item in reversed(plan["insertions"]):
         assert restored.count(item["before"]) == item["count"] == 1
@@ -217,13 +222,13 @@ def test_entire_old_workflow_restores_exactly_and_execute_mode_is_unchanged():
     assert restored.encode() == baseline
     assert hashlib.sha256(baseline).hexdigest() == plan["base_workflow_sha256"]
     old_document = workflow(baseline.decode())
-    new_document = deepcopy(workflow())
+    new_document = deepcopy(workflow(current))
     del new_document["on"]["workflow_dispatch"]["inputs"]["expected_git_sha"]
     new_document["jobs"]["rollout"]["steps"] = [
         s for s in new_document["jobs"]["rollout"]["steps"] if s.get("name") not in GUARDS
     ]
     assert new_document == old_document
-    assert all(guard(label)["if"] == "inputs.operation == 'prepare-image'" for label in GUARDS)
+    assert all("if" not in guard(label) for label in GUARDS)
 
 
 def test_every_other_parent_file_is_full_byte_unchanged():

@@ -30,6 +30,10 @@ def fixture():
                      "steps": [{"name": label, "status": "completed",
                                 "conclusion": "skipped" if label == "Run reduced PR checks" else "success"}
                                for label in names]})
+    jobs.append({"name": "Release admission", "status": "completed", "conclusion": "success",
+                 "steps": [{"name": name, "status": "completed", "conclusion": "success"}
+                           for name in ("Build exact release-admission decision",
+                                        "Retain the current-attempt admission result")]})
     return {"databaseId": 123, "headSha": SHA, "name": "Verify", "status": "completed",
             "conclusion": "success", "jobs": jobs}
 
@@ -46,7 +50,8 @@ def test_both_complete_jobs_are_required_even_when_images_finish_first():
 
 @pytest.mark.parametrize("defect", ["run", "sha", "workflow", "running", "failure", "missing",
                                    "duplicate", "job_failed", "job_skipped", "step_failed",
-                                   "step_skipped", "step_running", "no_steps"])
+                                   "step_skipped", "step_running", "no_steps",
+                                   "aggregate_failed", "aggregate_missing_step"])
 def test_no_partial_wrong_or_skipped_run_can_admit_merge(defect):
     d = fixture()
     if defect == "run":
@@ -73,6 +78,10 @@ def test_no_partial_wrong_or_skipped_run_can_admit_merge(defect):
         d["jobs"][0]["steps"][0]["conclusion"] = "skipped"
     elif defect == "step_running":
         d["jobs"][0]["steps"][0]["status"] = "in_progress"
+    elif defect == "aggregate_failed":
+        d["jobs"][3]["conclusion"] = "failure"
+    elif defect == "aggregate_missing_step":
+        d["jobs"][3]["steps"].pop()
     else:
         d["jobs"][0]["steps"] = []
     with pytest.raises(ValueError):
