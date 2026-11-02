@@ -1,0 +1,17 @@
+{
+  "source": "https://docs.github.com/en/rest/actions/workflow-jobs#list-jobs-for-a-workflow-run-attempt",
+  "note": "Projection of the documented response, retrieved 2026-11-01. No job-level run_attempt is documented. Tests explicitly replace repository/run/head/job identity and required steps with synthetic bindings, not hosted verification evidence.",
+  "job": {
+    "id": 399444496,
+    "run_id": 29679449,
+    "run_url": "https://api.github.com/repos/octo-org/octo-repo/actions/runs/29679449",
+    "head_sha": "f83a356604ae3c5d03e1b46ef4d1ca77d64a90b0",
+    "url": "https://api.github.com/repos/octo-org/octo-repo/actions/jobs/399444496",
+    "status": "completed",
+    "conclusion": "success",
+    "name": "build",
+    "workflow_name": "CI",
+    "head_branch": "main",
+    "steps": []
+  }
+}

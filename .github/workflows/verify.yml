@@ -737,3 +737,38 @@ jobs:
               "reduced": ${{ toJSON(steps.reduced) }}
             }
         run: python scripts/ci_risk_policy.py gate --job verify
+
+  admission:
+    name: Release admission
+    needs: [plan, tests, verify]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      CI_MODE: ${{ needs.plan.outputs.mode }}
+      CI_BINDING: ${{ needs.plan.outputs.binding }}
+      CI_PLAN_RESULT: ${{ needs.plan.result }}
+      CI_TESTS_RESULT: ${{ needs.tests.result }}
+      CI_VERIFY_RESULT: ${{ needs.verify.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build exact release-admission decision
+        run: >-
+          python scripts/release_admission.py emit
+          --output "$RUNNER_TEMP/release-admission.json"
+          --summary "$GITHUB_STEP_SUMMARY"
+      - name: Retain the current-attempt admission result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-admission-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-admission.json
+          if-no-files-found: error
+          retention-days: 30

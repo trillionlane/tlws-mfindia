@@ -1,0 +1,51 @@
+{
+  "base": "d84748eeacc6c8cd16e12beeb6465ac8639a45ca",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/deploy-dev.yml": {
+      "current_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421",
+      "previous_sha256": "f234fb5fe336460e3862dda2db19ed1021baa40f8015ba44ac594e5e78c91864",
+      "scope": "RO-03 admission runs from immutable trusted workflow source before candidate checkout and application deployment"
+    },
+    ".github/workflows/rollout-verified-review-dev.yml": {
+      "current_sha256": "8f2c881ca778707ebde7f4c78fcf7e1399c9b3c4f10583d41e0ea5db17a9e8fc",
+      "previous_sha256": "c937716777406343d11b97214e4fcfc68ef41ebae8322ee8d7a61989c703a283",
+      "scope": "RO-03 trusted-workflow-source admission binds checkout, manifest validation, images and execution to the admitted SHA for both operations before cloud authentication"
+    },
+    ".github/workflows/verify.yml": {
+      "current_sha256": "acc79da6e8bca20977f59875b0760faf332873e7e63a58ce940f10dbcc052eaa",
+      "previous_sha256": "ad8c06634c0200210d6de1bdd8492b89ed825f04c4f634c69edb6605344ea348",
+      "scope": "RO-03 additive stable aggregate check and attempt-bound evidence packet"
+    },
+    "scripts/prepush_fs13.py": {
+      "current_sha256": "6a4a08badbcd1296dc7d29bbe80a75d65ca97817b82414281d0cb209f5a25b0d",
+      "previous_sha256": "f48d0ce2225dda4276209d857980669386f3f5a0e4d7663e18a5603f1436dd3d",
+      "scope": "Existing read-only full-run prepush inspection requires the stable aggregate without claiming release eligibility"
+    },
+    "tests/ro02_historical_source.py": {
+      "current_sha256": "a48890f84a861366f5795d8c288b6682e1409bf0ff21f88f001d24c4ac611cc9",
+      "previous_sha256": "e29446a5da966d231f1501bdf37af55816c88c083110722695da72e93e40e7ae",
+      "scope": "RO-03 whole-file inverse runs before unchanged RO-02 historical assertions"
+    },
+    "tests/test_image_preparation_revision_guard.py": {
+      "current_sha256": "4644f25ce7b3614e50277bbb54716fda1c19b18b47ff9604abeb3a0d808504b2",
+      "previous_sha256": "53ba0500978baa22d3dea505f41fc6643dff1583aa4742eda8544e83cea4578a",
+      "scope": "Current release inputs are asserted while the prior image-guard proof receives exact predecessor bytes"
+    },
+    "tests/test_reader_execution_source.py": {
+      "current_sha256": "99b033483bf08f6cfff889f201648de3d54121fda91299293c53b79f051fd9bb",
+      "previous_sha256": "86a4b740e764b85df7149e2176b5669f37d30827efa8b3a8363d49065c1bf727",
+      "scope": "RO-02 image smoke assertion is evaluated after exact RO-03 workflow inversion"
+    },
+    "tests/test_prepush_fs13.py": {
+      "current_sha256": "19e8e8dd8cefd1a48c478ff4307d9af39fd8fb44e1dff839f0b96332a6d66b18",
+      "previous_sha256": "8527cff312dd90b7798bc6ca35e31af53424f03268286d399f67848bf4a36a21",
+      "scope": "Prepush regressions require the complete current four-job result and aggregate steps"
+    },
+    "tests/test_ci_risk_policy.py": {
+      "current_sha256": "73d637e1fc32345718237e70da18b0eaf0f430866905b01b51468c5be2e08b2d",
+      "previous_sha256": "8d50b703a7bd4fe47c0322f6ffcfaa78676dbe794b530776d67e34ac33a6432d",
+      "scope": "Current workflow regression covers additive RO-03 aggregate without changing old inventory assertions"
+    }
+  }
+}
