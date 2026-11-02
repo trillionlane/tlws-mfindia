@@ -12,7 +12,7 @@ from pathlib import Path
 
 from mfdataindia.store.postgres import DEFAULT_MIGRATIONS
 from mfdataindia.review import broad_reader_embedded_authority as embedded
-from mfdataindia.review import reader_execution_source_reference as current
+from mfdataindia.review import dev_reader_source_reference as current
 
 
 BASE_DOCUMENT = "docs/READER_SOURCE_REFERENCE_MIGRATION_AUTHORITY_20261029.json"
@@ -99,10 +99,10 @@ def verify_packaged_source(root):
     _verify_files(root, base["files"], expected_count=44, expected_bytes=783832,
                   paths=base_paths)
     _require(type(variant) is dict and variant.get("format") ==
-             "source-only-ten-file-reader-execution-authority-v4-ro02"
+             "source-only-ten-file-reader-compatibility-authority-v5"
              and variant.get("base44_authority_sha256") == BASE_SHA256
              and variant.get("implementation_parent") ==
-             "69037c0ec078ad67a8dfd708bc3cf86040b655e6"
+             "84f6c91976ef6da0a8d8e4dfcd2f42a86a2632d2"
              and variant.get("total_bytes") == current.TOTAL_BYTES
              and variant.get("runtime_authority") is False)
     _verify_files(root, variant["files"], expected_count=10, expected_bytes=current.TOTAL_BYTES,

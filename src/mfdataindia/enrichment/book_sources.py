@@ -3,6 +3,8 @@
 import hashlib
 import json
 from copy import deepcopy
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book, uti_book_v2, uti_book, uti_book_v3, uti_book_v4
@@ -11,6 +13,7 @@ from mfdataindia.review.policy import fingerprint
 from mfdataindia.enrichment import _registered_book_policy_v6
 
 CURRENT_VERSION = 5
+_selected_registry = ContextVar("book_registry_selection", default=None)
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
 POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11}
@@ -38,8 +41,25 @@ REGISTRIES = {
 }
 
 
+@contextmanager
+def select_registry(version):
+    """Trusted composition selection; not process authority or a global default.
+
+    An allocated process must independently verify its installed configuration.
+    HTTP callers/environment flags cannot select this context. Default v5 and
+    all explicit historical constructors remain unchanged; reset on every exit.
+    """
+    if type(version) is not int or version not in REGISTRIES:
+        raise ValueError("reviewed book registry version required")
+    token = _selected_registry.set(version)
+    try:
+        yield
+    finally:
+        _selected_registry.reset(token)
+
+
 def registry(version=None, root=None):
-    version = CURRENT_VERSION if version is None else version
+    version = (CURRENT_VERSION if _selected_registry.get() is None else _selected_registry.get()) if version is None else version
     if type(version) is not int or version not in REGISTRIES:
         raise ValueError("reviewed book registry version required")
     filename, pin = REGISTRIES[version]

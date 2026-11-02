@@ -39,7 +39,7 @@ _EXISTING = (
     "broad_reader_lock_witness", "reader_function_attestation", "reader_function_attestation_spec",
     "reader_function_attestation_reference", "reader_access_profile", "privileges", "app",
     "evidence_transport",
-    "reader_execution_source_reference", "auth",
+    "reader_execution_source_reference", "dev_reader_source_reference", "auth",
 )
 CODE_PATHS = tuple(sorted(
     ["src/mfdataindia/review/reader_execution_" + name + ".py" for name in _NEW]

@@ -1,0 +1,99 @@
+{
+  "book_configuration_sha256": "6fb6c0c804a1dac20e4e2c4aa25f3cd107ce7c58517164409ae2da52e97869d4",
+  "book_registry_version": 4,
+  "dependency": {
+    "advisories": [
+      "GHSA-5hx5-vpf9-5wcv",
+      "GHSA-6c7f-9265-g8fw",
+      "GHSA-jr96-gvgh-j3r4",
+      "GHSA-gmh7-3g9r-mjh5",
+      "GHSA-62m5-6wh8-28x7",
+      "GHSA-42gh-23hr-vphw",
+      "GHSA-x3rh-gjgm-fmqc",
+      "GHSA-4vqv-7265-gm2w",
+      "GHSA-5849-834g-hvw5",
+      "GHSA-mfr5-77xh-9j7h",
+      "GHSA-cggf-277g-3q54"
+    ],
+    "distribution": "pypdf",
+    "format": "patched-pdf-dependency-v3",
+    "missing_contents": "reject; explicit zero-byte stream accepted",
+    "sdist_sha256": "c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163",
+    "version": "6.21.4",
+    "wheel_sha256": "33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c"
+  },
+  "dormant_successor_decoder_allocation": false,
+  "entrypoint": "scripts/refresh_allocated_amc_books_dev.py",
+  "file_sha256": {
+    "config/official-book-sources-v4.json": "acb158e5258646e278b9aa1ecea6219bd8b3d987afa088a6bd8d308334c2a482",
+    "config/official-facts-dev.json": "2871c124b7ce19ed088cfafe3cdeba06bb5dea39d42583d321923d8ac3023ac0",
+    "scripts/refresh_allocated_amc_books_dev.py": "f4f5287bbd24daeb7fd85b41794a442513229c4b760757d5be263675976ffceb",
+    "scripts/refresh_official_facts_dev.py": "ba128699cf5c95914e16cacfcee6b504b3fd60baede7bcdb24ec922948f78208"
+  },
+  "format": "official-amc-dev-process-allocation-v1",
+  "id": "official-amc-dev-workload-v1",
+  "live_execution_approval": false,
+  "module_sha256": {
+    "_amc_book_pdf_worker": "0f7b8333a49321e28dfbe8327cf1b9c485e28a9db5232b56d9a1dfe30dbbcd0c",
+    "_layout_book_pdf_worker": "f5a56e05b124caad12c6f9de011cbbc7e2dd2d1f8ea800d31a51c0482db03a34",
+    "_monthly_pdf_worker": "ce874651a4d5ea7f03381c2255f303d93d00528f8e3d3c55dda921ccd49a85ed",
+    "_uti_book_pdf_worker": "004f1bdf4d8e0826de108bab1b2e5a8b9713907ba660d3af51a549edd877f3c0",
+    "_uti_book_pdf_worker_v2": "3d12a48b40f561d24b70d02a4dbe189d5bb8afd09465fcf9c6567618295e1aaf",
+    "_uti_book_pdf_worker_v3": "11c90116110649ec9482c3ed5c2289f2833fa2893e3278f3802d9946add30656",
+    "amc_book_pdf": "22a9b1e02a71839af6f0332435558488f48dc76d1244d3d099e4bd6df831754d",
+    "book_runtime": "e46e9bab8316c87b54e2a8267a17fa589fb32a2a1c1dd45fabbef065f20cd548",
+    "book_sources": "26f4363058998b0a03a18eb702744b7cc09b817b18ab036294bed1f185d9e551",
+    "book_store": "8de21e08d12e2dde50e7954cb82dbc0282a419c4516c8c3882bcbf70160fd69a",
+    "distribution_store": "9f641055dfd2ba47ba22036ade6b4ca861cc9505fa10a42bdf7e5ba85b7df7ff",
+    "hdfc_monthly": "7fe07909ad8c1849a541d063b5d4271e02f8a6744ea1f94f628f2bbfc7a438d7",
+    "idcw_store": "63e1ce4812486ba69bebfe704cad218887014d32ce582db91bc1a82729cdf972",
+    "layout_book_pdf": "83ba64c507988b746be3627b0164397ac52766f32a1fd69a20b7dc9306126083",
+    "monthly_pdf": "21d408151309f0a0754d98001ef658cc5e7b31f73d5e9e81514fb67b2b3306c2",
+    "monthly_store": "df455a1eedfb2a31a4d66ce579c593b5f0e9f195602a846c7b4f7ee4b21f3f36",
+    "multi_runtime": "0042ed452403d7946b489d3c2e5e5ac60eabc8d83bf9beacd10a4ce3f1b1d01e",
+    "multi_store": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254",
+    "portfolio_store": "c7843bd3c5339c9852f632c321a2d8d472cbd0b869ba54799ffad41730967d55",
+    "refresh_runtime": "bd1d0ae2bf08dac367aa1a833334c6019067a0b8d9c7b5e43e88d3a7ec996e32",
+    "store": "472d6d84732ef1998ed6d78b6073987e3e0e51c20ebd3a1008562329c1f36d9a",
+    "uti_book_pdf": "8fa5b0c175ff12729719e43c4224ce54ee9e485240ea26532e771feeb9e5d502",
+    "uti_book_pdf_v2": "e9b267322856d370dd07ee91d4aa36af79f00586c2ac77cadf8538b902db1428",
+    "uti_book_pdf_v3": "8154cb70df7d976f7d882f32a7f9f727c4988bb2902b54347927750749422492"
+  },
+  "monthly_policy_sha256": "f9b15e40c8b8f9f367b1fed7dd7dd9afc5fa0e140b75b8fa524ce7083555fdda",
+  "multi_registry_sha256": "4c017bec9ca515f7eb1b0022a03cae9491f4d9a08bd0c1f2dc1044b2a607a275",
+  "preserved_bounds": {
+    "cpu": "1",
+    "max_retries": 0,
+    "memory": "2Gi",
+    "parallelism": 1,
+    "task_count": 6,
+    "task_timeout_seconds": 600
+  },
+  "scope": "existing installed registry v4 sources and unchanged financial/decoder semantics on pypdf6.21.4; no new source, source method upgrade, source expiry extension, grant, deployment or live approval",
+  "tasks": [
+    {
+      "index": 0,
+      "source_key": "absl-large-cap"
+    },
+    {
+      "index": 1,
+      "source_key": "hdfc-flexi-cap"
+    },
+    {
+      "index": 2,
+      "source_key": "absl-expanded"
+    },
+    {
+      "index": 3,
+      "source_key": "sbi-expanded"
+    },
+    {
+      "index": 4,
+      "source_key": "kotak-expanded"
+    },
+    {
+      "index": 5,
+      "source_key": "uti-expanded"
+    }
+  ]
+}

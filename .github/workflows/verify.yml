@@ -547,6 +547,8 @@ jobs:
           tools_image="tlws-mf-review-tools:${{ github.sha }}"
           docker run --rm --entrypoint python "$image" /app/scripts/smoke_pdf_security_compatibility_v3.py
           docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_pdf_security_compatibility_v3.py
+          docker run --rm --entrypoint python "$image" /app/scripts/smoke_allocated_amc_workload.py
+          docker run --rm --entrypoint python "$tools_image" /app/scripts/smoke_allocated_amc_workload.py
 
       - name: Verify packaged read-only core plan worker binding
         id: original_35

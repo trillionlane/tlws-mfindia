@@ -52,7 +52,9 @@ def test_native_compile_actual_populated_current_source_graph(ro01_db, monkeypat
     # source must reproduce it, not learn a new profile from runtime metadata.
     reference = json.loads((ROOT / "docs/RO02_POPULATED_SOURCE_VIEW_REFERENCE_20261031.json").read_text())
     assert observed["view_projection"] == reference["compilation"]["view_projection"]
-    assert observed["source"] == reference["compilation"]["source"]
+    assert observed["source"] == source.verify_packaged_source(ROOT)
+    from mfdataindia.review import reader_execution_source_reference as historical
+    assert reference["compilation"]["source"] == {**observed["source"], "variant_sha256": historical.SHA256}
     assert views.select(state, candidates, base_authority_sha256=source.BASE_SHA256,
         variant_authority_sha256=source.VARIANT_SHA256)["profile"] == views.RO02_POPULATED_PROFILE
     with capsys.disabled():

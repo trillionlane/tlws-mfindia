@@ -302,6 +302,7 @@ def test_runtime_dependency_workflow_and_unknown_changes_remain_full_coverage():
 
 def test_ro03_current_authority_preserves_every_whole_predecessor_and_rejects_tamper():
     import ro03_historical_source as history
+    from dev_reader_compatibility_history import previous as compatibility_previous
     rows = history.authority()
     assert set(rows) == {
         ".github/workflows/deploy-dev.yml", ".github/workflows/rollout-verified-review-dev.yml",
@@ -311,9 +312,10 @@ def test_ro03_current_authority_preserves_every_whole_predecessor_and_rejects_ta
         "tests/test_prepush_fs13.py", "tests/test_reader_execution_source.py",
     }
     for name, row in rows.items():
-        current = (ROOT / name).read_bytes()
+        observed = (ROOT / name).read_bytes()
+        current = compatibility_previous(ROOT / name, observed)
         assert hashlib.sha256(current).hexdigest() == row["current_sha256"]
         previous = history.previous(name, current)
         assert hashlib.sha256(previous).hexdigest() == row["previous_sha256"]
         with pytest.raises(AssertionError):
-            history.previous(name, current + b"\n# unreviewed mutation\n")
+            history.previous(name, observed + b"\n# unreviewed mutation\n")

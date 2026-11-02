@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from dev_reader_compatibility_history import previous as dev_compat_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "d84748eeacc6c8cd16e12beeb6465ac8639a45ca"
@@ -30,6 +31,7 @@ def _old(name):
 
 def previous(path, data):
     assert type(data) is bytes
+    data = dev_compat_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:
