@@ -16,8 +16,9 @@
       "GHSA-cggf-277g-3q54"
     ],
     "distribution": "pypdf",
-    "format": "patched-pdf-dependency-v3",
-    "missing_contents": "reject; explicit zero-byte stream accepted",
+    "format": "allocated-pdf-dependency-compatibility-v1",
+    "missing_contents": "retained historical decoder: empty page text, not source completeness",
+    "dormant_successor_missing_contents": "reject; explicit zero-byte stream accepted",
     "sdist_sha256": "c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163",
     "version": "6.21.4",
     "wheel_sha256": "33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c"

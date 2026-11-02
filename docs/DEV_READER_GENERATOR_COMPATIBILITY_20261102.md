@@ -31,6 +31,12 @@ transaction/worker/resource limits, receipt/replay checks and source expiry
 rules; in particular, do not extend the expired known-document fallback.
 Record the patched dependency alongside its unchanged historical decoder
 policy: do not relabel a successor extraction with a historical engine hash.
+The allocation's dependency record distinguishes retained decoder behavior
+from the dormant security successor: a missing page content stream remains an
+empty page under the historical decoder, not source-completeness evidence.
+The dormant successor's stricter missing-stream rejection is not claimed here.
+Both remain bounded, and actual malformed/oversized PDF rejection is retained.
+Non-empty physical-token fixtures also run through all four current decoders.
 
 Fresh read-only connections found registry v4 actually installed. Its complete
 configuration hash is `6fb6c0c804a1dac20e4e2c4aa25f3cd107ce7c58517164409ae2da52e97869d4`.
@@ -77,7 +83,8 @@ profiles remain identical. Old embedded descriptors remain immutable and are
 still explicitly tested as historical evidence. No broad-policy, installer,
 generator/admin privilege or API authorization logic is replaced.
 
-The added hosted case builds the genuine installed-v4/43-migration graph using
+The added hosted case compiles the genuine v4 component graph through migration
+041 (not the 042–044 replacement sealing functions), using
 committed constructors, adopts the real broad planner through installation,
 then exercises allocated monthly replay and UTI-v4 failed-receipt replay. It
 also checks portfolio publication/replay, the existing all-feature admin API
@@ -86,6 +93,15 @@ API reads, idempotent reconciliation, unchanged values and generator powers,
 and denied reader DML/persistent DDL/elevation. These are synthetic fixture
 receipts, not a fresh successful provider acquisition. Existing default-v5
 connected-chain tests remain unchanged in meaning.
+The first native run rejected the initial fixture because it had applied 042/043
+before inserting a v4 configuration. The unchanged production guard correctly
+found a different sealing body. The fixture selection is corrected; no guard or
+historical SQL is weakened. A fast provider-free composition regression first
+failed that wrong selection and now checks the final selected SQL body.
+The disposable compiler records the files it actually applies. It is not a live
+ledger clone: fresh read-only DEV metadata found only 23 core/review ledger rows,
+while the installed book function independently matches the exact 041 body and
+configuration v4. Do not fabricate optional ledger rows or activate later SQL.
 
 Persistent schema/relation DDL is prohibited for the reader. Existing PUBLIC
 TEMP permission is not revoked by this work; do not describe this as denying

@@ -38,7 +38,12 @@ def populate(dsn, monkeypatch, *, book_version=5):
     assert len(optional) == 21
     assert book_version in (4, 5)
     if book_version == 4:
-        optional = tuple(name for name in optional if name != '044_uti_complete_aum_rows.sql')
+        # 042/043 also replace seal_input, not just 044. The real installed v4
+        # guard pins 041 exactly; compiling later method revisions then merely
+        # inserting an old registry is not a genuine v4 fixture.
+        optional = tuple(name for name in optional if name not in (
+            '042_uti_physical_title_evidence.sql', '043_uti_canonical_title_evidence.sql',
+            '044_uti_complete_aum_rows.sql'))
     with PostgresStore(dsn, use_copy=False) as store:
         assert store.apply_migrations(ROOT / "sql/optional", files=optional) == list(optional)
     with connect(dsn, autocommit=False) as conn:
@@ -150,5 +155,16 @@ def populate(dsn, monkeypatch, *, book_version=5):
         assert not conn.execute("SELECT 1 FROM mf_book_facts.batches").fetchone()
         assert conn.execute("SELECT count(*) AS n FROM mf_monthly_facts.snapshots").fetchone()["n"] == 2
         assert conn.execute("SELECT count(*) AS n FROM mf_fact_refresh.publications").fetchone()["n"] > 0
-        assert conn.execute("SELECT count(*) AS n FROM mf.schema_migrations").fetchone()["n"] == (43 if book_version == 4 else 44)
+        if book_version == 5:
+            assert conn.execute("SELECT count(*) AS n FROM mf.schema_migrations").fetchone()["n"] == 44
+        else:
+            # A source-compiled disposable graph, NOT a clone/retrofit of the
+            # live ledger. Check every actually applied filename/hash; do not
+            # manufacture rows to make a frozen live-ledger guard accept it.
+            expected = [{'migration_name': Path(row['path']).name,
+                         'content_sha256': row['sha256']} for row in base['files']
+                        if Path(row['path']).parent == Path('sql')
+                        or Path(row['path']).name == '023_verified_fund_review.sql'
+                        or Path(row['path']).name in optional]
+            assert conn.execute('SELECT migration_name,content_sha256 FROM mf.schema_migrations ORDER BY migration_name').fetchall() == sorted(expected, key=lambda r: r['migration_name'])
     return {"portfolio_selection": portfolio_selection}

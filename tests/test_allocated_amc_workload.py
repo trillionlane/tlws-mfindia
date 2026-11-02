@@ -237,6 +237,69 @@ def test_allocation_does_not_extend_expired_known_document_fallback():
     assert kotak_known_document.original(request, datetime(2026, 11, 2, tzinfo=timezone.utc)) is None
 
 
+def test_allocation_reports_actual_blank_page_policy_without_claiming_dormant_guards():
+    from mfdataindia.enrichment import allocated_amc_workload as allocated, amc_book_pdf
+    dependency = allocated.allocation(ROOT)['dependency']
+    assert dependency['format'] == 'allocated-pdf-dependency-compatibility-v1'
+    assert dependency['missing_contents'] == 'retained historical decoder: empty page text, not source completeness'
+    assert dependency['dormant_successor_missing_contents'] == 'reject; explicit zero-byte stream accepted'
+    writer = PdfWriter()
+    writer.add_blank_page(width=200, height=200)
+    output = io.BytesIO()
+    writer.write(output)
+    result = amc_book_pdf.extract(output.getvalue())
+    assert result['pages'][0]['text'] == ''
+    assert result['whole_document_semantic_coverage'] is False
+    assert allocated.allocation(ROOT)['dormant_successor_decoder_allocation'] is False
+
+
+@pytest.mark.parametrize('joined', [False, True])
+def test_real_nonempty_pdf_through_all_current_allocated_workers(joined):
+    from mfdataindia.enrichment import allocated_amc_workload as allocated
+    from mfdataindia.enrichment import amc_book_pdf, layout_book_pdf, monthly_pdf, uti_book_pdf
+    allocated.allocation(ROOT)
+    make = runpy.run_path(str(ROOT / 'scripts/smoke_uti_aum_decoder.py'))['fixture']
+    raw = make(joined=joined)
+    for extract, coverage_key in (
+            (amc_book_pdf.extract, 'whole_document_semantic_coverage'),
+            (uti_book_pdf.extract, 'whole_document_semantic_coverage'),
+            (lambda b: layout_book_pdf.extract(b, profile='kotak'), 'whole_document_semantic_coverage'),
+            (lambda b: monthly_pdf.extract(b, start=1, end=1), 'whole_document_coverage')):
+        result = extract(raw)
+        assert result['extractor_version'] == '6.21.4'
+        assert result['document_pages'] == 1
+        assert '4,094.35' in result['pages'][0]['text']
+        assert result[coverage_key] is False
+
+
+@pytest.mark.parametrize('version', [4, 5])
+def test_fixture_migration_plan_ends_with_the_real_selected_sealing_body(version, monkeypatch):
+    import reader_execution_native_fixture as native
+    from mfdataindia.enrichment import book_store
+    selected = []
+    class PlanCaptured(Exception):
+        pass
+    class Store:
+        def __init__(self, *a, **k):
+            pass
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            pass
+        def apply_migrations(self, root, *, files):
+            selected.extend(files)
+            raise PlanCaptured()
+    monkeypatch.setattr(native, 'PostgresStore', Store)
+    with pytest.raises(PlanCaptured):
+        native.populate('not-a-database-connection', monkeypatch, book_version=version)
+    # Provider-free source composition, not PostgreSQL execution. Native CI
+    # separately verifies the real installed prosrc through the unchanged guard.
+    bodies = [(ROOT / 'sql/optional' / name).read_text().split('AS $$', 1)[1].split('$$;', 1)[0]
+              for name in selected if 'CREATE OR REPLACE FUNCTION mf_book_facts.seal_input()'
+              in (ROOT / 'sql/optional' / name).read_text()]
+    assert bodies[-1] == book_store.migration_source(version=version).split('AS $$', 1)[1].split('$$;', 1)[0]
+
+
 def test_reporting_failure_keeps_observed_completion_and_never_resubmits(monkeypatch):
     import builtins
     from mfdataindia.enrichment import allocated_amc_workload as allocated, book_runtime

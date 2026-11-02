@@ -151,7 +151,15 @@ def test_native_allocated_runtime_broad_reader_api_and_generator_coexistence(
             assert client.get(path).status_code == 200
     with connect(ro01_db, autocommit=False) as conn:
         conn.execute('REVOKE SELECT ON mf_enrichment.blobs FROM mfdata_verified_reader')
-    with pytest.raises(ValueError):
-        workload.verify_database(fixed['MFDATAINDIA_DSN'], workload.allocation(ROOT))
+    # Missing reader SELECT is a reader-adoption failure, not permission to
+    # promote or reject an otherwise unchanged generator caller. Keep the
+    # identities separate just as the RO-01 coexistence correction requires.
+    with connect(ro01_db, 'mfdata_verified_reader') as conn:
+        with pytest.raises(profiles.ReaderAccessError, match='READER_PROFILE_READ_GRANTS_MISSING'):
+            profiles.verify_selection(conn, profiles.BROAD)
+    workload.verify_database(fixed['MFDATAINDIA_DSN'], workload.allocation(ROOT))
+    with pytest.raises(workload.AllocationError, match='ALLOCATION_INSTALLED_POLICY_MISMATCH'):
+        workload.verify_database(fixed['MFDATAINDIA_DSN'],
+            {**workload.allocation(ROOT), 'book_configuration_sha256': '0' * 64})
     with capsys.disabled():
         print('ALLOCATED_AMC_NATIVE: direct generator/runtime receipt replay and portfolio publication; broad review API and core producer reader identity/routes; persistent DDL/DML denied; idempotent composition; missing reader grant rejected; no provider calls', flush=True)

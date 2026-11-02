@@ -34,9 +34,9 @@
       "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
     },
     "tests/reader_execution_native_fixture.py": {
-      "current_sha256": "60f44bb9288f5f55dcf4138780d5a26418a9e72c4f8286e79231364237f741da",
+      "current_sha256": "7b63d27727becf2c8879802865fe3ea0d0091b9be30d0dc792287e16d6b64771",
       "previous_sha256": "18ccd338bf1c5d3b8438fdcb0a855dd22e9daf9105279644c8860a60af44072e",
-      "reason": "Optional genuine installed-v4/43-ledger fixture; unchanged default v5/44-ledger proofs.",
+      "reason": "Optional source-compiled v4 fixture ends at the exact 041 sealing body and checks its complete actually applied ledger, not a live-ledger clone; unchanged default v5/44-ledger proofs.",
       "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
     },
     "tests/ro03_historical_source.py": {

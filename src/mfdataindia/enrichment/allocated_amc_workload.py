@@ -21,7 +21,7 @@ from mfdataindia.review.policy import fingerprint
 
 ALLOCATION_ID = 'official-amc-dev-workload-v1'
 ALLOCATION_FILE = 'config/official-amc-dev-workload-v1.json'
-ALLOCATION_SHA256 = 'f3bc2fa80f0e75fd818522e6913ad65e21ce0360bc0b73e8d83f7ad94c71ada9'
+ALLOCATION_SHA256 = '4050e4e704195b92a759f2f3c1051d4cea0d539ffe369fd3c96be402f3d9fb63'
 JOB = 'tlws-mf-official-facts-refresh-dev'
 CONNECTION = 'trillionlane-dev:asia-south1:tlws-mf-data-dev'
 DATABASE = 'mfdataindia'

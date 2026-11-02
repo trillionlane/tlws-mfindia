@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_SHA256 = 'b7f68753ecbfa20228963910a9c260cea87f7db19624c05e77cd9c2a27decd4e'
+MANIFEST_SHA256 = 'd364b2efd124a7897d590475f3250ac6deb546cc7daad1c398dd4f15eb5603b4'
 
 
 def manifest():
