@@ -1,0 +1,68 @@
+{
+  "base": "84f6c91976ef6da0a8d8e4dfcd2f42a86a2632d2",
+  "format": "finite-current-source-compatibility-inverses-v2",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/verify.yml": {
+      "current_sha256": "764abc8dbbcc017adaf324f5d7e42bcc95541fb134fc61675a1834d2840df200",
+      "previous_sha256": "acc79da6e8bca20977f59875b0760faf332873e7e63a58ce940f10dbcc052eaa",
+      "reason": "Two additional provider-free APP/TOOLS smoke commands in the unchanged PDF step; no gate/resource/step change.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "src/mfdataindia/enrichment/book_sources.py": {
+      "current_sha256": "26f4363058998b0a03a18eb702744b7cc09b817b18ab036294bed1f185d9e551",
+      "previous_sha256": "dcde01497a93ce867f475f8c707e9caf7683d0785636d03a34c2677dc64e0e12",
+      "reason": "Trusted context-local installed v4 selection; all explicit source/financial constructors and default v5 unchanged.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "src/mfdataindia/review/broad_reader_source_authority.py": {
+      "current_sha256": "377e1fc6741e83ba548f98a304bae65d81b85944966f8aa62dd09f4f78d74264",
+      "previous_sha256": "3d944400841dd3026b13383ed608fb13886d860ea56a95ff5fcbf89ad37b97f7",
+      "reason": "Require new current ten-file descriptor, not the superseded source pin.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "src/mfdataindia/review/broad_reader_view_profile.py": {
+      "current_sha256": "3ec991043c51277c05c2ac5ebb0cd06f6462fdc7301d1f6265157263426a2546",
+      "previous_sha256": "a78d8f364707c324776609cf7e40bfc289e87db4be2e765e6aa92b090efe9c60",
+      "reason": "Associate the new Python-only source descriptor with exact unchanged SQL view profiles; no new view hash.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "src/mfdataindia/review/reader_execution_contract.py": {
+      "current_sha256": "e400e4061d0d008b3657928c7c013fc659c49d3a18d1c1d559a17b37767f013c",
+      "previous_sha256": "aa704fd2bd38ede11372fc3dd11f48b942cec0644e52d12070aebb7074871d78",
+      "reason": "Bind the new embedded source-descriptor module into current code provenance.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "tests/reader_execution_native_fixture.py": {
+      "current_sha256": "7b63d27727becf2c8879802865fe3ea0d0091b9be30d0dc792287e16d6b64771",
+      "previous_sha256": "18ccd338bf1c5d3b8438fdcb0a855dd22e9daf9105279644c8860a60af44072e",
+      "reason": "Optional source-compiled v4 fixture ends at the exact 041 sealing body and checks its complete actually applied ledger, not a live-ledger clone; unchanged default v5/44-ledger proofs.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "tests/ro03_historical_source.py": {
+      "current_sha256": "b727365cc65661fab01ae7b7fe6c116e150d3af7026c81203cbd628f99609439",
+      "previous_sha256": "659c0bb16bf122fca901e16167cf9496aba0275f3e4449270253ed1562174e8d",
+      "reason": "Call the finite current-source adapter before unchanged historical full-byte comparisons.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "tests/test_reader_execution_postgres.py": {
+      "current_sha256": "eab735e0adbddeb5ef0f338495c435599c44a75a918ce832fa94c05f2fcbeda5",
+      "previous_sha256": "befba294b9bdc686140c969477a7ebe256d0d03ece095aa67b38abaa874202fb",
+      "reason": "Fresh native source attestation is current; the retained prior compilation remains historical and immutable.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    },
+    "tests/test_release_admission.py": {
+      "current_sha256": "3a83beebd9921606a4c3cff449a3a83b2e1085b57ccecec2cee9847ea54d48e0",
+      "previous_sha256": "a1aa916efca8db46c8e0b5d612866bdeef579be0b5fb8ede1f2b025310444d87",
+      "reason": "Apply the exact whole-current-file inverse before the unchanged RO03 predecessor comparison; original tamper rejection remains.",
+      "regression": "tests/test_dev_reader_compatibility_history.py + tests/test_release_admission.py"
+    },
+    "tests/test_reader_execution_source.py": {
+      "current_sha256": "00fd31bf3cc2ac80ada7832a389746c9bcbe69bda3545005f6e3e2fd1c22a066",
+      "previous_sha256": "99b033483bf08f6cfff889f201648de3d54121fda91299293c53b79f051fd9bb",
+      "reason": "Current descriptor selection and explicit historical predecessor comparison; no old document rewrite.",
+      "regression": "tests/test_allocated_amc_workload.py + tests/test_allocated_amc_workload_postgres.py + tests/test_dev_reader_compatibility_history.py"
+    }
+  },
+  "purpose": "Only enumerated intentional source/binding/test changes are full-byte checked before returning the complete Git predecessor to old assertions. Actual new code/SQL is tested independently; no ignored regions or whole-repository freeze."
+}

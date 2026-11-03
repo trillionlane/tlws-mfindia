@@ -7,7 +7,7 @@ from copy import deepcopy
 import pytest
 
 from mfdataindia.review import broad_reader_source_authority as source
-from mfdataindia.review import reader_execution_source_reference as current
+from mfdataindia.review import dev_reader_source_reference as current
 from mfdataindia.review import broad_reader_view_profile as views
 from ro02_historical_source import ROOT, authority, previous
 from ro03_historical_source import previous as ro03_previous
@@ -95,7 +95,11 @@ def populated_source_rows():
     assert compiled["head"] == "e5154ce097a04c3117ddb0e8302d3a4a2fe4e1c4"
     assert compiled["checkout"] == "b0dff71e013ce66b819d7d736272609c8779d1e4"
     assert compiled["tree"] == "61f44eca89ba02be308f6346f3bfceaa9736e48b"
-    assert compiled["source"] == source.verify_packaged_source(ROOT)
+    # This retained compilation is historical. Its exact descriptor stays old;
+    # current native CI reattests new Python bytes and the unchanged SQL graph.
+    from mfdataindia.review import reader_execution_source_reference as historical
+    assert compiled["source"] == {**source.verify_packaged_source(ROOT),
+                                  "variant_sha256": historical.SHA256}
     # Synthetic OIDs isolate this pure definition-set matcher. Original native
     # wire OIDs/proofs are never rewritten by this source-profile unit test.
     rows = [{**deepcopy(row), "oid": i + 1, "owner": 100, "relkind": "v"}

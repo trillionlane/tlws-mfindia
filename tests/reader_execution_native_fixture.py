@@ -30,12 +30,20 @@ def _policy(conn, document):
                          {"policy_id": document["id"], "policy_version": document["version"]})
 
 
-def populate(dsn, monkeypatch):
+def populate(dsn, monkeypatch, *, book_version=5):
     base = json.loads(embedded.document("base"))
     optional = tuple(Path(row["path"]).name for row in base["files"]
                      if Path(row["path"]).parent == Path("sql/optional")
                      and not Path(row["path"]).name.startswith("023_"))
     assert len(optional) == 21
+    assert book_version in (4, 5)
+    if book_version == 4:
+        # 042/043 also replace seal_input, not just 044. The real installed v4
+        # guard pins 041 exactly; compiling later method revisions then merely
+        # inserting an old registry is not a genuine v4 fixture.
+        optional = tuple(name for name in optional if name not in (
+            '042_uti_physical_title_evidence.sql', '043_uti_canonical_title_evidence.sql',
+            '044_uti_complete_aum_rows.sql'))
     with PostgresStore(dsn, use_copy=False) as store:
         assert store.apply_migrations(ROOT / "sql/optional", files=optional) == list(optional)
     with connect(dsn, autocommit=False) as conn:
@@ -121,12 +129,42 @@ def populate(dsn, monkeypatch):
         assert current.projection_state(conn)
         current.verify_acl(conn)
         assert not conn.execute("SELECT 1 FROM mf_multi_facts.transitions").fetchone()
-        book_store._initialize_configuration(conn, version=5)
+        if book_version == 5:
+            book_store._initialize_configuration(conn, version=5)
+        else:
+            # The live v4 was installed by the historical upgrade, not today's
+            # v5-only initial constructor. Populate this disposable pre-existing
+            # graph from the exact production v4 document/policy constructors;
+            # do not override registries or manufacture migration/approval rows.
+            from psycopg import sql
+            from psycopg.types.json import Jsonb
+            document = book_sources.configuration(4)
+            conn.execute('INSERT INTO mf_book_facts.configuration VALUES(1,%s,%s)',
+                         (fingerprint(document), Jsonb(document)))
+            conn.execute('CREATE VIEW mf_book_facts.prior_field_versions AS '
+                         + current.view_definition(conn, 'mf_live_facts.field_versions'))
+            for row in conn.execute('SELECT rolname FROM pg_roles WHERE oid<>current_user::regrole'):
+                conn.execute(sql.SQL('REVOKE ALL ON mf_book_facts.prior_field_versions FROM {}').format(sql.Identifier(row['rolname'])))
+            conn.execute('REVOKE ALL ON mf_book_facts.prior_field_versions FROM PUBLIC')
+            for role in ('mfdata_verified_generator', 'mfdata_verified_reader', 'mfdata_verified_admin'):
+                conn.execute(sql.SQL('GRANT SELECT ON mf_book_facts.prior_field_versions TO {}').format(sql.Identifier(role)))
+            _policy(conn, book_sources.current_policy(4))
         book_store.verify_acl(conn, principal="mfdata_verified_reader")
-        assert book_store.installed_configuration(conn)["document"] == book_sources.configuration(5)
+        assert book_store.installed_configuration(conn)["document"] == book_sources.configuration(book_version)
         assert not conn.execute("SELECT 1 FROM mf_multi_facts.snapshots").fetchone()
         assert not conn.execute("SELECT 1 FROM mf_book_facts.batches").fetchone()
         assert conn.execute("SELECT count(*) AS n FROM mf_monthly_facts.snapshots").fetchone()["n"] == 2
         assert conn.execute("SELECT count(*) AS n FROM mf_fact_refresh.publications").fetchone()["n"] > 0
-        assert conn.execute("SELECT count(*) AS n FROM mf.schema_migrations").fetchone()["n"] == 44
+        if book_version == 5:
+            assert conn.execute("SELECT count(*) AS n FROM mf.schema_migrations").fetchone()["n"] == 44
+        else:
+            # A source-compiled disposable graph, NOT a clone/retrofit of the
+            # live ledger. Check every actually applied filename/hash; do not
+            # manufacture rows to make a frozen live-ledger guard accept it.
+            expected = [{'migration_name': Path(row['path']).name,
+                         'content_sha256': row['sha256']} for row in base['files']
+                        if Path(row['path']).parent == Path('sql')
+                        or Path(row['path']).name == '023_verified_fund_review.sql'
+                        or Path(row['path']).name in optional]
+            assert conn.execute('SELECT migration_name,content_sha256 FROM mf.schema_migrations ORDER BY migration_name').fetchall() == sorted(expected, key=lambda r: r['migration_name'])
     return {"portfolio_selection": portfolio_selection}

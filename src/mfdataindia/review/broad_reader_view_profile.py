@@ -8,6 +8,7 @@ function/callee attestation, dependency graph, or actual lock witness.
 from hashlib import sha256
 import json
 from .reader_execution_source_reference import SHA256 as RO02_AUTHORITY_SHA256
+from .dev_reader_source_reference import SHA256 as DEV_READER_AUTHORITY_SHA256
 
 
 BASE_AUTHORITY_SHA256 = "efec1d25524362b3caa568a14b096935969de0cc277704d1c04d2ddb95242372"
@@ -21,6 +22,8 @@ RO02_POPULATED_PROFILE = "BASE44_RO02_REGISTERED_AND_BOOK_V5_POPULATED"
 _BY_AUTHORITY = {VARIANT_AUTHORITY_SHA256: _PROFILES,
                  RO02_AUTHORITY_SHA256: {**_PROFILES, RO02_POPULATED_PROFILE: (
                      16, "e2fca3236a4372cb705ba1eda686763221a60354837df3419743fbe643ee664c")}}
+# Only Python registry composition changed. All SQL/view definitions are exact.
+_BY_AUTHORITY[DEV_READER_AUTHORITY_SHA256] = dict(_BY_AUTHORITY[RO02_AUTHORITY_SHA256])
 
 
 class ViewProfileError(ValueError):
