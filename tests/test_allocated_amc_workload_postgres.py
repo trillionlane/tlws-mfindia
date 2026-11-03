@@ -8,6 +8,7 @@ import psycopg
 from psycopg.conninfo import make_conninfo
 import pytest
 
+from mfdataindia.calculators import store as forward_store, historical_store
 from mfdataindia.enrichment import allocated_amc_workload as workload, refresh_store
 from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.app import create_amc_books_app, create_review_app
@@ -21,6 +22,7 @@ from test_verified_review_auth import assertion, trust
 
 pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[1]
+CALCULATOR_POLICY_STORES = (forward_store, historical_store)
 
 
 def scheduled_replay_receipt(conn, snapshots, execution):
@@ -44,6 +46,24 @@ def scheduled_replay_receipt(conn, snapshots, execution):
 def test_native_allocated_runtime_broad_reader_api_and_generator_coexistence(
         ro01_db, monkeypatch, capsys):
     inputs = populate(ro01_db, monkeypatch, book_version=4)  # Real installed v4, no registry override.
+    # populate() is the narrower reader/execution fixture. The actual deployed
+    # admin factory also enables forward AND historical calculators. Reuse the
+    # supported production installers, as the existing full-factory fixture
+    # does, without replaying its already-installed foundation DDL or 042–044.
+    before_policies = values(ro01_db)
+    before_catalogue = catalogue(ro01_db)
+    with connect(ro01_db, autocommit=False) as conn:
+        conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        for store in CALCULATOR_POLICY_STORES:
+            with pytest.raises(ValueError, match='calculator policy not installed|historical calculator policy'):
+                store.installed_policy(conn)  # Real missing-row witness, not a fabricated hash.
+            first = store.install_policy(conn)
+            assert first['source_writes'] == first['schema_changes'] == 0
+            assert store.install_policy(conn) == first
+    assert catalogue(ro01_db) == before_catalogue
+    after_policies = values(ro01_db)
+    assert all(after_policies[name] == digest for name, digest in before_policies.items()
+               if name != 'mf_review.policies')
     before = generator_capabilities(ro01_db)
     adopt(ro01_db)
     assert generator_capabilities(ro01_db) == before
@@ -160,6 +180,21 @@ def test_native_allocated_runtime_broad_reader_api_and_generator_coexistence(
         response = client.get('/api/enrichment/v9/policy', headers={
             'Authorization': 'Bearer ' + assertion(private, scope=['review:read'])})
         assert response.status_code == 200 and response.json() == policy
+        # Both omitted prerequisites are now real installed policies. Exercise
+        # their authenticated retrieval, not just the first successful lifespan.
+        with connect(ro01_db, 'mfdata_verified_admin') as conn:
+            calculator_policies = [store.installed_policy(conn) for store in CALCULATOR_POLICY_STORES]
+        for document in calculator_policies:
+            path = '/api/review/v1/policies/' + fingerprint(document)
+            assert client.get(path).status_code == 401
+            reply = client.get(path, headers={
+                'Authorization': 'Bearer ' + assertion(private, scope=['review:read'])})
+            assert reply.status_code == 200 and reply.json()['document'] == document
+        projection = client.post('/api/calculators/v1/projections', json={
+            'kind': 'sip', 'months': 12, 'annual_return_pct': '0',
+            'rate_mode': 'effective_annual', 'monthly_paise': 10000, 'timing': 'end'},
+            headers={'Authorization': 'Bearer ' + assertion(private, scope=['review:read'])})
+        assert projection.status_code == 200 and projection.json()['personal_scenario_persisted'] is False
         denied = client.post('/api/review/v1/funds/1/reviews', json=payload,
             headers={'Authorization': 'Bearer ' + assertion(private, scope=['review:read']),
                      'Idempotency-Key': 'allocated-admin-denied-write'})

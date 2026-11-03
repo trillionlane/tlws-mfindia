@@ -33,6 +33,51 @@ def entrypoint():
     return value
 
 
+def test_full_factory_fixture_keeps_all_deployed_features_and_both_calculator_installers(monkeypatch):
+    # Provider-free wiring check only: actual lifespan/SQL semantics are tested
+    # by the hosted PostgreSQL case, not by this intercepted factory call.
+    from mfdataindia.review import app
+    from mfdataindia.calculators import store as forward_store, historical_store
+    from test_allocated_amc_workload_postgres import CALCULATOR_POLICY_STORES
+    monkeypatch.setattr(app, 'create_review_app', lambda dsn, **kwargs: (dsn, kwargs))
+    sentinel = object()
+    dsn, options = app.create_amc_books_app('synthetic-not-connected', verifier=sentinel)
+    assert dsn == 'synthetic-not-connected' and options.pop('verifier') is sentinel
+    assert options == dict.fromkeys((
+        'research', 'calendar', 'rolling', 'calculators', 'historical', 'enrichment',
+        'official_facts', 'portfolios', 'overlap', 'distributions', 'idcw_catalog',
+        'current_facts', 'monthly_facts', 'fact_refresh', 'fact_verification',
+        'amc_coverage', 'multi_amc', 'amc_books'), True)
+    assert CALCULATOR_POLICY_STORES == (forward_store, historical_store)
+
+
+@pytest.mark.parametrize('kind', ['forward', 'historical'])
+def test_real_calculator_validators_reject_missing_or_different_current_policy(kind):
+    # Recording SELECT transport; no assertion here claims native DB evidence.
+    from copy import deepcopy
+    from mfdataindia.calculators import forward, historical, store, historical_store
+    from mfdataindia.review.policy import fingerprint
+    engine, validator = {'forward': (forward, store),
+                         'historical': (historical, historical_store)}[kind]
+    expected = engine.policy()
+    class Connection:
+        document = None
+        def execute(self, command, parameters):
+            assert command == 'SELECT document FROM mf_review.policies WHERE policy_hash=%s'
+            assert parameters == (fingerprint(expected),)
+            return self
+        def fetchone(self):
+            return {'document': self.document} if self.document is not None else None
+    conn = Connection()
+    with pytest.raises(ValueError, match='policy not installed or differs'):
+        validator.installed_policy(conn)
+    conn.document = expected
+    assert validator.installed_policy(conn) == expected
+    conn.document = {**deepcopy(expected), 'unapproved': True}
+    with pytest.raises(ValueError, match='policy not installed or differs'):
+        validator.installed_policy(conn)
+
+
 def test_native_replay_input_uses_scheduled_catalogues_not_owner_bootstrap(monkeypatch):
     from mfdataindia.enrichment import refresh_store
     from test_allocated_amc_workload_postgres import scheduled_replay_receipt

@@ -108,6 +108,64 @@ scheduled receipt's idempotence before replaying the actual entrypoint. No
 production SQL, role permissions, runtime guard or workflow is changed for
 this fixture correction. A fast provider-free test checks this input contract;
 only hosted PostgreSQL establishes the real trigger/role semantics.
+The third native run passed that receipt creation/idempotence, owner-bootstrap
+denial and actual monthly/UTI replay, then reached the real deployed admin
+factory. Its lifespan correctly rejected a missing forward calculator policy.
+The shared reader/execution fixture also lacked the historical calculator
+policy immediately following it. This is a fixture composition defect, not a
+reason to disable calculators or change either production validator.
+
+### Full deployed factory: feature-to-installation mapping
+
+`create_amc_books_app` enables every feature below. The selected-reader fixture
+is narrower; retaining this real admin factory is deliberate cutover coverage.
+All rows except the two marked additions were already installed by the existing
+`reader_execution_native_fixture.populate(..., book_version=4)` composition.
+
+| Feature | Required policy/schema and fixture installation |
+|---|---|
+| Base runtime | Core +023, review policy; direct identity and capability checks |
+| research |024 certifications extension and `publication.policy` |
+| calendar |025 mf_analytics and `calendar.policy` |
+| rolling |026 mf_rolling and `rolling.policy` |
+| calculators | **Add:** existing `calculators.store.install_policy`, exact forward policy in mf_review.policies; no new migration |
+| historical | **Add:** existing `historical_store.install_policy`, exact historical policy in mf_review.policies; no new migration |
+| enrichment |027 mf_enrichment and `evidence.policy` |
+| official_facts |028 mf_official_facts and `facts.policy` |
+| portfolios |029 mf_portfolios, `portfolios.policy` and existing real publication fixture |
+| overlap |030 mf_overlap and `overlap.policy` |
+| distributions |031 mf_distributions and `distributions.policy` |
+| idcw_catalog |032 mf_idcw and `idcw_catalog.policy` |
+| current_facts |033 mf_live_facts, `current_facts.policy`, real configuration/projection constructors |
+| monthly_facts |034 mf_monthly_facts, `monthly_facts.policy`, existing source/snapshot publication |
+| fact_refresh |035 mf_fact_refresh, `refresh_policy.policy`, existing publication and scheduled receipt |
+| fact_verification |036 mf_fact_review and `fact_review_policy.policy` |
+| amc_coverage | Committed register via `amc_register.load_register`; no additional DB policy |
+| multi_amc |037 mf_multi_facts and existing production configuration/projection constructors |
+| amc_books |038–041 mf_book_facts with exact v4 constructors/sealing body;042–044 remain excluded |
+
+Reuse both guarded calculator installers from the existing successful
+`test_historical_store_api` / `test_certification_input_native` full-factory
+setup. Do not replay their raw foundation DDL on already-installed schemas.
+The native case first witnesses both missing policy rows, installs/replays
+each through the actual owner-only, repeatable-read production seam and checks
+that ACLs and every other relation's values remain unchanged. Later it starts
+the unchanged full admin factory, retrieves both exact policies with real
+401/200 authentication checks and exercises a non-persisted forward projection.
+Historical observed-NAV calculations remain covered by the existing separate
+native historical API test; this case does not invent NAV/data to simulate them.
+All assertions after startup remain: admin mutation-scope denial, core producer
+direct-reader identity and GETs, unchanged values, missing-reader-grant denial,
+generator coexistence and wrong-installed-configuration rejection.
+
+Cheap provider-free tests check complete factory feature selection, both real
+calculator validator expectations and missing/drifted policy rejection. They
+are wiring/recording-transport checks, not native PostgreSQL proof. The existing
+Verify workflow has no arbitrary focused-test selector; its fixed early native
+partition does not include this new case. Use ordinary final-head hosted Verify
+for the actual case and complete suite, without local PostgreSQL, a new CI
+framework, moved tests or a waived full check.
+
 The disposable compiler records the files it actually applies. It is not a live
 ledger clone: fresh read-only DEV metadata found only 23 core/review ledger rows,
 while the installed book function independently matches the exact 041 body and
