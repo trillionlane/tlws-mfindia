@@ -143,6 +143,9 @@ def test_second_supported_creator_and_failed_reconcile_do_not_undo_ingestion(ro0
         for column in ('password','api_token','reader_dsn'):
             conn.execute(f'CREATE TABLE mf_other_creator.unsafe_{column}(id int PRIMARY KEY,{column} text)')
             enrollment.enroll(conn,'mf_other_creator','unsafe_'+column,classification='fund_research',title='Must block')
+        conn.execute('CREATE TABLE mf_other_creator.credential_notes(id int PRIMARY KEY,notes text)')
+        conn.execute("INSERT INTO mf_other_creator.credential_notes VALUES(1,'api_token=synthetic-secret-marker')")
+        text = enrollment.enroll(conn,'mf_other_creator','credential_notes',classification='fund_research',title='Content must block')
         conn.execute('INSERT INTO mf_other_creator.new_facts VALUES(2,\'{"value":8}\')')
         report = enrollment.after_migrations(conn)
         assert sum(row['reason'] == 'SENSITIVE_DATASET_COLUMN' for row in report['results'])==3
@@ -152,6 +155,10 @@ def test_second_supported_creator_and_failed_reconcile_do_not_undo_ingestion(ro0
         for column in ('password','api_token','reader_dsn'):
             assert conn.execute("SELECT has_table_privilege(current_user,%s,'SELECT') AS ok",
                                 ('mf_other_creator.unsafe_'+column,)).fetchone()['ok'] is False
+    with TestClient(create_app(make_conninfo(ro01_db,user=policy.READER,password=PASSWORD))) as client:
+        rejected = client.get('/api/datasets/v1/'+text['dataset_id']+'/rows')
+        assert rejected.status_code==503 and rejected.json()['detail']=='SENSITIVE_DATASET_VALUE'
+        assert 'synthetic-secret-marker' not in rejected.text
 
 
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
@@ -279,3 +286,47 @@ def test_baseline_adoption_drift_idempotence_and_single_catalogue_per_request(ro
             measurements.append({'stage':path.split('/')[-1],'seconds':elapsed,**delta})
     print(json.dumps({'native_dataset_queries_and_timings':measurements,
                       'not_a_production_SLA_or_live_consumer_acceptance':True},sort_keys=True))
+
+
+@pytest.mark.parametrize('ro01_db',['core'],indirect=True)
+def test_existing_v4_business_projections_keep_seals_and_do_not_expose_controls(ro01_db,monkeypatch):
+    from reader_execution_native_fixture import populate
+    from mfdataindia.datasets import projections
+    populate(ro01_db,monkeypatch,book_version=4)  # Supported PR142 v4 fixture, no later DDL.
+    adopt(ro01_db)
+    identifiers = {}
+    with connect(ro01_db,autocommit=False) as conn:
+        for name in sorted(projections.NAMES-{'mf_live_facts.baseline'}):
+            schema,relation = name.split('.')
+            identifiers[name] = enrollment.enroll(conn,schema,relation,
+                classification='fund_research',title=name)['dataset_id']
+        conn.execute('CREATE SCHEMA mf_dataset_projection')
+        conn.execute('CREATE VIEW mf_dataset_projection.values_view AS SELECT amfi_scheme_code FROM mf.current_fund_facts')
+        alias = enrollment.enroll(conn,'mf_dataset_projection','values_view',classification='fund_research',title='Business projection alias')
+        conn.execute('CREATE VIEW mf_dataset_projection.control_alias AS SELECT generation::bigint AS id FROM mf_live_facts.configuration')
+        control = enrollment.enroll(conn,'mf_dataset_projection','control_alias',classification='fund_research',title='Must not expose control')
+        conn.execute('CREATE VIEW mf_dataset_projection.mixed_alias AS SELECT f.amfi_scheme_code,c.generation FROM mf.current_fund_facts f CROSS JOIN mf_live_facts.configuration c')
+        mixed = enrollment.enroll(conn,'mf_dataset_projection','mixed_alias',classification='fund_research',title='Mixed control path must block')
+        result = enrollment.reconcile(conn)
+        denied = {control['dataset_id'],mixed['dataset_id']}
+        assert all(row['permissions_verified'] for row in result['results'] if row['dataset_id'] not in denied)
+        assert all(row['reason']=='UNREVIEWED_DATASET_DEPENDENCY' for row in result['results'] if row['dataset_id'] in denied)
+    with TestClient(create_app(make_conninfo(ro01_db,user=policy.READER,password=PASSWORD))) as client:
+        discovery = client.get('/api/datasets/v1')
+        assert discovery.status_code==200
+        available = {row['id'] for row in discovery.json()['datasets'] if row['state']=='available'}
+        assert set(identifiers.values())|{alias['dataset_id']} <= available
+        for identifier in [*identifiers.values(),alias['dataset_id']]:
+            metadata = client.get('/api/datasets/v1/'+identifier)
+            assert metadata.status_code==200 and metadata.json()['columns']
+            page = client.get('/api/datasets/v1/'+identifier+'/rows',params={'limit':2})
+            assert page.status_code==200 and page.json()['state'] in ('available','empty')
+        for identifier in denied:
+            refused = client.get('/api/datasets/v1/'+identifier+'/rows')
+            assert refused.status_code==503 and refused.json()['detail']=='UNREVIEWED_DATASET_DEPENDENCY'
+        with connect(ro01_db,autocommit=False) as conn:
+            body = conn.execute("SELECT pg_get_viewdef('mf_live_facts.field_heads'::regclass,true) AS definition").fetchone()['definition']
+            conn.execute('CREATE OR REPLACE VIEW mf_live_facts.field_heads AS SELECT * FROM ('+
+                         body.rstrip().removesuffix(';')+') sealed WHERE false')
+        changed = client.get('/api/datasets/v1/'+identifiers['mf_live_facts.field_heads']+'/rows')
+        assert changed.status_code==503 and changed.json()['detail']=='UNREVIEWED_DATASET_DEPENDENCY'

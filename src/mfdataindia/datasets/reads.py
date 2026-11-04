@@ -22,6 +22,13 @@ def _safe_value(value):
     elif isinstance(value, str):
         p.require(not re.search(r'(?i)(?:postgres(?:ql)?://|-----BEGIN[^\n]*PRIVATE KEY|\b(?:password|passwd|access_token|refresh_token|dsn)\s*[:=])', value),
                   'SENSITIVE_DATASET_VALUE')
+        # Free text can contain header/JSON/config assignments whose field is
+        # otherwise hidden inside a normal notes/document column. Reuse the
+        # field classifier; ordinary research prose and source_key assignments
+        # must not be confused with arbitrary mentions of "basic" or "key".
+        assignments = re.findall(r'''([A-Za-z][A-Za-z0-9_.-]{0,127})["']?\s*[:=]\s*\S+''',value)
+        p.require(not any(registry.is_credential_field(name) for name in assignments),
+                  'SENSITIVE_DATASET_VALUE')
 
 
 def projection(entry):

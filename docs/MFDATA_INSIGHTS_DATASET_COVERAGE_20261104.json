@@ -1,58 +1,85 @@
 {
-  "format": "mfdata-insights-dataset-sprint-v1",
+  "TI_track": "Existing Trillion Insight thread, separate isolated TI branch and reviewable PR; source implementations and final shared wire are coordinated, no blanket TI merge/deploy authority.",
   "base": "6e074b0d32fe5923d8adba384d9784d08ae4afaa",
-  "status": "IMPLEMENTATION_IN_PROGRESS_NOT_DEV_ACCEPTED",
-  "goal": "Account for all enrolled relations and expose eligible fund/research data through the existing authenticated internal MFData-to-TI path, including future eligible enrollment without a TI UI release.",
-  "scope_boundary": "Keep UTI ingestion repair, source acquisition, financial changes, optional GitHub administration and production hardening separate. RO04 remains complete for its tested prior scope.",
-  "initial_accounting": {
-    "enrolled": 127,
-    "accounted": 127,
-    "provisionally_eligible": 100,
-    "internal_controls_excluded": 26,
-    "held_for_architectural_review": ["mf.source_metadata"],
-    "not_a_live_API_or_TI_consumption_proof": true,
-    "decision_pending": "User asked whether controls should remain accounted but excluded or have separately reviewed sanitized projections. Raw source_metadata transport/error fields remain withheld pending exact disposition."
+  "baseline_activation": {
+    "activation_gate": "Verified source/images, reviewed audience/disposition, exact baseline registration, then authenticated serving discovery/metadata/reads and actual TI outcomes for every eligible dataset. Empty and unavailable datasets remain explicit; no inference from SELECT or a no-row query.",
+    "automatic_on_API_startup": false,
+    "baseline_candidate": "Private exact 127-object inventory: 100 provisional eligible registrations, 26 excluded controls and one held relation. No registration has run in DEV.",
+    "current_grants": "Fresh complete existing reader policy has no missing grants. A release expecting zero grant statements must stop/rollback on unexpected drift rather than broaden its write scope.",
+    "reason": "A non-elevated API identity cannot classify or write enrollment metadata. Migration reconciliation does not silently label pre-existing relations eligible.",
+    "supported_call": "mfdataindia.datasets.bootstrap.seed(conn, reviewed_coverage_inventory)",
+    "transaction": "Explicit reviewed owner connection and caller-owned transaction; full target metadata preflight before the first registration write. Commit only after all approved baseline registrations and permissions verify."
   },
+  "complete": false,
   "current_implementation": {
-    "factory": "mfdataindia.datasets.app:create_app",
-    "legacy_domain_factory_and_contracts": "Unmodified; the additive factory extends the same core application/pool and preserves its domain paths.",
+    "authentication": "Reuse existing internal ingress and short-lived Google OIDC Cloud Run invoker authorization. TI enforces its existing signed-in partner and workload boundaries. No direct browser-to-MFData, public proxy, new key or authentication framework.",
     "contract": "contracts/mfdataindia-consumer-datasets-v1.json",
+    "database_identity": "Direct mfdata_verified_reader/current_user=session_user on mfdataindia; no elevation, inherited membership, database CREATE or eligible-dataset DML/DDL/grant-option capability.",
+    "default_image_entrypoint": "The default APP Docker command now selects the additive dataset/core factory through unchanged Uvicorn flags; current image checks inspect the real Config.Cmd and exercise its factory/routes.",
+    "factory": "mfdataindia.datasets.app:create_app",
+    "installed_business_projections": "Existing current-facts and retained prior business views may depend on control inputs without exposing those inputs. Reuse the original known-policy configuration validator and full definition/owner/execution-context seals once per inventory. Only paths through those verified fixed business views exempt the control-input classification; other ownership, namespace, type, RLS, function and operator checks remain. A direct control alias or mixed direct-control path stays unavailable; changed seals fail closed.",
+    "legacy_domain_factory_and_contracts": "Unmodified; the additive factory extends the same core application/pool and preserves its domain paths.",
+    "limits": {
+      "max_binary_chunk_bytes": 131072,
+      "max_cursor_decoded_bytes": 4096,
+      "max_page_rows": 100,
+      "max_row_page_bytes": 2097152
+    },
+    "pagination": "Physical primary key uses typed keyset positions. A trusted view enrollment may declare integral/date/time/UUID keys, including explicitly handled NULLS LAST; the page plus look-ahead row rejects duplicate keys before advancing a cursor. Baseline declarations require matching retained view-definition hashes. Otherwise use explicit canonical offset order. Cursors bind dataset and schema; every page is a fresh transaction, not a retained multi-page snapshot. Concurrent data changes can affect page membership. Byte-budget page shortening always returns a continuation cursor without truncating columns.",
+    "permissions_are_not_readiness": "A dataset requires a trusted creator enrollment, safe metadata/dependency and permission checks, and an actual no-row reader projection in the discovery request. Actual TI consumption is a separate receipt, never inferred.",
+    "query_boundary": "Each API request has repeatable-read READ ONLY, ten-second statement and five-second lock limits. Only verified server catalogue identifiers and parameterized positions/ranges reach SQL.",
     "routes": [
       "GET /api/datasets/v1",
       "GET /api/datasets/v1/{dataset_id}",
       "GET /api/datasets/v1/{dataset_id}/rows?limit=50&cursor=...",
       "GET /api/datasets/v1/{dataset_id}/content/{column}?row=...&offset=0&length=131072"
     ],
-    "authentication": "Reuse existing internal ingress and short-lived Google OIDC Cloud Run invoker authorization. TI enforces its existing signed-in partner and workload boundaries. No direct browser-to-MFData, public proxy, new key or authentication framework.",
-    "database_identity": "Direct mfdata_verified_reader/current_user=session_user on mfdataindia; no elevation, inherited membership, database CREATE or eligible-dataset DML/DDL/grant-option capability.",
-    "query_boundary": "Each API request has repeatable-read READ ONLY, ten-second statement and five-second lock limits. Only verified server catalogue identifiers and parameterized positions/ranges reach SQL.",
-    "permissions_are_not_readiness": "A dataset requires a trusted creator enrollment, safe metadata/dependency and permission checks, and an actual no-row reader projection in the discovery request. Actual TI consumption is a separate receipt, never inferred.",
-    "types": "Built-in pg_catalog scalar/array types only. int8/numeric and date/time/UUID scalar columns are serialized as strings; bytea is a typed bounded content reference. No silent column projection or truncated row response.",
-    "pagination": "Physical primary key uses typed keyset positions. A trusted view enrollment may declare integral/date/time/UUID keys, including explicitly handled NULLS LAST; the page plus look-ahead row rejects duplicate keys before advancing a cursor. Baseline declarations require matching retained view-definition hashes. Otherwise use explicit canonical offset order. Cursors bind dataset and schema; every page is a fresh transaction, not a retained multi-page snapshot. Concurrent data changes can affect page membership. Byte-budget page shortening always returns a continuation cursor without truncating columns.",
-    "limits": {"max_page_rows":100,"max_cursor_decoded_bytes":4096,"max_row_page_bytes":2097152,"max_binary_chunk_bytes":131072},
-    "sensitive_data": "Known internal controls/held raw transport record are never discoverable or retrievable even if marked. Sensitive column names and detected credential-bearing nested values fail closed with value-free reasons. Trusted eligibility review remains necessary; the detector is not a universal arbitrary-secret classifier."
+    "sensitive_data": "Known internal controls/held raw transport record are never discoverable or retrievable even if marked. Sensitive column names and detected credential-bearing nested values fail closed with value-free reasons. Trusted eligibility review remains necessary; the detector is not a universal arbitrary-secret classifier.",
+    "types": "Built-in pg_catalog scalar/array types only. int8/numeric and date/time/UUID scalar columns are serialized as strings; bytea is a typed bounded content reference. No silent column projection or truncated row response."
   },
+  "format": "mfdata-insights-dataset-sprint-v1",
   "future_enrollment": {
-    "metadata": "Versioned creator-owned PostgreSQL relation comment; optional non-executable view-key declaration, preserve unrelated existing documentation, reject ambiguous duplicate markers, no caller SQL or target-role field.",
-    "supported_creators": ["mfdata_admin","mfdata_ingest"],
-    "creator_schema_matrix": "The existing sixteen RO01 schemas retain mfdata_admin direct ownership; do not weaken those guards or transfer ownership. Additional eligible research schemas support direct mfdata_admin or mfdata_ingest creators. An mfdata_ingest-owned relation in an existing RO01 schema is explicitly unsupported and rejected before registration, not silently certified; no role gains CREATE/ownership/membership from this sprint.",
-    "supported_schemas": "Current mf and mf_* research-domain schemas, including newly created eligible schemas; no system/unrelated schema wildcard.",
-    "lifecycle": "Trusted creator invokes datasets.enrollment.enroll on its real owned relation after DDL. Existing scripts/migrate.py invokes isolated reconciliation after its existing successful work. Other supported programmatic enrollment callers invoke the same hook; bypassing the lifecycle is reported unready, not presumed covered.",
-    "grants": "Only missing USAGE for the enrolled object's schema and SELECT for the enrolled owned relation, fixed reader, no grant options. No ownership/membership/role/default-global/function/sequence mutation or new writer capability. Current schema-local defaults remain unchanged.",
     "atomicity": "The caller owns the outer transaction. Per-relation savepoints contain failed reconciliation; no hidden COMMIT, alternate connection or retry. Structured IDs/reasons make failures observable without rolling back unrelated ingestion values.",
+    "creator_schema_matrix": "The existing sixteen RO01 schemas retain mfdata_admin direct ownership; do not weaken those guards or transfer ownership. Additional eligible research schemas support direct mfdata_admin or mfdata_ingest creators. An mfdata_ingest-owned relation in an existing RO01 schema is explicitly unsupported and rejected before registration, not silently certified; no role gains CREATE/ownership/membership from this sprint.",
+    "grants": "Only missing USAGE for the enrolled object's schema and SELECT for the enrolled owned relation, fixed reader, no grant options. No ownership/membership/role/default-global/function/sequence mutation or new writer capability. Current schema-local defaults remain unchanged.",
     "idempotence": "Identical enrollment emits no metadata write; already-compliant reconciliation emits no GRANT. Discovery is dynamic from verified current metadata, not a fixed TI list.",
-    "no_blanket_future_claim": "Unregistered/unsupported creators, unsafe dependencies/types or incomplete grants never become consumer-ready. Future eligible enrollment is not automatic exposure of every newly created database object."
+    "lifecycle": "Trusted creator invokes datasets.enrollment.enroll on its real owned relation after DDL. Existing scripts/migrate.py invokes isolated reconciliation after its existing successful work. Other supported programmatic enrollment callers invoke the same hook; bypassing the lifecycle is reported unready, not presumed covered.",
+    "metadata": "Versioned creator-owned PostgreSQL relation comment; optional non-executable view-key declaration, preserve unrelated existing documentation, reject ambiguous duplicate markers, no caller SQL or target-role field.",
+    "no_blanket_future_claim": "Unregistered/unsupported creators, unsafe dependencies/types or incomplete grants never become consumer-ready. Future eligible enrollment is not automatic exposure of every newly created database object.",
+    "supported_creators": [
+      "mfdata_admin",
+      "mfdata_ingest"
+    ],
+    "supported_schemas": "Current mf and mf_* research-domain schemas, including newly created eligible schemas; no system/unrelated schema wildcard."
   },
+  "goal": "Account for all enrolled relations and expose eligible fund/research data through the existing authenticated internal MFData-to-TI path, including future eligible enrollment without a TI UI release.",
+  "initial_accounting": {
+    "accounted": 127,
+    "decision_pending": "User asked whether controls should remain accounted but excluded or have separately reviewed sanitized projections. Raw source_metadata transport/error fields remain withheld pending exact disposition.",
+    "enrolled": 127,
+    "held_for_architectural_review": [
+      "mf.source_metadata"
+    ],
+    "internal_controls_excluded": 26,
+    "not_a_live_API_or_TI_consumption_proof": true,
+    "provisionally_eligible": 100
+  },
+  "intentional_current_source_changes": "DATASET_COVERAGE_CURRENT_SOURCE_CHANGES_20261104.json lists five finite full-file changes; historical bytes and assertions remain independently verifiable, with dedicated actual-current behavior and tamper tests.",
+  "remaining_gates": [
+    "Architectural disposition of explicit control/transport conflicts",
+    "Complete final source and fixture checks",
+    "Updated-head full hosted/native/audit/image CI",
+    "Independent source review",
+    "Reviewed exact DEV integration and actual per-dataset TI consumption report"
+  ],
+  "scope_boundary": "Keep UTI ingestion repair, source acquisition, financial changes, optional GitHub administration and production hardening separate. RO04 remains complete for its tested prior scope.",
+  "status": "IMPLEMENTATION_IN_PROGRESS_NOT_DEV_ACCEPTED",
   "verification": {
-    "provider_free": "Descriptor/cursor strictness, schema drift, scope/identity/capability/type/credential negatives, additive OpenAPI compatibility and actual packaged ASGI route smoke.",
-    "hosted_disposable_PostgreSQL": "New relation/new schema, second supported creator, idempotent permissions, real discovery/rows, missing/unsafe column privileges, excluded controls, empty view pagination, bytea chunk read, denied reader mutations/elevation and ingestion preservation. Collected locally, actual PASS requires hosted CI.",
-    "legacy_regressions": "Retain existing RO01/RO02 connected native chain, generator/admin publication and replay, allocated v4 PDF/default-v5 isolation, policy/source/financial assertions and all existing contracts/audit/credentials.",
+    "DEV_acceptance": "Pending reviewed delivery and exact bounded deployment/enrollment plan, then authenticated TI discovery/metadata/page consumption for every eligible dataset including empty states. No live dataset enablement or consumer acceptance claim yet.",
     "both_images": "One additional provider-free ASGI smoke invocation in the existing APP/TOOLS loop; no new CI framework/job/credentials/resource limit or weakened admission gate.",
+    "hosted_disposable_PostgreSQL": "Seven new hosted-only cases: original future-enrollment/new-schema/creator/security/content coverage plus real installed v4 business-view projections, an eligible downstream alias, rejected raw-control alias, and changed-seal denial. Native results must come from the final updated-head CI; collected/local doubles are not native proof.",
+    "legacy_regressions": "Retain existing RO01/RO02 connected native chain, generator/admin publication and replay, allocated v4 PDF/default-v5 isolation, policy/source/financial assertions and all existing contracts/audit/credentials.",
     "performance": "Batch dependency inspection per inventory, point-filter descriptor lookup for rows, no full metadata rescan per reconciled already-compliant object. Native timings/query counts and actual DEV responses remain to be collected.",
-    "DEV_acceptance": "Pending reviewed delivery and exact bounded deployment/enrollment plan, then authenticated TI discovery/metadata/page consumption for every eligible dataset including empty states. No live dataset enablement or consumer acceptance claim yet."
-  },
-  "intentional_current_source_changes": "DATASET_COVERAGE_CURRENT_SOURCE_CHANGES_20261104.json lists four finite full-file changes; historical bytes and assertions remain independently verifiable, with dedicated actual-current behavior and tamper tests.",
-  "TI_track": "Existing Trillion Insight thread, separate isolated TI branch and reviewable PR; source implementations and final shared wire are coordinated, no blanket TI merge/deploy authority.",
-  "remaining_gates": ["Architectural disposition of explicit control/transport conflicts", "Complete final source and fixture checks", "Updated-head full hosted/native/audit/image CI", "Independent source review", "Reviewed exact DEV integration and actual per-dataset TI consumption report"],
-  "complete": false
+    "provider_free": "Descriptor/cursor strictness, schema drift, scope/identity/capability/type/credential negatives, additive OpenAPI compatibility and actual packaged ASGI route smoke."
+  }
 }

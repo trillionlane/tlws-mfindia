@@ -4,8 +4,12 @@ Database semantics and Cloud Run authentication are NOT claimed by this smoke;
 native PostgreSQL and the deployed TI path supply those independent proofs.
 """
 import asyncio
+import argparse
 from contextlib import nullcontext
+import importlib
 import json
+from pathlib import Path
+import shlex
 
 from mfdataindia.datasets.app import create_app
 from mfdataindia.review import broad_reader_policy
@@ -76,8 +80,20 @@ async def request(app, path, *, method='GET', query=b''):
     return status, body
 
 
-async def smoke():
-    app = create_app('postgresql://fixture:fixture@127.0.0.1:1/fixture')
+def image_factory(command):
+    assert type(command) is list and len(command)==3 and command[:2]==['sh','-c']
+    args = shlex.split(command[2])
+    assert args == ['exec','uvicorn','mfdataindia.datasets.app:create_app','--factory',
+                    '--host','0.0.0.0','--port','${PORT:-8080}','--no-access-log']
+    module,name = args[2].split(':')
+    return getattr(importlib.import_module(module),name)
+
+
+async def smoke(factory=create_app, *, command_verified=False):
+    app = factory('postgresql://fixture:fixture@127.0.0.1:1/fixture')
+    paths = {route.path for route in app.routes}
+    assert {'/api/datasets/v1','/api/datasets/v1/{dataset_id}',
+            '/api/datasets/v1/{dataset_id}/rows','/api/datasets/v1/{dataset_id}/content/{column}'} <= paths
     app.state.db_pool = SyntheticPool()
     status, body = await request(app,'/api/datasets/v1')
     assert status == 200 and json.loads(body) == {'format':'mfdata-consumer-datasets-v1','datasets':[]}
@@ -86,8 +102,17 @@ async def smoke():
     status, _ = await request(app,'/api/datasets/v1',method='POST')
     assert status == 405
     return {'packaged_dataset_ASGI_entrypoint':'PASS','provider_requests':0,
-            'database_connections':0,'writes':0,'native_DB_or_Cloud_Run_auth_proof':False}
+            'database_connections':0,'writes':0,'native_DB_or_Cloud_Run_auth_proof':False,
+            'default_image_command_verified':command_verified}
 
 
 if __name__ == '__main__':
-    print(json.dumps(asyncio.run(smoke()),sort_keys=True))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--image-command-json',type=Path)
+    args = parser.parse_args()
+    factory = create_app
+    if args.image_command_json:
+        raw = args.image_command_json.read_bytes()
+        assert len(raw)<=4096
+        factory = image_factory(json.loads(raw))
+    print(json.dumps(asyncio.run(smoke(factory,command_verified=bool(args.image_command_json))),sort_keys=True))

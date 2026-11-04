@@ -38,4 +38,4 @@ USER 10001:10001
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "exec uvicorn mfdataindia.api.app:create_app --factory --host 0.0.0.0 --port \"${PORT:-8080}\" --no-access-log"]
+CMD ["sh", "-c", "exec uvicorn mfdataindia.datasets.app:create_app --factory --host 0.0.0.0 --port \"${PORT:-8080}\" --no-access-log"]

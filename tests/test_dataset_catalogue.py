@@ -108,3 +108,16 @@ def test_credential_name_forms_are_blocked_in_metadata_and_nested_values(name):
 def test_source_and_public_identity_keys_are_not_confused_with_credentials(name):
     assert not c.is_credential_field(name)
     reads._safe_value({name:'ordinary synthetic research metadata'})
+
+
+@pytest.mark.parametrize('text',['api_token=synthetic-secret-marker',
+    'authorization_header: Bearer synthetic-secret-marker','cookie=session-synthetic-secret-marker',
+    'privateKey=synthetic-secret-marker','{"reader_dsn": "synthetic-secret-marker"}'])
+def test_nested_text_credentials_are_rejected_without_echoing_the_text(text):
+    with pytest.raises(p.DatasetError,match='SENSITIVE_DATASET_VALUE') as stopped:
+        reads._safe_value({'notes':[{'ordinary':text}]})
+    assert 'synthetic-secret-marker' not in str(stopped.value)
+
+
+def test_ordinary_research_assignments_and_basic_prose_remain_readable():
+    reads._safe_value({'notes':'source_key=abc; content_hash: abc; basic fund research, public_key=value'})

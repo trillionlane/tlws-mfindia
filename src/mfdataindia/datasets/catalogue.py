@@ -12,7 +12,7 @@ import re
 from psycopg import sql
 import psycopg
 
-from . import policy as p
+from . import policy as p, projections
 from mfdataindia.review import reader_access_profile as profiles
 
 PREFIX = "mfdata-consumer-dataset-v1:"
@@ -109,9 +109,10 @@ WITH RECURSIVE edges(parent,child) AS (
  ON d.classid='pg_rewrite'::regclass AND d.objid=w.oid
  AND d.refclassid='pg_class'::regclass
  UNION SELECT inhparent,inhrelid FROM pg_inherits
-), reach(root,oid) AS (
- SELECT x,x FROM unnest(%s::oid[]) x
- UNION SELECT r.root,e.child FROM reach r JOIN edges e ON e.parent=r.oid
+), reach(root,oid,through_projection) AS (
+ SELECT x,x,x=ANY(%s::oid[]) FROM unnest(%s::oid[]) x
+ UNION SELECT r.root,e.child,r.through_projection OR e.child=ANY(%s::oid[])
+ FROM reach r JOIN edges e ON e.parent=r.oid
 ), expressions(root,classid,objid) AS (
  SELECT r.root,'pg_rewrite'::regclass,w.oid FROM reach r
  JOIN pg_rewrite w ON w.ev_class=r.oid
@@ -133,7 +134,7 @@ SELECT DISTINCT root::bigint FROM (
  WHERE c.relkind NOT IN ('r','p','v','m') OR c.relrowsecurity OR c.relforcerowsecurity
  OR pg_get_userbyid(c.relowner)<>ALL(%s)
  OR NOT(n.nspname='mf' OR n.nspname LIKE 'mf\\_%%' ESCAPE '\\')
- OR (n.nspname || '.' || c.relname)=ANY(%s)
+ OR ((n.nspname || '.' || c.relname)=ANY(%s) AND NOT r.through_projection)
  UNION
  SELECT o.root FROM operators o JOIN pg_operator p ON p.oid=o.oid
  JOIN pg_namespace n ON n.oid=p.oprnamespace WHERE n.nspname<>'pg_catalog'
@@ -252,8 +253,9 @@ def inventory(conn, dataset=None):
 def with_dependencies(conn, rows):
     if not rows:
         return rows
+    approved = projections.approved_oids(conn)
     unsafe = {r['root'] for r in conn.execute(DEPENDENCIES_SQL,
-        ([r['oid'] for r in rows], sorted(SUPPORTED_CREATORS),
+        (approved,[r['oid'] for r in rows],approved,sorted(SUPPORTED_CREATORS),
          sorted(schema+'.'+relation for schema,relation in INTERNAL_CONTROL_RELATIONS | HELD_FOR_REVIEW.keys()))).fetchall()}
     return [{**row, 'unsafe_dependencies': row['oid'] in unsafe} for row in rows]
 

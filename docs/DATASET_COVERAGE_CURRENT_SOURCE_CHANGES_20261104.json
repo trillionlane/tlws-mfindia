@@ -1,16 +1,21 @@
 {
   "base": "6e074b0d32fe5923d8adba384d9784d08ae4afaa",
-  "format": "dataset-coverage-current-source-changes-v1",
+  "format": "dataset-coverage-current-source-changes-v2",
   "historical_only": true,
   "modified": {
     ".github/workflows/verify.yml": {
+      "current_sha256": "fa1f31d2f7eee9da3dcd0a6aac95cb1a66565a10c9ae0c0b377a6b702b80116c",
       "historical_passthrough_sha256": [
         "acc79da6e8bca20977f59875b0760faf332873e7e63a58ce940f10dbcc052eaa",
         "ad8c06634c0200210d6de1bdd8492b89ed825f04c4f634c69edb6605344ea348"
       ],
-      "current_sha256": "6e3d56bd6df49385d6bf29abf62f435856cb95ad5cef4bc520b46c5e2eb2e9c3",
       "previous_sha256": "764abc8dbbcc017adaf324f5d7e42bcc95541fb134fc61675a1834d2840df200",
-      "reason": "Add one provider-free dataset ASGI smoke command inside the existing BOTH-image loop; no new job, credentials, resources, gate or skipped check."
+      "reason": "Inspect and exercise the actual APP image default factory in the existing image check, plus one provider-free dataset ASGI smoke inside the existing BOTH-image loop; no new job, credentials, resources, gate or skipped check."
+    },
+    "Dockerfile": {
+      "current_sha256": "8f7ab6b76b228534c1e6270d2011e08d8c196bc417789237efd410743a291bc4",
+      "previous_sha256": "9c250520213efa2d87b7a9ec559d204740a84391c8384eaeae4fdb21644262fd",
+      "reason": "Select the additive dataset/core factory in the unchanged default Uvicorn command; preserve all legacy core routes and explicit worker/review entrypoints."
     },
     "scripts/migrate.py": {
       "current_sha256": "6e5e8c664f29cc1c6fe82fe7473ed59b641070fba9ee71896df155836bdbd8e2",
