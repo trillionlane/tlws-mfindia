@@ -296,6 +296,9 @@ def test_existing_v4_business_projections_keep_seals_and_do_not_expose_controls(
     adopt(ro01_db)
     identifiers = {}
     with connect(ro01_db,autocommit=False) as conn:
+        # Match the API's normal path before enrollment too. Projection seal
+        # verification must be independent of the caller's visible namespaces.
+        conn.execute('SET LOCAL search_path TO mf, public')
         for name in sorted(projections.NAMES-{'mf_live_facts.baseline'}):
             schema,relation = name.split('.')
             identifiers[name] = enrollment.enroll(conn,schema,relation,
@@ -311,11 +314,13 @@ def test_existing_v4_business_projections_keep_seals_and_do_not_expose_controls(
         denied = {control['dataset_id'],mixed['dataset_id']}
         assert all(row['permissions_verified'] for row in result['results'] if row['dataset_id'] not in denied)
         assert all(row['reason']=='UNREVIEWED_DATASET_DEPENDENCY' for row in result['results'] if row['dataset_id'] in denied)
+        assert conn.execute("SELECT current_setting('search_path') AS value").fetchone()['value']=='mf, public'
     with TestClient(create_app(make_conninfo(ro01_db,user=policy.READER,password=PASSWORD))) as client:
         discovery = client.get('/api/datasets/v1')
         assert discovery.status_code==200
         available = {row['id'] for row in discovery.json()['datasets'] if row['state']=='available'}
-        assert set(identifiers.values())|{alias['dataset_id']} <= available
+        assert set(identifiers.values())|{alias['dataset_id']} <= available, {
+            'unavailable':[(row['id'],row['reason']) for row in discovery.json()['datasets'] if row['state']!='available']}
         for identifier in [*identifiers.values(),alias['dataset_id']]:
             metadata = client.get('/api/datasets/v1/'+identifier)
             assert metadata.status_code==200 and metadata.json()['columns']

@@ -22,7 +22,14 @@ NAMES = frozenset({'mf.current_fund_facts',
 def approved_oids(conn):
     """Fixed-size metadata verification once per inventory, not per dataset."""
     try:
-        with conn.transaction():
+        # pg_get_viewdef qualifies names according to search_path. Installation
+        # seals use the catalog/public context; the core API normally uses mf,
+        # public. Pin only these metadata reads, then roll back the savepoint so
+        # successful checks, early returns and errors all restore caller state.
+        # Definitions still compare in full; no SQL normalization or exception
+        # to control/function/owner guards is introduced.
+        with conn.transaction(force_rollback=True):
+            conn.execute("SELECT pg_catalog.set_config('search_path','pg_catalog, public',true)")
             rows = conn.execute("""WITH named_views AS (
                 SELECT c.oid,c.relkind,c.relowner,c.reloptions,n.nspname,n.nspowner,c.relname
                 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
