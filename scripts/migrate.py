@@ -54,6 +54,13 @@ def main() -> int:
             if missing_quality:
                 nav_integrity.assess(conn, verify_current=True)
         logging.info("versioned calculation baseline ready; recomputed %d funds", len(codes))
+        # Current eligible enrollment is explicit trusted creator metadata.
+        # A reader-reconciliation failure must not undo unrelated migration or
+        # ingestion work; the hook reports it without claiming API readiness.
+        from mfdataindia.datasets.enrollment import after_migrations, emit_report
+        with store.transaction() as conn:
+            enrollment = after_migrations(conn)
+        logging.info("consumer dataset reconciliation: %s", emit_report(enrollment))
     if applied:
         logging.info("applied %d migration(s): %s", len(applied), ", ".join(applied))
     else:

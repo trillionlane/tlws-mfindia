@@ -1,0 +1,792 @@
+{
+  "components": {
+    "schemas": {
+      "Column": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "pattern": "^[a-z][a-z0-9_]{0,62}$",
+            "title": "Name",
+            "type": "string"
+          },
+          "nullable": {
+            "title": "Nullable",
+            "type": "boolean"
+          },
+          "type": {
+            "enum": [
+              "_bool",
+              "_bpchar",
+              "_date",
+              "_float4",
+              "_float8",
+              "_int2",
+              "_int4",
+              "_int8",
+              "_json",
+              "_jsonb",
+              "_numeric",
+              "_text",
+              "_timestamp",
+              "_timestamptz",
+              "_uuid",
+              "_varchar",
+              "bool",
+              "bpchar",
+              "bytea",
+              "date",
+              "float4",
+              "float8",
+              "int2",
+              "int4",
+              "int8",
+              "json",
+              "jsonb",
+              "numeric",
+              "text",
+              "timestamp",
+              "timestamptz",
+              "uuid",
+              "varchar"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "nullable"
+        ],
+        "title": "Column",
+        "type": "object"
+      },
+      "ContentChunk": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "minimum": 0.0,
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "content": {
+            "maxLength": 174764,
+            "title": "Content",
+            "type": "string"
+          },
+          "dataset_id": {
+            "pattern": "^d_[0-9a-f]{32}$",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "encoding": {
+            "const": "base64",
+            "title": "Encoding",
+            "type": "string"
+          },
+          "format": {
+            "const": "mfdata-consumer-datasets-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Offset"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "schema_version": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "dataset_id",
+          "column",
+          "schema_version",
+          "bytes",
+          "sha256",
+          "offset",
+          "encoding",
+          "content",
+          "next_offset"
+        ],
+        "title": "ContentChunk",
+        "type": "object"
+      },
+      "Dataset": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "enum": [
+              "fund_research",
+              "source_evidence"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^d_[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "metadata_url": {
+            "title": "Metadata Url",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "rows_url": {
+            "title": "Rows Url",
+            "type": "string"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "empty",
+              "unavailable",
+              "withheld"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "classification",
+          "state",
+          "reason",
+          "schema_version",
+          "metadata_url",
+          "rows_url"
+        ],
+        "title": "Dataset",
+        "type": "object"
+      },
+      "DatasetErrorBody": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "DatasetErrorBody",
+        "type": "object"
+      },
+      "Discovery": {
+        "additionalProperties": false,
+        "properties": {
+          "datasets": {
+            "items": {
+              "$ref": "#/components/schemas/Dataset"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "format": {
+            "const": "mfdata-consumer-datasets-v1",
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "datasets"
+        ],
+        "title": "Discovery",
+        "type": "object"
+      },
+      "Metadata": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "enum": [
+              "fund_research",
+              "source_evidence"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/Column"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "format": {
+            "const": "mfdata-consumer-datasets-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^d_[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "key_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key Columns",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "rows_url": {
+            "title": "Rows Url",
+            "type": "string"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "empty",
+              "unavailable",
+              "withheld"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "id",
+          "title",
+          "classification",
+          "state",
+          "reason",
+          "schema_version",
+          "columns",
+          "key_columns",
+          "rows_url"
+        ],
+        "title": "Metadata",
+        "type": "object"
+      },
+      "RowPage": {
+        "additionalProperties": false,
+        "properties": {
+          "consistency": {
+            "const": "fresh_repeatable_read_each_page",
+            "title": "Consistency",
+            "type": "string"
+          },
+          "dataset_id": {
+            "pattern": "^d_[0-9a-f]{32}$",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "format": {
+            "const": "mfdata-consumer-datasets-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "ordering": {
+            "enum": [
+              "keyset",
+              "canonical_offset"
+            ],
+            "title": "Ordering",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "schema_version": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "empty",
+              "unavailable",
+              "withheld"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "dataset_id",
+          "schema_version",
+          "state",
+          "reason",
+          "rows",
+          "next_cursor",
+          "limit",
+          "ordering",
+          "consistency"
+        ],
+        "title": "RowPage",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "MFData Consumer Datasets",
+    "version": "1.0.0",
+    "x-contract-id": "mfdata-consumer-datasets-v1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/datasets/v1": {
+      "get": {
+        "operationId": "discovery_api_datasets_v1_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Discovery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discovery"
+      }
+    },
+    "/api/datasets/v1/{dataset_id}": {
+      "get": {
+        "operationId": "metadata_api_datasets_v1__dataset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metadata"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Metadata"
+      }
+    },
+    "/api/datasets/v1/{dataset_id}/content/{column}": {
+      "get": {
+        "operationId": "content_api_datasets_v1__dataset_id__content__column__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "title": "Column",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "row",
+            "required": true,
+            "schema": {
+              "maxLength": 8192,
+              "minLength": 1,
+              "title": "Row",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "exclusiveMaximum": 2147483648,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "length",
+            "required": false,
+            "schema": {
+              "default": 131072,
+              "maximum": 131072,
+              "minimum": 1,
+              "title": "Length",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentChunk"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Content"
+      }
+    },
+    "/api/datasets/v1/{dataset_id}/rows": {
+      "get": {
+        "operationId": "rows_api_datasets_v1__dataset_id__rows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8192,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RowPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Rows"
+      }
+    }
+  },
+  "x-authentication-boundary": "Existing internal ingress and short-lived Google OIDC Cloud Run invoker authorization; TI separately enforces partner session and workload authorization. No direct browser access.",
+  "x-read-only": true,
+  "x-snapshot-semantics": "Fresh repeatable-read transaction per request, not a frozen cross-page snapshot."
+}

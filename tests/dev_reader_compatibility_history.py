@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from dataset_source_history import previous as dataset_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_SHA256 = 'd364b2efd124a7897d590475f3250ac6deb546cc7daad1c398dd4f15eb5603b4'
@@ -16,6 +17,7 @@ def manifest():
 
 def previous(path, data):
     assert type(data) is bytes
+    data = dataset_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:
