@@ -42,7 +42,14 @@ def projection(entry):
         else:
             atom = sql.SQL("to_jsonb({})").format(name)
         atoms.extend((sql.Literal(column["name"]), atom))
-    return sql.SQL("jsonb_build_object({})").format(sql.SQL(',').join(atoms))
+    # PostgreSQL permits 100 arguments per function call. A dataset can have
+    # 256 columns, and current fund projections already have 84. Build disjoint
+    # objects with at most 50 key/value pairs, retaining every field and its
+    # existing encoding; concatenation does not change the response budget.
+    objects = [sql.SQL("jsonb_build_object({})").format(sql.SQL(',').join(atoms[start:start+100]))
+               for start in range(0, len(atoms), 100)]
+    return (sql.SQL('({})').format(sql.SQL(' || ').join(objects)) if objects
+            else sql.SQL('jsonb_build_object()'))
 
 
 def _locked(conn, dataset):

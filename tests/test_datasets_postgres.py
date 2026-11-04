@@ -1,11 +1,14 @@
 """Real disposable hosted PostgreSQL only; never shared DEV or provider SQL."""
 import base64
+from datetime import date
+from decimal import Decimal
 from hashlib import sha256
 import json
 from time import perf_counter
 
 from fastapi.testclient import TestClient
 import psycopg
+from psycopg import sql
 from psycopg.conninfo import make_conninfo
 import pytest
 
@@ -321,11 +324,18 @@ def test_existing_v4_business_projections_keep_seals_and_do_not_expose_controls(
         available = {row['id'] for row in discovery.json()['datasets'] if row['state']=='available'}
         assert set(identifiers.values())|{alias['dataset_id']} <= available, {
             'unavailable':[(row['id'],row['reason']) for row in discovery.json()['datasets'] if row['state']!='available']}
-        for identifier in [*identifiers.values(),alias['dataset_id']]:
+        for name,identifier in [*identifiers.items(),('mf_dataset_projection.values_view',alias['dataset_id'])]:
             metadata = client.get('/api/datasets/v1/'+identifier)
             assert metadata.status_code==200 and metadata.json()['columns']
             page = client.get('/api/datasets/v1/'+identifier+'/rows',params={'limit':2})
-            assert page.status_code==200 and page.json()['state'] in ('available','empty')
+            detail = page.json().get('detail')
+            reason = detail if detail in {'DATASET_READ_UNAVAILABLE','UNREVIEWED_DATASET_DEPENDENCY',
+                'SENSITIVE_DATASET_VALUE','DATASET_READ_GRANTS_MISSING','DATASET_RELATION_CHANGED',
+                'DATASET_ROW_TOO_LARGE','DATASET_INSTALLED_READER_PROFILE_UNSAFE'} else None
+            assert page.status_code==200 and page.json()['state'] in ('available','empty'), {
+                'relation':name,'status':page.status_code,'reason':reason}
+            assert all(set(row)=={column['name'] for column in metadata.json()['columns']}
+                       for row in page.json()['rows'])
         for identifier in denied:
             refused = client.get('/api/datasets/v1/'+identifier+'/rows')
             assert refused.status_code==503 and refused.json()['detail']=='UNREVIEWED_DATASET_DEPENDENCY'
@@ -335,3 +345,60 @@ def test_existing_v4_business_projections_keep_seals_and_do_not_expose_controls(
                          body.rstrip().removesuffix(';')+') sealed WHERE false')
         changed = client.get('/api/datasets/v1/'+identifiers['mf_live_facts.field_heads']+'/rows')
         assert changed.status_code==503 and changed.json()['detail']=='UNREVIEWED_DATASET_DEPENDENCY'
+
+
+@pytest.mark.parametrize('ro01_db',['core'],indirect=True)
+@pytest.mark.parametrize('width',[50,51,256])
+def test_wide_dataset_pages_preserve_all_typed_values_and_bounds(ro01_db,width):
+    """Actual PG semantics at the function boundary and supported column max."""
+    adopt(ro01_db)
+    schema='mf_dataset_wide'
+    relation='observations'
+    names=['id','amount','observed','payload',*['field_'+str(i) for i in range(4,width)]]
+    amount=Decimal('12345678901234567890.123456789')
+    payload=b'Synthetic PDF fixture\x00\xff'
+    expected=[]
+    with connect(ro01_db,autocommit=False) as conn:
+        conn.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))
+        columns=[sql.SQL('id bigint PRIMARY KEY'),sql.SQL('amount numeric'),
+                 sql.SQL('observed date'),sql.SQL('payload bytea'),
+                 *[sql.SQL('{} int').format(sql.Identifier(name)) for name in names[4:]]]
+        conn.execute(sql.SQL('CREATE TABLE {}.{} ({})').format(
+            sql.Identifier(schema),sql.Identifier(relation),sql.SQL(',').join(columns)))
+        insert=sql.SQL('INSERT INTO {}.{} VALUES ({})').format(sql.Identifier(schema),
+            sql.Identifier(relation),sql.SQL(',').join(sql.Placeholder() for _ in names))
+        for identifier in (1,2,3):
+            values=[identifier,amount,date(2026,11,4),payload if identifier==1 else None,
+                    *[None if i%7==0 else i+identifier for i in range(4,width)]]
+            conn.execute(insert,values)
+            expected.append(dict(zip(names,[str(identifier),str(amount),'2026-11-04',None,*values[4:]])))
+        item=enrollment.enroll(conn,schema,relation,classification='fund_research',title='Wide synthetic observations')
+    generator_before=generator_capabilities(ro01_db)
+    with connect(ro01_db,autocommit=False) as conn:
+        permissions=enrollment.reconcile(conn)
+        assert next(r for r in permissions['results'] if r['dataset_id']==item['dataset_id'])['permissions_verified']
+    dsn=make_conninfo(ro01_db,user=policy.READER,password=PASSWORD)
+    path='/api/datasets/v1/'+item['dataset_id']
+    with TestClient(create_app(dsn)) as client:
+        metadata=client.get(path)
+        assert metadata.status_code==200
+        assert [c['name'] for c in metadata.json()['columns']]==names
+        first=client.get(path+'/rows',params={'limit':2})
+        assert first.status_code==200
+        first_page=first.json()
+        assert first_page['next_cursor'] is not None and first_page['limit']==2
+        second=client.get(path+'/rows',params={'limit':2,'cursor':first_page['next_cursor']})
+        assert second.status_code==200 and second.json()['next_cursor'] is None
+        actual=first_page['rows']+second.json()['rows']
+        binary=actual[0]['payload']
+        assert binary['kind']=='binary' and binary['bytes']==len(payload) and binary['sha256']==sha256(payload).hexdigest()
+        content=client.get(binary['content_url']+'&length='+str(len(payload)))
+        assert content.status_code==200 and base64.b64decode(content.json()['content'])==payload
+        actual[0]['payload']=None
+        assert actual==expected
+        assert all(len(row)==width for row in actual)
+        assert client.post(path+'/rows',json={}).status_code==405
+    with connect(ro01_db,policy.READER) as conn:
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute(sql.SQL('UPDATE {}.{} SET amount=0').format(sql.Identifier(schema),sql.Identifier(relation)))
+    assert generator_capabilities(ro01_db)==generator_before

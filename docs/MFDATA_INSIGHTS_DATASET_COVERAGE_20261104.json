@@ -73,6 +73,14 @@
     "Independent source review",
     "Reviewed exact DEV integration and actual per-dataset TI consumption report"
   ],
+  "row_projection_correction": {
+    "cause": "The generic JSON object used two PostgreSQL function arguments per field. The existing84-field current-facts projection exceeded the100-argument function limit, so metadata passed while row reads failed.",
+    "correction": "Disjoint JSON objects with at most50field/value pairs concatenated with||; preserve all descriptor fields and all prior scalar/binary conversions. No column exclusions or contract/resource/time/response limit changes.",
+    "failed_CI": "41928790714 at08cb414; retained asFAILURE, not accepted or rerun. Discovery/metadata passed; the legacyv4 row-read regression failed.",
+    "native_execution_location": "Existing hosted Verify PostgreSQL fixture only. No localPG/GITHUB_ACTIONS spoofing or new CI framework.",
+    "reproduction": "New provider-free width regressions first failed5cases with3passing. A read-only constant-row production-composer witness on PostgreSQL confirmed max_function_args100 and SQLSTATE54023 at51/84/256columns; no relation rows or database mutations. This is not disposable-native or servingAPI/TI proof.",
+    "verification": "Provider-free49/50/51/84/100/101/256boundaries; disposable hosted50/51/256typed rows, NULLs, exact keys/values, pagination, binarycontent, reader write denial and generator preservation; the existing84-fieldv4 view regression retains all seal/control guards and gains safe relation/status/reason context. Full updated-head native/image/audit evidence still required."
+  },
   "scope_boundary": "Keep UTI ingestion repair, source acquisition, financial changes, optional GitHub administration and production hardening separate. RO04 remains complete for its tested prior scope.",
   "status": "IMPLEMENTATION_IN_PROGRESS_NOT_DEV_ACCEPTED",
   "verification": {
