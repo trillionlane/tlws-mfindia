@@ -140,15 +140,18 @@ def test_second_supported_creator_and_failed_reconcile_do_not_undo_ingestion(ro0
         with pytest.raises(policy.DatasetError, match='CREATOR_REQUIRED'):
             enrollment.enroll(conn,'mf_other_creator','new_facts',classification='fund_research',title='Forbidden reader')
     with connect(ro01_db, 'mfdata_ingest', autocommit=False) as conn:
-        conn.execute('CREATE TABLE mf_other_creator.unsafe(id int PRIMARY KEY,password text)')
-        enrollment.enroll(conn,'mf_other_creator','unsafe',classification='fund_research',title='Must block')
+        for column in ('password','api_token','reader_dsn'):
+            conn.execute(f'CREATE TABLE mf_other_creator.unsafe_{column}(id int PRIMARY KEY,{column} text)')
+            enrollment.enroll(conn,'mf_other_creator','unsafe_'+column,classification='fund_research',title='Must block')
         conn.execute('INSERT INTO mf_other_creator.new_facts VALUES(2,\'{"value":8}\')')
         report = enrollment.after_migrations(conn)
-        assert any(row['reason'] == 'SENSITIVE_DATASET_COLUMN' for row in report['results'])
+        assert sum(row['reason'] == 'SENSITIVE_DATASET_COLUMN' for row in report['results'])==3
     with connect(ro01_db, policy.READER) as conn:
         conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
         assert [r['id'] for r in reads.rows(conn,dataset['dataset_id'])['rows']] == [1,2]
-        assert conn.execute("SELECT has_table_privilege(current_user,'mf_other_creator.unsafe','SELECT') AS ok").fetchone()['ok'] is False
+        for column in ('password','api_token','reader_dsn'):
+            assert conn.execute("SELECT has_table_privilege(current_user,%s,'SELECT') AS ok",
+                                ('mf_other_creator.unsafe_'+column,)).fetchone()['ok'] is False
 
 
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)

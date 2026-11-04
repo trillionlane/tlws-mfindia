@@ -91,3 +91,20 @@ def test_binary_without_a_stable_selector_is_unavailable_before_discovery():
     columns = [{'name':'pdf','type':'bytea','type_schema':'pg_catalog','nullable':True,'position':1}]
     with pytest.raises(p.DatasetError,match='BINARY_DATASET_KEY_REQUIRED'):
         c.checked(row(kind='v',columns=columns,primary_key=[]))
+
+
+@pytest.mark.parametrize('name',['api_token','authorization_header','reader_dsn','cookie',
+    'client_secret_value','signing_key','service_account_json','privateKey'])
+def test_credential_name_forms_are_blocked_in_metadata_and_nested_values(name):
+    columns = [*row()['columns'],{'name':name,'type':'text','type_schema':'pg_catalog','nullable':True,'position':2}]
+    with pytest.raises(p.DatasetError,match='SENSITIVE_DATASET_COLUMN'):
+        c.checked(row(columns=columns))
+    with pytest.raises(p.DatasetError,match='SENSITIVE_DATASET_VALUE') as stopped:
+        reads._safe_value({'nested':[{'ordinary':{name:'synthetic-secret-marker'}}]})
+    assert 'synthetic-secret-marker' not in str(stopped.value)
+
+
+@pytest.mark.parametrize('name',['source_key','content_hash','identity_source_id','public_key','authority_reference'])
+def test_source_and_public_identity_keys_are_not_confused_with_credentials(name):
+    assert not c.is_credential_field(name)
+    reads._safe_value({name:'ordinary synthetic research metadata'})

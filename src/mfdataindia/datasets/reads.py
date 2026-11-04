@@ -12,7 +12,7 @@ from . import catalogue as registry, policy as p
 
 def _safe_value(value):
     if isinstance(value, dict):
-        p.require(not any(str(k).lower() in registry.SENSITIVE_NAMES for k in value),
+        p.require(not any(registry.is_credential_field(k) for k in value),
                   "SENSITIVE_DATASET_VALUE")
         for child in value.values():
             _safe_value(child)

@@ -7,6 +7,7 @@ identifiers. No comment can supply SQL, a function, credentials or a target role
 from __future__ import annotations
 
 import json
+import re
 
 from psycopg import sql
 import psycopg
@@ -26,6 +27,28 @@ def creator_supported(schema, owner):
 SENSITIVE_NAMES = frozenset({"password", "passwd", "dsn", "connection_string", "private_key",
                              "access_token", "refresh_token", "credential", "credentials",
                              "secret", "secret_value", "secret_reference", "secret_ref"})
+_CREDENTIAL_WORDS = SENSITIVE_NAMES | {'auth','authorization','bearer','cookie','cookies','jwt','token'}
+_KEY_QUALIFIERS = {'access','api','client','encryption','private','secret','session','signing'}
+_CREDENTIAL_SUFFIXES = ('authorization','authorizationheader','credential','credentials',
+    'password','passwd','secret','token','apikey','privatekey','cookie','cookies','sessionid',
+    'sessionkey','databaseurl','connectionstring','serviceaccountjson','jwt','dsn')
+
+
+def is_credential_field(name):
+    """One conservative name boundary for schemas and nested consumer values.
+
+    Trust/classification review remains necessary; this is not a claim that
+    arbitrary text/binary content can be universally classified as secret-free.
+    """
+    segmented = re.sub(r'([A-Z]+)([A-Z][a-z])',r'\1_\2',str(name))
+    segmented = re.sub(r'([a-z0-9])([A-Z])',r'\1_\2',segmented)
+    words = set(re.findall(r'[a-z0-9]+',segmented.lower()))
+    normalized = ''.join(c for c in str(name).casefold() if c in 'abcdefghijklmnopqrstuvwxyz0123456789')
+    return (bool(words & _CREDENTIAL_WORDS)
+            or ('key' in words and bool(words & _KEY_QUALIFIERS))
+            or normalized.endswith(_CREDENTIAL_SUFFIXES))
+
+
 INTERNAL_CONTROL_RELATIONS = frozenset({
     ('mf', 'schema_migrations'), ('mf', 'ingest_checkpoints'),
     ('mf', 'v_partition_health'),
@@ -186,7 +209,7 @@ def checked(row):
     p.require(not row.get('unsafe_dependencies', False), 'UNREVIEWED_DATASET_DEPENDENCY')
     p.require(all(c["type_schema"] == "pg_catalog" and c["type"] in p.TYPES
                   for c in row["columns"]), "UNSUPPORTED_DATASET_TYPE")
-    p.require(not any(c["name"].lower() in SENSITIVE_NAMES for c in row["columns"]),
+    p.require(not any(is_credential_field(c["name"]) for c in row["columns"]),
               "SENSITIVE_DATASET_COLUMN")
     p.require(row["schema_usage"] and row["can_select"], "DATASET_READ_GRANTS_MISSING")
     p.require(not row["schema_create"] and not row["mutation"] and not row["grant_option"],
