@@ -85,3 +85,9 @@ def test_array_is_ordinary_schema_metadata_not_executable_custom_type():
     value = deepcopy(row())
     value['columns'].append({'name':'tags','type':'_text','type_schema':'pg_catalog','nullable':True,'position':2})
     assert c.checked(value)[0]['columns'][1]['type'] == '_text'
+
+
+def test_binary_without_a_stable_selector_is_unavailable_before_discovery():
+    columns = [{'name':'pdf','type':'bytea','type_schema':'pg_catalog','nullable':True,'position':1}]
+    with pytest.raises(p.DatasetError,match='BINARY_DATASET_KEY_REQUIRED'):
+        c.checked(row(kind='v',columns=columns,primary_key=[]))

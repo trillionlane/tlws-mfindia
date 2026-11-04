@@ -28,6 +28,7 @@ SENSITIVE_NAMES = frozenset({"password", "passwd", "dsn", "connection_string", "
                              "secret", "secret_value", "secret_reference", "secret_ref"})
 INTERNAL_CONTROL_RELATIONS = frozenset({
     ('mf', 'schema_migrations'), ('mf', 'ingest_checkpoints'),
+    ('mf', 'v_partition_health'),
     ('mf', 'association_tag_idempotency'),
     ('mf', 'nav_remediation_snapshots'), ('mf', 'nav_remediation_decisions'),
     ('mf', 'nav_remediation_proposals'), ('mf', 'nav_correction_approvals'),
@@ -88,15 +89,20 @@ WITH RECURSIVE edges(parent,child) AS (
 ), reach(root,oid) AS (
  SELECT x,x FROM unnest(%s::oid[]) x
  UNION SELECT r.root,e.child FROM reach r JOIN edges e ON e.parent=r.oid
-), functions(root,oid) AS (
- SELECT r.root,d.refobjid FROM reach r JOIN pg_rewrite w ON w.ev_class=r.oid
- JOIN pg_depend d ON d.classid='pg_rewrite'::regclass AND d.objid=w.oid
- AND d.refclassid='pg_proc'::regclass
+), expressions(root,classid,objid) AS (
+ SELECT r.root,'pg_rewrite'::regclass,w.oid FROM reach r
+ JOIN pg_rewrite w ON w.ev_class=r.oid
  UNION
- SELECT r.root,d.refobjid FROM reach r JOIN pg_attribute a ON a.attrelid=r.oid
+ SELECT r.root,'pg_attrdef'::regclass,def.oid FROM reach r JOIN pg_attribute a ON a.attrelid=r.oid
  AND a.attgenerated='v' JOIN pg_attrdef def ON def.adrelid=a.attrelid AND def.adnum=a.attnum
- JOIN pg_depend d ON d.classid='pg_attrdef'::regclass AND d.objid=def.oid
+), operators(root,oid) AS (
+ SELECT e.root,d.refobjid FROM expressions e JOIN pg_depend d
+ ON d.classid=e.classid AND d.objid=e.objid AND d.refclassid='pg_operator'::regclass
+), functions(root,oid) AS (
+ SELECT e.root,d.refobjid FROM expressions e JOIN pg_depend d
+ ON d.classid=e.classid AND d.objid=e.objid
  AND d.refclassid='pg_proc'::regclass
+ UNION SELECT o.root,p.oprcode FROM operators o JOIN pg_operator p ON p.oid=o.oid
 )
 SELECT DISTINCT root::bigint FROM (
  SELECT r.root FROM reach r JOIN pg_class c ON c.oid=r.oid
@@ -104,6 +110,10 @@ SELECT DISTINCT root::bigint FROM (
  WHERE c.relkind NOT IN ('r','p','v','m') OR c.relrowsecurity OR c.relforcerowsecurity
  OR pg_get_userbyid(c.relowner)<>ALL(%s)
  OR NOT(n.nspname='mf' OR n.nspname LIKE 'mf\\_%%' ESCAPE '\\')
+ OR (n.nspname || '.' || c.relname)=ANY(%s)
+ UNION
+ SELECT o.root FROM operators o JOIN pg_operator p ON p.oid=o.oid
+ JOIN pg_namespace n ON n.oid=p.oprnamespace WHERE n.nspname<>'pg_catalog'
  UNION
  SELECT f.root FROM functions f JOIN pg_proc p ON p.oid=f.oid
  JOIN pg_namespace n ON n.oid=p.pronamespace
@@ -189,6 +199,10 @@ def checked(row):
         p.require((bool(keys) and hint==keys) or (not keys and row['kind'] in ('v','m')), 'INVALID_DATASET_KEY')
         if not keys:
             keys, source = hint, 'declared_view_key'
+    # Discovery must not announce a binary dataset as available when its rows
+    # cannot produce a stable selector for bounded content retrieval.
+    p.require(bool(keys) or not any(c['type']=='bytea' for c in row['columns']),
+              'BINARY_DATASET_KEY_REQUIRED')
     value = p.descriptor({"format": p.VERSION, "id": p.dataset_id(row["schema"], row["relation"]),
         "schema": row["schema"], "relation": row["relation"], "owner": row["owner"],
         "classification": enrollment["classification"],
@@ -216,7 +230,8 @@ def with_dependencies(conn, rows):
     if not rows:
         return rows
     unsafe = {r['root'] for r in conn.execute(DEPENDENCIES_SQL,
-        ([r['oid'] for r in rows], sorted(SUPPORTED_CREATORS))).fetchall()}
+        ([r['oid'] for r in rows], sorted(SUPPORTED_CREATORS),
+         sorted(schema+'.'+relation for schema,relation in INTERNAL_CONTROL_RELATIONS | HELD_FOR_REVIEW.keys()))).fetchall()}
     return [{**row, 'unsafe_dependencies': row['oid'] in unsafe} for row in rows]
 
 

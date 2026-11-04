@@ -7,8 +7,8 @@
   "initial_accounting": {
     "enrolled": 127,
     "accounted": 127,
-    "provisionally_eligible": 101,
-    "internal_controls_excluded": 25,
+    "provisionally_eligible": 100,
+    "internal_controls_excluded": 26,
     "held_for_architectural_review": ["mf.source_metadata"],
     "not_a_live_API_or_TI_consumption_proof": true,
     "decision_pending": "User asked whether controls should remain accounted but excluded or have separately reviewed sanitized projections. Raw source_metadata transport/error fields remain withheld pending exact disposition."

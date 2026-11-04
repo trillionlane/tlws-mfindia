@@ -36,12 +36,15 @@ def setup_dataset(dsn, schema='mf_dataset_fixture', relation='observations'):
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
 def test_new_schema_enrollment_permissions_discovery_rows_and_bounded_content(ro01_db):
     adopt(ro01_db)
-    generator_before = generator_capabilities(ro01_db)
     dataset = setup_dataset(ro01_db)
     with connect(ro01_db,autocommit=False) as conn:
         conn.execute('CREATE TABLE mf.dataset_existing_schema(id int PRIMARY KEY,value text)')
         conn.execute("INSERT INTO mf.dataset_existing_schema VALUES(1,'existing-schema')")
         existing = enrollment.enroll(conn,'mf','dataset_existing_schema',classification='fund_research',title='Existing schema')
+    # Compare capabilities over the same object population. This helper also
+    # records relation identities, so comparing before fixture DDL would report
+    # a new object as a privilege change even when its capabilities are denied.
+    generator_before = generator_capabilities(ro01_db)
     dsn = make_conninfo(ro01_db, user=policy.READER, password=PASSWORD)
     with TestClient(create_app(dsn)) as client:
         before = client.get('/api/datasets/v1').json()['datasets']
@@ -160,12 +163,20 @@ def test_unsafe_view_function_and_outside_inherited_child_fail_before_read(ro01_
             INSERT INTO mf_dataset_fixture.function_effect VALUES(1); RETURN 1; END$$""")
         conn.execute('CREATE VIEW mf_dataset_fixture.unsafe_view AS SELECT mf_dataset_fixture.unsafe_read() AS id')
         unsafe = enrollment.enroll(conn,'mf_dataset_fixture','unsafe_view',classification='fund_research',title='Unsafe view')
+        conn.execute("""CREATE FUNCTION mf_dataset_fixture.unsafe_binary(bigint,bigint) RETURNS boolean
+            LANGUAGE plpgsql SECURITY DEFINER AS $$BEGIN
+            INSERT INTO mf_dataset_fixture.function_effect VALUES(2); RETURN true; END$$""")
+        conn.execute('CREATE OPERATOR mf_dataset_fixture.=== (LEFTARG=bigint,RIGHTARG=bigint,FUNCTION=mf_dataset_fixture.unsafe_binary)')
+        conn.execute('CREATE VIEW mf_dataset_fixture.operator_view AS SELECT id FROM mf_dataset_fixture.observations WHERE id OPERATOR(mf_dataset_fixture.===) id')
+        operator = enrollment.enroll(conn,'mf_dataset_fixture','operator_view',classification='fund_research',title='Unsafe operator')
+        conn.execute('CREATE VIEW mf_dataset_fixture.control_alias AS SELECT migration_name::text AS note FROM mf.schema_migrations')
+        control = enrollment.enroll(conn,'mf_dataset_fixture','control_alias',classification='fund_research',title='Control alias')
         report = enrollment.reconcile(conn)
         assert any(r['reason']=='UNREVIEWED_DATASET_DEPENDENCY' for r in report['results'])
         conn.execute('CREATE SCHEMA unrelated_fixture')
         conn.execute('CREATE TABLE unrelated_fixture.child() INHERITS(mf_dataset_fixture.observations)')
     with TestClient(create_app(make_conninfo(ro01_db,user=policy.READER,password=PASSWORD))) as client:
-        for identifier in (dataset,unsafe['dataset_id']):
+        for identifier in (dataset,unsafe['dataset_id'],operator['dataset_id'],control['dataset_id']):
             reply = client.get('/api/datasets/v1/'+identifier+'/rows')
             assert reply.status_code == 503 and reply.json()['detail']=='UNREVIEWED_DATASET_DEPENDENCY'
     with connect(ro01_db) as conn:
@@ -181,11 +192,17 @@ def test_declared_view_key_null_boundary_duplicate_detection_and_byte_budget(ro0
         view = enrollment.enroll(conn,'mf_dataset_fixture','declared_view',classification='fund_research',title='Declared view',key_columns=['id'])
         conn.execute('CREATE VIEW mf_dataset_fixture.duplicate_view AS SELECT id FROM mf_dataset_fixture.observations UNION ALL SELECT id FROM mf_dataset_fixture.observations')
         duplicate = enrollment.enroll(conn,'mf_dataset_fixture','duplicate_view',classification='fund_research',title='Duplicate view',key_columns=['id'])
+        conn.execute('CREATE VIEW mf_dataset_fixture.unkeyed_binary AS SELECT pdf FROM mf_dataset_fixture.observations')
+        binary = enrollment.enroll(conn,'mf_dataset_fixture','unkeyed_binary',classification='source_evidence',title='Unkeyed binary')
         conn.execute('CREATE TABLE mf_dataset_fixture.large_rows(id int PRIMARY KEY,notes text)')
         conn.execute("INSERT INTO mf_dataset_fixture.large_rows SELECT x,repeat('x',60000) FROM generate_series(1,40) x")
         large = enrollment.enroll(conn,'mf_dataset_fixture','large_rows',classification='fund_research',title='Byte bounded rows')
-        enrollment.reconcile(conn)
+        reconciled = enrollment.reconcile(conn)
+        assert next(item for item in reconciled['results'] if item['dataset_id']==binary['dataset_id'])['reason']=='BINARY_DATASET_KEY_REQUIRED'
     with TestClient(create_app(make_conninfo(ro01_db,user=policy.READER,password=PASSWORD))) as client:
+        discovery = client.get('/api/datasets/v1').json()['datasets']
+        unkeyed = next(item for item in discovery if item['id']==binary['dataset_id'])
+        assert unkeyed['state']=='unavailable' and unkeyed['reason']=='DATASET_READ_GRANTS_MISSING'
         observed, cursor = [], None
         for _ in range(4):
             params = {'limit':1,**({'cursor':cursor} if cursor else {})}
