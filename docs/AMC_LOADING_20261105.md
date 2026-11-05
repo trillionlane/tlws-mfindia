@@ -107,3 +107,22 @@ A separate full-original September check used retained generation
 `fba08af16c51879d060c867759126b906698a54a2ff237fa7803cac11d760d36`:
 all 87 recognized detail pages and every parsed field are exactly equal between
 v1 and the successor. This is local source preservation, not a DEV reload.
+
+### Native fixture identity and policy-metadata correction
+
+The next hosted run (42020852872, exact 6d31b1b) passed all image checks,
+the 13 focused boundary cases and 6,375 remainder cases, but the new native
+case failed at its first run receipt: its synthetic execution name omitted the
+fixed job prefix required by the unchanged SQL constraint. One existing skip
+remained; downstream audit/credential/process checks did not run after that
+failure. The complete original failed log is retained, not rerun or admitted.
+
+The fixture now uses the real job constant for all four publication/replay
+calls. Inspection of the remaining path also corrected the policy transition
+comparison: all response members remain equal except policy_hash and the
+facts_revision that includes that policy hash; both new hashes are explicitly
+recomputed and asserted. Values, identities, dates, source evidence, review
+states, old batches/receipts and denied mutations remain checked in full.
+No production code, SQL, policy, timeout, skip or privilege changed in this
+fixture-only correction. Its native result still requires the new exact-head
+hosted run; earlier green image/unit results do not certify that path.
