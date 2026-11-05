@@ -6,6 +6,8 @@ because its name matches: compare the full definitions, owners and execution
 contexts in the caller's transaction. These reads perform no policy install,
 function invocation, grant, role change or long-lived verdict caching.
 """
+from dataclasses import dataclass
+
 import psycopg
 
 from mfdataindia.enrichment import current_facts_store as current
@@ -19,7 +21,18 @@ NAMES = frozenset({'mf.current_fund_facts',
     'mf_multi_facts.prior_field_versions','mf_book_facts.prior_field_versions'})
 
 
-def approved_oids(conn):
+@dataclass(frozen=True)
+class VerifiedGraph:
+    """Request-local seals, never a cached or consumer-supplied SQL capability."""
+    views: tuple = ()
+    policy_hash: str = ''
+
+    @property
+    def oids(self):
+        return sorted(row[1] for row in self.views)
+
+
+def inspect(conn):
     """Fixed-size metadata verification once per inventory, not per dataset."""
     try:
         # pg_get_viewdef qualifies names according to search_path. Installation
@@ -42,16 +55,16 @@ def approved_oids(conn):
             views = {row['name']:row for row in rows}
             # Core-only installations need no projection configuration.
             if not any(name.startswith('mf_live_facts.') for name in views):
-                return []
+                return VerifiedGraph()
             cfg = current.configuration(conn)  # Existing known-policy/full-seal validator.
             for name in current.VIEWS:
                 row = views.get('mf_live_facts.'+name)
                 if (row is None or row['kind']!='v' or row['owner']!=p.OWNER
                         or row['schema_owner']!=p.OWNER or row['options']
                         or fingerprint(row['definition'])!=cfg['view_hashes'][name]):
-                    return []
+                    return VerifiedGraph()
             if views['mf_live_facts.baseline']['definition']!=cfg['baseline_definition']:
-                return []
+                return VerifiedGraph()
             approved = [views['mf_live_facts.'+name]['oid'] for name in current.VIEWS]
             facade = views.get('mf.current_fund_facts')
             if (facade and facade['kind']=='v' and facade['owner']==p.OWNER
@@ -74,8 +87,14 @@ def approved_oids(conn):
                         and row['schema_owner']==p.OWNER and not row['options']
                         and row['definition']==definitions.get(policy)):
                     approved.append(row['oid'])
-            return sorted(approved)
+            return VerifiedGraph(tuple(sorted((name,row['oid'],row['definition'])
+                for name,row in views.items() if row['oid'] in approved)),cfg.get('policy_hash',''))
     except (ValueError,KeyError,TypeError,psycopg.Error):
         # Failed seals cannot authorize access. The surrounding inventory can
         # still report unrelated datasets; no ingestion transaction is undone.
-        return []
+        return VerifiedGraph()
+
+
+def approved_oids(conn):
+    """Compatibility seam for enrollment and existing metadata callers."""
+    return inspect(conn).oids
