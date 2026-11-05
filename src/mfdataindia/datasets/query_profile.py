@@ -16,7 +16,7 @@ from . import policy as p
 
 VERSION = 'mfdata-sealed-projection-read-v1'
 TARGETS = frozenset({'mf.current_fund_facts', *('mf_live_facts.'+name for name in
-    ('field_heads','selected_fields','current_values','resolved'))})
+    ('field_versions','field_heads','selected_fields','current_values','resolved'))})
 _BATCH = '_mf_dataset_batch_inputs'
 _SCALARS = (
     ("b.document -> 'observations'::text", '_dataset_observations', 1),

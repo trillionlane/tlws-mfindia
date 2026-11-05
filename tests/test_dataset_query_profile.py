@@ -32,6 +32,15 @@ def entry(name='mf.current_fund_facts'):
     return {'schema':schema,'relation':relation}
 
 
+def test_versions_page_uses_existing_sealed_cte_without_a_declared_key():
+    candidate = entry('mf_live_facts.field_versions')
+    source = q.source(candidate,graph())
+    assert 'mf_live_facts.field_versions' in q.TARGETS
+    assert source.profile == q.VERSION
+    assert source.relation.as_string() == '"field_versions"'
+    assert '"field_versions" AS NOT MATERIALIZED' in source.prefix.as_string()
+
+
 @pytest.mark.parametrize('target',sorted(q.TARGETS))
 @pytest.mark.parametrize('v2',[False,True])
 def test_each_sealed_target_selects_shared_profile_with_no_stored_view_change(target,v2):

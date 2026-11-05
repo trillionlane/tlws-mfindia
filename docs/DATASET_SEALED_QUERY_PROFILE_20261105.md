@@ -1,9 +1,9 @@
 # Sealed dataset query profile v1
 
 The dataset foundation is merged at `abe305a3848e48498bbafc402daf44a417389d0d`
-(PR143). Five eligible existing business projections exceed the dataset API's
+(PR143). Six eligible existing business projections exceed the dataset API's
 unchanged ten-second data-query guard on the current DEV population:
-`mf.current_fund_facts`, and `mf_live_facts.field_heads`, `selected_fields`,
+`mf.current_fund_facts`, and `mf_live_facts.field_versions`, `field_heads`, `selected_fields`,
 `current_values`, and `resolved`. SELECT permission and schema discovery do not
 establish that their pages can be consumed.
 
@@ -16,7 +16,7 @@ inventory dependency scan remains authoritative; neither that graph nor SQL is
 included in consumer metadata, schema fingerprints or cursors. There is no
 cross-request security-verdict cache or additional connection.
 
-Only those five already verified projections under a known AMC-book policy
+Only those six already verified projections under a known AMC-book policy
 select `mfdata-sealed-projection-read-v1`. `datasets.query_profile` shares the
 retained prior graph, extracts repeated batch JSON properties once per batch,
 and shares selected fields/current values within the same read-only query.
@@ -67,7 +67,7 @@ fixture and real synthetic SBI source constructors/publication. It compiles
 the pinned book/core projection through production configuration constructors;
 it does not invent a live activation receipt or change the registry. Positive
 book observations, equal-value corroboration, conflicting values and retained
-prior rows feed comparisons of every typed field for all five views. It then
+prior rows feed comparisons of every typed field for all six views. It then
 pages the actual API beyond page one, asserts real profile selection, rejects
 changed seals, denies reader mutation/elevation and exercises generator
 publication/replay after broad adoption. Existing nullable/duplicate cursor,
@@ -76,6 +76,19 @@ binary, authorization, unsafe dependency, creator and enrollment tests remain.
 Final-head local and hosted native/image/contract/audit/credential results are
 recorded in the PR. Local collection or doubles are not native PostgreSQL proof.
 No local PostgreSQL or hosted-environment spoofing is permitted.
+
+An exact ordered initial-page check of the remaining 95 eligible datasets
+found 94 usable pages (27 empty) and one further ten-second timeout in
+`mf_live_facts.field_versions`. Earlier unordered samples did not establish
+ordered-page readiness. This sixth target reuses its already constructed and
+sealed CTE without new substitutions. Its explicit selection regression first
+failed on the five-target implementation. The same native comparison and full
+API pagination loop now cover it; no declared key is invented for this view.
+Read-only first and next ordered pages with the sixth target completed in
+6.54 and 6.56 seconds under the unchanged ten-second statement bound. A bounded
+scalar-code original/profile comparison retained identical full-document
+fingerprints. These observations do not replace native or authenticated API
+acceptance, and no dataset marker, grant or stored row was changed.
 
 The synthetic publication receipt uses the pinned v4 registry's existing job
 prefix. A provider-free regression checks all three fixture IDs against the
