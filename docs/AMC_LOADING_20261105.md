@@ -88,3 +88,22 @@ the full six-task job while describing it as Kotak-only. Stop on uncertain
 publication; inspect its immutable identity and fresh database state before any
 further write. API verification of October and preservation of prior values are
 still required after the reviewed recovery, independently of parser/CI success.
+
+The initial hosted run `42018331023` at `65ec153` remains failed and inadmissible.
+Its focused UTI suite passed three cases and failed ten with `KeyError: 6`:
+the historical fixture declared a synthetic 1–5 registry but retained the new
+registry's key 6. The fixture now advertises only the exact versions it builds;
+production registry/version validation is unchanged. The APP smoke additionally
+found that a wheel image has no `/app/src`. Current allocation now verifies each
+actually imported Python module and any checkout copy, while non-Python files
+remain root-bound. Two provider-free image-layout regressions exercise absence
+of `src` and rejection of changed installed bytes. Neither correction weakens a
+source hash or enables an unallocated process. The original complete failed log
+and actual job/step results are retained separately; no rerun or retroactive
+acceptance is claimed.
+
+A separate full-original September check used retained generation
+`1792252586232266`, SHA-256
+`fba08af16c51879d060c867759126b906698a54a2ff237fa7803cac11d760d36`:
+all 87 recognized detail pages and every parsed field are exactly equal between
+v1 and the successor. This is local source preservation, not a DEV reload.

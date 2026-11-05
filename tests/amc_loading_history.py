@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-SHA256 = '63b6aab0991ecbb034c6c64797ac745a61fc107fa8f91b05a5516dfd2ed2c64f'
+SHA256 = '9e68e1ad4e62d9726360657a23c870f245f2d82834439fd7afe1f86ca115243d'
 
 
 @lru_cache(maxsize=1)

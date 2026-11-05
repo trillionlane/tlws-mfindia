@@ -46,6 +46,10 @@
     "tests/test_pdf_security_compatibility.py": {
       "previous_sha256": "e645e59e1b52b726c58590a364285f3d6ae06314d1fd9899637ac2210f10db86",
       "current_sha256": "4c5fbbc9c47c0c246661a552e0b82b46b0eaff9a7dde254a05a58743a8328e78"
+    },
+    "tests/test_uti_v2_store.py": {
+      "previous_sha256": "2c203db7362d5ee9da7e8d743080d13c2d9d4eb62973d57dcb097da715dfd956",
+      "current_sha256": "ca820ded563a6c10c90316e7ce77404070be404a8052aeb0d5f7d323eb5437b7"
     }
   }
 }

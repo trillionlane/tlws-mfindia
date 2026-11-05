@@ -5,6 +5,7 @@ retained. New deployment/execution approval is not supplied by this descriptor.
 """
 import hashlib
 import json
+from importlib import import_module
 from pathlib import Path
 from mfdataindia.enrichment import allocated_amc_workload as prior, book_sources, kotak_runtime
 from mfdataindia.review.policy import fingerprint
@@ -28,6 +29,15 @@ def allocation(root):
         raise ValueError('KOTAK_CURRENT_POLICY_MISMATCH')
     for name, digest in document['files'].items():
         path = root / name
+        if name.startswith('src/mfdataindia/') and name.endswith('.py'):
+            # Runtime images contain a non-editable wheel, not /app/src.
+            # Check the actually imported module as well as any checkout copy.
+            module = import_module(name[4:-3].replace('/', '.'))
+            installed = Path(module.__file__)
+            if installed.is_symlink() or hashlib.sha256(installed.read_bytes()).hexdigest() != digest:
+                raise ValueError('KOTAK_CURRENT_SOURCE_MISMATCH')
+            if not path.exists():
+                continue
         if (path.is_symlink() or not path.resolve().is_relative_to(root.resolve())
                 or hashlib.sha256(path.read_bytes()).hexdigest() != digest):
             raise ValueError('KOTAK_CURRENT_SOURCE_MISMATCH')

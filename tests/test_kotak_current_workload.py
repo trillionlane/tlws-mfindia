@@ -92,3 +92,36 @@ def test_compiler_current_two_period_complete_graph_keeps_all_original_guards():
             if method==2:
                 assert batches[0]['observations'][0]['result']['fields']['aum']['value']=='52614.58'
                 assert batches[0]['observations'][0]['result']['fields']['base_expense_ratio']['reason']=='same_period_expense_values_conflict'
+
+
+def test_noneditable_image_layout_uses_exact_installed_module_bytes(tmp_path):
+    import shutil
+    document = current.allocation(ROOT)
+    copied = {current.FILE, prior.ALLOCATION_FILE, *document['files'],
+              *prior.allocation(ROOT)['file_sha256']}
+    for name in copied:
+        if name.startswith('src/'):
+            continue
+        destination = tmp_path/name
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(ROOT/name,destination)
+    assert not (tmp_path/'src').exists()
+    assert current.allocation(tmp_path)==document
+
+
+def test_noneditable_image_layout_never_accepts_changed_installed_code(tmp_path,monkeypatch):
+    import shutil
+    from types import SimpleNamespace
+    document=current.allocation(ROOT)
+    copied = {current.FILE, prior.ALLOCATION_FILE, *document['files'],
+              *prior.allocation(ROOT)['file_sha256']}
+    for name in copied:
+        if not name.startswith('src/'):
+            dest=tmp_path/name
+            dest.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copyfile(ROOT/name,dest)
+    bad=tmp_path/'changed_module.py'
+    bad.write_text('# not the reviewed package\n')
+    monkeypatch.setattr(current,'import_module',lambda _:SimpleNamespace(__file__=str(bad)))
+    with pytest.raises(ValueError,match='KOTAK_CURRENT_SOURCE_MISMATCH'):
+        current.allocation(tmp_path)
