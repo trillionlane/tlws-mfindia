@@ -1,0 +1,38 @@
+{
+  "base": "6e074b0d32fe5923d8adba384d9784d08ae4afaa",
+  "format": "dataset-coverage-current-source-changes-v2",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/verify.yml": {
+      "current_sha256": "fa1f31d2f7eee9da3dcd0a6aac95cb1a66565a10c9ae0c0b377a6b702b80116c",
+      "historical_passthrough_sha256": [
+        "acc79da6e8bca20977f59875b0760faf332873e7e63a58ce940f10dbcc052eaa",
+        "ad8c06634c0200210d6de1bdd8492b89ed825f04c4f634c69edb6605344ea348"
+      ],
+      "previous_sha256": "764abc8dbbcc017adaf324f5d7e42bcc95541fb134fc61675a1834d2840df200",
+      "reason": "Inspect and exercise the actual APP image default factory in the existing image check, plus one provider-free dataset ASGI smoke inside the existing BOTH-image loop; no new job, credentials, resources, gate or skipped check."
+    },
+    "Dockerfile": {
+      "current_sha256": "8f7ab6b76b228534c1e6270d2011e08d8c196bc417789237efd410743a291bc4",
+      "previous_sha256": "9c250520213efa2d87b7a9ec559d204740a84391c8384eaeae4fdb21644262fd",
+      "reason": "Select the additive dataset/core factory in the unchanged default Uvicorn command; preserve all legacy core routes and explicit worker/review entrypoints."
+    },
+    "scripts/migrate.py": {
+      "current_sha256": "6e5e8c664f29cc1c6fe82fe7473ed59b641070fba9ee71896df155836bdbd8e2",
+      "previous_sha256": "84dff575df4729f061767b21d41186bdde956914c55069376eb6a0db628466e2",
+      "reason": "Add the isolated, observable eligible-reader enrollment reconciliation hook after existing successful migration/calculation work."
+    },
+    "tests/dev_reader_compatibility_history.py": {
+      "current_sha256": "c4ef71db9883d83c0ea8fc318966c3f7f2a69a91e874ff3c1e222e30b6cddd33",
+      "previous_sha256": "c1a4b21555ae7705adeca2b457558b875e0e7d21d63ced358358d45a00c48ce3",
+      "reason": "Apply this finite current whole-file inverse before older historical release assertions."
+    },
+    "tests/test_dev_reader_compatibility_history.py": {
+      "current_sha256": "8b6d18aef7d28de42d39849bf5183a461e8458a720429b0bef0fc6913280716d",
+      "previous_sha256": "7669f292783c67928f99819099bfe8e818376ae3e36de7f98269325507b586e3",
+      "reason": "Retain every complete old compatibility assertion against its exact predecessor; separately test actual current dataset changes."
+    }
+  },
+  "no_ignored_regions_or_test_assertion_waivers": true,
+  "runtime_authority": false
+}

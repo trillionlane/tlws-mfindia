@@ -232,6 +232,8 @@ jobs:
           image="tlws-mf-data:${{ github.sha }}"
           test "$(docker image inspect "$image" --format '{{.Config.User}}')" = "10001:10001"
           test "$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+          docker image inspect "$image" --format '{{json .Config.Cmd}}' > "$RUNNER_TEMP/dataset-default-command.json"
+          docker run --rm --entrypoint python --mount "type=bind,source=$RUNNER_TEMP/dataset-default-command.json,target=/tmp/dataset-default-command.json,readonly" "$image" /app/scripts/smoke_dataset_read_api.py --image-command-json /tmp/dataset-default-command.json
           docker run --rm --entrypoint python "$image" -c \
             'from pathlib import Path; import mfdataindia; from mfdataindia.api.association_app import create_association_app; root = Path(mfdataindia.__file__).parent; assert (root / "web/index.html").is_file(); assert callable(create_association_app); assert Path("/app/scripts/backfill_nav.py").is_file(); assert Path("/app/scripts/smoke_private_api.py").is_file(); assert Path("/app/scripts/verify_optional_association_writer_dev.sh").is_file(); assert Path("/app/scripts/audit_nav_integrity.py").is_file(); assert Path("/app/scripts/reconcile_nav_audit_privileges.py").is_file(); assert Path("/app/scripts/verify_nav_audit_privileges.py").is_file(); assert Path("/app/sql/018_fund_family_association_tags.sql").is_file(); assert Path("/app/sql/019_reconcile_association_writer_privileges.sql").is_file(); assert Path("/app/sql/020_nav_quality_audit_privileges.sql").is_file()'
 
@@ -680,6 +682,7 @@ jobs:
             docker run --rm --entrypoint python "$target" /app/scripts/operate_reader_function_attestation_dev.py --help
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_function_attestation_binding.py
             docker run --rm --entrypoint python --env "DEPLOYMENT_GIT_SHA=$GITHUB_SHA" "$target" /app/scripts/smoke_reader_execution_dev.py
+            docker run --rm --entrypoint python "$target" /app/scripts/smoke_dataset_read_api.py
           done
       - name: Run reduced PR checks
         id: reduced

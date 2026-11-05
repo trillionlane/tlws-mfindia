@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 from dev_reader_compatibility_history import manifest, previous
+from dataset_source_history import previous as dataset_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = '84f6c91976ef6da0a8d8e4dfcd2f42a86a2632d2'
@@ -23,7 +24,7 @@ def test_only_explicit_current_sources_restore_whole_base_bytes():
         'tests/reader_execution_native_fixture.py', 'tests/test_reader_execution_postgres.py',
         'tests/test_reader_execution_source.py', 'tests/test_release_admission.py'}
     for name, recipe in doc['modified'].items():
-        raw = (ROOT / name).read_bytes()
+        raw = dataset_previous(ROOT / name, (ROOT / name).read_bytes())
         old = subprocess.check_output(['git', 'show', BASE + ':' + name], cwd=ROOT)
         assert previous(ROOT / name, raw) == old
         assert hashlib.sha256(raw).hexdigest() == recipe['current_sha256']
@@ -36,7 +37,7 @@ def test_only_explicit_current_sources_restore_whole_base_bytes():
 def test_actual_workflow_adds_only_two_smokes_to_existing_step_without_gate_changes():
     relative = '.github/workflows/verify.yml'
     before = yaml.load(subprocess.check_output(['git', 'show', BASE + ':' + relative], cwd=ROOT), Loader=yaml.BaseLoader)
-    after = yaml.load((ROOT / relative).read_bytes(), Loader=yaml.BaseLoader)
+    after = yaml.load(dataset_previous(ROOT / relative, (ROOT / relative).read_bytes()), Loader=yaml.BaseLoader)
     steps = after['jobs']['verify']['steps']
     step = next(s for s in steps if s.get('id') == 'original_34')
     old = next(s for s in before['jobs']['verify']['steps'] if s.get('id') == 'original_34')
