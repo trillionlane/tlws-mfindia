@@ -20,7 +20,7 @@
       "runtime_authority": false
     },
     "hdfc_dynamic_method": {
-      "base": "0cb80646c5b7348006ac13b658ea40a14d5cc449",
+      "base": "cebc28594d8cedf380e19081ea1e9084367ca68b",
       "intent": "Current source8 binds independently reviewed dynamic HDFC source2, same fixed reader entitlement; earlier authority documents immutable",
       "runtime_authority": false
     }

@@ -125,3 +125,14 @@ partition, still disjoint and exhaustive; no test is dropped or repeated.
 The current HDFC authority is based on prerequisite 0cb8064, including its
 explicit sealed-control preservation, not the earlier failed 593 predecessor.
 Final corrected-head hosted evidence remains required.
+
+Head34794c0 completed all four hosted jobs in42047174707/1:6,468 passes,
+one old skip,38 subtests,all21 contracts,audit,credentials and both images.
+Its24 early cases took820.12s; remainder6,444 passes/one skip took2747.65s.
+The raw log is retained once, separately from the earlier failed run.
+Before acceptance, the prerequisite gained a further correction: changed PDFs,
+periods or derivation versions must not bypass another unresolved claim for the
+same source. This head integrates that source-local guard fromcebc285, retaining
+HDFC source2/book8/current14 and the version4 allocation. HDFC parser and SQL
+semantics are unchanged. New-head full validation is required; the green347
+run is historical supporting evidence and is not substituted for this head.

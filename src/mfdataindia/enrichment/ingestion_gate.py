@@ -83,6 +83,10 @@ def claim(conn, candidate, execution, *, source_inputs=()):
     result = None
     with conn.transaction():
         _bounds(conn)
+        # Serialize only this source's short claim decision, not publication
+        # or other AMCs. A changed key must not bypass unresolved effects.
+        conn.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',
+                     ('amc-ingestion-source-v1:'+source,))
         conn.execute('SELECT pg_advisory_xact_lock(%s)',
                      (int(candidate['work_id'][:16], 16) - 2**63,))
         conn.execute('INSERT INTO mf_ingestion_ops.work VALUES(%s,%s,%s) ON CONFLICT DO NOTHING',
@@ -109,6 +113,19 @@ def claim(conn, candidate, execution, *, source_inputs=()):
                     # PUBLICATION_INTENT + confirmed rollback is also resolved.
                     if 'ROLLBACK_CONFIRMED' not in kinds or kinds & {'OUTCOME_UNKNOWN', 'COMMITTED_UNVERIFIED'}:
                         result = Claim(State.HELD, previous['document'], candidate)
+            if result is None:
+                blocked = conn.execute('''SELECT c.document FROM mf_ingestion_ops.claims c
+                    WHERE c.source_key=%s
+                    AND NOT EXISTS(SELECT 1 FROM mf_ingestion_ops.events e
+                                   WHERE e.claim_id=c.claim_id AND e.kind='PUBLISHED')
+                    AND (NOT EXISTS(SELECT 1 FROM mf_ingestion_ops.events e
+                                    WHERE e.claim_id=c.claim_id AND e.kind='ROLLBACK_CONFIRMED')
+                         OR EXISTS(SELECT 1 FROM mf_ingestion_ops.events e
+                                   WHERE e.claim_id=c.claim_id
+                                   AND e.kind IN('OUTCOME_UNKNOWN','COMMITTED_UNVERIFIED')))
+                    ORDER BY c.claim_id LIMIT 1''', (source,)).fetchone()
+                if blocked:
+                    result = Claim(State.HELD, blocked['document'], candidate)
             if result is None:
                 body = {'format': 'amc-ingestion-claim-v1', 'source_key': source,
                         'work_id': candidate['work_id'], 'execution_id': execution,
