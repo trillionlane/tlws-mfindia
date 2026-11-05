@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from mfdataindia.enrichment import (
     amfi_summary_identity, book_sources, book_store, book_runtime, kotak_book,
     kotak_batch, layout_book_pdf, current_facts_store as current,
-    kotak_method_upgrade, monthly_projection, book_core_projection,
+    kotak_method_upgrade, monthly_projection, book_core_projection, multi_facts,
 )
 from mfdataindia.review import reader_access_profile as profiles
 from mfdataindia.review.app import create_review_app
@@ -97,12 +97,16 @@ def test_native_kotak_method_transition_publication_september_replay_and_reader_
         with connect(ro01_db) as conn:
             identities = book_store.population(conn, 'kotak-expanded')
         old = inputs(identities, method=1)
-        # Publish only September before the upgrade; old October is NOT used.
+        # Publish the real prior September/August pair; no October exists yet.
         with connect(ro01_db, 'mfdata_verified_generator', autocommit=False) as conn:
-            old_receipt = book_runtime.publish(conn, 'kotak-expanded', 'native-kotak-september', datetime(2026,10,17,tzinfo=timezone.utc),
+            old_receipt = book_runtime.publish(conn, 'kotak-expanded', multi_facts.JOB+'-native-kotak-september', datetime(2026,10,17,tzinfo=timezone.utc),
                          identities, *old, availability=[])
         with connect(ro01_db) as conn:
             september = current.get(conn, 112090)
+            assert september['policy_hash'] == fingerprint(book_sources.current_policy(4))
+            assert september['facts_revision'] == fingerprint({
+                'identity_hash':september['identity_hash'], 'policy_hash':september['policy_hash'],
+                'fields':september['fields']})
             batch_inventory = conn.execute('SELECT batch_id,document FROM mf_book_facts.batches ORDER BY batch_id').fetchall()
             cfg = book_store.installed_configuration(conn)
             graph_hash = fingerprint(dict(current.configuration(conn)))
@@ -110,17 +114,23 @@ def test_native_kotak_method_transition_publication_september_replay_and_reader_
         installed = kotak_method_upgrade.install(conn, ROOT, expected_book_hash=cfg['configuration_hash'], expected_current_hash=graph_hash)
         assert installed['status'] == 'INSTALLED'
     with connect(ro01_db) as conn:
-        assert current.get(conn, 112090) == september
+        new_policy = fingerprint(book_sources.current_policy(6))
+        expected = {**september,'policy_hash':new_policy,'facts_revision':fingerprint({
+            'identity_hash':september['identity_hash'],'policy_hash':new_policy,
+            'fields':september['fields']})}
+        # Every value, source, date, verification state and other response
+        # member stays exact; only the two explicitly policy-bound hashes move.
+        assert current.get(conn, 112090) == expected
         assert conn.execute('SELECT batch_id,document FROM mf_book_facts.batches ORDER BY batch_id').fetchall() == batch_inventory
         assert book_store.installed_configuration(conn)['document']['registry']['sources'][-1]['adapter'] == 'uti-english-monthly-book-v1'
     with book_sources.select_registry(6):
         new = inputs(identities, method=2)
         with connect(ro01_db, 'mfdata_verified_generator', autocommit=False) as conn:
-            first = book_runtime.publish(conn, 'kotak-expanded', 'native-kotak-october', NOW, identities, *new, availability=[])
+            first = book_runtime.publish(conn, 'kotak-expanded', multi_facts.JOB+'-native-kotak-october', NOW, identities, *new, availability=[])
         with connect(ro01_db, 'mfdata_verified_generator', autocommit=False) as conn:
-            assert book_runtime.publish(conn, 'kotak-expanded', 'native-kotak-october', NOW, identities, *new, availability=[]) == first
+            assert book_runtime.publish(conn, 'kotak-expanded', multi_facts.JOB+'-native-kotak-october', NOW, identities, *new, availability=[]) == first
         with connect(ro01_db, 'mfdata_verified_generator', autocommit=False) as conn:
-            repeated = book_runtime.publish(conn, 'kotak-expanded', 'native-kotak-october-next-poll', NOW, identities, *new, availability=[])
+            repeated = book_runtime.publish(conn, 'kotak-expanded', multi_facts.JOB+'-native-kotak-october-next-poll', NOW, identities, *new, availability=[])
             assert repeated['status'] == 'unchanged'
         with connect(ro01_db) as conn:
             assert conn.execute('SELECT count(*) AS n FROM mf_book_facts.batches').fetchone()['n'] == 4
