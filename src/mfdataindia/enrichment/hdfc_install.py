@@ -21,10 +21,12 @@ def sealer(root=None):
 
 def installed_policy(conn):
     row=conn.execute('SELECT registry_hash,registry,policy_hash FROM mf_multi_facts.configuration ORDER BY generation DESC LIMIT 1').fetchone()
-    for registry,policy in ((multi_facts.registry(),multi_facts.policy()),
-                            (hdfc_source_v2.registry(),hdfc_source_v2.policy())):
-        if row=={'registry_hash':fingerprint(registry),'registry':registry,'policy_hash':fingerprint(policy)}:
-            return registry,policy
+    registry,policy=multi_facts.registry(),multi_facts.policy()
+    if row=={'registry_hash':fingerprint(registry),'registry':registry,'policy_hash':fingerprint(policy)}:
+        return registry,policy
+    registry,policy=hdfc_source_v2.registry(),hdfc_source_v2.policy()
+    if row=={'registry_hash':fingerprint(registry),'registry':registry,'policy_hash':fingerprint(policy)}:
+        return registry,policy
     raise ValueError('HDFC_INSTALLED_SOURCE_AUTHORITY_DIFFERS')
 
 

@@ -26,19 +26,58 @@ PREFIX = 'tlws-mf-official-facts-refresh-dev-'
 NOW = datetime(2026, 11, 5, tzinfo=timezone.utc)
 
 
-@pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
-def test_native_claim_atomic_publication_concurrency_replay_and_independent_progress(ro01_db, monkeypatch):
-    populate(ro01_db, monkeypatch, book_version=4)
-    with connect(ro01_db, autocommit=False) as conn:
+def install_current_gate(dsn,monkeypatch):
+    """Same supported graph/owner transitions in every connected gate case."""
+    from mfdataindia.enrichment import (current_facts_store as current, monthly_projection,
+        book_core_projection, kotak_method_upgrade, ingestion_install)
+    from mfdataindia.review.policy import fingerprint
+    populate(dsn, monkeypatch, book_version=4)
+    with connect(dsn, autocommit=False) as conn:
         conn.execute('INSERT INTO mf.amcs(amfi_amc_name,normalised_name) VALUES(%s,%s)', (kotak_book.AMC, kotak_book.AMC.upper()))
         conn.execute("INSERT INTO mf.funds(amfi_scheme_code,amc_id,scheme_name,scheme_name_norm,scheme_type,scheme_category,plan_type,option_type,isin_growth_or_div_payout) SELECT 112090,amc_id,'Kotak Flexicap Fund - Regular Plan - Growth','KOTAK FLEXICAP FUND','OPEN_ENDED','Equity','REGULAR','GROWTH','INF174K01336' FROM mf.amcs WHERE amfi_amc_name=%s", (kotak_book.AMC,))
-        conn.execute((ROOT/'sql/operations/amc_ingestion_gate_v1.sql').read_text())
+        prior = dict(current.configuration(conn))
+        conn.execute((ROOT/'sql/optional/amc_book_current_projection_v2.sql.inc').read_text())
+        book_core_projection.install(conn,ROOT)
+        definitions = {name:current.view_definition(conn,'mf_live_facts.'+name) for name in current.VIEWS}
+        monthly_projection.seal_configuration(conn,prior['generation']+1,prior['baseline_definition'],
+            fingerprint(book_sources.current_policy(4)),definitions)
+    adopt(dsn)
+    with connect(dsn,autocommit=False) as conn:
+        cfg=book_store.installed_configuration(conn)
+        kotak_method_upgrade.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],
+            expected_current_hash=fingerprint(dict(current.configuration(conn))))
+    with connect(dsn,autocommit=False) as conn:
+        cfg=book_store.installed_configuration(conn)
+        base_hash=fingerprint(dict(current.configuration(conn)))
+        installed=ingestion_install.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],expected_current_hash=base_hash)
+        assert installed['status']=='INSTALLED'
+    with connect(dsn,autocommit=False) as conn:
+        assert ingestion_install.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],expected_current_hash=base_hash)['status']=='ALREADY_INSTALLED'
+
+
+@pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
+def test_native_claim_atomic_publication_concurrency_replay_and_independent_progress(ro01_db, monkeypatch):
+    install_current_gate(ro01_db,monkeypatch)
+    from mfdataindia.enrichment import ingestion_install
+    from mfdataindia.review.preservation import capture_preservation, compare_preservation
+    with connect(ro01_db,autocommit=False) as conn:
+        conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        before_control=ingestion_install.capture(conn)
+        before_owner=capture_preservation(conn,reader_profile=profiles.BROAD)
+    # Existing owner reconciliation must remain usable after gate installation.
+    # The complete control rows remain identical, not merely the core schema.
     adopt(ro01_db)
+    with connect(ro01_db,autocommit=False) as conn:
+        conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        assert ingestion_install.capture(conn)==before_control
+        preserved=capture_preservation(conn,reader_profile=profiles.BROAD)
+        assert preserved['ingestion_operations']['catalogue_hash']==before_control['catalogue_hash']
+        compare_preservation(before_owner,preserved,__import__('hashlib').sha256((ROOT/'sql/optional/023_verified_fund_review.sql').read_bytes()).hexdigest())
     capabilities = generator_capabilities(ro01_db)
-    with book_sources.select_registry(4):
+    with book_sources.select_registry(7):
         with connect(ro01_db) as conn:
             identities = book_store.population(conn, SOURCE)
-        batches, originals, archives = inputs(identities, method=1)
+        batches, originals, archives = inputs(identities, method=2)
     from mfdataindia.review.policy import fingerprint
     candidate = runner.Candidate([{'role': f'part{n}', 'content': o['content']} for n,o in enumerate(originals)],
                                   'a'*64, fingerprint(identities))
@@ -63,7 +102,7 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
                 calls.append(self.execution)
                 return book_runtime.publish(conn, SOURCE, self.execution, NOW,
                     identities, batches, originals, archives, availability=[])
-            return runner.Prepared('2026-09-30', publish)
+            return runner.Prepared('2026-10-31', publish)
 
     tick = iter(range(100))
     def store():
@@ -80,7 +119,7 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
 
     def delivery(n):
         execution = PREFIX+f'concurrent{n}'
-        with book_sources.select_registry(4):
+        with book_sources.select_registry(7):
             return runner.execute(SOURCE, execution, Adapter(execution, synchronize=True), store())
     with ThreadPoolExecutor(max_workers=2) as pool:
         outcomes = list(pool.map(delivery, (1, 2)))
@@ -88,10 +127,10 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
     assert sorted(r['state'] for r in outcomes) in (
         ['HELD_FOR_RECONCILIATION', 'PUBLISHED'], ['PUBLISHED', 'UNCHANGED'])
     repeated = Adapter(PREFIX+'repeat')
-    with book_sources.select_registry(4):
+    with book_sources.select_registry(7):
         result = runner.execute(SOURCE, PREFIX+'repeat', repeated, store())
     assert result['state'] == 'UNCHANGED' and repeated.preparations == 0 and len(calls) == 1
-    assert result['latest_period_published'] == '2026-09-30'
+    assert result['latest_period_published'] == '2026-10-31'
     with connect(ro01_db) as conn:
         assert conn.execute('SELECT count(*) AS n FROM mf_book_facts.batches').fetchone()['n'] == 2
         assert conn.execute("SELECT count(*) AS n FROM mf_ingestion_ops.events WHERE kind='PUBLISHED'").fetchone()['n'] == 1
@@ -99,7 +138,7 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
     with connect(ro01_db, 'mfdata_verified_generator') as conn:
         # Same period, revised bytes are another candidate; they never overwrite
         # the old work/batches. A pending claim remains held without any lease.
-        changed = discovery.work(SOURCE, '2026-09-30', discovery.manifest([
+        changed = discovery.work(SOURCE, '2026-10-31', discovery.manifest([
             {'role': 'part0', 'content': b'%PDF-synthetic-revision'}]), 'a'*64, fingerprint(identities))
         one = gate.claim(conn, changed, PREFIX+'revised')
         two = gate.claim(conn, changed, PREFIX+'revised-next')
@@ -116,7 +155,7 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
         def discover(self, deadline):
             raise OSError('SYNTHETIC_SECRET_NEVER_REPORT')
     failed = runner.execute('uti-expanded', PREFIX+'independent', Failing(), store())
-    with book_sources.select_registry(4):
+    with book_sources.select_registry(7):
         other = runner.execute(SOURCE, PREFIX+'independent', Adapter(PREFIX+'independent'), store())
     assert failed['state'] == 'FETCH_FAILED' and other['state'] == 'UNCHANGED'
     assert 'SYNTHETIC_SECRET' not in json.dumps([failed, other])
@@ -132,7 +171,7 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
         client.headers['Authorization'] = 'Bearer '+assertion(private, scope=['review:read'])
         response = client.get(route)
         assert response.status_code == 200
-        assert {r['disclosure_as_of'] for r in response.json()['observations']} == {'2026-08-31', '2026-09-30'}
+        assert {r['disclosure_as_of'] for r in response.json()['observations']} == {'2026-09-30', '2026-10-31'}
     for statement in ('SELECT * FROM mf_ingestion_ops.claims',
                       'UPDATE mf.funds SET scheme_name=scheme_name WHERE false',
                       'CREATE TABLE mf.reader_ingestion_forbidden(n integer)'):
@@ -143,6 +182,25 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute('UPDATE mf_ingestion_ops.work SET work_id=work_id WHERE false')
 
+    with connect(ro01_db,autocommit=False) as conn:
+        conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        # Operational records append, while core data/structure and the entire
+        # installed control structure remain preserved by the current owner guard.
+        after_control=ingestion_install.capture(conn)
+        assert after_control['tables']['claims']['rows']==2
+        assert after_control['tables']['work']['rows']==2
+        compare_preservation(before_owner,capture_preservation(conn,reader_profile=profiles.BROAD),
+            __import__('hashlib').sha256((ROOT/'sql/optional/023_verified_fund_review.sql').read_bytes()).hexdigest())
+        with pytest.raises(ValueError,match='unmodelled administrator-owned'):
+            with conn.transaction():
+                conn.execute('CREATE SCHEMA unknown_ingestion_control')
+                conn.execute('CREATE TABLE unknown_ingestion_control.hidden(value integer)')
+                capture_preservation(conn,reader_profile=profiles.BROAD)
+        with pytest.raises(ValueError,match='INGESTION_GATE_INSTALLED_STATE_DIFFERS'):
+            with conn.transaction():
+                conn.execute('CREATE TABLE mf_ingestion_ops.unknown_control(value integer)')
+                capture_preservation(conn,reader_profile=profiles.BROAD)
+
 
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
 def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, monkeypatch, capsys):
@@ -152,35 +210,11 @@ def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, 
     install, claim, source SQL/seals, COMMIT and authenticated API run normally.
     The TCP fixture replaces the unavailable CloudSQL socket; no live job runs.
     """
-    from mfdataindia.enrichment import (current_facts_store as current, monthly_projection,
-        book_core_projection, kotak_method_upgrade, ingestion_install,
-        ingestion_adapters, allocated_amc_workload)
-    from mfdataindia.review.policy import fingerprint
+    from mfdataindia.enrichment import ingestion_adapters, allocated_amc_workload
     from test_ingestion_workload import entrypoint, set_environment
     import hashlib
     import copy
-    populate(ro01_db, monkeypatch, book_version=4)
-    with connect(ro01_db, autocommit=False) as conn:
-        conn.execute('INSERT INTO mf.amcs(amfi_amc_name,normalised_name) VALUES(%s,%s)', (kotak_book.AMC, kotak_book.AMC.upper()))
-        conn.execute("INSERT INTO mf.funds(amfi_scheme_code,amc_id,scheme_name,scheme_name_norm,scheme_type,scheme_category,plan_type,option_type,isin_growth_or_div_payout) SELECT 112090,amc_id,'Kotak Flexicap Fund - Regular Plan - Growth','KOTAK FLEXICAP FUND','OPEN_ENDED','Equity','REGULAR','GROWTH','INF174K01336' FROM mf.amcs WHERE amfi_amc_name=%s", (kotak_book.AMC,))
-        prior = dict(current.configuration(conn))
-        conn.execute((ROOT/'sql/optional/amc_book_current_projection_v2.sql.inc').read_text())
-        book_core_projection.install(conn,ROOT)
-        definitions = {name:current.view_definition(conn,'mf_live_facts.'+name) for name in current.VIEWS}
-        monthly_projection.seal_configuration(conn,prior['generation']+1,prior['baseline_definition'],
-            fingerprint(book_sources.current_policy(4)),definitions)
-    adopt(ro01_db)
-    with connect(ro01_db,autocommit=False) as conn:
-        cfg=book_store.installed_configuration(conn)
-        kotak_method_upgrade.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],
-            expected_current_hash=fingerprint(dict(current.configuration(conn))))
-    with connect(ro01_db,autocommit=False) as conn:
-        cfg=book_store.installed_configuration(conn)
-        base_hash=fingerprint(dict(current.configuration(conn)))
-        installed=ingestion_install.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],expected_current_hash=base_hash)
-        assert installed['status']=='INSTALLED'
-    with connect(ro01_db,autocommit=False) as conn:
-        assert ingestion_install.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],expected_current_hash=base_hash)['status']=='ALREADY_INSTALLED'
+    install_current_gate(ro01_db,monkeypatch)
     from hdfc_dynamic_native_fixture import install_hdfc
     install_hdfc(ro01_db,ROOT)
     capabilities=generator_capabilities(ro01_db)

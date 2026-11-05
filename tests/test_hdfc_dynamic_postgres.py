@@ -6,14 +6,12 @@ import hashlib
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from mfdataindia.enrichment import (multi_facts,book_sources,book_store,current_facts_store as current,
-    monthly_projection,book_core_projection,kotak_method_upgrade,ingestion_install,
+from mfdataindia.enrichment import (multi_facts,current_facts_store as current,
     ingestion_postgres,ingestion_adapters,hdfc_discovery)
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.app import create_review_app
 from mfdataindia.review import reader_access_profile as profiles
-from reader_execution_native_fixture import populate
-from test_ro01_reader_policy_postgres import ro01_db as ro01_db,connect,adopt,generator_capabilities,PASSWORD
+from test_ro01_reader_policy_postgres import ro01_db as ro01_db,connect,generator_capabilities,PASSWORD
 from hdfc_dynamic_native_fixture import install_hdfc
 from test_hdfc_dynamic_v2 import PANELS,panels
 from test_verified_review_auth import assertion,trust
@@ -25,24 +23,8 @@ PREFIX=multi_facts.JOB+'-'
 
 
 def setup(dsn,monkeypatch):
-    populate(dsn,monkeypatch,book_version=4)
-    with connect(dsn,autocommit=False) as conn:
-        prior=dict(current.configuration(conn))
-        conn.execute((ROOT/'sql/optional/amc_book_current_projection_v2.sql.inc').read_text())
-        book_core_projection.install(conn,ROOT)
-        definitions={n:current.view_definition(conn,'mf_live_facts.'+n) for n in current.VIEWS}
-        monthly_projection.seal_configuration(conn,prior['generation']+1,prior['baseline_definition'],
-            fingerprint(book_sources.current_policy(4)),definitions)
-    adopt(dsn)
-    for target in (6,7):
-        with connect(dsn,autocommit=False) as conn:
-            cfg=book_store.installed_configuration(conn)
-            kwargs={'expected_book_hash':cfg['configuration_hash'],
-                    'expected_current_hash':fingerprint(dict(current.configuration(conn)))}
-            if target==6:
-                kotak_method_upgrade.install(conn,ROOT,**kwargs)
-            else:
-                ingestion_install.install(conn,ROOT,**kwargs)
+    from test_ingestion_gate_postgres import install_current_gate
+    install_current_gate(dsn,monkeypatch)
     install_hdfc(dsn,ROOT)
 
 

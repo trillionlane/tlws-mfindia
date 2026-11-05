@@ -16,9 +16,9 @@ SHA256 = 'b755104f8d24074302e370353650b42e2361db48ef7e55a699ce4051dd4ef690'
 PREFIX = 'amc-ingestion-gate-v1:'
 
 CATALOGUE = '''SELECT jsonb_build_object(
- 'schema',(SELECT jsonb_build_array(nspname,nspowner,nspacl) FROM pg_namespace WHERE nspname='mf_ingestion_ops'),
+ 'schema',(SELECT jsonb_build_array(nspname,pg_get_userbyid(nspowner),nspacl) FROM pg_namespace WHERE nspname='mf_ingestion_ops'),
  'relations',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.relname) FROM
-   (SELECT c.relname,c.relkind,c.relowner,c.relacl,c.relrowsecurity,c.relforcerowsecurity
+   (SELECT c.relname,c.relkind,pg_get_userbyid(c.relowner) AS owner,c.relacl,c.relrowsecurity,c.relforcerowsecurity
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='mf_ingestion_ops') c),
  'columns',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.relname,a.attnum) FROM
    (SELECT c.relname,a.attnum,a.attname,a.atttypid,a.atttypmod,a.attnotnull,a.attacl,a.attidentity,a.attgenerated,
@@ -33,7 +33,7 @@ CATALOGUE = '''SELECT jsonb_build_object(
  'indexes',(SELECT jsonb_agg(to_jsonb(q) ORDER BY q.indexname) FROM
    (SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='mf_ingestion_ops') q),
  'functions',(SELECT jsonb_agg(to_jsonb(q) ORDER BY q.proname) FROM
-   (SELECT p.proname,p.proowner,p.proacl,p.proconfig,p.prosecdef,pg_get_functiondef(p.oid) AS definition
+   (SELECT p.proname,pg_get_userbyid(p.proowner) AS owner,p.proacl,p.proconfig,p.prosecdef,pg_get_functiondef(p.oid) AS definition
     FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='mf_ingestion_ops') q),
  'triggers',(SELECT jsonb_agg(to_jsonb(q) ORDER BY q.relname,q.tgname) FROM
    (SELECT c.relname,t.tgname,t.tgenabled,pg_get_triggerdef(t.oid) AS definition
@@ -77,3 +77,37 @@ def install(conn, root, *, expected_book_hash, expected_current_hash):
         conn.execute(sql.SQL('COMMENT ON SCHEMA mf_ingestion_ops IS {}').format(sql.Literal(seal)))
         verify(conn)
         return {'status':'INSTALLED','transition':transition,'business_rows_changed':0}
+
+
+def capture(conn,*,structure_only=False):
+    """Complete private control inventory; hashes only, never raw record payloads.
+
+    Like the core manifest, row serialization is streamed under the caller's
+    repeatable-read snapshot. This namespace is never exempted or ignored.
+    """
+    if conn.execute('SHOW transaction_isolation').fetchone()['transaction_isolation']!='repeatable read':
+        raise ValueError('INGESTION_PRESERVATION_REQUIRES_REPEATABLE_READ')
+    conn.execute("SET LOCAL TimeZone='UTC'")
+    conn.execute("SET LOCAL DateStyle='ISO, YMD'")
+    conn.execute("SET LOCAL IntervalStyle='postgres'")
+    metadata=verify(conn)
+    tables=conn.execute("SELECT relname,relkind FROM pg_class WHERE relnamespace='mf_ingestion_ops'::regnamespace AND relkind IN('r','p','v','m','S') ORDER BY relname").fetchall()
+    if tables!=[{'relname':name,'relkind':'r'} for name in ('claims','events','polls','work')]:
+        raise ValueError('INGESTION_PRESERVATION_INVENTORY_DIFFERS')
+    rows={}
+    if not structure_only:
+        from psycopg import sql
+        for table in tables:
+            digest,count=hashlib.sha256(),0
+            query=sql.SQL('SELECT to_jsonb(t)::text AS value FROM mf_ingestion_ops.{} t ORDER BY to_jsonb(t)::text COLLATE "C"').format(sql.Identifier(table['relname']))
+            with conn.cursor() as cursor:
+                with cursor.copy(sql.SQL('COPY ({}) TO STDOUT (FORMAT BINARY)').format(query)) as copied:
+                    copied.set_types(['text'])
+                    for (value,) in copied.rows():
+                        raw=value.encode('utf-8')
+                        digest.update(len(raw).to_bytes(8,'big'))
+                        digest.update(raw)
+                        count+=1
+            rows[table['relname']]={'rows':count,'sha256':digest.hexdigest()}
+    return {'format':'amc-ingestion-control-preservation-v1','catalogue_hash':metadata['catalogue_hash'],
+            'structure_only':structure_only,'tables':rows}

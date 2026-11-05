@@ -105,3 +105,23 @@ PostgreSQL cases deselected, 38 subtests, all 21 contracts, lint, audit and trac
 credential scanning. Hosted native and both-image results remain pending at the
 final committed head. The unpublished private package is not audited by PyPI;
 no dependency finding is waived.
+
+The first HDFC hosted run, 42037386814 at ef0fc3f, is failed and inadmissible:
+13 focused cases passed; the remainder had 6,444 passes, two failures and the
+one old skip. Both images passed. The new HDFC native connected publication,
+September preservation, replay, authenticated reads and denied-write checks
+passed. One failure was the shared gate's unsealed-control setup/composition,
+corrected in prerequisite 0cb8064. The other was an actual legacy API policy
+selection bug: constructing both authority tuples eagerly evaluated the
+unselected dynamic registry before returning the installed legacy policy.
+
+A provider-free regression first failed that eager evaluation. Selection now
+returns a matching exact legacy registry/policy before evaluating the current
+version. Unknown, incomplete and mixed tuples still fail. This preserves old
+API authorization coverage; no policy validator is bypassed. Current fixture
+installation reuses the prerequisite's complete supported setup. The new HDFC
+native and the existing registered-facts native cases run in the existing early
+partition, still disjoint and exhaustive; no test is dropped or repeated.
+The current HDFC authority is based on prerequisite 0cb8064, including its
+explicit sealed-control preservation, not the earlier failed 593 predecessor.
+Final corrected-head hosted evidence remains required.

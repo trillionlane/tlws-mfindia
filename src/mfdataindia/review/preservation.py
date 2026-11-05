@@ -72,9 +72,18 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False, structur
     conn.execute("SET LOCAL DateStyle='ISO, YMD'")
     conn.execute("SET LOCAL IntervalStyle='postgres'")
     conn.execute('SET LOCAL search_path=pg_catalog')
-    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','mf_official_facts','mf_portfolios','mf_overlap','mf_distributions','mf_idcw','mf_live_facts','mf_monthly_facts','mf_fact_refresh','mf_fact_review','mf_multi_facts','mf_book_facts','pg_catalog','information_schema') "
+    if conn.execute("SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN('mf','mf_review','mf_analytics','mf_rolling','mf_enrichment','mf_official_facts','mf_portfolios','mf_overlap','mf_distributions','mf_idcw','mf_live_facts','mf_monthly_facts','mf_fact_refresh','mf_fact_review','mf_multi_facts','mf_book_facts','mf_ingestion_ops','pg_catalog','information_schema') "
                     "AND n.nspname NOT LIKE 'pg_%' AND c.relkind IN('r','p','m') AND c.relowner=(SELECT oid FROM pg_roles WHERE rolname=session_user) LIMIT 1").fetchone():
         raise ValueError('unmodelled administrator-owned source relation outside mf; expand preservation inventory first')
+    ingestion_operations = None
+    if conn.execute("SELECT to_regnamespace('mf_ingestion_ops') AS namespace").fetchone()['namespace']:
+        from mfdataindia.enrichment.ingestion_install import capture as capture_ingestion
+        ingestion_control = capture_ingestion(conn, structure_only=structure_only)
+        # This core manifest binds the separately captured append-only layer's
+        # structure. Its operational records may append during data loading,
+        # just like book/review sidecars; independent control capture binds rows.
+        ingestion_operations = {'format':ingestion_control['format'],
+                                'catalogue_hash':ingestion_control['catalogue_hash']}
     # This explicitly recognized append-only layer is captured independently,
     # like mf_review. Never silently ignore unknown tables within its namespace.
     if conn.execute("SELECT to_regnamespace('mf_book_facts') AS namespace").fetchone()['namespace']:
@@ -240,7 +249,8 @@ def capture_preservation(conn, *, current_facts_baseline: bool = False, structur
             'sequences_hash': fingerprint(sequences),
             'ownership_hash': fingerprint(ownership),
             'privileges_hash': fingerprint(privileges),
-            'optional_migration': migration['value'] if migration else None}
+            'optional_migration': migration['value'] if migration else None,
+            **({'ingestion_operations': ingestion_operations} if ingestion_operations is not None else {})}
 
 
 def compare_preservation_structure(before: dict, after: dict) -> None:
@@ -252,6 +262,8 @@ def compare_preservation_structure(before: dict, after: dict) -> None:
     for key in ('structure_hash', 'functions_hash', 'triggers_hash', 'privileges_hash', 'sequences_hash', 'ownership_hash'):
         if not before.get(key) or before[key] != after.get(key):
             raise ValueError('pre-existing source structure changed: ' + key)
+    if before.get('ingestion_operations') != after.get('ingestion_operations'):
+        raise ValueError('pre-existing ingestion control structure changed')
     if before.get('optional_migration') != after.get('optional_migration'):
         raise ValueError('existing optional migration entry changed')
 
@@ -263,6 +275,8 @@ def compare_preservation(before: dict, after: dict, migration_checksum: str) -> 
     for key in ('tables', 'structure_hash', 'functions_hash', 'triggers_hash', 'privileges_hash', 'sequences_hash', 'ownership_hash'):
         if not before.get(key) or before[key] != after.get(key):
             raise ValueError('pre-existing source data or structure changed: ' + key)
+    if before.get('ingestion_operations') != after.get('ingestion_operations'):
+        raise ValueError('pre-existing ingestion control structure changed')
     previous, current = before['optional_migration'], after['optional_migration']
     if previous is not None:
         if current != previous:

@@ -157,3 +157,41 @@ credential scan and dependency audit. The private unpublished package is not
 audited by PyPI audit. Collection retains every prior case and marker in order:
 6,437 unique cases, 13 focused, 6,424 complement, 582 PostgreSQL; 47 additions
 (44 unit, three native), zero removed. Hosted native/image acceptance remains pending.
+
+The first hosted gate run, 42033150256 at 593d9d9, is failed and inadmissible:
+13 focused and 6,422 remainder cases passed, one new fixture failed and one old
+case skipped. Both images passed; downstream PostgreSQL audit/credentials were
+skipped after that failure. The fixture created an unsealed private operational
+schema before broad adoption. The existing owner preservation guard correctly
+rejected it as unmodelled. Further caller tracing identified a real composition
+requirement: later supported owner reconciliation must still account for the
+installed control schema, rather than merely changing test setup order.
+
+Current preservation now recognizes only the sealed `mf_ingestion_ops` layer,
+checks its exact inventory/catalogue seal, and exposes its complete streaming
+row-hash capture independently, like the other append-only sidecars. The core
+manifest also binds its catalogue/structure; operational rows are permitted to
+append during ingestion, without changing original core source rows. Both
+full and structure comparisons reject control-structure changes. Absence of the
+layer leaves the historical core manifest shape unchanged. Unknown other
+schemas and unsealed/drifted control objects remain rejected. No broad schema
+exemption, ignored rows, extra reader grant or timeout change is introduced.
+Metadata owners use role names, avoiding transient role-OID seal bindings.
+
+Both connected cases reuse the same supported v4 -> layout6 -> gate7 setup.
+The concurrency case now publishes the actual current method's October and
+September pair. It proves owner reconciliation after control installation,
+complete control-row preservation through reconciliation, core preservation
+through operational appends, reader denial on controls, and rejection of an
+unknown namespace or control table. Kotak's independent native case retains
+the prior September/v4 replay checks. Final new-head native acceptance remains
+pending; no failed result is relabelled or refetched.
+
+The corrected complete local pass has all 26 checks successful: 5,858 non-native
+cases, 582 PostgreSQL cases deselected, 38 subtests, all 21 contracts, lint,
+credentials and dependency audit. After that pass, the three new database
+composition/replay cases were moved into the existing early partition. This
+changes order only, retains all old focused cases, and still runs the complete
+collection exactly once. The partition regression failed before the change;
+84 focused partition/admission/preservation checks pass afterward. New hosted
+results must establish native acceptance at the corrected head.

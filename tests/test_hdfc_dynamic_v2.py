@@ -136,3 +136,45 @@ def test_actual_worker_evidence_binding_is_not_a_source_hash_only_check(defect):
         value['document_pages']=23
     with pytest.raises(ValueError):
         method.verify_extraction(value,raw,1,24)
+
+
+def test_installed_legacy_policy_does_not_evaluate_unselected_dynamic_authority(monkeypatch):
+    from mfdataindia.enrichment import hdfc_install,hdfc_source_v2,multi_facts
+    from mfdataindia.review.policy import fingerprint
+    from types import SimpleNamespace
+    registry={'format':'synthetic-retained-registry','version':1}
+    policy={'format':'synthetic-retained-policy','version':1}
+    monkeypatch.setattr(multi_facts,'registry',lambda:registry)
+    monkeypatch.setattr(multi_facts,'policy',lambda:policy)
+    calls=[]
+    def unselected():
+        calls.append('dynamic')
+        raise ValueError('UNSELECTED_DYNAMIC_AUTHORITY_NOT_APPLICABLE')
+    monkeypatch.setattr(hdfc_source_v2,'registry',unselected)
+    row={'registry_hash':fingerprint(registry),'registry':registry,'policy_hash':fingerprint(policy)}
+    conn=SimpleNamespace(execute=lambda query:SimpleNamespace(fetchone=lambda:row))
+    assert hdfc_install.installed_policy(conn)==(registry,policy)
+    assert calls==[]
+
+
+@pytest.mark.parametrize('defect',['registry_hash','registry','policy_hash','missing'])
+def test_installed_source_policy_rejects_incomplete_or_mixed_authority(monkeypatch,defect):
+    from mfdataindia.enrichment import hdfc_install,hdfc_source_v2,multi_facts
+    from mfdataindia.review.policy import fingerprint
+    from types import SimpleNamespace
+    old_registry,old_policy={'version':1},{'policy':1}
+    new_registry,new_policy={'version':2},{'policy':2}
+    monkeypatch.setattr(multi_facts,'registry',lambda:old_registry)
+    monkeypatch.setattr(multi_facts,'policy',lambda:old_policy)
+    monkeypatch.setattr(hdfc_source_v2,'registry',lambda:new_registry)
+    monkeypatch.setattr(hdfc_source_v2,'policy',lambda:new_policy)
+    row={'registry_hash':fingerprint(new_registry),'registry':new_registry,'policy_hash':fingerprint(new_policy)}
+    if defect=='missing':
+        row=None
+    elif defect=='registry':
+        row[defect]=old_registry
+    else:
+        row[defect]='f'*64
+    conn=SimpleNamespace(execute=lambda query:SimpleNamespace(fetchone=lambda:row))
+    with pytest.raises(ValueError,match='^HDFC_INSTALLED_SOURCE_AUTHORITY_DIFFERS$'):
+        hdfc_install.installed_policy(conn)
