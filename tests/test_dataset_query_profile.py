@@ -78,6 +78,8 @@ def test_generic_datasets_and_other_known_financial_profiles_do_not_select_book_
     ('SELECT * FROM mf_live_facts.field_versions','WITH "field_versions"("x") AS MATERIALIZED (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
     ('SELECT * FROM mf_live_facts.field_versions','WITH "FIELD_VERSIONS" (x) AS NOT MATERIALIZED (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
     ('SELECT * FROM mf_live_facts.field_versions','WITH RECURSIVE other(x) AS (SELECT 1), field_versions ("x", y) AS (SELECT 1,2) SELECT * FROM mf_live_facts.field_versions'),
+    ('SELECT * FROM mf_live_facts.field_versions',r'WITH U&"field\005fversions"(x) AS (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
+    ('SELECT * FROM mf_live_facts.field_versions',r'''WITH U&"field!005fversions" UESCAPE '!' (x) AS (SELECT 1) SELECT * FROM mf_live_facts.field_versions'''),
 ])
 def test_unsupported_shape_is_not_a_silent_generic_fallback_or_quoted_rewrite(before,after):
     original = graph()

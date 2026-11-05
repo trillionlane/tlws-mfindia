@@ -50,6 +50,10 @@ def _code_starts(body):
     identifiers = set()
     for token in _LEX.finditer(body):
         text = token.group()
+        # Unicode-escaped identifiers can spell a reserved CTE name without
+        # containing its bytes. This profile accepts the ordinary deparser
+        # spelling, not an alternate U&/UESCAPE identifier language.
+        _require(not (text.lower()=='u' and re.match(r'''&\s*["']''',body[token.end():].lstrip())))
         quoted = text[0] in "'\"" or text[:2].lower()=="e'"
         _require(not text.startswith(('--','/*')) and (quoted or '$' not in text))
         if not quoted and not text.isspace():
