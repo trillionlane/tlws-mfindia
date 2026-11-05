@@ -73,6 +73,11 @@ def test_generic_datasets_and_other_known_financial_profiles_do_not_select_book_
     ('SELECT * FROM mf_live_facts.field_versions','WITH field_versions AS (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
     ('SELECT * FROM mf_live_facts.field_versions','WITH "field_versions" AS (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
     ('SELECT * FROM mf_live_facts.field_versions','SELECT 1 AS "_mf_dataset_batch_inputs"'),
+    ('SELECT * FROM mf_live_facts.field_versions','WITH field_versions(x) AS (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
+    ('SELECT * FROM mf_live_facts.field_versions','WITH FiElD_VeRsIoNs(x,y) as (SELECT 1,2) SELECT * FROM mf_live_facts.field_versions'),
+    ('SELECT * FROM mf_live_facts.field_versions','WITH "field_versions"("x") AS MATERIALIZED (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
+    ('SELECT * FROM mf_live_facts.field_versions','WITH "FIELD_VERSIONS" (x) AS NOT MATERIALIZED (SELECT 1) SELECT * FROM mf_live_facts.field_versions'),
+    ('SELECT * FROM mf_live_facts.field_versions','WITH RECURSIVE other(x) AS (SELECT 1), field_versions ("x", y) AS (SELECT 1,2) SELECT * FROM mf_live_facts.field_versions'),
 ])
 def test_unsupported_shape_is_not_a_silent_generic_fallback_or_quoted_rewrite(before,after):
     original = graph()
@@ -106,3 +111,13 @@ def test_absent_retained_prior_seal_cannot_authorize_optimized_projection():
                                          if row[0]!='mf_book_facts.prior_field_versions'))
     with pytest.raises(p.DatasetError,match='DATASET_QUERY_PROFILE_UNSUPPORTED'):
         q.source(entry(),changed)
+
+
+@pytest.mark.parametrize('literal',["'field_versions(x) AS (SELECT 1)'",
+                                   r"E'escaped\\value field_versions(x) AS (SELECT 1)'",
+                                   "'doubled ''quote field_versions(x) AS (SELECT 1)'"])
+def test_cte_capture_scanner_never_treats_literal_contents_as_declarations(literal):
+    body = 'WITH ordinary(x) AS (SELECT '+literal+') SELECT * FROM mf_live_facts.field_versions'
+    q._code_starts(body)
+    q._reject_captures(body,{'field_versions'})
+    assert literal in q._reference(body,'mf_live_facts.field_versions','field_versions',count=1)

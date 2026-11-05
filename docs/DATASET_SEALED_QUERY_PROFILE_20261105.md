@@ -27,6 +27,12 @@ values are preserved, and unsupported shapes fail with the fixed
 approved target to the slow generic path. Earlier non-book installations and
 ordinary eligible datasets keep the generic source.
 
+Independent review rejected the first collision guard: an inner CTE with an
+optional column list could capture the rewritten reference. Five adversarial
+cases first failed at that source. Token-level balanced column-list scanning
+now rejects bare, quoted, mixed-case and nested declarations, without treating
+escaped or doubled-quote literal contents as SQL declarations.
+
 No stored view, financial expression, source/decoder/allocation policy,
 registry, seal, index, grant, role, image command, workflow or public contract
 is changed. Registry v4 is not an execution-SQL version. This profile uses

@@ -35,6 +35,14 @@ def _require(condition):
     p.require(condition, 'DATASET_QUERY_PROFILE_UNSUPPORTED')
 
 
+def _identifier(token):
+    if token.startswith('"'):
+        return token[1:-1].replace('""','"').lower()
+    if re.fullmatch('[A-Za-z_][A-Za-z_0-9]*',token):
+        return token.lower()
+    return None
+
+
 def _code_starts(body):
     """Only unquoted SQL token boundaries can start a finite substitution."""
     _require(type(body) is str and 0 < len(body.encode()) <= 262144)
@@ -46,11 +54,32 @@ def _code_starts(body):
         _require(not text.startswith(('--','/*')) and (quoted or '$' not in text))
         if not quoted and not text.isspace():
             starts.add(token.start())
-            if re.fullmatch('[A-Za-z_][A-Za-z_0-9]*', text):
-                identifiers.add(text)
-        elif text.startswith('"'):
-            identifiers.add(text[1:-1].replace('""','"'))
+        identifier = _identifier(text)
+        if identifier is not None:
+            identifiers.add(identifier)
     return starts, identifiers
+
+
+def _reject_captures(body, names):
+    """Reject inner declarations, including optional CTE column lists.
+
+    Scan lexer tokens, not regex across literals. Conservative rejection of a
+    same-named function/alias shape is safe for this fixed execution profile.
+    Quoted case variants are rejected too; no uncertainty changes binding.
+    """
+    tokens = [m.group() for m in _LEX.finditer(body) if not m.group().isspace()]
+    for i,token in enumerate(tokens):
+        if _identifier(token) not in names:
+            continue
+        j = i+1
+        if j < len(tokens) and tokens[j]=='(':
+            depth = 1
+            j += 1
+            while j < len(tokens) and depth:
+                depth += int(tokens[j]=='(')-int(tokens[j]==')')
+                j += 1
+            _require(depth==0)
+        _require(j==len(tokens) or _identifier(tokens[j])!='as')
 
 
 def _replace(body, before, after, *, count):
@@ -102,13 +131,11 @@ def source(entry, graph=None):
     cte_names = {'prior_field_versions','field_versions','field_heads',
                  'selected_fields','current_values','resolved','current_fund_facts'}
     for body in definitions.values():
-        starts, identifiers = _code_starts(body)
+        _, identifiers = _code_starts(body)
         _require(not reserved & identifiers)
         # A retained inner CTE must not capture one of the references we are
         # moving to the shared outer graph. Fixed aliases are code-owned.
-        for match in re.finditer(r'\b([A-Za-z_][A-Za-z_0-9]*)\s+AS\b',body,re.IGNORECASE):
-            _require(match.start() not in starts or match[1].lower() not in cte_names)
-        _require(not any('"'+name+'" AS' in body for name in cte_names))
+        _reject_captures(body,cte_names)
     versions = _reference(versions,'mf_book_facts.prior_field_versions',
                           'prior_field_versions',count=2)
     # The known v1 graph has no format/identity-content-role expressions. V2
