@@ -10,6 +10,8 @@ SHA256 = 'dde1aea6b58871f6387d65cd8a26a4a267f1268c9eb52808ec83136b0b41f846'
 
 
 def previous(path, data):
+    from hdfc_history import previous as hdfc_previous
+    data=hdfc_previous(path,data)
     raw = (ROOT/FILE).read_bytes()
     assert hashlib.sha256(raw).hexdigest() == SHA256
     name = Path(path).resolve().relative_to(ROOT).as_posix()

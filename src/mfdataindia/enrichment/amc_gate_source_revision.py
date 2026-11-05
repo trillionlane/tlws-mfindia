@@ -18,6 +18,8 @@ def previous_bytes(path, *, version=6, data=None, root=None):
     name = ('src/mfdataindia/enrichment/'+path.name if path.parent.resolve() == Path(__file__).parent.resolve()
             else path.resolve().relative_to(root.resolve()).as_posix())
     raw = path.read_bytes() if data is None else data
+    from mfdataindia.enrichment.hdfc_source_revision import previous
+    raw = previous(path,raw,root=root)
     authority = (root/FILE).read_bytes()
     if hashlib.sha256(authority).hexdigest() != SHA256:
         raise ValueError('AMC_GATE_PREDECESSOR_AUTHORITY_DIFFERS')

@@ -98,12 +98,14 @@ def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     cfg = conn.execute(
         "SELECT registry_hash,registry,policy_hash FROM mf_multi_facts.configuration ORDER BY generation DESC LIMIT 1"
     ).fetchone()
-    if cfg != {
-        "registry_hash": fingerprint(multi_facts.registry()),
-        "registry": multi_facts.registry(),
-        "policy_hash": fingerprint(multi_facts.policy()),
-    }:
-        raise ValueError("installed source registry differs from reviewed authority")
+    expected = {"registry_hash":fingerprint(multi_facts.registry()),
+                "registry":multi_facts.registry(), "policy_hash":fingerprint(multi_facts.policy())}
+    if cfg != expected:
+        from mfdataindia.enrichment import hdfc_source_v2, hdfc_install
+        registry,policy=hdfc_source_v2.registry(),hdfc_source_v2.policy()
+        if cfg != {"registry_hash":fingerprint(registry),"registry":registry,"policy_hash":fingerprint(policy)}:
+            raise ValueError("installed source registry differs from reviewed authority")
+        hdfc_install.verify_seal(conn)
     prior = conn.execute(
         "SELECT view_definitions->>'field_versions' AS definition FROM mf_live_facts.configuration WHERE policy_hash=%s ORDER BY generation DESC LIMIT 1",
         (fingerprint(monthly_current.policy()),),
@@ -270,9 +272,11 @@ def status(conn, *, reader_profile=profiles.RESTRICTED):
     rows = conn.execute(
         "SELECT document FROM mf_multi_facts.runs ORDER BY observed_at DESC,run_id DESC LIMIT 10"
     ).fetchall()
+    from mfdataindia.enrichment import hdfc_install
+    registry,_=hdfc_install.installed_policy(conn)
     return {
         "format": "registered-facts-status-v1",
-        "registry_hash": fingerprint(multi_facts.registry()),
+        "registry_hash": fingerprint(registry),
         "sources": [
             {
                 "key": "absl-large-cap",
@@ -282,7 +286,7 @@ def status(conn, *, reader_profile=profiles.RESTRICTED):
             {
                 "key": "hdfc-flexi-cap",
                 "latest_run": rows[0]["document"] if rows else None,
-                "discovery": "reviewed-edition-only-no-current-month-claim",
+                "discovery": registry['sources'][1]['discovery'],
             },
         ],
         "runs": [r["document"] for r in rows],

@@ -31,6 +31,7 @@ MIGRATIONS = {
         "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702",
     ),
     6: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
+    8: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
     7: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
     5: (
         "044_uti_complete_aum_rows.sql",

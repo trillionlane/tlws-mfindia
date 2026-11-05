@@ -16,7 +16,7 @@ CURRENT_VERSION = 5
 _selected_registry = ContextVar("book_registry_selection", default=None)
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
-POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12, 7: 13}
+POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12, 7: 13, 8: 14}
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -36,6 +36,7 @@ REGISTRIES = {
     ),
     6: ("official-book-sources-v6-kotak-layout.json", "daa758f2ffbe4917f6b6a415ea2900ed3cba7f923c922cad756c398653123eb9"),
     7: ("official-book-sources-v7-discovery-gate.json", "efab2b1de4da0e73d63702216af183f899fff12b1c6606a9d771766df4b516db"),
+    8: ("official-book-sources-v8-hdfc-dynamic.json", "50146f8e0873cda4282f25a5d50707c96df0ed4ec38989d38b2619651b0da8a8"),
     5: (
         "official-book-sources-v5-aum-row.json",
         "1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec",
@@ -186,6 +187,12 @@ def registry(version=None, root=None):
                 or transition.get("supersedes_unaccepted_policy_hash") != "c7b58aaca5294958ed94db2d6cfd313ad4200fcdfb1502b293c63fcea33120c4"
                 or transition.get("supersedes_unaccepted_source_configuration_hash") != "25bbe7c6349c849b168d14ec017c749550399d9185804f465a506dd1985e44e2"):
             raise ValueError("exact bounded source-method revision required; no cohort replacement")
+    elif version == 8:
+        previous=registry(7,root)
+        expected={'mode':'hdfc_dynamic_source','previous_source_version':7,'source_count_changed':False,
+                  'book_financial_field_rules_changed':False,'retain_previous_specifications':True,'uti_method_changed':False}
+        if document['sources']!=previous['sources'] or document.get('authority_transition')!=expected:
+            raise ValueError('HDFC_DYNAMIC_UNRELATED_SOURCE_CHANGED')
     elif version in (6, 7):
         expected = deepcopy(registry(4, root)["sources"])
         next(s for s in expected if s["key"] == kotak_book.KEY)["parser_method"] = 2
@@ -364,7 +371,7 @@ def configuration(version=None):
     }
     retained = ({kotak_book.KEY: [fingerprint(specification(kotak_book.KEY, version=4))]}
                 if document["version"] == 6 else None)
-    if document['version'] == 7:
+    if document['version'] in (7,8):
         retained = {key: sorted({fingerprint(specification(key,version=v)) for v in (4,6)})
                     for key in specifications}
     return {
@@ -382,6 +389,14 @@ def configuration(version=None):
 
 def current_policy(version=None):
     document = registry(version)
+    if document['version'] == 8:
+        from mfdataindia.enrichment import hdfc_source_v2
+        result=deepcopy(current_policy(7))
+        result.update(version=14,previous_policy_hash=fingerprint(current_policy(7)),
+            book_source_registry_hash=fingerprint(document),book_source_configuration_hash=fingerprint(configuration(8)),
+            multi_source_policy_hash=fingerprint(hdfc_source_v2.policy()),source_registry_version=8,
+            source_authority_transition=document['authority_transition'])
+        return result
     if document['version'] == 7:
         result = deepcopy(current_policy(6))
         result.update(version=13, previous_policy_hash=fingerprint(current_policy(6)),

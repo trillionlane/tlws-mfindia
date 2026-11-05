@@ -181,8 +181,10 @@ def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, 
         assert installed['status']=='INSTALLED'
     with connect(ro01_db,autocommit=False) as conn:
         assert ingestion_install.install(conn,ROOT,expected_book_hash=cfg['configuration_hash'],expected_current_hash=base_hash)['status']=='ALREADY_INSTALLED'
+    from hdfc_dynamic_native_fixture import install_hdfc
+    install_hdfc(ro01_db,ROOT)
     capabilities=generator_capabilities(ro01_db)
-    with book_sources.select_registry(7),connect(ro01_db) as conn:
+    with book_sources.select_registry(8),connect(ro01_db) as conn:
         identities=book_store.population(conn,SOURCE)
         batches,originals,archives,extractions=inputs(identities,method=2,include_extractions=True)
     provider={o['source_url']:o for o in originals}
