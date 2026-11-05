@@ -202,6 +202,39 @@ def test_native_claim_atomic_publication_concurrency_replay_and_independent_prog
                 capture_preservation(conn,reader_profile=profiles.BROAD)
 
 
+    # Different inputs/release/period cannot turn an unresolved source into a
+    # fresh write opportunity. Claims remain source-local, not a global freeze.
+    with connect(ro01_db,'mfdata_verified_generator') as conn:
+        for label,period,raw,derivation in (
+            ('bytes','2026-10-31',b'%PDF-another-revision','a'*64),
+            ('period','2026-09-30',b'%PDF-another-period','a'*64),
+            ('version','2026-10-31',b'%PDF-synthetic-revision','c'*64)):
+            fresh=discovery.work(SOURCE,period,discovery.manifest([
+                {'role':'part0','content':raw}]),derivation,fingerprint(identities))
+            held=gate.claim(conn,fresh,PREFIX+'blocked-'+label)
+            assert held.state==discovery.State.HELD
+            assert held.document==one.document
+        assert conn.execute('SELECT count(*) AS n FROM mf_ingestion_ops.claims').fetchone()['n']==2
+        independent=discovery.work('uti-expanded','2026-10-31',discovery.manifest([
+            {'role':'active','content':b'%PDF-other-source'}]),'a'*64,'b'*64)
+        assert gate.claim(conn,independent,PREFIX+'other-source').state==discovery.State.CLAIMED
+    # A real failure inside the original writer TX followed by successful
+    # ROLLBACK resolves that source. No synthetic completion receipt is used.
+    progress=runner.Progress(claim=one.document)
+    def original_writer_failure(conn):
+        conn.execute('SELECT 1')
+        raise ValueError('controlled publication failure')
+    with pytest.raises(ValueError,match='^controlled publication failure$'):
+        store().publish(one,original_writer_failure,progress,lambda:None)
+    assert progress.effect=='ROLLBACK_CONFIRMED'
+    with connect(ro01_db,'mfdata_verified_generator') as conn:
+        allowed=gate.claim(conn,fresh,PREFIX+'after-observed-rollback')
+        assert allowed.state==discovery.State.CLAIMED
+    with connect(ro01_db) as conn:
+        assert conn.execute('SELECT document FROM mf_book_facts.batches ORDER BY batch_id').fetchall()==saved
+    assert len(calls)==1 and generator_capabilities(ro01_db)==capabilities
+
+
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
 def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, monkeypatch, capsys):
     """Only provider bytes/decoder and CloudSQL socket transport are synthetic.

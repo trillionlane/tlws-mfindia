@@ -195,3 +195,23 @@ changes order only, retains all old focused cases, and still runs the complete
 collection exactly once. The partition regression failed before the change;
 84 focused partition/admission/preservation checks pass afterward. New hosted
 results must establish native acceptance at the corrected head.
+
+Before source acceptance, a further replay edge was reproduced with the actual
+runner and claim boundary: changing document bytes, reporting period or derivation
+version produced a new work key while another claim for the same source was
+unresolved. All three fault regressions failed the green 0cb8064 implementation.
+That run remains genuinely green for its tested source, but is not acceptance
+of this newly added condition.
+
+Claim decisions now take a short source-local advisory lock before the retained
+work lock. Before allocating a new claim, they check unresolved history across
+all keys for that source. An actual atomically committed PUBLISHED event resolves
+its work; confirmed rollback without an ambiguous event permits another distinct
+candidate. Unresolved effects never expire or become fresh merely through a new
+PDF, period, execution or release. Other sources retain independent claim locks.
+No business publisher, SQL schema, lease, deletion, role or transaction bound is
+changed. Known identical published input still returns unchanged without work.
+The connected concurrency case now checks all three changed-key holds, independent
+source progress and resumption after an actual observed writer rollback, while
+preserving all business documents and generator capabilities. New own full CI is
+required; no failed or earlier green result substitutes for the corrected head.

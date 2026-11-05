@@ -67,7 +67,7 @@
     "src/mfdataindia/enrichment/hdfc_discovery.py": "4e4099515a162aa38fd99e61dd81304e0835e6e4aea5c8e0a1bc3d97e10ce3dd",
     "src/mfdataindia/enrichment/ingestion_adapters.py": "fd2792f4c761ba6fefe942817810b99494934a559c59abd6265b1ba5949c0652",
     "src/mfdataindia/enrichment/ingestion_discovery.py": "a0a781ea1c609d91349a259a3f9956ac249ca9c0c159b04b2efcf7f886396aad",
-    "src/mfdataindia/enrichment/ingestion_gate.py": "d1e44c048be97346041569405eec12c1e188c5b1accaf5b13fd898f9d0ce8340",
+    "src/mfdataindia/enrichment/ingestion_gate.py": "b98470cd32e26f1a31530a243e3038074e456e36a1ce4ed26f813bc14367e114",
     "src/mfdataindia/enrichment/ingestion_install.py": "1c612bdaf04d4b029ad574b69cda6cbe10fd29962b73da73208374dcf45e94c0",
     "src/mfdataindia/enrichment/ingestion_postgres.py": "749daab41a06b33299c3d693a05e378322f1094b98064fa858c1fd699fba15e8",
     "src/mfdataindia/enrichment/ingestion_runner.py": "d77cc8ce34f76e96ca36bd2f7eabae2a51b8a29afde16afcd59fe10593190d03",
