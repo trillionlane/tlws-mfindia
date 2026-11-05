@@ -77,7 +77,7 @@
     "src/mfdataindia/enrichment/kotak_current_workload.py": "b82790ceb08c7bf279e36b0ada52d22e9eee64a468f51fa7ce914982eff32129",
     "src/mfdataindia/enrichment/kotak_method_upgrade.py": "b81116b2b5309bb97fa2814b4fb489423743aa164761669f95ae64ad4b4354c9",
     "src/mfdataindia/enrichment/book_sources.py": "b6a64259ad4861155005af528a80b17d12ad75f8e8d8b42c438036ff81649c16",
-    "src/mfdataindia/enrichment/book_store.py": "984cfc148b6ef2f4d4c977b838732d86be0593e08fc209ea0b2a97712eb0a031",
+    "src/mfdataindia/enrichment/book_store.py": "60acc212b06f5a8a38daac38a6c42a6af66c3aaa620ad9ad95bfda8b4ff86d07",
     "src/mfdataindia/enrichment/book_runtime.py": "5bafdac20ffa6251460f8f10cef261945c4f7ac4538a1abe907e934db85f7925",
     "src/mfdataindia/enrichment/monthly_store.py": "0515eb7aeb8167c4a9bf181ecdd57711c12e80c543cac3edd37e611c8f7a1980",
     "src/mfdataindia/enrichment/refresh_runtime.py": "4abe471fb635db2ca1a2029ade08b1f5ed6cad1bd79086540621e5334ff806e8",
@@ -91,15 +91,15 @@
     "config/official-book-sources-v7-discovery-gate.json": "efab2b1de4da0e73d63702216af183f899fff12b1c6606a9d771766df4b516db",
     "sql/operations/amc_ingestion_gate_v1.sql": "b755104f8d24074302e370353650b42e2361db48ef7e55a699ce4051dd4ef690",
     "scripts/refresh_registered_amc_gate_dev.py": "567ef1a5fd0504c2af681436331a18e28c8512a153d189674a8a7ad74b870ac7",
-    "config/official-hdfc-dynamic-predecessors-v1.json": "c94d24082f352c1824516c125336b238b11e365df6cf302cc87c6fcfc6de9b15",
+    "config/official-hdfc-dynamic-predecessors-v1.json": "f277bafabe7209d0c089bdd80ec95d2a13d3e3541f83a8306ecf258b5afe91aa",
     "config/official-facts-sources-v2-hdfc-dynamic.json": "a455b5651cb6c78371483702d699642a87f39097ab0103004ff4189598bd78b5",
     "config/official-book-sources-v8-hdfc-dynamic.json": "50146f8e0873cda4282f25a5d50707c96df0ed4ec38989d38b2619651b0da8a8",
     "sql/operations/hdfc_dynamic_seal_v2.sql": "458f97edc6bfeb6758f4f2dded5bc03c2191c70b9f58ee214e29645d103330cb",
-    "src/mfdataindia/enrichment/hdfc_source_revision.py": "8f5ca8712b0bc1194f18f2598f6b3cc0cd959a2214b82b60deab74ea2ee4041b",
+    "src/mfdataindia/enrichment/hdfc_source_revision.py": "8c597ec565cf1bcb61c75430078bcba52b53b1e43d482596bfbc226bba1af4ea",
     "src/mfdataindia/enrichment/hdfc_source_v2.py": "054483a5e3af1bf68a50e0f4b1005d3afa2266d46e560e93bbbb5c3ef0425a2e",
     "src/mfdataindia/enrichment/hdfc_monthly_v2.py": "34f30729745f36a22cc33be2433439b5f400f23d739adfcb4b0584cf0e380948",
     "src/mfdataindia/enrichment/hdfc_runtime_v2.py": "787deaa3e3a006cd7bc00bd53050e2140f012f5d06e90e1d575e1867970580ba",
-    "src/mfdataindia/enrichment/hdfc_install.py": "1d2308719cfd19be4c23ffa3a2e9047ecb12753c9f93f4bc8f56613bcec5b0e0"
+    "src/mfdataindia/enrichment/hdfc_install.py": "f4463f1b40d0ea58041c3baca3f88d14fbfb7f66c4788a4a0c38b06a7c620b2c"
   },
   "previous_current_allocation_sha256": "596b8cb863d8ba5eb188fef25f1776adb4e095479ee27d673675888caa3ea368",
   "hdfc_request_bounds": {

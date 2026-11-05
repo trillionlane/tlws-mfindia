@@ -25,7 +25,7 @@ PREFIX=multi_facts.JOB+'-'
 def setup(dsn,monkeypatch):
     from test_ingestion_gate_postgres import install_current_gate
     install_current_gate(dsn,monkeypatch)
-    install_hdfc(dsn,ROOT)
+    return install_hdfc(dsn,ROOT)
 
 
 def inputs(*,october=True):
@@ -63,7 +63,7 @@ def inputs(*,october=True):
 
 @pytest.mark.parametrize('ro01_db',['core'],indirect=True)
 def test_native_dynamic_hdfc_claim_publish_repeat_real_reader_api_and_preservation(ro01_db,monkeypatch,capsys):
-    setup(ro01_db,monkeypatch)
+    installation=setup(ro01_db,monkeypatch)
     capabilities=generator_capabilities(ro01_db)
     with connect(ro01_db) as conn:
         prior_monthly=conn.execute('SELECT document FROM mf_monthly_facts.snapshots ORDER BY snapshot_id').fetchall()
@@ -138,3 +138,6 @@ def test_native_dynamic_hdfc_claim_publish_repeat_real_reader_api_and_preservati
         with connect(ro01_db,'mfdata_verified_reader') as conn:
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 conn.execute(sql)
+
+    with capsys.disabled():
+        print(__import__('json').dumps({'native_hdfc_install_measurements':installation},sort_keys=True))

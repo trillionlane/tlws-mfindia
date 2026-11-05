@@ -21,7 +21,7 @@
     },
     "src/mfdataindia/enrichment/book_store.py": {
       "previous_sha256": "796bcac64576ca3f1612259c00b454d499d60604485f7222481c8cab9c181fb2",
-      "current_sha256": "984cfc148b6ef2f4d4c977b838732d86be0593e08fc209ea0b2a97712eb0a031"
+      "current_sha256": "60acc212b06f5a8a38daac38a6c42a6af66c3aaa620ad9ad95bfda8b4ff86d07"
     },
     "src/mfdataindia/enrichment/ingestion_adapters.py": {
       "previous_sha256": "fd2792f4c761ba6fefe942817810b99494934a559c59abd6265b1ba5949c0652",
@@ -29,11 +29,11 @@
     },
     "src/mfdataindia/enrichment/ingestion_workload.py": {
       "previous_sha256": "a8cf82080e75039f642b296f9c6d9f4517fffbcbcc1c858e78f706cb4d7cc5b4",
-      "current_sha256": "50446bc4c3af0d917b96b0ea0fa90ec8355f6db213b7fd7c3933b71f472fc800"
+      "current_sha256": "d6d151aac5edfec06a62020d51d072de0dbafe0021b679b80443d22597741a05"
     },
     "src/mfdataindia/enrichment/multi_store.py": {
       "previous_sha256": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254",
-      "current_sha256": "98081c726a0733c71d198f8cf28d01d7f2171e53faa115f3c85724caa11ad0b2"
+      "current_sha256": "800b57b4667a6729bca79560a7efd5e05569b1ea4c9c8a4af2371b45e25f7b9c"
     },
     "src/mfdataindia/review/app.py": {
       "previous_sha256": "aafffb7c1e5ea7346a868044ad750e0756ad636407e9855d8cf4eb8a175b1ff2",
@@ -41,7 +41,7 @@
     },
     "src/mfdataindia/review/dev_reader_source_reference.py": {
       "previous_sha256": "4a5b6cf20ff6c3398a41b7465e7eb8ac804b9ae2f219f484e9d82b230d1dd792",
-      "current_sha256": "13876b891c789e256c36e580b88091a28d453d187aca85753babd641679bf4be"
+      "current_sha256": "3d7e091f4739dcc4983ca16814dbd7cee47855dd7a7390279b49525222cced24"
     },
     "tests/amc_gate_history.py": {
       "previous_sha256": "593b274fe9aebd4bc864faa6381e3798a915bc449713c71d4dd7f70c62f6460a",
@@ -61,7 +61,7 @@
     },
     "tests/test_ingestion_gate_postgres.py": {
       "previous_sha256": "c00ff169f9eb12fa578d23c818051886e54db175584d50f0b3c92ac702d1119f",
-      "current_sha256": "a33ab1b22ffd82c872d61767367ca67b0d25aec863374e1b1a71bdfa4d6bd647"
+      "current_sha256": "a4f6b55b79f39946273fe6b7081ddf73493fc8ec09b356e2bd385c2e4b826c8d"
     },
     "tests/test_kotak_current_workload.py": {
       "previous_sha256": "f2ac4c29321f6e465646d17dc2cbccf12f14e6f0d7db524613003ab1b2ea655b",

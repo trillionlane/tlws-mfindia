@@ -76,7 +76,7 @@ def installed_configuration(conn):
 
 def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
-    profiles.verify_selection(conn, reader_profile, principal)
+    # verify_principal performs this same selection check before its ACL checks.
     verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_book_facts'"

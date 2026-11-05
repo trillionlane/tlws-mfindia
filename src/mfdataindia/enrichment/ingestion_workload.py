@@ -18,7 +18,7 @@ from mfdataindia.enrichment.ingestion_discovery import SOURCES
 from mfdataindia.review.policy import fingerprint
 
 FILE = 'config/official-amc-discovery-dev-workload-v4.json'
-SHA256='857eaa887b709449cc98c96d3fd93b385ce060a5a7a65644d4c2cea79cd2b888'
+SHA256='3eaf68fa1375d4f90011c9062b210b3e2d4acf18d5f713230877e9513dd12550'
 
 
 def allocation(root):

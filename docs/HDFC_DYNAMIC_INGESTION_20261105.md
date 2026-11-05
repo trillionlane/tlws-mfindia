@@ -136,3 +136,29 @@ same source. This head integrates that source-local guard fromcebc285, retaining
 HDFC source2/book8/current14 and the version4 allocation. HDFC parser and SQL
 semantics are unchanged. New-head full validation is required; the green347
 run is historical supporting evidence and is not substituted for this head.
+
+
+The integrated head69bdaec failed42060090105/1 in two HDFC owner-install
+cases. Both hit the existing15-second owner transaction limit during repeated
+catalogue validation;22 early cases and both images passed, but the remainder
+and downstream audit were not run. This failed run remains inadmissible.
+Three new provider-free regressions first failed: two detected duplicate profile
+selection immediately before the real principal validator repeated it, and one
+detected immutable source construction inside the short transaction.
+
+The bounded correction removes those adjacent duplicates and uses one guarded
+multi-store capture per phase. It prepares fixed source documents/hashes before
+the transaction, requires an idle connection, then freshly checks actual owner,
+permissions, expected state, lock and preservation inside the transaction. No
+security verdict is cached. The original5-second statement/lock and15-second
+transaction bounds, seal, single COMMIT and data/history comparisons remain.
+Current authority bindings explicitly include the book/multi guard change and
+restore complete predecessor bytes; historical contracts remain unchanged.
+
+Six provider-free regressions cover those boundaries and unknown-profile
+rejection. Two existing connected native cases now observe real catalogue-query,
+transaction and lock timing with a transparent forwarding connection, without
+SQL/result substitution. Successful install must use four full reader catalogue
+checks and re-entry two, retaining the enforced limits. Native success and
+measured timings remain pending at the corrected final head; local tests alone
+do not prove this transaction completes on PostgreSQL.

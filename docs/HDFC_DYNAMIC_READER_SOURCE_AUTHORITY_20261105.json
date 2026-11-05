@@ -67,14 +67,14 @@
       "sha256": "35fd4f51893cfe0e998717ee646b90c4748a4e89a348c6205875f43dd708864e"
     },
     {
-      "bytes": 20453,
+      "bytes": 20471,
       "path": "src/mfdataindia/enrichment/book_store.py",
-      "sha256": "984cfc148b6ef2f4d4c977b838732d86be0593e08fc209ea0b2a97712eb0a031"
+      "sha256": "60acc212b06f5a8a38daac38a6c42a6af66c3aaa620ad9ad95bfda8b4ff86d07"
     },
     {
-      "bytes": 15792,
+      "bytes": 15810,
       "path": "src/mfdataindia/enrichment/multi_store.py",
-      "sha256": "98081c726a0733c71d198f8cf28d01d7f2171e53faa115f3c85724caa11ad0b2"
+      "sha256": "800b57b4667a6729bca79560a7efd5e05569b1ea4c9c8a4af2371b45e25f7b9c"
     }
   ],
   "format": "source-only-ten-file-reader-compatibility-authority-v5",
@@ -83,5 +83,5 @@
   "implementation_parent": "84f6c91976ef6da0a8d8e4dfcd2f42a86a2632d2",
   "runtime_authority": false,
   "scope": "Three shared empty post-DDL configuration constructors; original SQL, projections, policies, registries, historical default installer outcomes unchanged. No activation or publication authority.",
-  "total_bytes": 118127
+  "total_bytes": 118163
 }
