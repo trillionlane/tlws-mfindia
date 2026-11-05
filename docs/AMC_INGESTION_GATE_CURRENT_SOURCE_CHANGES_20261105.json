@@ -1,11 +1,15 @@
 {
   "format": "amc-gate-current-source-changes-v1",
   "base": "f726d92b26bc4f84a5eee666df20a0a7f4670d24",
-  "intent": "Finite current-file restoration for historical release-evidence tests only. New v7 runtime source bindings are separate. Tests deliberately adopt the explicit current version7; old hashes/default5 stay exact.",
+  "intent": "Finite current-file restoration for historical release-evidence tests only. New v7 runtime source bindings are separate. Tests deliberately adopt the explicit current version7; old hashes/default5 stay exact. Current preservation explicitly recognizes the sealed private operational layer, binds its structure and independently captures all records; unknown schemas remain rejected.",
   "modified": {
     "config/official-amc-source-extension-v1.json": {
       "previous_sha256": "19dde6e087cb560b108cbbab2a0bb3d73f697355f3affe73aec1bb998df8f59d",
       "current_sha256": "c97f3bbe729af2541bf50199d1d8a4c85c06e9c97cf1cc259fb0431c08a76900"
+    },
+    "scripts/run_ci_tests.py": {
+      "previous_sha256": "f44346a4f038efd3fd3f92fc829266ca485b392f531511928cb74037728c2c7b",
+      "current_sha256": "db46cc4f0e6283e05636f8a16562f595208deb6cb40402c6fa66ff04ae18ba62"
     },
     "scripts/smoke_allocated_amc_workload.py": {
       "previous_sha256": "bd85cb0a61da26232a42fcf64d900a5a8cecc992be584725b7f63a6cea11ae56",
@@ -58,6 +62,10 @@
     "src/mfdataindia/review/dev_reader_source_reference.py": {
       "previous_sha256": "814a0fb1ffbb422a115e53b1cf72b824edd3d03c6ec3b84b7a655e591f0edfe5",
       "current_sha256": "4a5b6cf20ff6c3398a41b7465e7eb8ac804b9ae2f219f484e9d82b230d1dd792"
+    },
+    "src/mfdataindia/review/preservation.py": {
+      "previous_sha256": "0cbbc96c7cddaf59cf5f81fbf0e82cd13b65694b30f77d9fe4a9a2831a44dd9b",
+      "current_sha256": "90f5d06bc23edb844813ed1f0a8e0ef88cf5452f047dd33aa3bc55b83e92f02c"
     },
     "tests/amc_loading_history.py": {
       "previous_sha256": "1fa3102ff47b9d82a6c11bf9b8823d44fd5e7b934c8453fd8d3e6ce700a0f2ff",
