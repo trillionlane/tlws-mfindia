@@ -8,9 +8,17 @@ from mfdataindia.review.policy import fingerprint
 
 
 def compile_batch(
-    identities, monthly, bridges, originals, *, as_of, directory_hash, expected_periods
+    identities, monthly, bridges, originals, *, as_of, directory_hash, expected_periods, method=1
 ):
+    parser = book
+    if method == 2:
+        from mfdataindia.enrichment import kotak_book_v2
+        parser = kotak_book_v2
+    elif type(method) is not int or method != 1:
+        raise ValueError("reviewed Kotak parser method required")
     spec = book_sources.specification(book.KEY)
+    if (method == 2) != (spec.get("parser_method", 1) == 2):
+        raise ValueError("installed Kotak parser method differs")
     if (
         not 1 <= len(identities) <= spec["maximum_current_variants"]
         or identities != sorted(identities, key=lambda i: i["code"])
@@ -65,7 +73,7 @@ def compile_batch(
         for r in refs
     ):
         raise ValueError("monthly extraction must bind an actual retained PDF")
-    details = [{**r, "source_url": monthly["source_url"]} for r in book.detail_pages(extraction)]
+    details = [{**r, "source_url": monthly["source_url"]} for r in parser.detail_pages(extraction)]
     minimum = (
         1 if monthly["source_url"] == book.HISTORICAL else spec["minimum_current_detail_pages"]
     )
@@ -77,7 +85,7 @@ def compile_batch(
     if book.reporting_dates(extraction["pages"][0]["text"]) != {as_of}:
         raise ValueError("actual source date, not URL date, required")
     observations = [
-        {"identity": i, "result": book.derive(i, bridges, details, as_of)} for i in identities
+        {"identity": i, "result": parser.derive(i, bridges, details, as_of)} for i in identities
     ]
     authority = monthly.get("source_acquisition")
     if not isinstance(authority, dict) or authority.get("mode") not in (

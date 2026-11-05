@@ -16,7 +16,7 @@ CURRENT_VERSION = 5
 _selected_registry = ContextVar("book_registry_selection", default=None)
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
-POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11}
+POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12}
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -34,6 +34,7 @@ REGISTRIES = {
         "official-book-sources-v4.json",
         "acb158e5258646e278b9aa1ecea6219bd8b3d987afa088a6bd8d308334c2a482",
     ),
+    6: ("official-book-sources-v6-kotak-layout.json", "daa758f2ffbe4917f6b6a415ea2900ed3cba7f923c922cad756c398653123eb9"),
     5: (
         "official-book-sources-v5-aum-row.json",
         "1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec",
@@ -85,7 +86,7 @@ def registry(version=None, root=None):
         if source["key"] == uti_book.KEY:
             if (
                 version < 4
-                or source["adapter"] != ("uti-english-monthly-book-v4" if version >= 5 else "uti-english-monthly-book-v1")
+                or source["adapter"] != ("uti-english-monthly-book-v4" if version == 5 else "uti-english-monthly-book-v1")
                 or source["amc"] != uti_book.AMC
                 or source["catalogue_api"] != uti_book.CATALOGUE
                 or source["catalogue_landing"] != "https://www.utimf.com/downloads/fund-watch"
@@ -184,6 +185,16 @@ def registry(version=None, root=None):
                 or transition.get("supersedes_unaccepted_policy_hash") != "c7b58aaca5294958ed94db2d6cfd313ad4200fcdfb1502b293c63fcea33120c4"
                 or transition.get("supersedes_unaccepted_source_configuration_hash") != "25bbe7c6349c849b168d14ec017c749550399d9185804f465a506dd1985e44e2"):
             raise ValueError("exact bounded source-method revision required; no cohort replacement")
+    elif version == 6:
+        expected = deepcopy(registry(4, root)["sources"])
+        next(s for s in expected if s["key"] == kotak_book.KEY)["parser_method"] = 2
+        if document["sources"] != expected or document.get("authority_transition") != {
+            "mode": "layout_revision", "previous_source_version": 4,
+            "source_key": "kotak-expanded", "source_count_changed": False,
+            "financial_field_rules_changed": False, "retain_previous_specifications": True,
+            "uti_method_changed": False,
+        }:
+            raise ValueError("exact retained-v4 Kotak layout revision required")
     elif version > 1 and document["sources"][:-1] != registry(version - 1, root)["sources"]:
         raise ValueError("historical registered source changed")
     return document
@@ -207,6 +218,10 @@ def specification(key, *, version=None):
         "uti-english-monthly-book-v3": uti_book_v3,
         "uti-english-monthly-book-v4": uti_book_v4,
     }[item["adapter"]]
+    version = registry(version)["version"]
+    if item.get("parser_method") == 2:
+        from mfdataindia.enrichment import kotak_book_v2
+        parser = kotak_book_v2
     item["parser_policy"] = parser.policy()
     item["parser_policy_hash"] = fingerprint(item["parser_policy"])
     item["parser_engine_hash"] = hashlib.sha256(Path(parser.__file__).read_bytes()).hexdigest()
@@ -229,7 +244,7 @@ def specification(key, *, version=None):
             Path(amc_book_pdf.__file__).read_bytes()
             + Path(amc_book_pdf.__file__).with_name("_amc_book_pdf_worker.py").read_bytes()
         ).hexdigest()
-    if parser is kotak_book:
+    if parser in (kotak_book,) or item.get("parser_method") == 2:
         from mfdataindia.enrichment import (
             amfi_summary_identity,
             kotak_acquisition,
@@ -242,11 +257,13 @@ def specification(key, *, version=None):
         )
 
         item["reviewed_known_document_policy"] = kotak_known_document.policy()
+        from mfdataindia.enrichment.amc_source_revision import retained_engine_hash
+        def engine_hash(module):
+            return (retained_engine_hash(module) if version <= 5 else
+                    hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest())
 
         item["evidence_engine_hashes"] = {
-            module.__name__.rsplit(".", 1)[-1]: hashlib.sha256(
-                Path(module.__file__).read_bytes()
-            ).hexdigest()
+            module.__name__.rsplit(".", 1)[-1]: engine_hash(module)
             for module in (
                 amfi_summary_identity,
                 kotak_acquisition,
@@ -340,7 +357,10 @@ def configuration(version=None):
     specifications = {
         s["key"]: specification(s["key"], version=document["version"]) for s in document["sources"]
     }
+    retained = ({kotak_book.KEY: [fingerprint(specification(kotak_book.KEY, version=4))]}
+                if document["version"] == 6 else None)
     return {
+        **({"retained_source_specification_hashes": retained} if retained else {}),
         "registry": document,
         "registry_hash": fingerprint(document),
         "source_specifications": specifications,
@@ -354,6 +374,14 @@ def configuration(version=None):
 
 def current_policy(version=None):
     document = registry(version)
+    if document["version"] == 6:
+        result = deepcopy(current_policy(4))
+        result.update(version=12, previous_policy_hash=fingerprint(current_policy(4)),
+                      book_source_registry_hash=fingerprint(document),
+                      book_source_configuration_hash=fingerprint(configuration(6)),
+                      source_registry_version=6,
+                      source_authority_transition=document["authority_transition"])
+        return result
     result = deepcopy(multi_facts.current_policy())
     result.update(
         version=POLICY_VERSIONS[document["version"]],

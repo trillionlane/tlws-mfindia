@@ -1,0 +1,114 @@
+{
+  "format": "official-kotak-current-process-allocation-v2",
+  "id": "official-kotak-current-dev-workload-v2",
+  "source_key": "kotak-expanded",
+  "predecessor_allocation_sha256": "4050e4e704195b92a759f2f3c1051d4cea0d539ffe369fd3c96be402f3d9fb63",
+  "book_configuration_sha256": "26747ad0d7d5df2b9da03425eb094217091ea0ada965c03adcf0a8f41f977e1b",
+  "dependency": {
+    "advisories": [
+      "GHSA-5hx5-vpf9-5wcv",
+      "GHSA-6c7f-9265-g8fw",
+      "GHSA-jr96-gvgh-j3r4",
+      "GHSA-gmh7-3g9r-mjh5",
+      "GHSA-62m5-6wh8-28x7",
+      "GHSA-42gh-23hr-vphw",
+      "GHSA-x3rh-gjgm-fmqc",
+      "GHSA-4vqv-7265-gm2w",
+      "GHSA-5849-834g-hvw5",
+      "GHSA-mfr5-77xh-9j7h",
+      "GHSA-cggf-277g-3q54"
+    ],
+    "distribution": "pypdf",
+    "format": "allocated-pdf-dependency-compatibility-v1",
+    "missing_contents": "retained historical decoder: empty page text, not source completeness",
+    "dormant_successor_missing_contents": "reject; explicit zero-byte stream accepted",
+    "sdist_sha256": "c8817e3f888d47a087872ded69812c1ef30cacb871d6e053e0c00bbaf0bc2163",
+    "version": "6.21.4",
+    "wheel_sha256": "33e4fb41ca352810eb4e9838aa0d82d6888a5f8bf682f43e99cce5faa666255c"
+  },
+  "tasks": [
+    {
+      "index": 0,
+      "source_key": "absl-large-cap"
+    },
+    {
+      "index": 1,
+      "source_key": "hdfc-flexi-cap"
+    },
+    {
+      "index": 2,
+      "source_key": "absl-expanded"
+    },
+    {
+      "index": 3,
+      "source_key": "sbi-expanded"
+    },
+    {
+      "index": 4,
+      "source_key": "kotak-expanded"
+    },
+    {
+      "index": 5,
+      "source_key": "uti-expanded"
+    }
+  ],
+  "modes": {
+    "scheduled": {
+      "task_count": 6,
+      "task_mapping": [
+        {
+          "index": 0,
+          "source_key": "absl-large-cap"
+        },
+        {
+          "index": 1,
+          "source_key": "hdfc-flexi-cap"
+        },
+        {
+          "index": 2,
+          "source_key": "absl-expanded"
+        },
+        {
+          "index": 3,
+          "source_key": "sbi-expanded"
+        },
+        {
+          "index": 4,
+          "source_key": "kotak-expanded"
+        },
+        {
+          "index": 5,
+          "source_key": "uti-expanded"
+        }
+      ]
+    },
+    "kotak_only": {
+      "task_count": 1,
+      "task_index": 0,
+      "source_key": "kotak-expanded"
+    }
+  },
+  "preserved_bounds": {
+    "cpu": "1",
+    "max_retries": 0,
+    "memory": "2Gi",
+    "parallelism": 1,
+    "task_count": 6,
+    "task_timeout_seconds": 600
+  },
+  "live_execution_approval": false,
+  "files": {
+    "src/mfdataindia/enrichment/amc_source_revision.py": "a91476ed5df05eb7eb706070b3e7a69c8898030d1ed661c995a91d261765bac3",
+    "src/mfdataindia/enrichment/allocated_amc_workload.py": "5099a012305b9fb698876a67254135af24823d1ba09c5e9a96f5f7aaf889cd38",
+    "src/mfdataindia/enrichment/kotak_book_v2.py": "8451df5a879ff3a3a07bdf9a7e236773894a65f8851ba2f7af576cd880a32c1c",
+    "src/mfdataindia/enrichment/kotak_method_upgrade.py": "47f5650c1af7d0b2b503ae64d52233cc0b2a14e7f17b49d6397eff802bc10af2",
+    "src/mfdataindia/enrichment/kotak_runtime.py": "13cef3db3dd8c5d42a1e58fd2b2131cd3c5536d9d7e90e4cbc016984b1a218bd",
+    "src/mfdataindia/enrichment/kotak_batch.py": "81858405c43c9954b1a85a07dee55b8691897b14e1d4ed1073636c158ad4a8d5",
+    "src/mfdataindia/enrichment/book_sources.py": "5f3bbf8cc0f607f65cb4e837614412bc78f35eaae89234d34b188a220ddc6983",
+    "src/mfdataindia/enrichment/book_store.py": "88592de099ef4fb1e8de6d3abac150944b80cee40d1894219375b01e803ab41f",
+    "sql/optional/amc_book_current_projection_v3.sql.inc": "28cfbe8edabe6af5527066ae79a79a4e04cb1b416cd3d7d13c4886ea2c38ae59",
+    "config/official-book-sources-v6-kotak-layout.json": "daa758f2ffbe4917f6b6a415ea2900ed3cba7f923c922cad756c398653123eb9",
+    "config/official-amc-source-extension-v1.json": "19dde6e087cb560b108cbbab2a0bb3d73f697355f3affe73aec1bb998df8f59d",
+    "scripts/refresh_kotak_current_dev.py": "966881e0c413c059869c1ada1bb675c178d575d040fb4d834d008afe43edd7b8"
+  }
+}

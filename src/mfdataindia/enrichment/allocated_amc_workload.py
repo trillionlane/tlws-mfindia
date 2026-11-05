@@ -52,7 +52,8 @@ def allocation(root):
             _reject('ALLOCATION_DEPENDENCY_MISMATCH')
         for name, expected in document['module_sha256'].items():
             module = import_module('mfdataindia.enrichment.' + name)
-            if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest() != expected:
+            from mfdataindia.enrichment.amc_source_revision import previous_bytes
+            if hashlib.sha256(previous_bytes(Path(module.__file__))).hexdigest() != expected:
                 _reject('ALLOCATION_SOURCE_MISMATCH')
         for name, expected in document['file_sha256'].items():
             file = root / name
@@ -76,6 +77,14 @@ def allocation(root):
 
 def validate(environment, root):
     document = allocation(root)
+    dsn, index = validate_environment(environment, root, task_count=6)
+    return document, dsn, index
+
+
+def validate_environment(environment, root, *, task_count):
+    """Shared strict envelope parser. This function does not allocate a workload."""
+    if type(task_count) is not int or task_count not in (1, 6):
+        _reject('ALLOCATION_RUNTIME_IDENTITY_INVALID')
     if (type(environment) is not dict
             or any(type(k) is not str or type(v) is not str for k, v in environment.items())
             or sum(len(k.encode()) + len(v.encode()) for k, v in environment.items()) > 65536):
@@ -83,9 +92,9 @@ def validate(environment, root):
     if any(k.startswith('PG') for k in environment):
         _reject('ALLOCATION_CONNECTION_OVERRIDE')
     if (environment.get('CLOUD_RUN_JOB') != JOB
-            or environment.get('CLOUD_RUN_TASK_COUNT') != '6'
+            or environment.get('CLOUD_RUN_TASK_COUNT') != str(task_count)
             or environment.get('CLOUD_RUN_TASK_ATTEMPT') != '0'
-            or environment.get('CLOUD_RUN_TASK_INDEX') not in tuple(map(str, range(6)))
+            or environment.get('CLOUD_RUN_TASK_INDEX') not in tuple(map(str, range(task_count)))
             or re.fullmatch(re.escape(JOB) + r'-[a-z0-9-]{1,40}',
                             environment.get('CLOUD_RUN_EXECUTION', '')) is None
             or re.fullmatch(r'[0-9a-f]{40}', environment.get('DEPLOYMENT_GIT_SHA', '')) is None):
@@ -110,10 +119,10 @@ def validate(environment, root):
     original = module_from_spec(spec)
     spec.loader.exec_module(original)
     try:
-        original.validate(environment, Path(root), task_count=6)
+        original.validate(environment, Path(root), task_count=task_count)
     except (KeyError, TypeError, ValueError):
         _reject('ALLOCATION_RUNTIME_INPUT_INVALID')
-    return document, dsn, int(environment['CLOUD_RUN_TASK_INDEX'])
+    return dsn, int(environment['CLOUD_RUN_TASK_INDEX'])
 
 
 def verify_database(dsn, document):

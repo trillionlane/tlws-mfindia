@@ -1,0 +1,99 @@
+{
+  "format": "amc-source-compatibility-inverses-v1",
+  "base": "7856eeb38decc2e1b64868cc5bbd12bccba66643",
+  "scope": "historical constructors and legacy method only; v6 uses actual current sources",
+  "modified": {
+    "src/mfdataindia/enrichment/kotak_batch.py": {
+      "previous_sha256": "ce15ea2c08a6f1b7cd3957177c5acda01955cbee0807acea022248375d37992c",
+      "current_sha256": "81858405c43c9954b1a85a07dee55b8691897b14e1d4ed1073636c158ad4a8d5",
+      "replacements": [
+        [
+          "from mfdataindia.review.policy import fingerprint\n\n\ndef compile_batch(\n    identities, monthly, bridges, originals, *, as_of, directory_hash, expected_periods\n):\n    spec = book_sources.specification(book.KEY)\n    if (\n        not 1 <= len(identities) <= spec[\"maximum_current_variants\"]\n        or identities != sorted(identities, key=lambda i: i[\"code\"])\n        or len({i[\"code\"] for i in identities}) != len(identities)\n",
+          "from mfdataindia.review.policy import fingerprint\n\n\ndef compile_batch(\n    identities, monthly, bridges, originals, *, as_of, directory_hash, expected_periods, method=1\n):\n    parser = book\n    if method == 2:\n        from mfdataindia.enrichment import kotak_book_v2\n        parser = kotak_book_v2\n    elif type(method) is not int or method != 1:\n        raise ValueError(\"reviewed Kotak parser method required\")\n    spec = book_sources.specification(book.KEY)\n    if (method == 2) != (spec.get(\"parser_method\", 1) == 2):\n        raise ValueError(\"installed Kotak parser method differs\")\n    if (\n        not 1 <= len(identities) <= spec[\"maximum_current_variants\"]\n        or identities != sorted(identities, key=lambda i: i[\"code\"])\n        or len({i[\"code\"] for i in identities}) != len(identities)\n"
+        ],
+        [
+          "        and r[\"source_url\"] == monthly[\"source_url\"]\n        for r in refs\n    ):\n        raise ValueError(\"monthly extraction must bind an actual retained PDF\")\n    details = [{**r, \"source_url\": monthly[\"source_url\"]} for r in book.detail_pages(extraction)]\n    minimum = (\n        1 if monthly[\"source_url\"] == book.HISTORICAL else spec[\"minimum_current_detail_pages\"]\n    )\n    if len(details) < minimum:\n",
+          "        and r[\"source_url\"] == monthly[\"source_url\"]\n        for r in refs\n    ):\n        raise ValueError(\"monthly extraction must bind an actual retained PDF\")\n    details = [{**r, \"source_url\": monthly[\"source_url\"]} for r in parser.detail_pages(extraction)]\n    minimum = (\n        1 if monthly[\"source_url\"] == book.HISTORICAL else spec[\"minimum_current_detail_pages\"]\n    )\n    if len(details) < minimum:\n"
+        ],
+        [
+          "        raise ValueError(\"actual identity original and parent index required\")\n    if book.reporting_dates(extraction[\"pages\"][0][\"text\"]) != {as_of}:\n        raise ValueError(\"actual source date, not URL date, required\")\n    observations = [\n        {\"identity\": i, \"result\": book.derive(i, bridges, details, as_of)} for i in identities\n    ]\n    authority = monthly.get(\"source_acquisition\")\n    if not isinstance(authority, dict) or authority.get(\"mode\") not in (\n        \"live_catalogue\", \"reviewed_historical_one_pager\",\n",
+          "        raise ValueError(\"actual identity original and parent index required\")\n    if book.reporting_dates(extraction[\"pages\"][0][\"text\"]) != {as_of}:\n        raise ValueError(\"actual source date, not URL date, required\")\n    observations = [\n        {\"identity\": i, \"result\": parser.derive(i, bridges, details, as_of)} for i in identities\n    ]\n    authority = monthly.get(\"source_acquisition\")\n    if not isinstance(authority, dict) or authority.get(\"mode\") not in (\n        \"live_catalogue\", \"reviewed_historical_one_pager\",\n"
+        ]
+      ]
+    },
+    "src/mfdataindia/enrichment/kotak_runtime.py": {
+      "previous_sha256": "97fcdcb2a0c985659dce9ee5c68c6816bb8e6e593d5e46c728e5b640bd446d3c",
+      "current_sha256": "13cef3db3dd8c5d42a1e58fd2b2131cd3c5536d9d7e90e4cbc016984b1a218bd",
+      "replacements": [
+        [
+          "        session, raw, source_key=kotak_book.KEY, media_type=media_type\n    )\n\n\ndef candidates(directory, identities, extracts):\n    headings = {\n        name\n        for extraction in extracts\n        for detail in kotak_book.detail_pages(extraction)\n        for name in detail[\"names\"]\n    }\n    names = {\n        kotak_book.normalize(\n",
+          "        session, raw, source_key=kotak_book.KEY, media_type=media_type\n    )\n\n\ndef candidates(directory, identities, extracts, *, parser=kotak_book):\n    headings = {\n        name\n        for extraction in extracts\n        for detail in parser.detail_pages(extraction)\n        for name in detail[\"names\"]\n    }\n    names = {\n        kotak_book.normalize(\n"
+        ],
+        [
+          "    return original, {\"mode\": \"live_catalogue\", \"source_url\": request[\"source_url\"]}, None\n\n\ndef run(\n    dsn, execution, *, now=None, transport=kotak_acquisition.fetch, extractor=decode, archive=retain\n):\n    observed = now or datetime.now(timezone.utc)\n    spec = book_sources.specification(kotak_book.KEY)\n    started = time.monotonic()\n    phase, originals, archives, availability = \"scope\", [], [], []\n",
+          "    return original, {\"mode\": \"live_catalogue\", \"source_url\": request[\"source_url\"]}, None\n\n\ndef run(\n    dsn, execution, *, now=None, transport=kotak_acquisition.fetch, extractor=decode, archive=retain, method=1\n):\n    parser = kotak_book\n    if method == 2:\n        from mfdataindia.enrichment import kotak_book_v2\n        parser = kotak_book_v2\n    elif type(method) is not int or method != 1:\n        raise ValueError(\"reviewed Kotak parser method required\")\n    observed = now or datetime.now(timezone.utc)\n    spec = book_sources.specification(kotak_book.KEY)\n    started = time.monotonic()\n    phase, originals, archives, availability = \"scope\", [], [], []\n"
+        ],
+        [
+          "        phase = \"directory\"\n        original = transport(kotak_book.DIRECTORY)\n        directory_hash = kept(original)\n        directory = sbi_book.directory(original[\"content\"])\n        requested = candidates(directory, identities, [m[\"extraction\"] for m in monthly])\n        phase = \"identities\"\n\n        def family(row):\n            deadline()\n",
+          "        phase = \"directory\"\n        original = transport(kotak_book.DIRECTORY)\n        directory_hash = kept(original)\n        directory = sbi_book.directory(original[\"content\"])\n        requested = candidates(directory, identities, [m[\"extraction\"] for m in monthly],\n                               **({\"parser\": parser} if method == 2 else {}))\n        phase = \"identities\"\n\n        def family(row):\n            deadline()\n"
+        ],
+        [
+          "                originals,\n                as_of=item[\"as_of\"],\n                directory_hash=directory_hash,\n                expected_periods=[r[\"expected_period\"] for r in expected],\n            )\n            for item in monthly\n        ]\n        phase = \"publication\"\n",
+          "                originals,\n                as_of=item[\"as_of\"],\n                directory_hash=directory_hash,\n                expected_periods=[r[\"expected_period\"] for r in expected],\n                **({\"method\": method} if method == 2 else {}),\n            )\n            for item in monthly\n        ]\n        phase = \"publication\"\n"
+        ]
+      ]
+    },
+    "src/mfdataindia/enrichment/book_sources.py": {
+      "previous_sha256": "26f4363058998b0a03a18eb702744b7cc09b817b18ab036294bed1f185d9e551",
+      "current_sha256": "5f3bbf8cc0f607f65cb4e837614412bc78f35eaae89234d34b188a220ddc6983",
+      "replacements": [
+        [
+          "CURRENT_VERSION = 5\n_selected_registry = ContextVar(\"book_registry_selection\", default=None)\n# Registry versions count source waves; policy revisions are independently\n# allocated and never reuse an already-registered (id, version) candidate.\nPOLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11}\nREGISTRIES = {\n    1: (\n        \"official-book-sources-v1.json\",\n        \"2696318170d417cdcd8de581a665252425984cc1b9dcb648d93fd30efcbccd8c\",\n",
+          "CURRENT_VERSION = 5\n_selected_registry = ContextVar(\"book_registry_selection\", default=None)\n# Registry versions count source waves; policy revisions are independently\n# allocated and never reuse an already-registered (id, version) candidate.\nPOLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12}\nREGISTRIES = {\n    1: (\n        \"official-book-sources-v1.json\",\n        \"2696318170d417cdcd8de581a665252425984cc1b9dcb648d93fd30efcbccd8c\",\n"
+        ],
+        [
+          "    4: (\n        \"official-book-sources-v4.json\",\n        \"acb158e5258646e278b9aa1ecea6219bd8b3d987afa088a6bd8d308334c2a482\",\n    ),\n    5: (\n        \"official-book-sources-v5-aum-row.json\",\n        \"1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec\",\n    ),\n",
+          "    4: (\n        \"official-book-sources-v4.json\",\n        \"acb158e5258646e278b9aa1ecea6219bd8b3d987afa088a6bd8d308334c2a482\",\n    ),\n    6: (\"official-book-sources-v6-kotak-layout.json\", \"daa758f2ffbe4917f6b6a415ea2900ed3cba7f923c922cad756c398653123eb9\"),\n    5: (\n        \"official-book-sources-v5-aum-row.json\",\n        \"1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec\",\n    ),\n"
+        ],
+        [
+          "    for source in document[\"sources\"]:\n        if source[\"key\"] == uti_book.KEY:\n            if (\n                version < 4\n                or source[\"adapter\"] != (\"uti-english-monthly-book-v4\" if version >= 5 else \"uti-english-monthly-book-v1\")\n                or source[\"amc\"] != uti_book.AMC\n                or source[\"catalogue_api\"] != uti_book.CATALOGUE\n                or source[\"catalogue_landing\"] != \"https://www.utimf.com/downloads/fund-watch\"\n                or source[\"directory_url\"] != uti_book.DIRECTORY\n",
+          "    for source in document[\"sources\"]:\n        if source[\"key\"] == uti_book.KEY:\n            if (\n                version < 4\n                or source[\"adapter\"] != (\"uti-english-monthly-book-v4\" if version == 5 else \"uti-english-monthly-book-v1\")\n                or source[\"amc\"] != uti_book.AMC\n                or source[\"catalogue_api\"] != uti_book.CATALOGUE\n                or source[\"catalogue_landing\"] != \"https://www.utimf.com/downloads/fund-watch\"\n                or source[\"directory_url\"] != uti_book.DIRECTORY\n"
+        ],
+        [
+          "                or transition.get(\"source_rows_changed\") != 0\n                or transition.get(\"supersedes_unaccepted_policy_hash\") != \"c7b58aaca5294958ed94db2d6cfd313ad4200fcdfb1502b293c63fcea33120c4\"\n                or transition.get(\"supersedes_unaccepted_source_configuration_hash\") != \"25bbe7c6349c849b168d14ec017c749550399d9185804f465a506dd1985e44e2\"):\n            raise ValueError(\"exact bounded source-method revision required; no cohort replacement\")\n    elif version > 1 and document[\"sources\"][:-1] != registry(version - 1, root)[\"sources\"]:\n        raise ValueError(\"historical registered source changed\")\n    return document\n\n",
+          "                or transition.get(\"source_rows_changed\") != 0\n                or transition.get(\"supersedes_unaccepted_policy_hash\") != \"c7b58aaca5294958ed94db2d6cfd313ad4200fcdfb1502b293c63fcea33120c4\"\n                or transition.get(\"supersedes_unaccepted_source_configuration_hash\") != \"25bbe7c6349c849b168d14ec017c749550399d9185804f465a506dd1985e44e2\"):\n            raise ValueError(\"exact bounded source-method revision required; no cohort replacement\")\n    elif version == 6:\n        expected = deepcopy(registry(4, root)[\"sources\"])\n        next(s for s in expected if s[\"key\"] == kotak_book.KEY)[\"parser_method\"] = 2\n        if document[\"sources\"] != expected or document.get(\"authority_transition\") != {\n            \"mode\": \"layout_revision\", \"previous_source_version\": 4,\n            \"source_key\": \"kotak-expanded\", \"source_count_changed\": False,\n            \"financial_field_rules_changed\": False, \"retain_previous_specifications\": True,\n            \"uti_method_changed\": False,\n        }:\n            raise ValueError(\"exact retained-v4 Kotak layout revision required\")\n    elif version > 1 and document[\"sources\"][:-1] != registry(version - 1, root)[\"sources\"]:\n        raise ValueError(\"historical registered source changed\")\n    return document\n\n"
+        ],
+        [
+          "        \"uti-english-monthly-book-v2\": uti_book_v2,\n        \"uti-english-monthly-book-v3\": uti_book_v3,\n        \"uti-english-monthly-book-v4\": uti_book_v4,\n    }[item[\"adapter\"]]\n    item[\"parser_policy\"] = parser.policy()\n    item[\"parser_policy_hash\"] = fingerprint(item[\"parser_policy\"])\n    item[\"parser_engine_hash\"] = hashlib.sha256(Path(parser.__file__).read_bytes()).hexdigest()\n    if parser is sbi_book:\n",
+          "        \"uti-english-monthly-book-v2\": uti_book_v2,\n        \"uti-english-monthly-book-v3\": uti_book_v3,\n        \"uti-english-monthly-book-v4\": uti_book_v4,\n    }[item[\"adapter\"]]\n    version = registry(version)[\"version\"]\n    if item.get(\"parser_method\") == 2:\n        from mfdataindia.enrichment import kotak_book_v2\n        parser = kotak_book_v2\n    item[\"parser_policy\"] = parser.policy()\n    item[\"parser_policy_hash\"] = fingerprint(item[\"parser_policy\"])\n    item[\"parser_engine_hash\"] = hashlib.sha256(Path(parser.__file__).read_bytes()).hexdigest()\n    if parser is sbi_book:\n"
+        ],
+        [
+          "        item[\"decoder_engine_hash\"] = hashlib.sha256(\n            Path(amc_book_pdf.__file__).read_bytes()\n            + Path(amc_book_pdf.__file__).with_name(\"_amc_book_pdf_worker.py\").read_bytes()\n        ).hexdigest()\n    if parser is kotak_book:\n        from mfdataindia.enrichment import (\n            amfi_summary_identity,\n            kotak_acquisition,\n            kotak_batch,\n",
+          "        item[\"decoder_engine_hash\"] = hashlib.sha256(\n            Path(amc_book_pdf.__file__).read_bytes()\n            + Path(amc_book_pdf.__file__).with_name(\"_amc_book_pdf_worker.py\").read_bytes()\n        ).hexdigest()\n    if parser in (kotak_book,) or item.get(\"parser_method\") == 2:\n        from mfdataindia.enrichment import (\n            amfi_summary_identity,\n            kotak_acquisition,\n            kotak_batch,\n"
+        ],
+        [
+          "            layout_book_pdf,\n        )\n\n        item[\"reviewed_known_document_policy\"] = kotak_known_document.policy()\n\n        item[\"evidence_engine_hashes\"] = {\n            module.__name__.rsplit(\".\", 1)[-1]: hashlib.sha256(\n                Path(module.__file__).read_bytes()\n            ).hexdigest()\n            for module in (\n                amfi_summary_identity,\n                kotak_acquisition,\n                kotak_batch,\n",
+          "            layout_book_pdf,\n        )\n\n        item[\"reviewed_known_document_policy\"] = kotak_known_document.policy()\n        from mfdataindia.enrichment.amc_source_revision import retained_engine_hash\n        def engine_hash(module):\n            return (retained_engine_hash(module) if version <= 5 else\n                    hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest())\n\n        item[\"evidence_engine_hashes\"] = {\n            module.__name__.rsplit(\".\", 1)[-1]: engine_hash(module)\n            for module in (\n                amfi_summary_identity,\n                kotak_acquisition,\n                kotak_batch,\n"
+        ],
+        [
+          "    document = registry(version)\n    specifications = {\n        s[\"key\"]: specification(s[\"key\"], version=document[\"version\"]) for s in document[\"sources\"]\n    }\n    return {\n        \"registry\": document,\n        \"registry_hash\": fingerprint(document),\n        \"source_specifications\": specifications,\n        # The owner seals this entire configuration. Readers must not need\n",
+          "    document = registry(version)\n    specifications = {\n        s[\"key\"]: specification(s[\"key\"], version=document[\"version\"]) for s in document[\"sources\"]\n    }\n    retained = ({kotak_book.KEY: [fingerprint(specification(kotak_book.KEY, version=4))]}\n                if document[\"version\"] == 6 else None)\n    return {\n        **({\"retained_source_specification_hashes\": retained} if retained else {}),\n        \"registry\": document,\n        \"registry_hash\": fingerprint(document),\n        \"source_specifications\": specifications,\n        # The owner seals this entire configuration. Readers must not need\n"
+        ],
+        [
+          "\n\ndef current_policy(version=None):\n    document = registry(version)\n    result = deepcopy(multi_facts.current_policy())\n    result.update(\n        version=POLICY_VERSIONS[document[\"version\"]],\n        previous_policy_hash=fingerprint(\n",
+          "\n\ndef current_policy(version=None):\n    document = registry(version)\n    if document[\"version\"] == 6:\n        result = deepcopy(current_policy(4))\n        result.update(version=12, previous_policy_hash=fingerprint(current_policy(4)),\n                      book_source_registry_hash=fingerprint(document),\n                      book_source_configuration_hash=fingerprint(configuration(6)),\n                      source_registry_version=6,\n                      source_authority_transition=document[\"authority_transition\"])\n        return result\n    result = deepcopy(multi_facts.current_policy())\n    result.update(\n        version=POLICY_VERSIONS[document[\"version\"]],\n        previous_policy_hash=fingerprint(\n"
+        ]
+      ]
+    },
+    "src/mfdataindia/enrichment/book_store.py": {
+      "previous_sha256": "8de21e08d12e2dde50e7954cb82dbc0282a419c4516c8c3882bcbf70160fd69a",
+      "current_sha256": "88592de099ef4fb1e8de6d3abac150944b80cee40d1894219375b01e803ab41f",
+      "replacements": [
+        [
+          "    4: (\n        \"041_uti_book_evidence.sql\",\n        \"ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702\",\n    ),\n    5: (\n        \"044_uti_complete_aum_rows.sql\",\n        \"4b4e3d73d49a4844c4da300a17a952a8e24a47a6fa025382a2db064f5ed1a778\",\n    ),\n",
+          "    4: (\n        \"041_uti_book_evidence.sql\",\n        \"ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702\",\n    ),\n    6: (\"041_uti_book_evidence.sql\", \"ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702\"),\n    5: (\n        \"044_uti_complete_aum_rows.sql\",\n        \"4b4e3d73d49a4844c4da300a17a952a8e24a47a6fa025382a2db064f5ed1a778\",\n    ),\n"
+        ]
+      ]
+    }
+  }
+}

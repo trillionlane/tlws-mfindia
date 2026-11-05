@@ -16,6 +16,8 @@ from mfdataindia.enrichment import amc_book_pdf, monthly_pdf, layout_book_pdf, u
 def smoke():
     root = Path(__file__).resolve().parents[1]
     allocation = workload.allocation(root)
+    from smoke_kotak_current_workload import smoke as current_smoke
+    current_smoke()
     environment = {k: v for k, v in os.environ.items()
                    if not k.startswith(('PG', 'CLOUD_RUN_')) and k != 'MFDATAINDIA_DSN'}
     environment.update(
