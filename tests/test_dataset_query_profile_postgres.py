@@ -26,6 +26,10 @@ pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def publication_execution_id(suffix):
+    return book_sources.registry(4)['job']+'-dataset-v4-'+suffix
+
+
 def populated_v4_graph(dsn, monkeypatch):
     inputs = populate(dsn,monkeypatch,book_version=4)
     with connect(dsn,autocommit=False) as conn:
@@ -48,7 +52,7 @@ def populated_v4_graph(dsn, monkeypatch):
                            ('conflict','22,109.88')):
             batches, originals, archives = source_inputs(identities,september_aum=aum)
             with connect(dsn,'mfdata_verified_generator',autocommit=False) as conn:
-                receipt = book_runtime.publish(conn,'sbi-expanded','dataset-v4-'+suffix,
+                receipt = book_runtime.publish(conn,'sbi-expanded',publication_execution_id(suffix),
                     datetime(2026,10,17,tzinfo=timezone.utc),identities,batches,originals,archives)
                 assert receipt['status']=='updated'
         with connect(dsn,autocommit=False) as conn:

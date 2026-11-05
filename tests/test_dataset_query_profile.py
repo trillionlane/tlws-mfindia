@@ -1,5 +1,6 @@
 """Provider-free execution-shape and fail-closed tests, not native SQL proof."""
 from dataclasses import FrozenInstanceError, replace
+import re
 
 import pytest
 
@@ -123,3 +124,11 @@ def test_cte_capture_scanner_never_treats_literal_contents_as_declarations(liter
     q._code_starts(body)
     q._reject_captures(body,{'field_versions'})
     assert literal in q._reference(body,'mf_live_facts.field_versions','field_versions',count=1)
+
+
+@pytest.mark.parametrize('suffix',['initial','corroboration','conflict'])
+def test_native_publication_fixture_matches_the_unchanged_execution_constraint(suffix):
+    from test_dataset_query_profile_postgres import publication_execution_id, ROOT
+    ddl = (ROOT/'sql/optional/038_amc_book_facts.sql').read_text()
+    pattern = re.search(r"execution_id text NOT NULL CHECK\(execution_id ~ '([^']+)'\)",ddl)[1]
+    assert re.fullmatch(pattern,publication_execution_id(suffix))

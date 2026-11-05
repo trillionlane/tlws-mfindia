@@ -77,6 +77,12 @@ Final-head local and hosted native/image/contract/audit/credential results are
 recorded in the PR. Local collection or doubles are not native PostgreSQL proof.
 No local PostgreSQL or hosted-environment spoofing is permitted.
 
+The synthetic publication receipt uses the pinned v4 registry's existing job
+prefix. A provider-free regression checks all three fixture IDs against the
+unchanged migration's execution-ID constraint; the earlier abbreviated IDs
+failed this check. Neither the database constraint nor runtime identity rules
+are relaxed to accommodate fixture data.
+
 ## Release and recovery
 
 The target remains 127 accounted: 100 eligible consumer datasets, 26 excluded
