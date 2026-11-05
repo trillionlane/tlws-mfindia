@@ -1,0 +1,87 @@
+{
+  "format": "amc-gate-current-source-changes-v1",
+  "base": "f726d92b26bc4f84a5eee666df20a0a7f4670d24",
+  "intent": "Finite current-file restoration for historical release-evidence tests only. New v7 runtime source bindings are separate. Tests deliberately adopt the explicit current version7; old hashes/default5 stay exact.",
+  "modified": {
+    "config/official-amc-source-extension-v1.json": {
+      "previous_sha256": "19dde6e087cb560b108cbbab2a0bb3d73f697355f3affe73aec1bb998df8f59d",
+      "current_sha256": "c97f3bbe729af2541bf50199d1d8a4c85c06e9c97cf1cc259fb0431c08a76900"
+    },
+    "scripts/smoke_allocated_amc_workload.py": {
+      "previous_sha256": "bd85cb0a61da26232a42fcf64d900a5a8cecc992be584725b7f63a6cea11ae56",
+      "current_sha256": "df8485d32e366ec7e6c9de205db871f46f2dce9cb494af899096f9f1e8401832"
+    },
+    "src/mfdataindia/enrichment/amc_source_revision.py": {
+      "previous_sha256": "a91476ed5df05eb7eb706070b3e7a69c8898030d1ed661c995a91d261765bac3",
+      "current_sha256": "d61715f490c17629f75b7a42e34cff8fd212ef4f6b07118142cee9add0065fa3"
+    },
+    "src/mfdataindia/enrichment/book_runtime.py": {
+      "previous_sha256": "e46e9bab8316c87b54e2a8267a17fa589fb32a2a1c1dd45fabbef065f20cd548",
+      "current_sha256": "5bafdac20ffa6251460f8f10cef261945c4f7ac4538a1abe907e934db85f7925"
+    },
+    "src/mfdataindia/enrichment/book_sources.py": {
+      "previous_sha256": "5f3bbf8cc0f607f65cb4e837614412bc78f35eaae89234d34b188a220ddc6983",
+      "current_sha256": "c18abb9c4cc7a02b430b2ad0595f399ea971599733048dab70a1b17ef0c3fb74"
+    },
+    "src/mfdataindia/enrichment/book_store.py": {
+      "previous_sha256": "88592de099ef4fb1e8de6d3abac150944b80cee40d1894219375b01e803ab41f",
+      "current_sha256": "796bcac64576ca3f1612259c00b454d499d60604485f7222481c8cab9c181fb2"
+    },
+    "src/mfdataindia/enrichment/kotak_current_workload.py": {
+      "previous_sha256": "86eb93f4cfc1d3ffda34a96b64ea8c5296f2e3b3c5c795e0f2e28ac7f91e69dc",
+      "current_sha256": "b82790ceb08c7bf279e36b0ada52d22e9eee64a468f51fa7ce914982eff32129"
+    },
+    "src/mfdataindia/enrichment/kotak_method_upgrade.py": {
+      "previous_sha256": "47f5650c1af7d0b2b503ae64d52233cc0b2a14e7f17b49d6397eff802bc10af2",
+      "current_sha256": "b81116b2b5309bb97fa2814b4fb489423743aa164761669f95ae64ad4b4354c9"
+    },
+    "src/mfdataindia/enrichment/kotak_runtime.py": {
+      "previous_sha256": "13cef3db3dd8c5d42a1e58fd2b2131cd3c5536d9d7e90e4cbc016984b1a218bd",
+      "current_sha256": "6a1598218ba67a03a44b5c23277ae8a683049357619e761b93b55ec01074c0cb"
+    },
+    "src/mfdataindia/enrichment/monthly_store.py": {
+      "previous_sha256": "df455a1eedfb2a31a4d66ce579c593b5f0e9f195602a846c7b4f7ee4b21f3f36",
+      "current_sha256": "0515eb7aeb8167c4a9bf181ecdd57711c12e80c543cac3edd37e611c8f7a1980"
+    },
+    "src/mfdataindia/enrichment/refresh_runtime.py": {
+      "previous_sha256": "bd1d0ae2bf08dac367aa1a833334c6019067a0b8d9c7b5e43e88d3a7ec996e32",
+      "current_sha256": "4abe471fb635db2ca1a2029ade08b1f5ed6cad1bd79086540621e5334ff806e8"
+    },
+    "src/mfdataindia/enrichment/sbi_runtime.py": {
+      "previous_sha256": "032a2c3972dd83722531edf058140491e1036dd401558af8eab4baa2e51c1c13",
+      "current_sha256": "5738349ff41727ea76b27e4be2706089d4cd5b80d3a09de7c35e55ac74418c54"
+    },
+    "src/mfdataindia/enrichment/uti_runtime.py": {
+      "previous_sha256": "63d9c3d7ed9284766851701b6384ff6e0a0d2c82d02684fd2e8a6937ebf54b67",
+      "current_sha256": "c30bef0a23a394c8e31802a0b0151b1f1a7b46b685a64752fdc36dc325ee81a2"
+    },
+    "src/mfdataindia/review/dev_reader_source_reference.py": {
+      "previous_sha256": "814a0fb1ffbb422a115e53b1cf72b824edd3d03c6ec3b84b7a655e591f0edfe5",
+      "current_sha256": "4a5b6cf20ff6c3398a41b7465e7eb8ac804b9ae2f219f484e9d82b230d1dd792"
+    },
+    "tests/amc_loading_history.py": {
+      "previous_sha256": "1fa3102ff47b9d82a6c11bf9b8823d44fd5e7b934c8453fd8d3e6ce700a0f2ff",
+      "current_sha256": "c839f2692d867e6fe2db55e4d5df1e0fa1a99e015e5e096f9b51dd49babf5b8c"
+    },
+    "tests/test_allocated_amc_workload.py": {
+      "previous_sha256": "30131f12265230a64a2c93458d926d487e67e34ac3f4be1f583ad87103aa7edd",
+      "current_sha256": "2a402c3677eb6ffbfc1358ce918a3fa28b1c6b59bde850ca71321ed651c2ebcb"
+    },
+    "tests/test_dependency_security_20261024.py": {
+      "previous_sha256": "a2565c97eabf52cebdea9e979cbdfdffbe1496a219fcf189612452c470e835bd",
+      "current_sha256": "2ebc58f31c9817b2cab2845b7dabe812ab192eec249f6e9998afe0c04946dc85"
+    },
+    "tests/test_kotak_current_workload.py": {
+      "previous_sha256": "c5b6fb08a99a4369670b9b64b89dbb9bcc3db3a5c24a4479252d9980bfd038f7",
+      "current_sha256": "f2ac4c29321f6e465646d17dc2cbccf12f14e6f0d7db524613003ab1b2ea655b"
+    },
+    "tests/test_kotak_method_postgres.py": {
+      "previous_sha256": "5e68acaa7d69179b7c5550927114df28d1a47999ebc1b38fb496ec8c9c4428a3",
+      "current_sha256": "e83e553ba6239579d3a6321b82175e5e6f48d3042defa4f7c84e867cac38d02a"
+    },
+    "tests/test_pdf_security_compatibility.py": {
+      "previous_sha256": "4c5fbbc9c47c0c246661a552e0b82b46b0eaff9a7dde254a05a58743a8328e78",
+      "current_sha256": "dcaf8e989309e6474bcac660bcd3707785669a6163f961eb93674b168498e72f"
+    }
+  }
+}

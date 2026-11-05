@@ -145,3 +145,15 @@ DEV scheduled publication and a repeat poll with zero duplicate business
 artifacts. Do not manufacture a new reporting period or bump a derivation merely
 to create a scheduled-publication witness. The UTI source-publication wait and
 all original source/data preservation obligations remain explicit.
+
+The first full local pass retained 5,852 passing non-native cases and exposed
+three stale current-version assertions (v7 was still treated as unknown or the
+known set stopped at v6). Their correction explicitly adds the current v7
+profile, tests context isolation for it, and keeps v8/incorrect types rejected.
+All historical PDF bytes, old policy hashes and dormant default-v5 assertions
+remain exact. The focused compatibility set passes 103 cases; the corrected complete local pass has all 26 checks successful: 5,855 non-native
+cases, 582 PostgreSQL cases deselected, 38 subtests, all 21 contracts, lint,
+credential scan and dependency audit. The private unpublished package is not
+audited by PyPI audit. Collection retains every prior case and marker in order:
+6,437 unique cases, 13 focused, 6,424 complement, 582 PostgreSQL; 47 additions
+(44 unit, three native), zero removed. Hosted native/image acceptance remains pending.

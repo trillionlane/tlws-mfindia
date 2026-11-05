@@ -39,7 +39,7 @@ def test_native_original_publisher_reproduces_conflict_current_explicit_replay_p
     name = 'src/mfdataindia/enrichment/monthly_store.py'
     baseline = module_from_spec(spec_from_loader('amc_original_monthly_store', loader=None))
     baseline.__file__ = str(ROOT/name)
-    source = subprocess.check_output(['git','show','6d31b1b82c78f56fa3c36083404e61b7cb8cd38e:'+name],cwd=ROOT)
+    source = subprocess.check_output(['git','show','f726d92b26bc4f84a5eee666df20a0a7f4670d24:'+name],cwd=ROOT)
     exec(compile(source,name,'exec'),baseline.__dict__)
     with pytest.raises(Conflict), psycopg.connect(dsn, row_factory=dict_row) as conn:
         baseline.publish(conn, selection, raw)

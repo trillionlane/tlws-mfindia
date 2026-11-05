@@ -61,7 +61,7 @@
   },
   "live_execution_approval": false,
   "files": {
-    "src/mfdataindia/enrichment/amc_gate_source_revision.py": "b853f2515ef8536feff11d65827f35f14d9e8d60096ec53dbcc776df61966b48",
+    "src/mfdataindia/enrichment/amc_gate_source_revision.py": "2202ec912406881c35434eb8b9d97f38d4004ec613951f150bf929051f8f8aeb",
     "src/mfdataindia/enrichment/amc_source_revision.py": "d61715f490c17629f75b7a42e34cff8fd212ef4f6b07118142cee9add0065fa3",
     "src/mfdataindia/enrichment/amc_loading_coverage.py": "36ce0dc23806da34d1602bdf593469e92bcd7e45e8d115549805cd955615bd3f",
     "src/mfdataindia/enrichment/hdfc_discovery.py": "4e4099515a162aa38fd99e61dd81304e0835e6e4aea5c8e0a1bc3d97e10ce3dd",
@@ -85,7 +85,7 @@
     "src/mfdataindia/enrichment/sbi_runtime.py": "5738349ff41727ea76b27e4be2706089d4cd5b80d3a09de7c35e55ac74418c54",
     "src/mfdataindia/enrichment/kotak_runtime.py": "6a1598218ba67a03a44b5c23277ae8a683049357619e761b93b55ec01074c0cb",
     "src/mfdataindia/enrichment/uti_runtime.py": "c30bef0a23a394c8e31802a0b0151b1f1a7b46b685a64752fdc36dc325ee81a2",
-    "config/official-amc-gate-source-predecessors-v1.json": "0db68510256c7e1b95454b8248375672d243ccb520410fc6bce298558f7d7936",
+    "config/official-amc-gate-source-predecessors-v1.json": "69994d7a77ba1690acecd1c044783ccc3cb1cf363d8902cc6a095a00ddbb7a58",
     "config/official-amc-source-extension-v1.json": "c97f3bbe729af2541bf50199d1d8a4c85c06e9c97cf1cc259fb0431c08a76900",
     "config/official-book-sources-v7-discovery-gate.json": "efab2b1de4da0e73d63702216af183f899fff12b1c6606a9d771766df4b516db",
     "sql/operations/amc_ingestion_gate_v1.sql": "b755104f8d24074302e370353650b42e2361db48ef7e55a699ce4051dd4ef690",
