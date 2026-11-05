@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 
 from psycopg import sql
 
-from . import catalogue as registry, policy as p
+from . import catalogue as registry, policy as p, query_profile
 
 
 def _safe_value(value):
@@ -62,15 +62,15 @@ def _locked(conn, dataset):
     actual = conn.execute("SELECT to_regclass(%s)::oid::bigint AS oid",
         (sql.Identifier(entry["schema"], entry["relation"]).as_string(conn),)).fetchone()
     p.require(actual["oid"] == row["oid"], "DATASET_RELATION_CHANGED")
-    return entry
+    return entry, query_profile.source(entry, row.get('_projection_graph'))
 
 
 def rows(conn, dataset, *, limit=50, cursor=None):
     p.require(type(limit) is int and 1 <= limit <= p.MAX_PAGE, "INVALID_DATASET_LIMIT")
-    entry = _locked(conn, dataset)
+    entry, source = _locked(conn, dataset)
     after = p.decode_cursor(cursor, entry) if cursor is not None else None
     keys = entry["key_columns"]
-    relation = sql.Identifier(entry["schema"], entry["relation"])
+    relation = source.relation
     parameters = []
     if keys:
         columns = {c["name"]: c for c in entry["columns"]}
@@ -113,7 +113,7 @@ def rows(conn, dataset, *, limit=50, cursor=None):
         query = sql.SQL('SELECT document FROM (SELECT {} AS document FROM {}) d ORDER BY document::text COLLATE "C" LIMIT %s OFFSET %s').format(projection(entry), relation)
         parameters.extend((limit + 1, offset))
         order = 'canonical_offset'
-    records = conn.execute(query, parameters).fetchall()
+    records = conn.execute(source.prefix + query, parameters).fetchall()
     if keys and entry['key_source']=='declared_view_key':
         # Check the extra look-ahead row too: a duplicate straddling the limit
         # must stop before emitting a cursor that would skip its second row.
@@ -155,7 +155,7 @@ def rows(conn, dataset, *, limit=50, cursor=None):
 def content(conn, dataset, column, *, row, offset=0, length=p.MAX_BINARY_CHUNK):
     p.require(type(offset) is int and 0 <= offset < 2**31 and type(length) is int
               and 1 <= length <= p.MAX_BINARY_CHUNK, 'INVALID_CONTENT_RANGE')
-    entry = _locked(conn, dataset)
+    entry, source = _locked(conn, dataset)
     columns = {c['name']: c for c in entry['columns']}
     p.require(column in columns and columns[column]['type'] == 'bytea', 'DATASET_NOT_FOUND')
     keys = entry['key_columns']
@@ -165,8 +165,8 @@ def content(conn, dataset, column, *, row, offset=0, length=p.MAX_BINARY_CHUNK):
         sql.Identifier(k), sql.Identifier('pg_catalog', columns[k]['type'])) for k in keys)
     name = sql.Identifier(column)
     query = sql.SQL('SELECT octet_length({}) AS bytes,encode(sha256({}),\'hex\') AS sha256,substring({} FROM %s FOR %s) AS chunk FROM {} WHERE {} LIMIT 2').format(
-        name, name, name, sql.Identifier(entry['schema'], entry['relation']), predicates)
-    records = conn.execute(query, [offset + 1, length, *values]).fetchall()
+        name, name, name, source.relation, predicates)
+    records = conn.execute(source.prefix + query, [offset + 1, length, *values]).fetchall()
     p.require(len(records)<=1, 'NONUNIQUE_DATASET_PAGINATION_KEY')
     result = records[0] if records else None
     p.require(result is not None and result['bytes'] is not None, 'DATASET_NOT_FOUND')

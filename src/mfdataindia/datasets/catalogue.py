@@ -253,11 +253,15 @@ def inventory(conn, dataset=None):
 def with_dependencies(conn, rows):
     if not rows:
         return rows
-    approved = projections.approved_oids(conn)
+    graph = projections.inspect(conn)
+    approved = graph.oids
     unsafe = {r['root'] for r in conn.execute(DEPENDENCIES_SQL,
         (approved,[r['oid'] for r in rows],approved,sorted(SUPPORTED_CREATORS),
          sorted(schema+'.'+relation for schema,relation in INTERNAL_CONTROL_RELATIONS | HELD_FOR_REVIEW.keys()))).fetchall()}
-    return [{**row, 'unsafe_dependencies': row['oid'] in unsafe} for row in rows]
+    # The graph is private, immutable and scoped to this same reader snapshot.
+    # Neither descriptor/fingerprint nor HTTP metadata includes these SQL seals.
+    return [{**row, 'unsafe_dependencies': row['oid'] in unsafe,
+             '_projection_graph': graph if row['oid'] in approved else None} for row in rows]
 
 
 def locate(conn, dataset):
