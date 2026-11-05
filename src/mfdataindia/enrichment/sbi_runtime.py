@@ -19,6 +19,7 @@ from mfdataindia.enrichment import (
     sbi_batch,
     sbi_book,
 )
+from mfdataindia.enrichment.source_publication import invoke, PreparationError
 from mfdataindia.review.policy import fingerprint
 
 
@@ -30,6 +31,7 @@ def run(
     transport=sbi_acquisition.fetch,
     extractor=amc_book_pdf.extract,
     archive=sbi_archive.retain,
+    publication=None,
 ):
     observed = now or datetime.now(timezone.utc)
     spec = book_sources.specification(sbi_book.KEY)
@@ -164,8 +166,7 @@ def run(
             conn.execute("SET LOCAL statement_timeout='30s'")
             conn.execute("SET LOCAL transaction_timeout='60s'")
             conn.execute("SET LOCAL lock_timeout='5s'")
-            return book_runtime.publish(
-                conn,
+            return invoke(publication, conn, book_runtime.publish,
                 sbi_book.KEY,
                 execution,
                 observed,
@@ -176,6 +177,8 @@ def run(
                 availability=availability,
             )
     except Exception as error:
+        if publication is not None:
+            raise PreparationError(phase) from None  # No failure-publication side effect.
         with psycopg.connect(dsn, row_factory=dict_row) as conn:
             previous = book_runtime.receipt(conn, sbi_book.KEY, execution)
             if previous:

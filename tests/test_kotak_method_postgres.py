@@ -32,7 +32,7 @@ SEPTEMBER = CURRENT.replace('October', 'September')
 NOW = datetime(2026, 11, 5, tzinfo=timezone.utc)
 
 
-def inputs(identities, *, method):
+def inputs(identities, *, method, include_extractions=False):
     periods = ((10, CURRENT, '2026-10-31'), (9, SEPTEMBER, '2026-09-30')) if method == 2 else ((9, SEPTEMBER, '2026-09-30'), (8, CURRENT.replace('October','August'), '2026-08-31'))
     catalogues = []
     for month, url, _ in periods:
@@ -51,7 +51,7 @@ def inputs(identities, *, method):
                  *[{'source_url': url, 'media_type': 'application/pdf', 'role': 'book',
                     'content': ('%PDF-controlled-native-' + url).encode()} for _, url, _ in periods]]
     bridges = amfi_summary_identity.rows(xml['content'], xml['source_url'], hashlib.sha256(index['content']).hexdigest())
-    batches = []
+    batches, extractions = [], {}
     for _, url, day in periods:
         if method == 2 and day == '2026-10-31':
             real = json.loads((ROOT/'tests/fixtures/kotak/october-2026-panels.json').read_text())['pages']
@@ -67,13 +67,14 @@ def inputs(identities, *, method):
                 'pages': [{'page': n+1, 'text': t, 'text_hash': hashlib.sha256(t.encode()).hexdigest()} for n,t in enumerate(texts)],
                 'document_pages': len(texts)}
         extraction = {**body, 'extraction_hash': fingerprint(body)}
+        extractions[hashlib.sha256(raw).hexdigest()] = extraction
         batch = kotak_batch.compile_batch(identities, {'source_url': url, 'extraction': extraction,
                    'source_acquisition': {'mode': 'live_catalogue', 'source_url': next(c['source_url'] for c in catalogues if url.rsplit('/',1)[1].encode() in c['content'])}},
                 bridges, originals, as_of=day, directory_hash=hashlib.sha256(directory['content']).hexdigest(),
                 expected_periods=[p[2] for p in periods], method=method)
         batches.append(batch)
     archives = [{'uri':'gs://tlws_mf_data_source/official-monthly-facts/kotak-expanded/' + hashlib.sha256(o['content']).hexdigest() + ('.pdf' if o['media_type']=='application/pdf' else '.xml'), 'sha256':hashlib.sha256(o['content']).hexdigest(), 'size':len(o['content']), 'generation':'1', 'md5':'SYNTHETIC-NOT-LIVE'} for o in originals if o['media_type'] in ('application/pdf','application/xml')]
-    return batches, originals, archives
+    return (batches, originals, archives, extractions) if include_extractions else (batches, originals, archives)
 
 
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)

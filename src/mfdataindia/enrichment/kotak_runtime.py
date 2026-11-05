@@ -24,6 +24,7 @@ from mfdataindia.enrichment import (
     sbi_acquisition,
     sbi_book,
 )
+from mfdataindia.enrichment.source_publication import invoke, PreparationError
 from mfdataindia.review.policy import fingerprint
 
 
@@ -79,7 +80,7 @@ def catalogue_input(request, observed, transport):
 
 
 def run(
-    dsn, execution, *, now=None, transport=kotak_acquisition.fetch, extractor=decode, archive=retain, method=1
+    dsn, execution, *, now=None, transport=kotak_acquisition.fetch, extractor=decode, archive=retain, method=1, publication=None
 ):
     parser = kotak_book
     if method == 2:
@@ -302,8 +303,7 @@ def run(
             conn.execute("SET LOCAL statement_timeout='30s'")
             conn.execute("SET LOCAL transaction_timeout='60s'")
             conn.execute("SET LOCAL lock_timeout='5s'")
-            return book_runtime.publish(
-                conn,
+            return invoke(publication, conn, book_runtime.publish,
                 kotak_book.KEY,
                 execution,
                 observed,
@@ -314,6 +314,8 @@ def run(
                 availability=availability,
             )
     except Exception as error:
+        if publication is not None:
+            raise PreparationError(phase) from None  # No failure-publication side effect.
         with psycopg.connect(dsn, row_factory=dict_row) as conn:
             previous = book_runtime.receipt(conn, kotak_book.KEY, execution)
             if previous:

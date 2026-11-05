@@ -201,7 +201,7 @@ def install(conn, root: Path):
         }
 
 
-def publish(conn, selection: schemas.Selection, content: bytes):
+def publish(conn, selection: schemas.Selection, content: bytes, *, equivalent_replay=None):
     with conn.transaction():
         if (
             conn.execute("SHOW transaction_isolation").fetchone()["transaction_isolation"]
@@ -312,6 +312,9 @@ def publish(conn, selection: schemas.Selection, content: bytes):
                 "SELECT document FROM mf_monthly_facts.snapshots WHERE snapshot_id=%s",
                 (snapshot["snapshot_id"],),
             ).fetchone()
+            if row is None and equivalent_replay is not None:
+                result.append(equivalent_replay(conn, snapshot))
+                continue
             if not row or row["document"] != snapshot:
                 raise review.Conflict(
                     "retained monthly snapshot differs; new policy/evidence required"

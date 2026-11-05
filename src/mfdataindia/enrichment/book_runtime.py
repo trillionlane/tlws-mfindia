@@ -21,6 +21,7 @@ from mfdataindia.enrichment import (
     refresh_acquisition,
     refresh_archive,
 )
+from mfdataindia.enrichment.source_publication import invoke, PreparationError
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.review.privileges import verify_runtime
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
@@ -153,6 +154,7 @@ def absl(
     identity_transport=fetch_identity,
     extractor=amc_book_pdf.extract,
     archive=refresh_archive._retain,
+    publication=None,
 ):
     key, observed = "absl-expanded", now or datetime.now(timezone.utc)
     spec = book_sources.specification(key)
@@ -199,8 +201,10 @@ def absl(
             conn.execute("SET LOCAL statement_timeout='30s'")
             conn.execute("SET LOCAL transaction_timeout='60s'")
             conn.execute("SET LOCAL lock_timeout='5s'")
-            return publish(conn, key, execution, observed, identities, batches, originals, archives)
+            return invoke(publication, conn, publish, key, execution, observed, identities, batches, originals, archives)
     except Exception as error:
+        if publication is not None:
+            raise PreparationError(phase) from None  # No failure-publication side effect.
         with psycopg.connect(dsn, row_factory=dict_row) as conn:
             previous = receipt(conn, key, execution)
             if previous:

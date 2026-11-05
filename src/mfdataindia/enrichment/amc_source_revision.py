@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 MANIFEST = 'config/official-amc-source-extension-v1.json'
-MANIFEST_SHA256 = '19dde6e087cb560b108cbbab2a0bb3d73f697355f3affe73aec1bb998df8f59d'
+MANIFEST_SHA256 = 'c97f3bbe729af2541bf50199d1d8a4c85c06e9c97cf1cc259fb0431c08a76900'
 
 
 def previous_bytes(path, data=None):
