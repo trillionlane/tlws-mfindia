@@ -305,3 +305,133 @@ def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, 
         client.headers['Authorization']='Bearer '+assertion(private,scope=['review:read'])
         for route in ('/api/enrichment/v9/funds/112090/facts','/api/enrichment/v3/funds/112090/facts'):
             assert client.get(route).status_code==200
+
+
+@pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
+def test_native_no_publisher_terminal_releases_only_proven_unsubmitted_claims(ro01_db, monkeypatch):
+    """Real control commits, writer rollback, terminal event and later publication.
+
+    Only clock expiry/acknowledgement loss is injected. No gate SQL, publisher,
+    policy, permissions or business receipts are replaced with catalogue doubles.
+    """
+    from mfdataindia.review.policy import fingerprint
+    install_current_gate(ro01_db, monkeypatch)
+    capabilities = generator_capabilities(ro01_db)
+    with book_sources.select_registry(7), connect(ro01_db) as conn:
+        identities = book_store.population(conn, SOURCE)
+        batches, originals, archives = inputs(identities, method=2)
+    documents = [{'role': f'part{n}', 'content': o['content']} for n, o in enumerate(originals)]
+    calls = []
+    instant = iter(range(20))
+    real_intent, real_claim = gate.publication_intent, gate.claim
+
+    class Clock:
+        expired = False
+
+        def __call__(self):
+            return 521 if self.expired else 0
+
+    class Adapter:
+        def __init__(self, execution, version):
+            self.execution, self.version = execution, version
+
+        def discover(self, deadline):
+            return discovery.Discovery(SOURCE, discovery.State.READY), runner.Candidate(
+                documents, self.version, fingerprint(identities))
+
+        def prepare(self, candidate, deadline):
+            def publish(conn):
+                calls.append(self.execution)
+                return book_runtime.publish(conn, SOURCE, self.execution, NOW,
+                    identities, batches, originals, archives, availability=[])
+            return runner.Prepared('2026-10-31', publish)
+
+    def store(clock, point=None):
+        class Store(ingestion_postgres.Store):
+            def claim(self, *args, **kwargs):
+                claimed = super().claim(*args, **kwargs)
+                if point == 'after_claim' and claimed.state == discovery.State.CLAIMED:
+                    clock.expired = True
+                return claimed
+        now = NOW + timedelta(days=30*next(instant))
+        return Store(lambda: connect(ro01_db, 'mfdata_verified_generator'), now=lambda: now)
+
+    for index, point in enumerate(('after_claim', 'after_intent')):
+        execution = PREFIX+'no-call-'+point.replace('_', '-')
+        clock, version = Clock(), ('a' if index == 0 else 'c')*64
+        adapter = Adapter(execution, version)
+        with connect(ro01_db) as conn:
+            before = conn.execute('SELECT document FROM mf_book_facts.batches ORDER BY batch_id').fetchall()
+            runs = conn.execute('SELECT document FROM mf_book_facts.runs ORDER BY run_id').fetchall()
+        def expire_after_intent(*args):
+            real_intent(*args)  # actual durable intent COMMIT acknowledged
+            clock.expired = True
+        with monkeypatch.context() as fault, book_sources.select_registry(7):
+            if point == 'after_intent':
+                fault.setattr(gate, 'publication_intent', expire_after_intent)
+            failed = runner.execute(SOURCE, execution, adapter, store(clock, point), clock=clock)
+        assert calls == [PREFIX+'no-call-after-claim-later'][:index]
+        assert failed['reason'] == 'DEADLINE_EXHAUSTED'
+        assert failed['state'] == discovery.State.PARSE_FAILED.value
+        assert failed['publication_effect'] == 'NOT_SUBMITTED'
+        assert failed['claim_terminal_outcome'] == 'PREPARATION_FAILED'
+        with connect(ro01_db, 'mfdata_verified_generator') as conn:
+            inspected = gate.inspect(conn, SOURCE, execution)
+            assert inspected['state'] == 'NOT_SUBMITTED'
+            events = conn.execute('SELECT kind FROM mf_ingestion_ops.events WHERE claim_id=%s',
+                                  (failed['claim_id'],)).fetchall()
+            assert {r['kind'] for r in events} == ({'PUBLICATION_INTENT', 'PREPARATION_FAILED'}
+                if point == 'after_intent' else {'PREPARATION_FAILED'})
+            candidate = discovery.work(SOURCE, '2026-10-31', discovery.manifest(documents),
+                                       version, fingerprint(identities))
+            assert gate.claim(conn, candidate, execution).state == discovery.State.HELD
+        with connect(ro01_db) as conn:
+            assert conn.execute('SELECT document FROM mf_book_facts.batches ORDER BY batch_id').fetchall() == before
+            assert conn.execute('SELECT document FROM mf_book_facts.runs ORDER BY run_id').fetchall() == runs
+        # A distinct later execution of the same source/work can really publish;
+        # neither deleting the old claim nor clearing its spent identity is used.
+        later = execution+'-later'
+        with book_sources.select_registry(7):
+            recovered = runner.execute(SOURCE, later, Adapter(later, version), store(Clock()))
+        assert recovered['state'] == 'PUBLISHED' and recovered['publication_effect'] == 'PUBLICATION_VERIFIED'
+        assert calls[-1] == later and len(calls) == index+1
+        with connect(ro01_db) as conn:
+            assert conn.execute('SELECT count(*) AS n FROM mf_book_facts.batches').fetchone()['n'] == 2
+            assert conn.execute("SELECT count(*) AS n FROM mf_ingestion_ops.events WHERE kind='PUBLISHED'").fetchone()['n'] == index+1
+        assert generator_capabilities(ro01_db) == capabilities
+
+    # A real committed claim whose acknowledgement is lost remains held. A
+    # missing return is not the owned, acknowledged claim required for release.
+    uncertain_work = discovery.work('uti-expanded', '2026-10-31',
+        discovery.manifest(documents), 'd'*64, fingerprint(identities))
+    uncertain_execution = PREFIX+'claim-ack-lost'
+    class UncertainAdapter:
+        def discover(self, deadline):
+            return discovery.Discovery('uti-expanded', discovery.State.READY), runner.Candidate(
+                documents, 'd'*64, fingerprint(identities))
+        def prepare(self, candidate, deadline):
+            return runner.Prepared('2026-10-31', lambda conn: pytest.fail('publisher must not enter'))
+    def lost_claim_ack(*args, **kwargs):
+        real_claim(*args, **kwargs)
+        raise psycopg.OperationalError('SYNTHETIC_SECRET_DO_NOT_REPORT')
+    with monkeypatch.context() as fault:
+        fault.setattr(gate, 'claim', lost_claim_ack)
+        uncertain = runner.execute('uti-expanded', uncertain_execution, UncertainAdapter(), store(Clock()))
+    assert uncertain['state'] == discovery.State.HELD.value
+    assert uncertain['disposition'] == 'INSPECT_ONLY_NO_REPLAY'
+    with connect(ro01_db, 'mfdata_verified_generator') as conn:
+        inspected = gate.inspect(conn, 'uti-expanded', uncertain_execution)
+        assert inspected['state'] == 'UNKNOWN' and inspected['events'] == []
+        assert gate.claim(conn, uncertain_work, uncertain_execution+'-later').state == discovery.State.HELD
+        with pytest.raises(ValueError, match='INGESTION_NO_CALL_OUTCOME_CONTRADICTS'):
+            gate.outcome(conn, inspected['claim'])
+            gate.preparation_failed(conn, inspected['claim'])
+        # The observed COMMIT classification also cannot be downgraded, even
+        # with an earlier unknown event and a new candidate derivation.
+        gate.outcome(conn, inspected['claim'], commit_observed=True)
+        with pytest.raises(ValueError, match='INGESTION_NO_CALL_OUTCOME_CONTRADICTS'):
+            gate.preparation_failed(conn, inspected['claim'])
+        assert gate.inspect(conn, 'uti-expanded', uncertain_execution)['state'] == 'COMMITTED_UNVERIFIED'
+        assert gate.claim(conn, {**uncertain_work}, uncertain_execution+'-new').state == discovery.State.HELD
+    assert 'SYNTHETIC_SECRET' not in json.dumps(uncertain)
+    assert len(calls) == 2 and generator_capabilities(ro01_db) == capabilities

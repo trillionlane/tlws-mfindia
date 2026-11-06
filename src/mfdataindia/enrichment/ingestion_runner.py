@@ -35,6 +35,9 @@ class Progress:
     stage: str = 'discovery'
     effect: str = 'NOT_SUBMITTED'
     claim: dict | None = None
+    publisher_entered: bool = False
+    intent_uncertain: bool = False
+    not_submitted_recorded: bool = False
 
 
 def execute(source, execution, adapter, store, *, clock=time.monotonic, maximum_seconds=520):
@@ -49,6 +52,7 @@ def execute(source, execution, adapter, store, *, clock=time.monotonic, maximum_
     progress = Progress()
     latest_found = latest_published = None
     discovery_hash = None
+    owned_claim = None
 
     def deadline():
         if clock()-started >= maximum_seconds:
@@ -133,6 +137,7 @@ def execute(source, execution, adapter, store, *, clock=time.monotonic, maximum_
             return observed
         if claimed.state != State.CLAIMED:
             raise ValueError('INGESTION_CLAIM_NOT_CONFIRMED')
+        owned_claim = claimed
         deadline()
         progress.stage = 'publication'
         store.publish(claimed, prepared.publish, progress, deadline)
@@ -146,6 +151,13 @@ def execute(source, execution, adapter, store, *, clock=time.monotonic, maximum_
     except Exception as error:
         from mfdataindia.enrichment.source_publication import PreparationError
         from psycopg import errors, OperationalError
+        terminal_persistence_failed = False
+        if (owned_claim is not None and progress.effect == 'NOT_SUBMITTED'
+                and not progress.publisher_entered and not progress.intent_uncertain):
+            try:
+                store.not_submitted(owned_claim, progress)
+            except Exception:
+                terminal_persistence_failed = not progress.not_submitted_recorded
         # This is the only error conversion. Persistence/cleanup cannot replace
         # the strongest effect already observed in Progress with a false no-op.
         reason = (error.reason if isinstance(error, PreparationError) else
@@ -160,6 +172,7 @@ def execute(source, execution, adapter, store, *, clock=time.monotonic, maximum_
         state = (State.PUBLISHED if progress.effect == 'PUBLICATION_VERIFIED' else
                  State.UNKNOWN if progress.effect in ('UNKNOWN', 'COMMITTED_UNVERIFIED') else
                  State.PUBLICATION_FAILED if progress.effect == 'ROLLBACK_CONFIRMED' else
+                 State.PARSE_FAILED if progress.not_submitted_recorded else
                  State.HELD if isinstance(error,OperationalError) else
                  State.FETCH_FAILED if isinstance(error, PreparationError) and error.stage in ('acquisition','archive') else
                  State.FETCH_FAILED if progress.stage == 'discovery' else
@@ -167,6 +180,10 @@ def execute(source, execution, adapter, store, *, clock=time.monotonic, maximum_
         if progress.effect == 'PUBLICATION_VERIFIED':
             latest_published = max(filter(None, (latest_published, latest_found)))
         observed = result(state, reason)
+        if progress.not_submitted_recorded:
+            observed['claim_terminal_outcome'] = 'PREPARATION_FAILED'
+        if terminal_persistence_failed:
+            observed['diagnostic_persistence'] = 'UNCONFIRMED'
         try:
             store.poll(observed)
         except Exception:
