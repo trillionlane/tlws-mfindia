@@ -109,17 +109,16 @@ def claim(conn, candidate, execution, *, source_inputs=()):
                 kinds = {r['kind'] for r in events}
                 if 'PUBLISHED' in kinds:
                     result = Claim(State.UNCHANGED, previous['document'], candidate)
-                elif not kinds or kinds != {'ROLLBACK_CONFIRMED'}:
-                    # PUBLICATION_INTENT + confirmed rollback is also resolved.
-                    if 'ROLLBACK_CONFIRMED' not in kinds or kinds & {'OUTCOME_UNKNOWN', 'COMMITTED_UNVERIFIED'}:
-                        result = Claim(State.HELD, previous['document'], candidate)
+                elif (not kinds & {'ROLLBACK_CONFIRMED', 'PREPARATION_FAILED'}
+                      or kinds & {'OUTCOME_UNKNOWN', 'COMMITTED_UNVERIFIED'}):
+                    result = Claim(State.HELD, previous['document'], candidate)
             if result is None:
                 blocked = conn.execute('''SELECT c.document FROM mf_ingestion_ops.claims c
                     WHERE c.source_key=%s
                     AND NOT EXISTS(SELECT 1 FROM mf_ingestion_ops.events e
                                    WHERE e.claim_id=c.claim_id AND e.kind='PUBLISHED')
                     AND (NOT EXISTS(SELECT 1 FROM mf_ingestion_ops.events e
-                                    WHERE e.claim_id=c.claim_id AND e.kind='ROLLBACK_CONFIRMED')
+                                    WHERE e.claim_id=c.claim_id AND e.kind IN('ROLLBACK_CONFIRMED','PREPARATION_FAILED'))
                          OR EXISTS(SELECT 1 FROM mf_ingestion_ops.events e
                                    WHERE e.claim_id=c.claim_id
                                    AND e.kind IN('OUTCOME_UNKNOWN','COMMITTED_UNVERIFIED')))
@@ -162,6 +161,31 @@ def publication_intent(control, claim_document, writer):
         _bounds(control)
         return _event(control, claim_document, 'PUBLICATION_INTENT', 'PUBLICATION_STARTED',
                       backend_pid=identity['pid'], backend_start=identity['backend_start'].isoformat())
+
+
+def preparation_failed(control, claim_document):
+    """Caller proves no publisher entry; absence/elapsed time is never proof.
+
+    Reuse the existing sealed terminal event. No schema/privilege change, claim
+    deletion or execution-identity reuse. Ambiguous/committed history wins.
+    """
+    _identity(claim_document['source_key'], claim_document['execution_id'])
+    _idle(control)
+    with control.transaction():
+        _bounds(control)
+        control.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',
+                        ('amc-ingestion-source-v1:'+claim_document['source_key'],))
+        stored = control.execute('SELECT document FROM mf_ingestion_ops.claims WHERE claim_id=%s',
+                                 (claim_document['claim_id'],)).fetchone()
+        if stored is None or stored['document'] != claim_document:
+            raise ValueError('INGESTION_NO_CALL_CLAIM_DIFFERS')
+        kinds = {r['kind'] for r in control.execute(
+            'SELECT kind FROM mf_ingestion_ops.events WHERE claim_id=%s',
+            (claim_document['claim_id'],)).fetchall()}
+        if kinds & {'PUBLISHED', 'OUTCOME_UNKNOWN', 'COMMITTED_UNVERIFIED', 'ROLLBACK_CONFIRMED'}:
+            raise ValueError('INGESTION_NO_CALL_OUTCOME_CONTRADICTS')
+        return _event(control, claim_document, 'PREPARATION_FAILED',
+                      'PREPARATION_FAILED_BEFORE_PUBLICATION')
 
 
 def complete(writer, claim_document, receipt, *, equivalent_derivations=()):
@@ -255,7 +279,8 @@ def inspect(conn, source, execution):
     effect = ('PUBLICATION_VERIFIED' if 'PUBLISHED' in kinds else
               'COMMITTED_UNVERIFIED' if 'COMMITTED_UNVERIFIED' in kinds else
               'UNKNOWN' if 'OUTCOME_UNKNOWN' in kinds else
-              'ROLLBACK_CONFIRMED' if 'ROLLBACK_CONFIRMED' in kinds else 'UNKNOWN')
+              'ROLLBACK_CONFIRMED' if 'ROLLBACK_CONFIRMED' in kinds else
+              'NOT_SUBMITTED' if 'PREPARATION_FAILED' in kinds else 'UNKNOWN')
     return {'state': effect, 'source_key': source, 'execution_id': execution,
             'claim': row['document'], 'events': [r['document'] for r in events],
             'disposition': 'INSPECT_ONLY_NO_REPLAY'}

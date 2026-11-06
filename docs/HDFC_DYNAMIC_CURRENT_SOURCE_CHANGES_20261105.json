@@ -1,6 +1,6 @@
 {
   "format": "hdfc-dynamic-current-changes-v1",
-  "base": "d43070da60e9cd44ed311ee07bb04e9c01cdb90c",
+  "base": "87516349d20c9efbbdb973d4b0e298765c54b0b8",
   "scope": "Finite whole-file predecessor proof for reviewed current changes only; earlier evidence documents unchanged. No ignored regions. Runtime current hashes remain actual.",
   "modified": {
     "scripts/run_ci_tests.py": {
@@ -28,8 +28,8 @@
       "current_sha256": "9f6f9d3758ca73f3a9c467979f459f1038253824910dc634f365badf928b9cf5"
     },
     "src/mfdataindia/enrichment/ingestion_workload.py": {
-      "previous_sha256": "f28f15a5a4105a4a9dc3c8039bac8a64758f81c870e574afba281c3a31af3531",
-      "current_sha256": "40e2801db26a03b9b4e7ca53345deda54856a0d77dab8bd79a3d61b2a1bd4529"
+      "previous_sha256": "edfb820d286019ad7b92619faf3be0acda8de5d7666b5d5a5941dc180645e0cd",
+      "current_sha256": "3df96fd17dd370a3639c97f3d8d6dd954c091b217ce497792af19ebabc25b1f9"
     },
     "src/mfdataindia/enrichment/multi_store.py": {
       "previous_sha256": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254",
@@ -41,7 +41,7 @@
     },
     "src/mfdataindia/review/dev_reader_source_reference.py": {
       "previous_sha256": "5e9e31b22fe8fb2c988800431f95b301205ad12afc8a239761ed565a853a52e9",
-      "current_sha256": "12af6af398040e963dc73f04fa83f72a47ac340c3dd3e7ce27a8c41007bc87e4"
+      "current_sha256": "0131de29b0f090f646936402caabe00c9ef66c77537f68b9a779dbc2c69299b9"
     },
     "tests/amc_gate_history.py": {
       "previous_sha256": "cabbb3dc22165181f3c4bc0e68080de7ba82962b1126714814d7d27391740a03",
@@ -60,8 +60,8 @@
       "current_sha256": "1e7dc2e2679c745587ca738b7a5b75af7440f4488f0726ad29e5a0cac4f589c3"
     },
     "tests/test_ingestion_gate_postgres.py": {
-      "previous_sha256": "c00ff169f9eb12fa578d23c818051886e54db175584d50f0b3c92ac702d1119f",
-      "current_sha256": "a4f6b55b79f39946273fe6b7081ddf73493fc8ec09b356e2bd385c2e4b826c8d"
+      "previous_sha256": "e57b71203bbb231e736952364d9e007b7a52023711937b66ed5de2060da79425",
+      "current_sha256": "b9abd89527391c0f78ec656da80fd8b5c6d9f797bae9b192c3654a27d6b96e00"
     },
     "tests/test_kotak_current_workload.py": {
       "previous_sha256": "f2ac4c29321f6e465646d17dc2cbccf12f14e6f0d7db524613003ab1b2ea655b",

@@ -65,6 +65,17 @@ class Store:
                 observed=self.now(),context={k:observation[k] for k in ('stage','publication_effect','claim_id','claim_execution_id')},
                 discovery_hash=observation.get('discovery_observation_hash'))
 
+    def not_submitted(self, claimed, progress):
+        """Persist an owned no-call proof, never resolve uncertain submission."""
+        if (claimed.state != gate.State.CLAIMED or progress.claim != claimed.document
+                or progress.publisher_entered or progress.intent_uncertain
+                or progress.effect != 'NOT_SUBMITTED'):
+            raise ValueError('INGESTION_NO_CALL_PROOF_REQUIRED')
+        with self.connect() as control:
+            gate.preparation_failed(control, claimed.document)
+            # This acknowledgement survives a later connection cleanup error.
+            progress.not_submitted_recorded = True
+
     def publish(self, claimed, publisher, progress, deadline):
         executing_error = False
         with self.connect() as control:
@@ -75,10 +86,15 @@ class Store:
                             'hdfc-flexi-cap':(120,180)}.get(claimed.work['source_key'],(30,60))
                         writer.execute("SELECT set_config('statement_timeout',%s,true),set_config('transaction_timeout',%s,true),set_config('lock_timeout','5s',true)",
                                        (f'{statement}s',f'{transaction}s'))
+                        progress.intent_uncertain = True
+                        progress.effect = 'UNKNOWN'
                         gate.publication_intent(control, claimed.document, writer)
+                        progress.intent_uncertain = False
+                        progress.effect = 'NOT_SUBMITTED'
                         deadline()
                         # Before the publisher can have a business effect.
                         progress.effect = 'UNKNOWN'
+                        progress.publisher_entered = True
                         try:
                             receipt = publisher(writer)
                             gate.complete(writer, claimed.document, receipt,
@@ -97,12 +113,13 @@ class Store:
                     if (executing_error and writer.info.status == ConnStatus.OK
                             and writer.info.transaction_status == TransactionStatus.IDLE):
                         progress.effect = 'ROLLBACK_CONFIRMED'
-                    try:
-                        gate.outcome(control, claimed.document,
-                                     confirmed_rollback=progress.effect == 'ROLLBACK_CONFIRMED',
-                                     commit_observed=progress.effect == 'COMMITTED_UNVERIFIED')
-                    except Exception:
-                        pass
+                    if progress.publisher_entered or progress.intent_uncertain:
+                        try:
+                            gate.outcome(control, claimed.document,
+                                         confirmed_rollback=progress.effect == 'ROLLBACK_CONFIRMED',
+                                         commit_observed=progress.effect == 'COMMITTED_UNVERIFIED')
+                        except Exception:
+                            pass
                     raise
 
     def inspect(self, source, execution):

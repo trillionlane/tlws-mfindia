@@ -231,3 +231,44 @@ or source policy outside the accepted BER correction changes. PreviouscebcCI
 is retained supporting evidence; the integrated head requires its own full CI.
 No MAIN certification, source installation, live data or scheduler success is
 claimed from this isolated branch integration.
+
+### Review correction: owned claim, publisher never entered (6 November)
+
+The reviewed runner could commit a claim and expire before calling the publisher.
+That left a permanent source hold; expiry just after intent instead recorded an
+unknown business effect. The runner now carries independent publisher-entry and
+intent-acknowledgement flags. Only its own acknowledged `CLAIMED` result, with no
+publisher entry or uncertain intent, permits recording the existing sealed
+`PREPARATION_FAILED` / `PREPARATION_FAILED_BEFORE_PUBLICATION` terminal event.
+The result retains `DEADLINE_EXHAUSTED`, `NOT_SUBMITTED`, the original claim identity,
+and an acknowledged `claim_terminal_outcome`. It uses the existing validation-failure
+poll state; no control SQL/schema, timeout, source policy or grant changes.
+
+| Boundary | Durable outcome / later execution |
+| --- | --- |
+| Deadline immediately after claim COMMIT acknowledgement | PREPARATION_FAILED; distinct execution may claim |
+| Deadline after intent COMMIT acknowledgement, before publisher entry | Same terminal outcome, intent retained; distinct execution may claim |
+| Terminal persistence fails or its acknowledgement is lost | No terminal-release claim by this invocation; inspect durable history before proceeding |
+| Claim/intent COMMIT acknowledgement uncertain | Existing source hold; no automatic release |
+| Publisher entered, writer COMMIT uncertain or committed-unverified | Existing unknown/commit hold dominates; never converted to no-call proof |
+| Acknowledged terminal followed by poll/connection cleanup failure | Terminal knowledge retained; diagnostic failure cannot erase it |
+
+A spent execution identity remains held even after its no-call terminal; new work
+uses a distinct execution. Inspect performs SELECT only and never synthesizes proof
+from missing rows, elapsed time or an idle backend. The source-local advisory lock
+serializes terminal recording with claim decisions. Existing unknown/committed
+records reject terminal recording and still block different candidate keys.
+
+`test_ingestion_not_submitted.py` exercises actual runner/Store boundaries with
+synthetic control transports, including ambiguity and persistence/cleanup failures.
+The new case in `test_ingestion_gate_postgres.py` uses the supported coherent v7
+fixture, real claim/intent/terminal SQL, the actual book publisher, original-identity
+re-entry rejection, later successful publication, unchanged capabilities, no duplicate
+business batches, and real uncertain/committed holds. Native evidence requires
+hosted disposable PostgreSQL; local doubles/collection are not native proof.
+
+Current allocation/source-binding changes cover only these deliberate Python
+semantics. Historical SQL, predecessor bytes, source methods, reader entitlement,
+financial calculations and resource limits remain independently preserved by the
+existing exact-inverse and full source-binding checks. No live operation is part of
+this correction.
