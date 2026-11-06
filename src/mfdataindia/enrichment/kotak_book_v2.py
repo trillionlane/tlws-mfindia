@@ -24,7 +24,7 @@ def policy():
             'previous_policy_hash': fingerprint(prior.policy()),
             'layout': 'explicit Fund Details / Fund Performance panels; v1 retained for earlier books',
             'aum': 'dated Monthly AUM / Rs. in Cr.; never AAUM, NAV or performance',
-            'expenses': 'dated Regular Base Expense Ratio; conflicting same-month change-table value withheld',
+            'expenses': 'dated Regular Base Expense Ratio; relevant change-table columns and Regular row must be unambiguous and agree',
             'identity': prior.policy()['identity'],
             'unrecognized_or_ambiguous_fields': 'unavailable; never guessed or filled from another fund'}
 
@@ -79,6 +79,48 @@ def detail_pages(extraction):
     return result
 
 
+def _expense_table_issue(changes, as_of, raw):
+    """An unreadable relevant table is not evidence that the panel agrees."""
+    ambiguous = 'same_period_expense_table_ambiguous'
+    lines = changes['text'].splitlines()
+    anchors = [(i, line.index('Expense Ratio*')) for i, line in enumerate(lines)
+               if 'Expense Ratio*' in line]
+    if len(anchors) != 1:
+        return ambiguous
+    start, column = anchors[0]
+    table = '\n'.join(line[column:].strip() for line in lines[start + 1:])
+    if table.count('Change in Risk-o-meter') != 1:
+        return ambiguous
+    table = table.split('Change in Risk-o-meter', 1)[0]
+    rows = [line.strip() for line in table.splitlines() if line.strip()]
+    header = re.compile(r'Change In\s+([A-Za-z]+) (20[0-9]{2})\s+([A-Za-z]+) (20[0-9]{2})')
+    headers = [header.fullmatch(line) for line in rows if header.fullmatch(line)]
+    if len(headers) != 1 or not rows or header.fullmatch(rows[0]) is None:
+        return ambiguous
+    first_month, first_year, second_month, second_year = headers[0].groups()
+    periods = [_date(first_month, 1, first_year), _date(second_month, 1, second_year)]
+    if None in periods or periods[0] == periods[1]:
+        return ambiguous
+    periods = [day[:7] for day in periods]
+    if as_of[:7] not in periods:
+        return None  # A clearly dated other-period table does not contradict it.
+    cell = r'(?:[0-9]+\.[0-9]+%|NA)'
+    parsed = [re.fullmatch(r'(Regular|Direct)\s+(' + cell + r')\s+(' + cell + r')', line)
+              for line in rows[1:]]
+    if (not parsed or any(row is None for row in parsed)
+            or len({row[1] for row in parsed}) != len(parsed)):
+        return ambiguous
+    regular = [row for row in parsed if row[1] == 'Regular']
+    if len(regular) != 1:
+        return ambiguous
+    value = regular[0][2 + periods.index(as_of[:7])]
+    if value == 'NA' or Decimal(value[:-1]) > Decimal('10'):
+        return ambiguous
+    if Decimal(value[:-1]) != Decimal(raw):
+        return 'same_period_expense_values_conflict'
+    return None
+
+
 def fields(detail, as_of):
     if detail.get('layout') != 'fund-details-v2':
         return prior.fields(detail, as_of)
@@ -121,20 +163,9 @@ def fields(detail, as_of):
                    'percent', raw, 'Regular Plan / dated Base Expense Ratio / ' + as_of)
             changes = detail.get('changes_page')
             if changes:
-                change = changes['text']
-                anchors = [line.index('Expense Ratio*') for line in change.splitlines() if 'Expense Ratio*' in line]
-                if len(anchors) == 1:
-                    change = '\n'.join(line[anchors[0]:].strip() for line in change.splitlines())
-                    change = change.split('Change in Risk-o-meter', 1)[0]
-                else:
-                    change = ''
-                headers = re.findall(r'(?m)^.*Change In\s+([A-Za-z]+) (20[0-9]{2})\s+([A-Za-z]+) (20[0-9]{2})\s*$', change)
-                rows = re.findall(r'(?m)^\s*Regular\s+([0-9]+\.[0-9]+)%\s+([0-9]+\.[0-9]+)%\s*$', change)
-                if len(headers) == 1 and len(rows) == 1:
-                    _, _, month, year = headers[0]
-                    current = f'{year}-{MONTHS.get(month.casefold(), 0):02d}'
-                    if current == as_of[:7] and Decimal(rows[0][1]) != Decimal(raw):
-                        values['base_expense_ratio'] = prior.missing(as_of, 'same_period_expense_values_conflict')
+                issue = _expense_table_issue(changes, as_of, raw)
+                if issue:
+                    values['base_expense_ratio'] = prior.missing(as_of, issue)
     managers = re.findall(r'(?ms)^Name of Fund Managers?:\s*\n(.{1,1800}?)(?=^Minimum Investment\s*$)', left)
     if len(managers) == 1:
         # Every manager is in this complete panel, interleaved with experience

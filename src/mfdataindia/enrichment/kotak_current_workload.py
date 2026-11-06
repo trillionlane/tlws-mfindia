@@ -11,7 +11,7 @@ from mfdataindia.enrichment import allocated_amc_workload as prior, book_sources
 from mfdataindia.review.policy import fingerprint
 
 FILE = 'config/official-kotak-layout-dev-workload-v2.json'
-SHA256 = '26ef310df35539d0d27ec315ae261557a136eb83647be807ab2db4a7cdb4ea97'
+SHA256 = 'bea38196fdf266ea1e3fc84d750e77192f4861bdb750bf21671952bc0c9d5a58'
 
 
 def allocation(root):
