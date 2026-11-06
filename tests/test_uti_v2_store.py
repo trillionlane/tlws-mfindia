@@ -31,7 +31,7 @@ from test_verified_review_store import ROLES, source_state, verified_db as verif
 
 
 def prepare_v4(dsn, monkeypatch, *, canonical=False, aum_rows=False):
-    registries = book_sources.REGISTRIES
+    registries = {v: book_sources.REGISTRIES[v] for v in (1, 2, 3, 4, 5)}
     old.accepted_kotak(dsn, monkeypatch)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")

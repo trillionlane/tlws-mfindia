@@ -37,11 +37,11 @@ def retain(session, raw, *, media_type):
     )
 
 
-def candidates(directory, identities, extracts):
+def candidates(directory, identities, extracts, *, parser=kotak_book):
     headings = {
         name
         for extraction in extracts
-        for detail in kotak_book.detail_pages(extraction)
+        for detail in parser.detail_pages(extraction)
         for name in detail["names"]
     }
     names = {
@@ -79,8 +79,14 @@ def catalogue_input(request, observed, transport):
 
 
 def run(
-    dsn, execution, *, now=None, transport=kotak_acquisition.fetch, extractor=decode, archive=retain
+    dsn, execution, *, now=None, transport=kotak_acquisition.fetch, extractor=decode, archive=retain, method=1
 ):
+    parser = kotak_book
+    if method == 2:
+        from mfdataindia.enrichment import kotak_book_v2
+        parser = kotak_book_v2
+    elif type(method) is not int or method != 1:
+        raise ValueError("reviewed Kotak parser method required")
     observed = now or datetime.now(timezone.utc)
     spec = book_sources.specification(kotak_book.KEY)
     started = time.monotonic()
@@ -204,7 +210,8 @@ def run(
         original = transport(kotak_book.DIRECTORY)
         directory_hash = kept(original)
         directory = sbi_book.directory(original["content"])
-        requested = candidates(directory, identities, [m["extraction"] for m in monthly])
+        requested = candidates(directory, identities, [m["extraction"] for m in monthly],
+                               **({"parser": parser} if method == 2 else {}))
         phase = "identities"
 
         def family(row):
@@ -285,6 +292,7 @@ def run(
                 as_of=item["as_of"],
                 directory_hash=directory_hash,
                 expected_periods=[r["expected_period"] for r in expected],
+                **({"method": method} if method == 2 else {}),
             )
             for item in monthly
         ]

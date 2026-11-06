@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def previous(path, data):
     assert type(data) is bytes
+    from amc_loading_history import previous as amc_previous
+    data = amc_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:

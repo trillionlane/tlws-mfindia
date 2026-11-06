@@ -410,7 +410,7 @@ def test_trusted_registry_selection_is_context_local_and_preserves_all_historica
             raise RuntimeError('synthetic context exit')
     assert book_sources.registry()['version'] == 5
     assert original == {v: fingerprint(book_sources.configuration(v)) for v in book_sources.REGISTRIES}
-    for bad in (True, '4', 0, 6):
+    for bad in (True, '4', 0, 7):
         with pytest.raises(ValueError):
             with book_sources.select_registry(bad):
                 pytest.fail('invalid version selected')

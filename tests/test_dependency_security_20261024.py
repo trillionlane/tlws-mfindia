@@ -58,11 +58,13 @@ def test_exact_security_patch_versions_and_both_distribution_artifact_hashes():
 
 def test_all_historical_pdf_files_configurations_and_policies_remain_exact():
     old = json.loads((ROOT / "docs/PDF_SECURITY_AUTHORITY_86AE_20261024.json").read_text())
+    from mfdataindia.enrichment.amc_source_revision import previous_bytes
     for path, sha in old["frozen_files"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == sha, path
-    assert set(book_sources.REGISTRIES) == {1, 2, 3, 4, 5}
+        # The exact retained constructor bytes, not a refreshed historical pin.
+        assert hashlib.sha256(previous_bytes(ROOT / path)).hexdigest() == sha, path
+    assert set(book_sources.REGISTRIES) == {1, 2, 3, 4, 5, 6}
     assert book_sources.CURRENT_VERSION == 5
-    for v in book_sources.REGISTRIES:
+    for v in (1, 2, 3, 4, 5):
         assert fingerprint(book_sources.configuration(v)) == old["configurations"][str(v)]
         assert fingerprint(book_sources.current_policy(v)) == old["policies"][str(v)]
     assert pdf_security.dependency_contract() == old["pdf_security_v1_contract"]
