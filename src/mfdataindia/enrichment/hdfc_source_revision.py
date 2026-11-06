@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 FILE='config/official-hdfc-dynamic-predecessors-v1.json'
-SHA256='fe1acf1d3dc76214099923f45f58e10fc289777918c93b1ca45504b81ed563c6'
+SHA256='f4a55546b54b0e1e90b98369f321fb7d364c80b37c260ec39b6f1e8cad5597ba'
 
 
 def previous(path,data=None,root=None):

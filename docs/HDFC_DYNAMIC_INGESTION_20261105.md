@@ -175,3 +175,33 @@ or runtime normalization are introduced. Kotak's duplicate-Regular BER
 regression and September preservation expectations are retained. The HDFC
 implementation remains pending independent acceptance; this merge does not
 claim HDFC publication, live recovery, or new provider evidence.
+
+### Certified MAIN integration — 6 November 2026
+
+PR146 was normally squash-merged as
+`15848e16ca2612a70d46bfe9c60d078fe33c41a6`; its automatic MAIN Verify
+`42294564441/1` and the real trusted admission consumer passed. This includes
+the confirmed-not-submitted terminal outcome correction already carried by
+this branch: publication-deadline expiry before publisher entry does not strand
+a known committed claim. Uncertain submission or COMMIT still holds the source.
+
+The incoming MAIN tree is identical to the accepted PR146 head `8751634`,
+already an ancestor of PR147. All fourteen normal-merge conflicts were caused
+by squash ancestry; retaining PR147's existing versions produced exactly its
+previous complete tree before current-reference refresh. No parser, financial,
+installer, timeout or privilege behavior changed in those resolutions.
+
+Current HDFC predecessor references now use the durable merged MAIN commit
+rather than relying on retention of the prerequisite PR branch. The predecessor
+bytes are unchanged; the current reader-source descriptor, full literal inverse
+document and allocation hashes change only to bind that reference coherently.
+Historical authority documents and failed-run evidence remain unchanged.
+Updated-head full/native/image/audit evidence is required for this integration;
+previous-head green CI is supporting evidence only.
+
+HDFC issuer access is tracked independently. An ordinary public listing request
+from the operator environment returned HTTP 403 on 6 November. This neither
+invalidates fixture-backed source verification nor proves DEV Cloud Run egress
+can access that listing. Source/CI acceptance, issuer availability, and actual
+HDFC publication remain separate outcomes. This PR remains unmerged and does
+not authorize a dynamic HDFC runtime installation or a schedule increase.

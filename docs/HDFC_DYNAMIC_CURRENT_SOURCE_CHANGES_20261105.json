@@ -1,6 +1,6 @@
 {
   "format": "hdfc-dynamic-current-changes-v1",
-  "base": "87516349d20c9efbbdb973d4b0e298765c54b0b8",
+  "base": "15848e16ca2612a70d46bfe9c60d078fe33c41a6",
   "scope": "Finite whole-file predecessor proof for reviewed current changes only; earlier evidence documents unchanged. No ignored regions. Runtime current hashes remain actual.",
   "modified": {
     "scripts/run_ci_tests.py": {
@@ -29,7 +29,7 @@
     },
     "src/mfdataindia/enrichment/ingestion_workload.py": {
       "previous_sha256": "edfb820d286019ad7b92619faf3be0acda8de5d7666b5d5a5941dc180645e0cd",
-      "current_sha256": "3df96fd17dd370a3639c97f3d8d6dd954c091b217ce497792af19ebabc25b1f9"
+      "current_sha256": "acf9fe76092da2ddb3c36a1c3bc978fec302bc18f4eb1b5879a4c9017335ae77"
     },
     "src/mfdataindia/enrichment/multi_store.py": {
       "previous_sha256": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254",
@@ -41,7 +41,7 @@
     },
     "src/mfdataindia/review/dev_reader_source_reference.py": {
       "previous_sha256": "5e9e31b22fe8fb2c988800431f95b301205ad12afc8a239761ed565a853a52e9",
-      "current_sha256": "0131de29b0f090f646936402caabe00c9ef66c77537f68b9a779dbc2c69299b9"
+      "current_sha256": "fe8c1f7f4e2795a3ac46adfd0122603eaf61a6398d5502dcc8cc037a97a072ad"
     },
     "tests/amc_gate_history.py": {
       "previous_sha256": "cabbb3dc22165181f3c4bc0e68080de7ba82962b1126714814d7d27391740a03",

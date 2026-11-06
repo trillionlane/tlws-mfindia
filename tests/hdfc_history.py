@@ -6,7 +6,7 @@ import subprocess
 
 ROOT=Path(__file__).resolve().parents[1]
 FILE='docs/HDFC_DYNAMIC_CURRENT_SOURCE_CHANGES_20261105.json'
-SHA256='14dff6cb380591b31e9fd2e56508384b0c1aaed5febc5c952b5b525cc5887017'
+SHA256='a2e7b13d5252beb49eb97339976195f6640f30d06d4ad32c54bf14fcc1a7bb84'
 
 
 def previous(path,data):
