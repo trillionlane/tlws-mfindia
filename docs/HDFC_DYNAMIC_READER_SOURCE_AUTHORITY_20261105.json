@@ -15,13 +15,13 @@
       "runtime_authority": false
     },
     "shared_amc_discovery": {
-      "predecessor": "f726d92b26bc4f84a5eee666df20a0a7f4670d24",
+      "predecessor": "96802df804e5fc8596fc75caa35e3a6e8aa5fd11",
       "intent": "Explicit current v7 execution composition; all six earlier source configurations and historical SQL preserved exactly; no reader entitlement change",
       "runtime_authority": false
     },
     "hdfc_dynamic_method": {
-      "base": "cebc28594d8cedf380e19081ea1e9084367ca68b",
-      "intent": "Current source8 binds independently reviewed dynamic HDFC source2, same fixed reader entitlement; earlier authority documents immutable",
+      "base": "d43070da60e9cd44ed311ee07bb04e9c01cdb90c",
+      "intent": "Current source8 binds candidate dynamic HDFC source2 pending independent acceptance and the accepted corrected Kotak predecessor; same fixed reader entitlement; earlier authority documents immutable",
       "runtime_authority": false
     }
   },

@@ -126,3 +126,58 @@ states, old batches/receipts and denied mutations remain checked in full.
 No production code, SQL, policy, timeout, skip or privilege changed in this
 fixture-only correction. Its native result still requires the new exact-head
 hosted run; earlier green image/unit results do not certify that path.
+
+
+### PR145 BER acceptance correction (6 November)
+
+Independent review of f726d92 found that duplicating the retained Flexicap
+change table's Regular row bypassed the old `len(rows) == 1` comparison and
+accepted1.44 despite the adjacent October1.45 value. The exact retained-fixture
+duplicate regression failed before correction; the original single-row conflict
+test stayed passing. Original PDF and fixture bytes are unchanged.
+
+Current method2 treats an ambiguous relevant expense table as unavailable BER,
+not as evidence of agreement. It requires a unique recognizable table/header,
+known distinct dated columns, unambiguous plan rows and exactly one Regular row.
+It compares the actual reporting-period column, including the first column.
+A clearly other-period table is irrelevant; a clear matching numeric value
+retains BER. Conflicts keep `same_period_expense_values_conflict`; missing,
+duplicate, malformed or unavailable relevant entries report
+`same_period_expense_table_ambiguous`. Other fields and legacy method1 are
+unchanged. The new tests include both duplicate-conflicting and
+duplicate-agreeing rows, malformed/missing/NA rows, ambiguous headers/boundaries,
+matching columns and a first-column conflict; the original tests remain.
+
+The complete retained September extraction was verified against the original
+PDF hash, extraction seal and all page-text hashes:87 recognized detail pages
+and every field remain exactly equal to legacy method1 and reviewed f726d92.
+The94 October detail pages retain every non-BER field.37 previously accepted
+October BER fields become unavailable under the stricter table interpretation;
+this loss of unsupported certainty is explicit, rather than hidden in a hash
+refresh. This uses the retained complete extraction, not a new provider fetch
+or a claim of new native/live publication. Only current method2 policy/parser
+and allocation bindings move; historical authorities, SQL, limits and defaults
+remain unchanged. Final updated-head hosted verification is still required.
+
+### Exact targeted-recovery acceptance
+
+`--kotak-only` selects the AMC/task mapping. It does **not** pin a document,
+reporting date, filename or URL; the runtime still discovers recent books.
+Before proposing the distinct recovery, refresh the official catalogue and
+actual acquired bytes and compare the reviewed31October original SHA-256
+`105e49dfb9787698644810d13a01065bae940f18a80d8c60f082ef71f706dda2`.
+A pre-dispatch observation is not a guarantee about a later acquisition.
+Bind the actual run receipt and its referenced successful batch to both that
+hash and `disclosure_as_of=2026-10-31`; a different/revised acquired book does
+not satisfy this reviewed recovery, even if the task succeeded. Stop and report
+that difference, reconcile effects and never blindly replay it.
+
+Close Kotak only after an actual authenticated DEV HTTP read confirms October
+values and source/date lineage, with exact prior September documents/values
+preserved. Use the existing authorized internal API path: the core service has
+internal ingress, so a desktop-origin HTML404 is not application evidence.
+Local TestClient or database-only reads do not establish this live acceptance.
+Core fund facts for112090 and149182 are the intended representative reads;
+review-service HTTP authorization coverage remains separately acknowledged.
+No recovery, deployment, source installation or schedule change is performed
+by this correction or by its CI evidence.

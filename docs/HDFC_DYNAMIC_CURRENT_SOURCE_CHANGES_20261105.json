@@ -1,6 +1,6 @@
 {
   "format": "hdfc-dynamic-current-changes-v1",
-  "base": "cebc28594d8cedf380e19081ea1e9084367ca68b",
+  "base": "d43070da60e9cd44ed311ee07bb04e9c01cdb90c",
   "scope": "Finite whole-file predecessor proof for reviewed current changes only; earlier evidence documents unchanged. No ignored regions. Runtime current hashes remain actual.",
   "modified": {
     "scripts/run_ci_tests.py": {
@@ -8,8 +8,8 @@
       "current_sha256": "251003892372573cd2a224a200f4f2c2a52c722031ccb572d4bec9a516c56c82"
     },
     "src/mfdataindia/enrichment/amc_gate_source_revision.py": {
-      "previous_sha256": "a1028063a38c6b3cb8254d5c3a187cd046e1bfc752ced5a94baf47cc7c1d0475",
-      "current_sha256": "5833fea9b0d1351bad406020b152984e044a1b567f2b7d49d4a6deee4b97d35e"
+      "previous_sha256": "f85de569cedfd465193ec69ac0bbdfdef96d97519f94dbfb5c1c1e2d36c9e950",
+      "current_sha256": "d02d42d8a93a5a17a0db9ea8c67135a988de14ed4f15ab22b468b91b46352f76"
     },
     "src/mfdataindia/enrichment/amc_source_revision.py": {
       "previous_sha256": "d61715f490c17629f75b7a42e34cff8fd212ef4f6b07118142cee9add0065fa3",
@@ -28,8 +28,8 @@
       "current_sha256": "9f6f9d3758ca73f3a9c467979f459f1038253824910dc634f365badf928b9cf5"
     },
     "src/mfdataindia/enrichment/ingestion_workload.py": {
-      "previous_sha256": "a8cf82080e75039f642b296f9c6d9f4517fffbcbcc1c858e78f706cb4d7cc5b4",
-      "current_sha256": "d6d151aac5edfec06a62020d51d072de0dbafe0021b679b80443d22597741a05"
+      "previous_sha256": "f28f15a5a4105a4a9dc3c8039bac8a64758f81c870e574afba281c3a31af3531",
+      "current_sha256": "40e2801db26a03b9b4e7ca53345deda54856a0d77dab8bd79a3d61b2a1bd4529"
     },
     "src/mfdataindia/enrichment/multi_store.py": {
       "previous_sha256": "ab80010784f5fb4926a3c221ee82b1aee4b3a6fc53b2d54ed2f86635e7066254",
@@ -40,12 +40,12 @@
       "current_sha256": "ddaad0ff08e3581414548e50951b15ab4ac1ba7e5c57d3cccb292c7ade1db5b3"
     },
     "src/mfdataindia/review/dev_reader_source_reference.py": {
-      "previous_sha256": "4a5b6cf20ff6c3398a41b7465e7eb8ac804b9ae2f219f484e9d82b230d1dd792",
-      "current_sha256": "3d7e091f4739dcc4983ca16814dbd7cee47855dd7a7390279b49525222cced24"
+      "previous_sha256": "5e9e31b22fe8fb2c988800431f95b301205ad12afc8a239761ed565a853a52e9",
+      "current_sha256": "12af6af398040e963dc73f04fa83f72a47ac340c3dd3e7ce27a8c41007bc87e4"
     },
     "tests/amc_gate_history.py": {
-      "previous_sha256": "593b274fe9aebd4bc864faa6381e3798a915bc449713c71d4dd7f70c62f6460a",
-      "current_sha256": "f3abb39d96d899246590b846f0b43150686605c1797f797c404dc5c16e9ca4e9"
+      "previous_sha256": "cabbb3dc22165181f3c4bc0e68080de7ba82962b1126714814d7d27391740a03",
+      "current_sha256": "f87a218a5de002530b6c7fb08265028e8aa1af2f4051f703b9582958e52e688c"
     },
     "tests/test_allocated_amc_workload.py": {
       "previous_sha256": "2a402c3677eb6ffbfc1358ce918a3fa28b1c6b59bde850ca71321ed651c2ebcb",

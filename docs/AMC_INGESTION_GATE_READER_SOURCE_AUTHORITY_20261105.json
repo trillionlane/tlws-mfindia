@@ -15,7 +15,7 @@
       "runtime_authority": false
     },
     "shared_amc_discovery": {
-      "predecessor": "f726d92b26bc4f84a5eee666df20a0a7f4670d24",
+      "predecessor": "96802df804e5fc8596fc75caa35e3a6e8aa5fd11",
       "intent": "Explicit current v7 execution composition; all six earlier source configurations and historical SQL preserved exactly; no reader entitlement change",
       "runtime_authority": false
     }

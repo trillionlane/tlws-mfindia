@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 FILE = 'config/official-amc-gate-source-predecessors-v1.json'
-SHA256 = 'fc346908a73b547ee749b04dd86db8f4026fcdbb83ef170f903d78cd44750322'
+SHA256 = '58278781167af4173e10cad42dd718bbddcf898d33481a001a8ba263faa2f154'
 
 
 def previous_bytes(path, *, version=6, data=None, root=None):

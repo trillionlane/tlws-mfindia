@@ -61,7 +61,7 @@ def test_current_profile_preserves_all_six_predecessor_configurations_exactly():
     # through the finite current compatibility manifest, independently asserted
     # by whole-byte restoration below. Compare the retained committed results.
     from mfdataindia.enrichment.amc_gate_source_revision import previous_bytes
-    source=subprocess.check_output(['git','show','f726d92:src/mfdataindia/enrichment/book_sources.py'],cwd=ROOT)
+    source=subprocess.check_output(['git','show','96802df804e5fc8596fc75caa35e3a6e8aa5fd11:src/mfdataindia/enrichment/book_sources.py'],cwd=ROOT)
     exec(compile(source,baseline.__file__,'exec'),baseline.__dict__)
     class PredecessorPath(type(Path())):
         def read_bytes(self):
@@ -72,9 +72,9 @@ def test_current_profile_preserves_all_six_predecessor_configurations_exactly():
     baseline.Path=PredecessorPath
     for version in range(1,7):
         assert book_sources.configuration(version)==baseline.configuration(version)
-    for name in ('book_sources','book_store','sbi_runtime','kotak_runtime','uti_runtime','monthly_store'):
+    for name in ('book_sources','book_store','sbi_runtime','kotak_runtime','uti_runtime','monthly_store','kotak_current_workload'):
         path=ROOT/f'src/mfdataindia/enrichment/{name}.py'
-        old=subprocess.check_output(['git','show','f726d92:'+str(path.relative_to(ROOT))],cwd=ROOT)
+        old=subprocess.check_output(['git','show','96802df804e5fc8596fc75caa35e3a6e8aa5fd11:'+str(path.relative_to(ROOT))],cwd=ROOT)
         assert previous_bytes(path)==old
         with pytest.raises(ValueError):
             previous_bytes(path,data=path.read_bytes()+b'\n# unknown bytes')

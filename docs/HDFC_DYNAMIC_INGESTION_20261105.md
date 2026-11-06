@@ -162,3 +162,16 @@ SQL/result substitution. Successful install must use four full reader catalogue
 checks and re-entry two, retaining the enforced limits. Native success and
 measured timings remain pending at the corrected final head; local tests alone
 do not prove this transaction completes on PostgreSQL.
+
+
+### Accepted Kotak correction integration — 6 November 2026
+
+This candidate merges discovery-gate integration d43070d, which incorporates
+accepted PR145 head 96802df and merged MAIN 5699985. The two merge conflicts
+were current binding declarations only: the source-8 allocation remains v4,
+and its hashes and reader-source descriptor are regenerated from complete
+current bytes. Full predecessor inverses now bind d43070d; no ignored regions
+or runtime normalization are introduced. Kotak's duplicate-Regular BER
+regression and September preservation expectations are retained. The HDFC
+implementation remains pending independent acceptance; this merge does not
+claim HDFC publication, live recovery, or new provider evidence.
