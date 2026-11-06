@@ -215,3 +215,19 @@ The connected concurrency case now checks all three changed-key holds, independe
 source progress and resumption after an actual observed writer rollback, while
 preserving all business documents and generator capabilities. New own full CI is
 required; no failed or earlier green result substitutes for the corrected head.
+
+
+### Accepted Kotak BER correction integration (6 November)
+
+PR145 head96802df is accepted and merged in MAIN5699985. This branch normally
+merges that actual MAIN commit and retains the corrected parser and all16
+retained-fixture regressions exactly. The v6 predecessor now binds that accepted
+source, rather than rejectedf726. Current v7 allocation/configuration and
+reader-source descriptors are regenerated from actual corrected bytes; complete
+literal inverses and all historical1–5 constructors remain exact. Predecessor
+regression includes the current Kotak allocation module, not just field parsing.
+No shared-gate claim/publication semantics, SQL, identities, resource/time bounds
+or source policy outside the accepted BER correction changes. PreviouscebcCI
+is retained supporting evidence; the integrated head requires its own full CI.
+No MAIN certification, source installation, live data or scheduler success is
+claimed from this isolated branch integration.

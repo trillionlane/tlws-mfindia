@@ -97,3 +97,84 @@ def test_new_projection_only_adds_exact_retained_specification_membership():
     assert new.count(added) == 1
     restored = new.replace(added,'',1).replace('allowed.specification_hash', "authority.document->'source_specification_hashes'->>source.key AS specification_hash",1)
     assert restored == old  # All financial/source/identity expressions unchanged.
+
+
+def test_retained_flexicap_duplicate_regular_row_cannot_bypass_ber_conflict():
+    # Synthetic duplication of the retained October change-table row; the
+    # original fixture stays immutable and the 1.44/1.45 disagreement remains.
+    detail = deepcopy(details()[0])
+    original = kotak_book.fields(detail, '2026-10-31')
+    change = detail['changes_page']['text']
+    regular = next(line for line in change.splitlines() if 'Regular' in line and '1.45%' in line)
+    detail['changes_page']['text'] = change.replace(regular, regular + '\n' + regular, 1)
+    actual = kotak_book.fields(detail, '2026-10-31')
+    assert actual['base_expense_ratio']['value'] is None
+    assert actual['base_expense_ratio']['status'] == 'unavailable'
+    assert {k:v for k,v in actual.items() if k != 'base_expense_ratio'} == {
+        k:v for k,v in original.items() if k != 'base_expense_ratio'}
+
+
+@pytest.mark.parametrize('mutation', [
+    'duplicate_agreeing_regular', 'missing_regular', 'malformed_regular',
+    'unavailable_regular', 'extra_regular_column', 'duplicate_header',
+    'unknown_month', 'duplicate_month', 'missing_anchor', 'duplicate_anchor',
+    'missing_table_boundary',
+])
+def test_relevant_ambiguous_expense_table_withholds_only_ber(mutation):
+    # These are deliberate corruptions of the retained panel, not new issuer
+    # originals. The valid field panel is unchanged in every case.
+    detail = deepcopy(details()[0])
+    baseline = kotak_book.fields(detail, '2026-10-31')
+    change = detail['changes_page']['text']
+    regular = next(line for line in change.splitlines() if 'Regular' in line and '1.45%' in line)
+    header = next(line for line in change.splitlines() if 'Change In' in line and 'October 2026' in line)
+    anchor = next(line for line in change.splitlines() if 'Expense Ratio*' in line)
+    changed = {
+        'duplicate_agreeing_regular': change.replace(regular, (regular + '\n' + regular).replace('1.45%', '1.44%'), 1),
+        'missing_regular': change.replace(regular, '', 1),
+        'malformed_regular': change.replace(regular, regular.replace('1.45%', '1.4x%'), 1),
+        'unavailable_regular': change.replace(regular, regular.replace('1.45%', 'NA'), 1),
+        'extra_regular_column': change.replace(regular, regular + ' 1.46%', 1),
+        'duplicate_header': change.replace(header, header + '\n' + header, 1),
+        'unknown_month': change.replace(header, header.replace('October', 'Unrecognised'), 1),
+        'duplicate_month': change.replace(header, header.replace('September', 'October'), 1),
+        'missing_anchor': change.replace(anchor, anchor.replace('Expense Ratio*', 'Unknown table'), 1),
+        'duplicate_anchor': change.replace(anchor, anchor + '\n' + anchor, 1),
+        'missing_table_boundary': change.replace('Change in Risk-o-meter', 'Unknown next section', 1),
+    }[mutation]
+    assert changed != change
+    detail['changes_page']['text'] = changed
+    actual = kotak_book.fields(detail, '2026-10-31')
+    assert actual['base_expense_ratio']['status'] == 'unavailable'
+    assert actual['base_expense_ratio']['value'] is None
+    assert actual['base_expense_ratio']['reason'] == 'same_period_expense_table_ambiguous'
+    assert {k:v for k,v in actual.items() if k != 'base_expense_ratio'} == {
+        k:v for k,v in baseline.items() if k != 'base_expense_ratio'}
+
+
+@pytest.mark.parametrize('position', ['second', 'first', 'other_period'])
+def test_unambiguous_table_uses_actual_period_column_or_is_irrelevant(position):
+    detail = deepcopy(details()[0])
+    text = detail['changes_page']['text']
+    if position == 'second':
+        text = text.replace('1.45%', '1.44%', 1)
+    else:
+        header = next(line for line in text.splitlines() if 'Change In' in line and 'October 2026' in line)
+        if position == 'first':
+            replaced = header.replace('September 2026', 'TARGET 2026').replace('October 2026', 'September 2026').replace('TARGET 2026', 'October 2026')
+        else:
+            replaced = header.replace('October 2026', 'August 2026')
+        text = text.replace(header, replaced, 1)
+    detail['changes_page']['text'] = text
+    assert kotak_book.fields(detail, '2026-10-31')['base_expense_ratio']['value'] == '1.44'
+
+
+def test_conflict_in_first_dated_column_is_not_ignored():
+    detail = deepcopy(details()[0])
+    text = detail['changes_page']['text']
+    header = next(line for line in text.splitlines() if 'Change In' in line and 'October 2026' in line)
+    swapped = header.replace('September 2026', 'TARGET 2026').replace('October 2026', 'September 2026').replace('TARGET 2026', 'October 2026')
+    regular = next(line for line in text.splitlines() if 'Regular' in line and '1.45%' in line)
+    detail['changes_page']['text'] = text.replace(header, swapped, 1).replace(regular, regular.replace('1.44%', '1.46%', 1), 1)
+    ber = kotak_book.fields(detail, '2026-10-31')['base_expense_ratio']
+    assert ber['value'] is None and ber['reason'] == 'same_period_expense_values_conflict'

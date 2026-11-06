@@ -3,7 +3,7 @@
   "id": "official-kotak-current-dev-workload-v2",
   "source_key": "kotak-expanded",
   "predecessor_allocation_sha256": "4050e4e704195b92a759f2f3c1051d4cea0d539ffe369fd3c96be402f3d9fb63",
-  "book_configuration_sha256": "26747ad0d7d5df2b9da03425eb094217091ea0ada965c03adcf0a8f41f977e1b",
+  "book_configuration_sha256": "01c6aadbf72a4228790e95126885bd7ad99e2d87c897ee7eaa46757ee7aebe42",
   "dependency": {
     "advisories": [
       "GHSA-5hx5-vpf9-5wcv",
@@ -100,7 +100,7 @@
   "files": {
     "src/mfdataindia/enrichment/amc_source_revision.py": "a91476ed5df05eb7eb706070b3e7a69c8898030d1ed661c995a91d261765bac3",
     "src/mfdataindia/enrichment/allocated_amc_workload.py": "5099a012305b9fb698876a67254135af24823d1ba09c5e9a96f5f7aaf889cd38",
-    "src/mfdataindia/enrichment/kotak_book_v2.py": "8451df5a879ff3a3a07bdf9a7e236773894a65f8851ba2f7af576cd880a32c1c",
+    "src/mfdataindia/enrichment/kotak_book_v2.py": "c83ea6b122b3be09c385de47c92f6c5da2576ecf8419b41c14e64a8f9b8f9f4e",
     "src/mfdataindia/enrichment/kotak_method_upgrade.py": "47f5650c1af7d0b2b503ae64d52233cc0b2a14e7f17b49d6397eff802bc10af2",
     "src/mfdataindia/enrichment/kotak_runtime.py": "13cef3db3dd8c5d42a1e58fd2b2131cd3c5536d9d7e90e4cbc016984b1a218bd",
     "src/mfdataindia/enrichment/kotak_batch.py": "81858405c43c9954b1a85a07dee55b8691897b14e1d4ed1073636c158ad4a8d5",

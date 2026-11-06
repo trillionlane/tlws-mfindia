@@ -1,6 +1,6 @@
 {
   "format": "amc-gate-current-source-changes-v1",
-  "base": "f726d92b26bc4f84a5eee666df20a0a7f4670d24",
+  "base": "96802df804e5fc8596fc75caa35e3a6e8aa5fd11",
   "intent": "Finite current-file restoration for historical release-evidence tests only. New v7 runtime source bindings are separate. Tests deliberately adopt the explicit current version7; old hashes/default5 stay exact. Current preservation explicitly recognizes the sealed private operational layer, binds its structure and independently captures all records; unknown schemas remain rejected.",
   "modified": {
     "config/official-amc-source-extension-v1.json": {
@@ -32,8 +32,8 @@
       "current_sha256": "796bcac64576ca3f1612259c00b454d499d60604485f7222481c8cab9c181fb2"
     },
     "src/mfdataindia/enrichment/kotak_current_workload.py": {
-      "previous_sha256": "86eb93f4cfc1d3ffda34a96b64ea8c5296f2e3b3c5c795e0f2e28ac7f91e69dc",
-      "current_sha256": "b82790ceb08c7bf279e36b0ada52d22e9eee64a468f51fa7ce914982eff32129"
+      "previous_sha256": "a33a4361f304b9fc6ee17ef825e716562dfb4bc2a436fa3632157051251374c4",
+      "current_sha256": "9f5a8df4913aacca29f50fbd43eb94bdf37320e5fde3d36aaa0bf1f89a9d6481"
     },
     "src/mfdataindia/enrichment/kotak_method_upgrade.py": {
       "previous_sha256": "47f5650c1af7d0b2b503ae64d52233cc0b2a14e7f17b49d6397eff802bc10af2",
@@ -61,7 +61,7 @@
     },
     "src/mfdataindia/review/dev_reader_source_reference.py": {
       "previous_sha256": "814a0fb1ffbb422a115e53b1cf72b824edd3d03c6ec3b84b7a655e591f0edfe5",
-      "current_sha256": "4a5b6cf20ff6c3398a41b7465e7eb8ac804b9ae2f219f484e9d82b230d1dd792"
+      "current_sha256": "5e9e31b22fe8fb2c988800431f95b301205ad12afc8a239761ed565a853a52e9"
     },
     "src/mfdataindia/review/preservation.py": {
       "previous_sha256": "0cbbc96c7cddaf59cf5f81fbf0e82cd13b65694b30f77d9fe4a9a2831a44dd9b",

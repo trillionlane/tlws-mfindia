@@ -6,7 +6,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 FILE = 'docs/AMC_INGESTION_GATE_CURRENT_SOURCE_CHANGES_20261105.json'
-SHA256 = '37db8f20b2fe6960fd9d5406433a3deaf65bd3d57c490e518f1f9086aec8fc99'
+SHA256 = 'c625199096981cbf89d947a9fab72b9d165cdd44aec98bf3c29fae3185d2099a'
 
 
 def previous(path, data):
