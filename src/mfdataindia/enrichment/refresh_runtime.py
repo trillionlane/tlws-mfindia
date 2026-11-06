@@ -20,6 +20,7 @@ from mfdataindia.enrichment import (
     refresh_store,
 )
 from mfdataindia.enrichment.schemas import Intake
+from mfdataindia.enrichment.source_publication import invoke, PreparationError
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
 
@@ -34,7 +35,7 @@ def receipt(conn, execution):
     return row["document"] if row else None
 
 
-def publish(conn, *, execution, observed_at, catalogs, document, content, archived):
+def publish(conn, *, execution, observed_at, catalogs, document, content, archived, equivalent_replay=None):
     refresh_store.verify_acl(conn)
     acquire_nav_data_operation_lock(conn)
     previous = receipt(conn, execution)
@@ -83,6 +84,7 @@ def publish(conn, *, execution, observed_at, catalogs, document, content, archiv
             identity_page=28,
         ),
         content,
+        **({'equivalent_replay': equivalent_replay} if equivalent_replay is not None else {}),
     )
     ids = sorted(s["snapshot_id"] for s in snapshots)
     published = conn.execute(
@@ -135,7 +137,7 @@ def publish(conn, *, execution, observed_at, catalogs, document, content, archiv
 
 
 def execute(
-    dsn, execution, *, now=None, transport=refresh_acquisition.fetch, archive=refresh_archive.retain
+    dsn, execution, *, now=None, transport=refresh_acquisition.fetch, archive=refresh_archive.retain, publication=None
 ):
     if not re.fullmatch(re.escape(JOB) + r"-[a-z0-9-]{1,40}", execution):
         raise ValueError("exact source refresh execution name required")
@@ -159,8 +161,7 @@ def execute(
             conn.execute("SET LOCAL statement_timeout='120s'")
             conn.execute("SET LOCAL transaction_timeout='240s'")
             conn.execute("SET LOCAL lock_timeout='5s'")
-            result = publish(
-                conn,
+            result = invoke(publication, conn, publish,
                 execution=execution,
                 observed_at=observed,
                 catalogs=catalogs,
@@ -170,6 +171,8 @@ def execute(
             )
         return result
     except Exception as error:
+        if publication is not None:
+            raise PreparationError(phase) from None  # No failure-publication side effect.
         # Never retain source bodies, SQL, URLs from exceptions or credentials.
         # Reconcile an uncertain commit before attempting a failure receipt.
         with psycopg.connect(dsn, row_factory=dict_row) as conn:

@@ -28,18 +28,19 @@ def allocation(root):
             or document['predecessor_allocation_sha256'] != prior.ALLOCATION_SHA256):
         raise ValueError('KOTAK_CURRENT_POLICY_MISMATCH')
     for name, digest in document['files'].items():
+        from mfdataindia.enrichment.amc_gate_source_revision import previous_bytes
         path = root / name
         if name.startswith('src/mfdataindia/') and name.endswith('.py'):
             # Runtime images contain a non-editable wheel, not /app/src.
             # Check the actually imported module as well as any checkout copy.
             module = import_module(name[4:-3].replace('/', '.'))
             installed = Path(module.__file__)
-            if installed.is_symlink() or hashlib.sha256(installed.read_bytes()).hexdigest() != digest:
+            if installed.is_symlink() or hashlib.sha256(previous_bytes(installed,root=root)).hexdigest() != digest:
                 raise ValueError('KOTAK_CURRENT_SOURCE_MISMATCH')
             if not path.exists():
                 continue
         if (path.is_symlink() or not path.resolve().is_relative_to(root.resolve())
-                or hashlib.sha256(path.read_bytes()).hexdigest() != digest):
+                or hashlib.sha256(previous_bytes(path,root=root)).hexdigest() != digest):
             raise ValueError('KOTAK_CURRENT_SOURCE_MISMATCH')
     return document
 

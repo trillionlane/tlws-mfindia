@@ -18,6 +18,8 @@ def smoke():
     allocation = workload.allocation(root)
     from smoke_kotak_current_workload import smoke as current_smoke
     current_smoke()
+    from smoke_amc_discovery_workload import smoke as discovery_smoke
+    discovery_smoke()
     environment = {k: v for k, v in os.environ.items()
                    if not k.startswith(('PG', 'CLOUD_RUN_')) and k != 'MFDATAINDIA_DSN'}
     environment.update(

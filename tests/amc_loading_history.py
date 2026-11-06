@@ -17,6 +17,8 @@ def manifest():
 
 
 def previous(path, data):
+    from amc_gate_history import previous as gate_previous
+    data = gate_previous(path, data)
     name = Path(path).resolve().relative_to(ROOT).as_posix()
     row = manifest()['modified'].get(name)
     if row is None or hashlib.sha256(data).hexdigest() != row['current_sha256']:
