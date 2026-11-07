@@ -17,8 +17,8 @@ from mfdataindia.enrichment import (kotak_current_workload as prior,
 from mfdataindia.enrichment.ingestion_discovery import SOURCES
 from mfdataindia.review.policy import fingerprint
 
-FILE = 'config/official-amc-discovery-dev-workload-v3.json'
-SHA256 = 'bacbeefe629d3fa034b3760ce091f775aa8a881b6945368494c7488f79f00bc3'
+FILE = 'config/official-amc-discovery-dev-workload-v4.json'
+SHA256='7832aaae6d3313097f90057d269c15ed1ee31893385a7c3e9b3e9e187a275a60'
 
 
 def allocation(root):
@@ -29,7 +29,7 @@ def allocation(root):
     if path.is_symlink() or not 0 < len(raw) <= 65536 or hashlib.sha256(raw).hexdigest() != SHA256:
         raise ValueError('INGESTION_ALLOCATION_DIFFERS')
     document = json.loads(raw)
-    if (document['book_configuration_sha256'] != fingerprint(book_sources.configuration(7))
+    if (document['book_configuration_sha256'] != fingerprint(book_sources.configuration(8))
             or document['predecessor_allocation_sha256'] != prior.SHA256
             or document['tasks'] != [{'index':n,'source_key':s} for n,s in enumerate(SOURCES)]):
         raise ValueError('INGESTION_ALLOCATION_POLICY_DIFFERS')
@@ -55,7 +55,7 @@ def validate(environment, root, *, kotak_only=False):
 
 
 def verify_database(dsn, document):
-    with book_sources.select_registry(7):
+    with book_sources.select_registry(8):
         original.verify_database(dsn, document)
     with psycopg.connect(dsn, row_factory=dict_row) as conn:
         conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ,READ ONLY')
@@ -74,7 +74,7 @@ def execute(dsn, environment, document, index):
     adapter = ingestion_adapters.Adapter(source, execution, dsn, store)
     observed = ingestion_runner.execute(source, execution, adapter, store)
     healthy = {'PUBLISHED','UNCHANGED','WAITING_FOR_PUBLICATION','INCOMPLETE_SOURCE_FILES','NOT_DUE'}
-    return {'format':'current-amc-discovery-workload-v3', 'allocation_sha256':SHA256,
+    return {'format':'current-amc-discovery-workload-v4', 'allocation_sha256':SHA256,
             'git_sha':environment['DEPLOYMENT_GIT_SHA'],'task_index':index,
             'source_key':source,'execution_id':execution,
             'status':'completed' if observed['state'] in healthy and observed.get('diagnostic_persistence')!='UNCONFIRMED' else 'failed',

@@ -145,7 +145,7 @@ def test_historical_bytes_and_all_registered_authorities_are_unchanged_and_new_d
     for name, sha in baseline["runtime_archive_sha256"].items():
         path = ROOT / "src/mfdataindia/enrichment" / name
         assert hashlib.sha256(previous_bytes(path)).hexdigest() == sha, name
-    assert set(book_sources.REGISTRIES) == {1, 2, 3, 4, 5, 6, 7}
+    assert set(book_sources.REGISTRIES) == {1, 2, 3, 4, 5, 6, 7, 8}
     assert book_sources.CURRENT_VERSION == 5
     for v in (1, 2, 3, 4, 5):
         assert fingerprint(book_sources.configuration(v)) == baseline["configurations"][str(v)]

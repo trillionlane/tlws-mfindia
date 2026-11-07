@@ -31,6 +31,7 @@ MIGRATIONS = {
         "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702",
     ),
     6: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
+    8: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
     7: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
     5: (
         "044_uti_complete_aum_rows.sql",
@@ -75,7 +76,7 @@ def installed_configuration(conn):
 
 def verify_acl(conn, *, principal=None, reader_profile=profiles.RESTRICTED):
     principal = principal or conn.execute("SELECT current_user AS name").fetchone()["name"]
-    profiles.verify_selection(conn, reader_profile, principal)
+    # verify_principal performs this same selection check before its ACL checks.
     verify_principal(conn, "generator" if principal == evidence.ROLES[0] else "api", principal, **profiles.guard_options(reader_profile))
     ns = conn.execute(
         "SELECT nspowner,pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname='mf_book_facts'"

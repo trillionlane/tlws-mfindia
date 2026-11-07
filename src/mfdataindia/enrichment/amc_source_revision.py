@@ -15,6 +15,8 @@ MANIFEST_SHA256 = 'c97f3bbe729af2541bf50199d1d8a4c85c06e9c97cf1cc259fb0431c08a76
 def previous_bytes(path, data=None):
     path = Path(path)
     raw = path.read_bytes() if data is None else data
+    from mfdataindia.enrichment.hdfc_source_revision import previous
+    raw = previous(path,raw)
     root = Path('/app') if (Path('/app') / MANIFEST).is_file() else Path(__file__).resolve().parents[3]
     if path.resolve().parent == Path(__file__).resolve().parent:
         name = 'src/mfdataindia/enrichment/' + path.name

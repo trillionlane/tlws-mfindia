@@ -248,8 +248,10 @@ def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, 
     import hashlib
     import copy
     install_current_gate(ro01_db,monkeypatch)
+    from hdfc_dynamic_native_fixture import install_hdfc
+    installation=install_hdfc(ro01_db,ROOT)
     capabilities=generator_capabilities(ro01_db)
-    with book_sources.select_registry(7),connect(ro01_db) as conn:
+    with book_sources.select_registry(8),connect(ro01_db) as conn:
         identities=book_store.population(conn,SOURCE)
         batches,originals,archives,extractions=inputs(identities,method=2,include_extractions=True)
     provider={o['source_url']:o for o in originals}
@@ -305,6 +307,9 @@ def test_native_actual_current_main_preparation_publication_and_repeat(ro01_db, 
         client.headers['Authorization']='Bearer '+assertion(private,scope=['review:read'])
         for route in ('/api/enrichment/v9/funds/112090/facts','/api/enrichment/v3/funds/112090/facts'):
             assert client.get(route).status_code==200
+
+    with capsys.disabled():
+        print(json.dumps({'native_hdfc_install_measurements':installation},sort_keys=True))
 
 
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)

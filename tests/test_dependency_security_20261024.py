@@ -62,7 +62,7 @@ def test_all_historical_pdf_files_configurations_and_policies_remain_exact():
     for path, sha in old["frozen_files"].items():
         # The exact retained constructor bytes, not a refreshed historical pin.
         assert hashlib.sha256(previous_bytes(ROOT / path)).hexdigest() == sha, path
-    assert set(book_sources.REGISTRIES) == {1, 2, 3, 4, 5, 6, 7}
+    assert set(book_sources.REGISTRIES) == {1, 2, 3, 4, 5, 6, 7, 8}
     assert book_sources.CURRENT_VERSION == 5
     for v in (1, 2, 3, 4, 5):
         assert fingerprint(book_sources.configuration(v)) == old["configurations"][str(v)]

@@ -22,6 +22,8 @@ FOCUSED_FILES = frozenset({
     "tests/test_fenced_book_activation.py",
     "tests/test_ingestion_gate_postgres.py",
     "tests/test_monthly_derivation_replay_postgres.py",
+    "tests/test_hdfc_dynamic_postgres.py",
+    "tests/test_multi_amc_facts.py",
 })
 
 

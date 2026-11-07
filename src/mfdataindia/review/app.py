@@ -457,12 +457,16 @@ def create_review_app(dsn: str | None = None, *, verifier: AssertionVerifier | N
             return run(lambda conn:census.schemes(conn,amc_key,after_code=after_code,limit=limit,expected_revision=expected_revision))
 
     if multi_amc:
-        from mfdataindia.enrichment import multi_facts, multi_store, multi_schemas
+        from mfdataindia.enrichment import multi_store, multi_schemas
         from mfdataindia.review.policy import fingerprint
 
         @app.get('/api/enrichment/v8/policy', response_model=multi_schemas.RegisteredPolicy)
         def registered_source_policy(principal: Principal = Depends(identity)):
-            return {'policy_hash':fingerprint(multi_facts.policy()),'document':multi_facts.policy()}
+            from mfdataindia.enrichment import hdfc_install
+            def installed(conn):
+                _,document=hdfc_install.installed_policy(conn)
+                return {'policy_hash':fingerprint(document),'document':document}
+            return run(installed)
 
         @app.get('/api/enrichment/v8/refresh/status', response_model=multi_schemas.RegisteredStatus)
         def registered_source_status(principal: Principal = Depends(identity)):

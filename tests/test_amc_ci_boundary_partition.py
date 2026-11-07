@@ -6,7 +6,9 @@ def test_amc_native_composition_is_early_without_dropping_reordering_or_repeatin
     prior=population()
     control=[Item('tests/test_ingestion_gate_postgres.py::test_concurrency[core]',True),
              Item('tests/test_ingestion_gate_postgres.py::test_current_main[core]',True),
-             Item('tests/test_monthly_derivation_replay_postgres.py::test_replay[core]',True)]
+             Item('tests/test_monthly_derivation_replay_postgres.py::test_replay[core]',True),
+             Item('tests/test_hdfc_dynamic_postgres.py::test_current_hdfc[core]',True),
+             Item('tests/test_multi_amc_facts.py::test_signed_private_metadata',True)]
     unit=Item('tests/test_ingestion_gate_postgres.py::test_unit_only',False)
     baseline=Partition('focused')
     old_early,old_later=collect(baseline,prior)

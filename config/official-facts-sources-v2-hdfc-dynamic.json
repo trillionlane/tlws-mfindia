@@ -1,0 +1,63 @@
+{
+  "format": "official-facts-source-registry-v1",
+  "version": 2,
+  "job": "tlws-mf-official-facts-refresh-dev",
+  "maximum_sources_per_execution": 2,
+  "sources": [
+    {
+      "key": "absl-large-cap",
+      "adapter": "retained-absl-monthly-v1",
+      "amc": "Aditya Birla Sun Life Mutual Fund",
+      "cohort": [
+        103173,
+        103174
+      ],
+      "discovery": "retained-official-sitecore-catalog",
+      "archive_prefix": "official-monthly-facts/absl-large-cap/"
+    },
+    {
+      "key": "hdfc-flexi-cap",
+      "adapter": "hdfc-issuer-monthly-v2",
+      "amc": "HDFC Mutual Fund",
+      "cohort": [
+        101763
+      ],
+      "discovery": "issuer-linked-monthly-date-validated",
+      "archive_prefix": "official-monthly-facts/hdfc-flexi-cap/",
+      "identity": {
+        "code": 101763,
+        "amc": "HDFC Mutual Fund",
+        "scheme_name": "HDFC Flexi Cap Fund",
+        "plan": "REGULAR",
+        "option": "IDCW",
+        "isins": [
+          "INF179K01582",
+          "INF179K01590"
+        ]
+      },
+      "identity_source": {
+        "url": "https://files.hdfcfund.com/s3fs-public/scheme_summary/2026-09/HDFCEQ_1789454586.pdf",
+        "sha256": "884ef54c8e0ffb4097652cccbbf72f863e8f45ee319064cf85e9b0d41d1eb3e3",
+        "pages": [
+          1,
+          1
+        ]
+      },
+      "listing_url": "https://www.hdfcfund.com/mutual-funds/factsheets",
+      "parser_method": 2,
+      "bounds": {
+        "requests": 3,
+        "listing_bytes": 1048576,
+        "pdf_bytes": 8388608,
+        "selected_pages": [
+          1,
+          24
+        ],
+        "identity_pages": [
+          1,
+          1
+        ]
+      }
+    }
+  ]
+}

@@ -48,7 +48,7 @@ class Adapter:
 
     @contextmanager
     def selected(self):
-        with book_sources.select_registry(7):
+        with book_sources.select_registry(8):
             yield
 
     def fetch(self, url, **kwargs):
@@ -118,8 +118,11 @@ class Adapter:
                     identities = [evidence.identity(conn, 101763)]
                     if identities[0] != multi_facts.source()['identity']:
                         raise ValueError('INGESTION_HDFC_IDENTITY_DIFFERS')
-                    modules = (multi_runtime, multi_facts, hdfc_discovery)
-                    self.maximum, self.spec = 16*1024*1024, None
+                    from mfdataindia.enrichment import hdfc_runtime_v2,hdfc_monthly_v2,hdfc_source_v2,hdfc_install
+                    if hdfc_install.installed_policy(conn)[0]!=hdfc_source_v2.registry():
+                        raise ValueError('INGESTION_HDFC_DYNAMIC_NOT_INSTALLED')
+                    modules = (hdfc_runtime_v2,hdfc_monthly_v2,hdfc_source_v2,hdfc_discovery)
+                    self.maximum, self.spec = 17*1024*1024, hdfc_source_v2.source()
                 else:
                     book_store.verify_acl(conn)
                     self.spec = book_sources.specification(self.source)
@@ -182,20 +185,9 @@ class Adapter:
                     return found, None
                 original = self.fetch(found.files[0][1])
                 self.roles[original['source_url']]={'current_book'}
-                pinned = multi_facts.source()['edition']
-                if (original['source_url'] != pinned['url'] or
-                        hashlib.sha256(original['content']).hexdigest() != pinned['sha256']):
-                    return discovery.Discovery(self.source, discovery.State.UNSUPPORTED,
-                        files=found.files, reason='NEW_EDITION_ADAPTER_REVIEW_REQUIRED'), None
-                # Preserve the v1 two-request allocation. Listing + book are
-                # already two requests; do not silently add a third identity
-                # acquisition or reactivate the pinned publisher. The actual
-                # known book may be reported unchanged only if it is published.
-                if self.store.latest_published(self.source)==pinned['disclosure_as_of']:
-                    return discovery.Discovery(self.source,discovery.State.UNCHANGED,
-                        reason='CURRENT_INPUT_UNCHANGED',latest_period_found=pinned['disclosure_as_of']),None
-                return discovery.Discovery(self.source,discovery.State.UNSUPPORTED,
-                    reason='DISCOVERY_NOT_SUPPORTED'),None
+                identity_url=multi_facts.source()['identity_source']['url']
+                self.roles[identity_url]={'issuer_identity'}
+                self.fetch(identity_url)
             if self.source in ('sbi-expanded','kotak-expanded','uti-expanded'):
                 directory=self.fetch(self.spec['directory_url'])
                 self.population_hash=fingerprint({'database_population':self.population_hash,
@@ -255,6 +247,27 @@ class Adapter:
         if self.archive:
             options['archive'] = self.archive
         with self.selected():
+            if self.source == 'hdfc-flexi-cap':
+                from mfdataindia.enrichment import hdfc_runtime_v2
+                import requests
+                selected=next(url for url,roles in self.roles.items() if 'current_book' in roles)
+                identity_url=multi_facts.source()['identity_source']['url']
+                listing=self.originals[hdfc_discovery.LISTING]['content']
+                book,summary=self.originals[selected]['content'],self.originals[identity_url]['content']
+                snapshot=hdfc_runtime_v2.prepare(self.spec['identity'],book,summary,book_url=selected,
+                    listing=listing,observed=self.observed,extractor=self.extractor)
+                deadline()
+                from mfdataindia.enrichment import refresh_archive
+                retain=self.archive or refresh_archive.retain_registered
+                with requests.Session() as session:
+                    session.trust_env=False
+                    archives=[retain(session,raw) for raw in (book,summary)]
+                deadline()
+                originals=[self.originals[url] for url in (hdfc_discovery.LISTING,selected,identity_url)]
+                def publish(writer):
+                    with self.selected():
+                        return hdfc_runtime_v2.publish(writer,self.execution,self.observed,originals,snapshot,archives)
+                return runner.Prepared(snapshot['disclosure_as_of'],publish,self._documents(),self._inputs())
             if self.source == 'absl-large-cap':
                 result = refresh_runtime.execute(self.dsn, self.execution, **options)
             elif self.source == 'absl-expanded':
