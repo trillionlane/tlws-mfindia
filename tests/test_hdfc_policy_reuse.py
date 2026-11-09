@@ -54,3 +54,14 @@ def test_reuse_returns_isolated_documents_and_does_not_cross_contexts():
             with pytest.raises(ValueError):
                 book_sources.current_policy(version)
     assert book_sources._prepared_policies.get() is None
+
+
+@pytest.mark.parametrize('name',['book_sources','hdfc_install'])
+def test_exact_predecessor_inspection_is_idempotent_and_unknown_bytes_still_reject(name):
+    from mfdataindia.enrichment import hdfc_source_revision
+    path=ROOT/f'src/mfdataindia/enrichment/{name}.py'
+    previous=hdfc_source_revision.previous(path)
+    assert hdfc_source_revision.previous(path,previous)==previous
+    for raw in (path.read_bytes()+b'\n# unknown',previous+b'\n# unknown'):
+        with pytest.raises(ValueError):
+            hdfc_source_revision.previous(path,raw)

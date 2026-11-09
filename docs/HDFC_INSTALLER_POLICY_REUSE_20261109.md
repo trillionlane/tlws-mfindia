@@ -40,7 +40,9 @@ source, the same source8 configuration, six tasks and all original limits.
 `official-hdfc-installer-policy-reuse-predecessors-v1.json` describes finite,
 complete byte inverses for only `book_sources.py` and `hdfc_install.py` before
 the existing historical inverse stage. Unknown bytes reject. It conveys no live
-execution authority. The new ten-file reader descriptor binds the actual policy-
+execution authority. Repeated inspection also recognizes the exact pinned
+predecessor accepted by the earlier stage; unknown or changed predecessor bytes
+still reject. The new ten-file reader descriptor binds the actual policy-
 neutral source change; reader entitlement and SQL are unchanged. The test-only
 current-change manifest composes whole-file historical assertions without
 changing their expected hashes or weakening them.

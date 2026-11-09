@@ -95,7 +95,7 @@
     "config/official-facts-sources-v2-hdfc-dynamic.json": "a455b5651cb6c78371483702d699642a87f39097ab0103004ff4189598bd78b5",
     "config/official-book-sources-v8-hdfc-dynamic.json": "50146f8e0873cda4282f25a5d50707c96df0ed4ec38989d38b2619651b0da8a8",
     "sql/operations/hdfc_dynamic_seal_v2.sql": "458f97edc6bfeb6758f4f2dded5bc03c2191c70b9f58ee214e29645d103330cb",
-    "src/mfdataindia/enrichment/hdfc_source_revision.py": "5e3421e241adf259cd45f7377d678835ebfa02a859343ae0642ddc66836b041e",
+    "src/mfdataindia/enrichment/hdfc_source_revision.py": "4e51a917d9aae170f9559c3055c3ab49ebf622969fb707b57671336695a8f073",
     "src/mfdataindia/enrichment/hdfc_source_v2.py": "054483a5e3af1bf68a50e0f4b1005d3afa2266d46e560e93bbbb5c3ef0425a2e",
     "src/mfdataindia/enrichment/hdfc_monthly_v2.py": "34f30729745f36a22cc33be2433439b5f400f23d739adfcb4b0584cf0e380948",
     "src/mfdataindia/enrichment/hdfc_runtime_v2.py": "787deaa3e3a006cd7bc00bd53050e2140f012f5d06e90e1d575e1867970580ba",

@@ -19,11 +19,20 @@ def previous(path,data=None,root=None):
     name=('src/mfdataindia/enrichment/'+path.name if path.parent.resolve()==Path(__file__).parent.resolve()
           else path.resolve().relative_to(root.resolve()).as_posix())
     raw=path.read_bytes() if data is None else data
+    authority=(root/FILE).read_bytes()
+    if hashlib.sha256(authority).hexdigest()!=SHA256:
+        raise ValueError('HDFC_PREDECESSOR_AUTHORITY_DIFFERS')
+    row=json.loads(authority)['modified'].get(name)
     optimization=(root/OPTIMIZATION_FILE).read_bytes()
     if hashlib.sha256(optimization).hexdigest()!=OPTIMIZATION_SHA256:
         raise ValueError('HDFC_INSTALLER_PREDECESSOR_AUTHORITY_DIFFERS')
     optimized=json.loads(optimization)['modified'].get(name)
-    if optimized is not None and hashlib.sha256(raw).hexdigest()!=optimized['previous_sha256']:
+    # Repeated historical inspection already accepted the exact prior-stage
+    # predecessor. Preserve that pinned state; never accept an unknown alias.
+    accepted=({optimized['previous_sha256']} if optimized is not None else set())
+    if row is not None:
+        accepted.add(row['previous_sha256'])
+    if optimized is not None and hashlib.sha256(raw).hexdigest() not in accepted:
         if hashlib.sha256(raw).hexdigest()!=optimized['current_sha256']:
             raise ValueError('HDFC_INSTALLER_UNREVIEWED_SOURCE_BYTES')
         for before,after in reversed(optimized['replacements']):
@@ -33,10 +42,6 @@ def previous(path,data=None,root=None):
             raw=raw.replace(after,before,1)
         if hashlib.sha256(raw).hexdigest()!=optimized['previous_sha256']:
             raise ValueError('HDFC_INSTALLER_PREDECESSOR_RESTORATION_DIFFERS')
-    authority=(root/FILE).read_bytes()
-    if hashlib.sha256(authority).hexdigest()!=SHA256:
-        raise ValueError('HDFC_PREDECESSOR_AUTHORITY_DIFFERS')
-    row=json.loads(authority)['modified'].get(name)
     if row is None or hashlib.sha256(raw).hexdigest()==row['previous_sha256']:
         return raw
     if hashlib.sha256(raw).hexdigest()!=row['current_sha256']:

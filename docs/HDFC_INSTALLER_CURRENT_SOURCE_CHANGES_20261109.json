@@ -14,11 +14,11 @@
     },
     "src/mfdataindia/enrichment/hdfc_source_revision.py": {
       "previous_sha256": "fe327ce1f14d4c455800883aa6fa50a3495854fc88c9f213bd0af53aab439fac",
-      "current_sha256": "5e3421e241adf259cd45f7377d678835ebfa02a859343ae0642ddc66836b041e"
+      "current_sha256": "4e51a917d9aae170f9559c3055c3ab49ebf622969fb707b57671336695a8f073"
     },
     "src/mfdataindia/enrichment/ingestion_workload.py": {
       "previous_sha256": "acf9fe76092da2ddb3c36a1c3bc978fec302bc18f4eb1b5879a4c9017335ae77",
-      "current_sha256": "eef5bb38604157163d34c1d20606278ad6525606e1294b1bcc30227b512d884e"
+      "current_sha256": "914f0017a9a7e0fb74151c8e75d62732f72b04520ee97d2c9354b1dab1a5f6d1"
     },
     "src/mfdataindia/review/broad_reader_source_authority.py": {
       "previous_sha256": "377e1fc6741e83ba548f98a304bae65d81b85944966f8aa62dd09f4f78d74264",
