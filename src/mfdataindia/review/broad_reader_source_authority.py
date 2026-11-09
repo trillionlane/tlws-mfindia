@@ -99,7 +99,7 @@ def verify_packaged_source(root):
     _verify_files(root, base["files"], expected_count=44, expected_bytes=783832,
                   paths=base_paths)
     _require(type(variant) is dict and variant.get("format") ==
-             "source-only-ten-file-reader-compatibility-authority-v5"
+             "source-only-ten-file-reader-compatibility-authority-v6"
              and variant.get("base44_authority_sha256") == BASE_SHA256
              and variant.get("implementation_parent") ==
              "84f6c91976ef6da0a8d8e4dfcd2f42a86a2632d2"

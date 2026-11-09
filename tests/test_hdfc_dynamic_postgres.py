@@ -141,3 +141,89 @@ def test_native_dynamic_hdfc_claim_publish_repeat_real_reader_api_and_preservati
 
     with capsys.disabled():
         print(__import__('json').dumps({'native_hdfc_install_measurements':installation},sort_keys=True))
+
+
+@pytest.mark.parametrize('ro01_db',['core'],indirect=True)
+def test_native_populated_installer_complete_transaction_rollback_reentry_and_preservation(ro01_db,monkeypatch,capsys):
+    """Full production installer, not a constructor benchmark or empty schema.
+
+    Supported migrated graph with broad reader, real retained monthly/portfolio
+    values, two sealed Kotak batches, 551 originals (one 2MiB), 122 book receipts
+    and 37 multi receipts. Controlled source bytes, no provider or forged ACL.
+    This representative fixture is not a byte-for-byte DEV clone.
+    """
+    from datetime import timedelta
+    from mfdataindia.enrichment import (book_sources,book_store,book_runtime,
+        multi_store,hdfc_install)
+    from test_ingestion_gate_postgres import install_current_gate
+    from test_kotak_method_postgres import inputs as kotak_inputs
+    from hdfc_dynamic_native_fixture import Measured
+    from psycopg import sql
+    install_current_gate(ro01_db,monkeypatch)
+    with book_sources.select_registry(7),connect(ro01_db,'mfdata_verified_generator',autocommit=False) as conn:
+        identities=book_store.population(conn,'kotak-expanded')
+        batches,originals,archives=kotak_inputs(identities,method=2)
+        first=book_runtime.publish(conn,'kotak-expanded',PREFIX+'size-baseline',NOW,
+            identities,batches,originals,archives,availability=[])
+        for n in range(121):
+            row={k:v for k,v in first.items() if k!='run_id'}
+            row.update(execution_id=PREFIX+f'size-repeat-{n}',status='unchanged',
+                observed_at=(NOW+timedelta(seconds=n+1)).isoformat())
+            book_store.append_run(conn,row)
+        count=conn.execute('SELECT count(*) AS n FROM mf_book_facts.sources').fetchone()['n']
+        for n in range(551-count):
+            raw=(b'%PDF-synthetic-size-original-'+str(n).encode()+
+                (b' '*(2*1024*1024) if n==0 else b' '))
+            book_runtime.retain_source(conn,'absl-expanded',{'content':raw,
+                'source_url':'https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/factsheets/size-fixture.pdf',
+                'media_type':'application/pdf'})
+        for n in range(37):
+            multi_store.append_run(conn,{'format':'registered-facts-run-v1',
+                'source_key':'hdfc-flexi-cap','execution_id':PREFIX+f'size-failed-{n}',
+                'status':'failed','observed_at':NOW.isoformat(),
+                'policy_hash':fingerprint(multi_facts.policy()),'snapshot_ids':[],
+                'source_rows_changed':0,'all_amc_data_complete':False})
+    tables=('mf_book_facts.sources','mf_book_facts.batches','mf_book_facts.runs',
+        'mf_multi_facts.sources','mf_multi_facts.snapshots','mf_multi_facts.runs',
+        'mf_monthly_facts.sources','mf_monthly_facts.snapshots','mf.fund_facts',
+        'mf_fact_refresh.catalogs','mf_fact_refresh.runs','mf_fact_refresh.publications')
+    def inventory(conn):
+        return {name:fingerprint(conn.execute(sql.SQL(
+            'SELECT to_jsonb(t)::text AS row FROM {} t ORDER BY to_jsonb(t)::text'
+        ).format(sql.Identifier(*name.split('.')))).fetchall()) for name in tables}
+    with connect(ro01_db) as conn:
+        before=inventory(conn)
+        cfg=book_store.installed_configuration(conn)
+        prior=dict(current.configuration(conn))
+        multi=dict(conn.execute('SELECT * FROM mf_multi_facts.configuration ORDER BY generation DESC LIMIT 1').fetchone())
+        pins={'expected_multi_hash':fingerprint(multi),'expected_book_hash':cfg['configuration_hash'],
+            'expected_current_hash':fingerprint(prior)}
+        # Fail after real SQL transition but before commit; same production
+        # post-write guard is still called, never skipped or replaced by PASS.
+        real=current.verify_acl
+        calls=[]
+        def fail_after_transition(c):
+            real(c)
+            calls.append(1)
+            if len(calls)==2:
+                raise ValueError('CONTROLLED_FINAL_PRESERVATION_FAILURE')
+        with monkeypatch.context() as scope:
+            scope.setattr(current,'verify_acl',fail_after_transition)
+            with pytest.raises(ValueError,match='CONTROLLED_FINAL_PRESERVATION_FAILURE'):
+                hdfc_install.install(Measured(conn),ROOT,**pins)
+        assert len(calls)==2
+        assert inventory(conn)==before
+        assert book_store.installed_configuration(conn)==cfg
+        assert dict(current.configuration(conn))==prior
+        assert dict(conn.execute('SELECT * FROM mf_multi_facts.configuration ORDER BY generation DESC LIMIT 1').fetchone())==multi
+    result=install_hdfc(ro01_db,ROOT)
+    with connect(ro01_db) as conn:
+        assert inventory(conn)==before
+        assert book_store.installed_configuration(conn)['document']==book_sources.configuration(8)
+        assert current.policy_document(conn)==book_sources.current_policy(8)
+        hdfc_install.verify_seal(conn)
+    with capsys.disabled():
+        print(__import__('json').dumps({'native_representative_hdfc_install':result,
+            'fixture':{'source_rows':551,'book_batches':2,'book_receipts':122,'multi_receipts':37,
+                'largest_synthetic_original_bytes':2*1024*1024,'installer_cpu_affinity':1},
+            'full_business_preservation':True,'controlled_failure_rollback':True},sort_keys=True))
