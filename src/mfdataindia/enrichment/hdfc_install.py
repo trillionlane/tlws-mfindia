@@ -42,6 +42,12 @@ def verify_seal(conn):
 def install(conn,root,*,expected_multi_hash,expected_book_hash,expected_current_hash):
     if conn.info.transaction_status != TransactionStatus.IDLE:
         raise ValueError('HDFC_INSTALL_REQUIRES_IDLE_CONNECTION')
+    with book_sources.reuse_current_policies():
+        return _install(conn,root,expected_multi_hash=expected_multi_hash,
+            expected_book_hash=expected_book_hash,expected_current_hash=expected_current_hash)
+
+
+def _install(conn,root,*,expected_multi_hash,expected_book_hash,expected_current_hash):
     # Immutable source work is outside the short owner transaction. No database
     # verdict is cached: actual identities/state/permissions are checked below.
     old_registry,old_policy=multi_facts.registry(),multi_facts.policy()

@@ -17,8 +17,8 @@ from mfdataindia.enrichment import (kotak_current_workload as prior,
 from mfdataindia.enrichment.ingestion_discovery import SOURCES
 from mfdataindia.review.policy import fingerprint
 
-FILE = 'config/official-amc-discovery-dev-workload-v4.json'
-SHA256='7832aaae6d3313097f90057d269c15ed1ee31893385a7c3e9b3e9e187a275a60'
+FILE = 'config/official-amc-discovery-dev-workload-v5.json'
+SHA256='86f46acadcf953554a6e4f02b03b2edb05fc2e6b64870c0411027b007df7d675'
 
 
 def allocation(root):
@@ -74,7 +74,7 @@ def execute(dsn, environment, document, index):
     adapter = ingestion_adapters.Adapter(source, execution, dsn, store)
     observed = ingestion_runner.execute(source, execution, adapter, store)
     healthy = {'PUBLISHED','UNCHANGED','WAITING_FOR_PUBLICATION','INCOMPLETE_SOURCE_FILES','NOT_DUE'}
-    return {'format':'current-amc-discovery-workload-v4', 'allocation_sha256':SHA256,
+    return {'format':'current-amc-discovery-workload-v5', 'allocation_sha256':SHA256,
             'git_sha':environment['DEPLOYMENT_GIT_SHA'],'task_index':index,
             'source_key':source,'execution_id':execution,
             'status':'completed' if observed['state'] in healthy and observed.get('diagnostic_persistence')!='UNCONFIRMED' else 'failed',

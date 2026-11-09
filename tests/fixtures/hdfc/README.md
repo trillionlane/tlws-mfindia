@@ -6,3 +6,11 @@ is the unmodified retained issuer original, SHA-256
 It proves the fixed scheme identity, not the monthly facts' reporting date.
 Native tests label their book bytes and date variations as synthetic. They
 are database composition evidence, not proof of a newly published October book.
+
+`monthly-original-september-2026.pdf` is the already-retained full issuer
+September book, SHA-256
+`ab3d561bbacbc40aeb4ac5630f6e85b64e22a3433094b0312e279636907dcab4`.
+The populated installer regression uses it with the retained identity PDF to
+exercise non-empty original-byte integrity, sealed publication preservation
+and last-valid-period API reads. It is not a new provider acquisition or proof
+of a later reporting period.

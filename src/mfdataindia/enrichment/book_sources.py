@@ -14,6 +14,7 @@ from mfdataindia.enrichment import _registered_book_policy_v6
 
 CURRENT_VERSION = 5
 _selected_registry = ContextVar("book_registry_selection", default=None)
+_prepared_policies = ContextVar("book_immutable_policy_construction", default=None)
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
 POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12, 7: 13, 8: 14}
@@ -388,24 +389,55 @@ def configuration(version=None):
 
 
 def current_policy(version=None):
+    version = registry(version)['version']
+    prepared = _prepared_policies.get()
+    if prepared is None:
+        return _construct_current_policy(version)
+    if version not in prepared:
+        prepared[version] = _construct_current_policy(version)
+    # A caller cannot mutate the operation's immutable construction results.
+    return deepcopy(prepared[version])
+
+
+@contextmanager
+def reuse_current_policies():
+    """Prepare source-only documents before the owner transaction, per operation.
+
+    No connection, catalogue rows, identity, ACL, lock or integrity verdict is
+    retained here. Nested operations get independent documents; all exits reset
+    the context. Registry selection and the historical default remain separate.
+    """
+    token = _prepared_policies.set({})
+    try:
+        for version in sorted(REGISTRIES):
+            current_policy(version)
+        yield
+    finally:
+        _prepared_policies.reset(token)
+
+
+def _construct_current_policy(version):
     document = registry(version)
     if document['version'] == 8:
         from mfdataindia.enrichment import hdfc_source_v2
-        result=deepcopy(current_policy(7))
-        result.update(version=14,previous_policy_hash=fingerprint(current_policy(7)),
+        previous = current_policy(7)
+        result = deepcopy(previous)
+        result.update(version=14,previous_policy_hash=fingerprint(previous),
             book_source_registry_hash=fingerprint(document),book_source_configuration_hash=fingerprint(configuration(8)),
             multi_source_policy_hash=fingerprint(hdfc_source_v2.policy()),source_registry_version=8,
             source_authority_transition=document['authority_transition'])
         return result
     if document['version'] == 7:
-        result = deepcopy(current_policy(6))
-        result.update(version=13, previous_policy_hash=fingerprint(current_policy(6)),
+        previous = current_policy(6)
+        result = deepcopy(previous)
+        result.update(version=13, previous_policy_hash=fingerprint(previous),
                       book_source_registry_hash=fingerprint(document),
                       book_source_configuration_hash=fingerprint(configuration(7)))
         return result
     if document["version"] == 6:
-        result = deepcopy(current_policy(4))
-        result.update(version=12, previous_policy_hash=fingerprint(current_policy(4)),
+        previous = current_policy(4)
+        result = deepcopy(previous)
+        result.update(version=12, previous_policy_hash=fingerprint(previous),
                       book_source_registry_hash=fingerprint(document),
                       book_source_configuration_hash=fingerprint(configuration(6)),
                       source_registry_version=6,

@@ -98,7 +98,8 @@ def test_noneditable_image_layout_uses_exact_installed_module_bytes(tmp_path):
     import shutil
     document = current.allocation(ROOT)
     copied = {current.FILE, prior.ALLOCATION_FILE, 'config/official-amc-gate-source-predecessors-v1.json',
-              'config/official-hdfc-dynamic-predecessors-v1.json', *document['files'],
+              'config/official-hdfc-dynamic-predecessors-v1.json',
+              'config/official-hdfc-installer-policy-reuse-predecessors-v1.json', *document['files'],
               *prior.allocation(ROOT)['file_sha256']}
     for name in copied:
         if name.startswith('src/'):
@@ -115,7 +116,8 @@ def test_noneditable_image_layout_never_accepts_changed_installed_code(tmp_path,
     from types import SimpleNamespace
     document=current.allocation(ROOT)
     copied = {current.FILE, prior.ALLOCATION_FILE, 'config/official-amc-gate-source-predecessors-v1.json',
-              'config/official-hdfc-dynamic-predecessors-v1.json', *document['files'],
+              'config/official-hdfc-dynamic-predecessors-v1.json',
+              'config/official-hdfc-installer-policy-reuse-predecessors-v1.json', *document['files'],
               *prior.allocation(ROOT)['file_sha256']}
     for name in copied:
         if not name.startswith('src/'):
