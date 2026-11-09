@@ -34,7 +34,7 @@
     },
     "tests/test_hdfc_dynamic_postgres.py": {
       "previous_sha256": "5a407584194499c40d772163dcab9acb54ccbfec271122369c93112173b2cfd0",
-      "current_sha256": "c1b3e981746bb55ecee11528c0521d44a53bf4676881448fa4637abab9b3b553"
+      "current_sha256": "6023696b7f18074d00e92a5740015c2c3598067bfc5e8662298dea7971d5cee2"
     },
     "tests/test_kotak_current_workload.py": {
       "previous_sha256": "d65f8e83e575f1b602fe0d127921d7eed2621cd994731cf2d763ce7969676c30",

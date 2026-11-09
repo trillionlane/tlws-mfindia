@@ -148,17 +148,19 @@ def test_native_populated_installer_complete_transaction_rollback_reentry_and_pr
     """Full production installer, not a constructor benchmark or empty schema.
 
     Supported migrated graph with broad reader, real retained monthly/portfolio
-    values, two sealed Kotak batches, 551 originals (one 2MiB), 122 book receipts
-    and 37 multi receipts. Controlled source bytes, no provider or forged ACL.
+    values, two sealed Kotak batches, 551 book originals (one 2MiB), 122 book
+    receipts, retained HDFC originals and a published snapshot, and 37 multi
+    receipts. No provider or forged ACL; book size inputs are synthetic.
     This representative fixture is not a byte-for-byte DEV clone.
     """
     from datetime import timedelta
     from mfdataindia.enrichment import (book_sources,book_store,book_runtime,
-        multi_store,hdfc_install)
+        multi_store,multi_runtime,monthly_pdf,hdfc_install)
     from test_ingestion_gate_postgres import install_current_gate
     from test_kotak_method_postgres import inputs as kotak_inputs
     from hdfc_dynamic_native_fixture import Measured
     from psycopg import sql
+    real_extract=monthly_pdf.extract
     install_current_gate(ro01_db,monkeypatch)
     with book_sources.select_registry(7),connect(ro01_db,'mfdata_verified_generator',autocommit=False) as conn:
         identities=book_store.population(conn,'kotak-expanded')
@@ -177,7 +179,24 @@ def test_native_populated_installer_complete_transaction_rollback_reentry_and_pr
             book_runtime.retain_source(conn,'absl-expanded',{'content':raw,
                 'source_url':'https://mutualfund.adityabirlacapital.com/-/media/bsl/files/resources/factsheets/size-fixture.pdf',
                 'media_type':'application/pdf'})
-        for n in range(37):
+        retained={role:(ROOT/'tests/fixtures/hdfc'/name).read_bytes() for role,name in (
+            ('edition','monthly-original-september-2026.pdf'),
+            ('identity_source','identity-original-september-2026.pdf'))}
+        for role,raw in retained.items():
+            assert hashlib.sha256(raw).hexdigest()==multi_facts.source()[role]['sha256']
+        retained_archives=[{'uri':'gs://tlws_mf_data_source/official-monthly-facts/hdfc-flexi-cap/'+
+            hashlib.sha256(raw).hexdigest()+'.pdf','sha256':hashlib.sha256(raw).hexdigest(),
+            'generation':'1','size':len(raw),'md5':'FIXTURE-ONLY-NOT-CLOUD-PROOF'} for raw in retained.values()]
+        # populate() controls the unrelated ABSL monthly decoder. This retained
+        # HDFC publication uses the real bounded worker and real original bytes.
+        with monkeypatch.context() as extraction:
+            extraction.setattr(monthly_pdf,'extract',real_extract)
+            hdfc=multi_runtime.publish(conn,PREFIX+'size-hdfc-september',NOW,retained,retained_archives)
+        assert hdfc['status']=='updated'
+        repeated={k:v for k,v in hdfc.items() if k!='run_id'}
+        repeated.update(execution_id=PREFIX+'size-hdfc-repeat',status='unchanged')
+        multi_store.append_run(conn,repeated)
+        for n in range(35):
             multi_store.append_run(conn,{'format':'registered-facts-run-v1',
                 'source_key':'hdfc-flexi-cap','execution_id':PREFIX+f'size-failed-{n}',
                 'status':'failed','observed_at':NOW.isoformat(),
@@ -193,6 +212,8 @@ def test_native_populated_installer_complete_transaction_rollback_reentry_and_pr
         ).format(sql.Identifier(*name.split('.')))).fetchall()) for name in tables}
     with connect(ro01_db) as conn:
         before=inventory(conn)
+        prior_fields=current.get(conn,101763)['fields']
+        assert prior_fields['aum']['value']=='108546.98'
         cfg=book_store.installed_configuration(conn)
         prior=dict(current.configuration(conn))
         multi=dict(conn.execute('SELECT * FROM mf_multi_facts.configuration ORDER BY generation DESC LIMIT 1').fetchone())
@@ -221,9 +242,23 @@ def test_native_populated_installer_complete_transaction_rollback_reentry_and_pr
         assert inventory(conn)==before
         assert book_store.installed_configuration(conn)['document']==book_sources.configuration(8)
         assert current.policy_document(conn)==book_sources.current_policy(8)
+        assert current.get(conn,101763)['fields']==prior_fields
         hdfc_install.verify_seal(conn)
+    private,verifier=trust()
+    from psycopg.conninfo import make_conninfo
+    app=create_review_app(make_conninfo(ro01_db,user='mfdata_verified_reader',password=PASSWORD),
+        multi_amc=True,current_facts=True,verifier=verifier,reader_profile=profiles.BROAD)
+    with TestClient(app) as client:
+        route='/api/enrichment/v8/funds/101763/facts'
+        assert client.get(route).status_code==401
+        client.headers['Authorization']='Bearer '+assertion(private,scope=['review:read'])
+        response=client.get(route)
+        assert response.status_code==200
+        assert response.json()['snapshots'][0]['snapshot']['disclosure_as_of']=='2026-09-30'
     with capsys.disabled():
         print(__import__('json').dumps({'native_representative_hdfc_install':result,
             'fixture':{'source_rows':551,'book_batches':2,'book_receipts':122,'multi_receipts':37,
-                'largest_synthetic_original_bytes':2*1024*1024,'installer_cpu_affinity':1},
+                'largest_synthetic_original_bytes':2*1024*1024,'installer_cpu_affinity':1,
+                'hdfc_original_bytes':sum(map(len,retained.values())),
+                'hdfc_published_snapshots':1,'hdfc_authenticated_legacy_read':True},
             'full_business_preservation':True,'controlled_failure_rollback':True},sort_keys=True))

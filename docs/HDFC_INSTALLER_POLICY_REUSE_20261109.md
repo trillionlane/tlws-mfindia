@@ -56,7 +56,11 @@ changing their expected hashes or weakening them.
 - New populated native case uses the supported migrated graph and publication
   seams: broad reader, real retained monthly/portfolio fixture values, two sealed
   Kotak batches, 551 original rows (including a synthetic original over 2 MiB),
-  122 book receipts and 37 multi-source receipts. No trigger, role or policy is
+  122 book receipts and 37 multi-source receipts. It also publishes the retained
+  September HDFC original (plus its identity PDF, 7,181,300 bytes total) through
+  the real bounded decoder and publisher. Installation therefore hashes actual
+  non-empty HDFC originals and preserves a published snapshot and authenticated
+  last-valid-period read. No trigger, role or policy is
   bypassed. This is a representative fixture, not an exact DEV data clone.
 - The native case injects a failure after the actual transition and final guard,
   verifies rollback of all three configuration heads and complete business-row
