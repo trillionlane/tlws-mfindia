@@ -1,296 +1,595 @@
 {
   "acceptance_cases": [
     {
+      "A_gate_scope": "SCH43 mapping completeness and separate SCH44 declaration; other132-field registry entries are static documentation only, not executable import support.",
       "effect_assertion": "No field omission or source mutation",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "FAMILY_FIELD_ACCOUNTING",
       "input_or_fault": "All six inventory layouts",
       "layer": "contract",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Every one of132 positions has exact source/type/width/disposition; source43 and retained44 differ explicitly",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "Unknown schema cannot publish",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "SCH_DOC43_RETAINED44",
       "input_or_fault": "Distinct43 and44 headers and version-bound token profiles",
       "layer": "parser",
-      "required_result": "Select only exact declared layout; field14 conflict remains unresolved, no added-column shift",
-      "slice": "A"
+      "phase": "NSE01_A_OFFLINE_SCH",
+      "required_result": "Separate descriptors; only explicitly supported fixture-bound SCH profiles accepted. Missing complete44 value profile must reject SCHEMA_UNVERIFIED, not block document43 offline acceptance or silently parse44.",
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No identity rewrite",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "SCH_OPAQUE_ID",
       "input_or_fault": "Leading-zero serial/code and synthetic ISIN",
       "layer": "parser",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Identifiers unchanged; provider serial never becomes AMFI code",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
-      "effect_assertion": "Zero fetch/connect/mutation",
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
+      "effect_assertion": "Zero NSE calls or provider credentials; dry-run rejects before database connection/claim",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "REQUEST_ALLOWLIST",
-      "input_or_fault": "Unknown file type, extra request field or fabricated Step-Up code",
+      "input_or_fault": "Offline local manifest with unknown family/extra member; known non-SCH family; fabricated Step-Up type",
       "layer": "preflight",
-      "required_result": "Value-free reject before provider/DB",
-      "slice": "A"
+      "phase": "NSE01_A_OFFLINE_SCH",
+      "required_result": "SCH only executable; all SIP/STP/SWP/NAV/SET return FAMILY_NOT_IMPLEMENTED before DB effects; unknown values rejected; no downloader/request client introduced",
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "SCH numeric/lexeme/overflow boundaries only",
       "effect_assertion": "No invalid active snapshot",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "PRECISE_DECIMAL",
       "input_or_fault": "Large exact values, NaN/Inf/exponent, width/scale overflow",
+      "later_family_extensions": [
+        "SIP amount precision",
+        "STP amount/unit precision",
+        "SWP amount2/unit3 scale",
+        "NAV unspecified scale"
+      ],
       "layer": "parser",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Exact Decimal; reject invalid or unresolved grammar, never round/truncate",
-      "slice": "A_and_later"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No inferred count repair",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "HEADERS_CELLS_BOM",
       "input_or_fault": "Missing/extra/duplicate header; BOM/CRLF; terminal delimiter",
       "layer": "parser",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Version-specific grammar; preserve empty final fields",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Local fixture files containing failure JSON/HTML/empty/truncated text; no HTTP request is executed.",
       "effect_assertion": "No active retirement or replacement",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "ERROR_AND_TRUNCATION",
       "input_or_fault": "HTTP200 failure JSON,HTML,empty/header-only,truncated line",
       "layer": "parser",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Not a valid empty universe; original last head remains",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No positive unknown eligibility",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "REQUIREDNESS",
       "input_or_fault": "Blank optional versus identity/facility-required cells",
       "layer": "parser",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "No invented blanket mandatory flags; missing mapping facts explicitly unavailable",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No facility grant from unknown",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "FLAGS_PLANS",
       "input_or_fault": "0/1 versusY/N;D versusunknown plan token",
       "layer": "parser",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Only versioned reviewed normalization; unknown never Regular/eligible",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "Canonical/AMC records unchanged",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "CROSSWALK_EXACT",
       "input_or_fault": "Explicit syntheticAMC crosswalk+matching AMFI code/ISIN slot/plan",
       "layer": "mapping",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Exact mapping; distinct payout/reinvestment,Regular/Direct preserved",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No arbitrary mapping",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "MAPPING_AMBIGUITY",
       "input_or_fault": "Same ISIN several AMFI rows, wrongAMC, plan conflict/name-only",
       "layer": "mapping",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Retain AMBIGUOUS/CONFLICT/UNMAPPED, one-to-many facilities explicit",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No expansion of serving scope",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "OUT_OF_SCOPE",
       "input_or_fault": "Known Direct or missing current Regular eligibility",
       "layer": "mapping",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Retain source evidence with out-of-scope status",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No silent duplicate overwrites",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "DUPLICATE_KEYS",
       "input_or_fault": "Identical duplicates versus conflicting candidate business keys",
       "layer": "parser_native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "All original rows retained; deterministic identical semantics; conflicts block head",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "One successful publication COMMIT",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "FIRST_IMPORT",
       "input_or_fault": "Sanitized SCH plus synthetic canonical rows",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Validated snapshot+mapping+head+current_sch together; immutable source hashes",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No repeated publisher or business artifact",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "REENTRY",
       "input_or_fault": "Same bytes/schema/parser and repeated operation",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "No duplicate rows/head advance; separate observation",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "At most one publication",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "CONCURRENT_SAME_WORK",
       "input_or_fault": "Two contenders same work identity",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Unique work claim; one publisher, other unchanged/inspect",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No overwrite or false unchanged",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "SAME_DATE_REVISION",
       "input_or_fault": "Same date,new bytes, then same semantic content/new parser",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "New versioned candidate; distinguish bytes/business/schema/mapping changes",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "Partial/error file cannot remove",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "REMOVAL_DISABLED",
       "input_or_fault": "Validated FULL next snapshot removes/disables source variant",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Current applicability updated atomically; old snapshot remains",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No successful partial publication",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "PRESERVATION_FAILURE",
       "input_or_fault": "Mismatch/fault between staging and head/current publish",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Confirmed rollback retains all old data/head",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "Zero recovery writes/reconnect-and-write",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "COMMIT_UNKNOWN",
       "input_or_fault": "Connection lost around COMMIT; later inspect",
       "layer": "native_or_fake_transport",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "UNKNOWN until original durable outcome resolved; no blind replay",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "Missing reconciliation not consumer-ready",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "API_DATASET_CHAIN",
       "input_or_fault": "Enroll current_sch using existing trusted creator seam",
       "layer": "native_api",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Discovery/metadata/pagination/read with authenticated non-elevated reader",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Native SCH data/reader/mutation tests and existing unchanged auth-release contract; no new live Cloud Run authentication test is required for offline A.",
       "effect_assertion": "No auth bypass/new function EXECUTE; no claim ASGI alone verifies Cloud Run authentication",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "API_DENIALS",
       "input_or_fault": "Unsafe database identity, SELECT grant option, missing SELECT, writes/DDL; separately unsigned/wrong-invoker service requests",
       "layer": "native_api_and_existing_auth_boundary",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Native fixture verifies DB/route authorization. Existing private-ingress/OIDC release checks retained; actual unsigned/wrong-invoker denial needs later authorized service-boundary evidence, not a fabricated ASGI401.",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Offline SCH input, storage/mapping/publication and existing fixture API only; no NSE network access",
       "effect_assertion": "No AMFI NAV overwrite or ingestion blockage",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "AMC_CANONICAL_PRESERVATION",
       "input_or_fault": "Import/re-entry/failure while unrelated AMC work runs",
       "layer": "native",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Original full-row values/provenance unchanged; independent source continues",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Actual local/import main and ordinary provider-free package smoke, SCH-only; no live job dispatch, image publication or NSE transport.",
       "effect_assertion": "No missing-parser or environment regression",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
       "id": "PACKAGE_MAIN",
       "input_or_fault": "Real main with os.environ mapping and synthetic transports",
       "layer": "image_provider_free",
+      "phase": "NSE01_A_OFFLINE_SCH",
       "required_result": "Parser wired; strict complete input; dry-run spends no execution",
-      "slice": "A"
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No false Step-Up capability",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "SIP27_28_STEPUP",
       "input_or_fault": "Separate sanitized27/28; unknown28value/nonblank filler",
       "layer": "parser",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "No shift;DP contract explicit;untyped pause unknown;no fabricated Step-Up operation",
+      "scope_families": [
+        "SIP",
+        "STEP_UP_UNRESOLVED"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No order permission",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "STP_DESTINATION",
       "input_or_fault": "ASTP rules + mismatched destination/unknown modes",
       "layer": "parser_mapping",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "No inferred eligible pair;in/out and units preserved",
+      "scope_families": [
+        "STP"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No quantity rounding",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "SWP_SCALE",
       "input_or_fault": "0.001units vs100.00amount",
       "layer": "parser",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "Distinct exact scales; bad token fails",
+      "scope_families": [
+        "SWP"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No AMFI replacement",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "NAV_HEADERLESS",
       "input_or_fault": "8positions,date errors,Zflag,same code ambiguousAMC",
       "layer": "parser_mapping",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "No header inference;separate NSE NAV;ambiguous mapping unavailable",
+      "scope_families": [
+        "NAV"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No holiday/order inference",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "SET_DOMAIN",
       "input_or_fault": "MF vsSCH L1,dates,leading-zero settlement",
       "layer": "parser_mapping",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "Context only;no implicit join/calendar completeness",
+      "scope_families": [
+        "SET"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No mixed positive eligibility",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "FAMILY_VECTOR",
       "input_or_fault": "Fresh SCH with stale/missing/incompatibleSIP/NAV/SET",
       "layer": "native_api",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "Explicit vector conflict/staleness; source status stays independent",
+      "scope_families": [
+        "SCH",
+        "SIP",
+        "STP",
+        "SWP",
+        "NAV",
+        "SET"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No global source blockade",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "FAILURE_ISOLATION",
       "input_or_fault": "One family parse/publish failure, other family and AMC valid",
       "layer": "native",
+      "phase": "LATER_FAMILY_IMPORTS",
       "required_result": "Independent progress; last valid data retained with dates",
+      "scope_families": [
+        "SIP",
+        "STP",
+        "SWP",
+        "NAV",
+        "SET"
+      ],
       "slice": "later"
     },
     {
+      "A_gate_scope": "Not an NSE01-A completion prerequisite",
       "effect_assertion": "No call authorized by draft/fixtures",
       "executed_by_this_draft": false,
+      "gates_NSE01_A": false,
       "id": "LIVE_PROD_REFERENCE",
       "input_or_fault": "Actual bounded read of current originals",
       "layer": "separately_authorized_runtime",
+      "phase": "LATER_LIVE_ACTIVATION",
       "required_result": "Complete immutable bytes + verified headers/tokens + publication/API evidence",
+      "scope_families": [
+        "SCH",
+        "SIP",
+        "STP",
+        "SWP",
+        "NAV",
+        "SET"
+      ],
       "slice": "later"
+    },
+    {
+      "A_gate_scope": "Offline SCH fixtures and disposable chain only",
+      "effect_assertion": "No canonical/AMC writes; no network or credential access",
+      "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
+      "id": "SCH_AMBIGUITY_BOUNDARIES",
+      "input_or_fault": "Each SCH ambiguity plus stated escalation from field/row to structural invalidity",
+      "layer": "parser_mapping_native_api",
+      "phase": "NSE01_A_OFFLINE_SCH",
+      "required_result": "Assert exact BLOCK_SNAPSHOT/WITHHOLD_ROW/WITHHOLD_FIELD and head/row/field effects; no larger effect than required, no positive unknown rule",
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
+    },
+    {
+      "A_gate_scope": "Offline SCH fixtures and disposable chain only",
+      "effect_assertion": "No canonical/AMC writes; no network or credential access",
+      "executed_by_this_draft": false,
+      "gates_NSE01_A": true,
+      "id": "SCH_WITHHOLDING_ACCOUNTING",
+      "input_or_fault": "Mix resolved,ambiguous,out-of-scope rows and unresolved field14/cutoff",
+      "layer": "parser_mapping_native_api",
+      "phase": "NSE01_A_OFFLINE_SCH",
+      "required_result": "Only resolved in-scope rows appear; null field/limitation reasons and complete counts; no silent omission or false full rule coverage",
+      "scope_families": [
+        "SCH"
+      ],
+      "slice": "NSE01-A"
     }
   ],
   "base": "db07e53a509a39556214bec80cca084086c37b2a",
+  "disposition_precedence": [
+    "BLOCK_SNAPSHOT",
+    "WITHHOLD_ROW",
+    "WITHHOLD_FIELD"
+  ],
+  "disposition_semantics": {
+    "BLOCK_SNAPSHOT": "Reject active publication for this candidate; previous accepted head/read model unchanged. Retain candidate evidence/error.",
+    "WITHHOLD_FIELD": "Keep resolved row, retain original value privately, withhold affected normalized/exposure field and dependent constraint verdict. No positive claim for unknown facts.",
+    "WITHHOLD_ROW": "Accept structurally complete snapshot when otherwise valid; retain row and reason privately, omit from current_sch, publish independently verified rows. Never mark omitted row current/eligible.",
+    "aggregate_reporting": "PUBLISHED_WITH_LIMITATIONS when any row/field withheld; report source_rows, exposed_rows, withheld_rows, withheld_fields and per-reason counts. Schema/data completeness is distinct from complete consumer rule coverage.",
+    "canonical_preservation": "Withholding does not mutate or delete canonical funds, AMC data or immutable previous snapshots."
+  },
   "format": "nse01-review-draft-v1",
+  "gate_summary": {
+    "NSE01_A_required": [
+      "FAMILY_FIELD_ACCOUNTING",
+      "SCH_DOC43_RETAINED44",
+      "SCH_OPAQUE_ID",
+      "REQUEST_ALLOWLIST",
+      "PRECISE_DECIMAL",
+      "HEADERS_CELLS_BOM",
+      "ERROR_AND_TRUNCATION",
+      "REQUIREDNESS",
+      "FLAGS_PLANS",
+      "CROSSWALK_EXACT",
+      "MAPPING_AMBIGUITY",
+      "OUT_OF_SCOPE",
+      "DUPLICATE_KEYS",
+      "FIRST_IMPORT",
+      "REENTRY",
+      "CONCURRENT_SAME_WORK",
+      "SAME_DATE_REVISION",
+      "REMOVAL_DISABLED",
+      "PRESERVATION_FAILURE",
+      "COMMIT_UNKNOWN",
+      "API_DATASET_CHAIN",
+      "API_DENIALS",
+      "AMC_CANONICAL_PRESERVATION",
+      "PACKAGE_MAIN",
+      "SCH_AMBIGUITY_BOUNDARIES",
+      "SCH_WITHHOLDING_ACCOUNTING"
+    ],
+    "all_cases_status": "DEFINED_NOT_EXECUTED",
+    "first_slice": "OFFLINE_SCH_ONLY",
+    "later_family_imports_executable_in_A": false,
+    "later_not_A_gates": [
+      "SIP27_28_STEPUP",
+      "STP_DESTINATION",
+      "SWP_SCALE",
+      "NAV_HEADERLESS",
+      "SET_DOMAIN",
+      "FAMILY_VECTOR",
+      "FAILURE_ISOLATION",
+      "LIVE_PROD_REFERENCE"
+    ],
+    "live_reference_read_required_for_A": false
+  },
   "inventory_sha256": "cefd9759679ea300a2aaacc61f4ebfe10678d6cb8aa2467941a8ba4d9ecd3440",
   "negative_error_example": {
     "must_not_import_as_text_rows": true,
@@ -323,6 +622,247 @@
       "available_in_this_draft": false,
       "needed": "Sanitized28 positions with source provenance; production request/layout still unresolved",
       "schema": "SIP28_STEPUP"
+    }
+  ],
+  "sch_ambiguity_dispositions": [
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_LAYOUT",
+      "positions": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "primary_effect": "BLOCK_SNAPSHOT",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Unknown/unselected layout or structural/type/truncation error prevents current_sch/head replacement; a header-only44 witness does not authorize its value grammar.",
+      "subject": "43/44 count, header aliases, extra OPEN/CLOSE field, encoding/BOM/delimiter/width interpretation"
+    },
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_FIELD14",
+      "positions": [
+        14
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Retain the source value; leave both ambiguous normalized maximum targets unavailable and mark affected purchase constraints UNKNOWN. Identity row and other independently verified fields can appear.",
+      "subject": "Maximum purchase versus additional purchase maximum"
+    },
+    {
+      "escalation": "Nonblank under a profile requiring BLANK is SCHEMA_DRIFT: BLOCK_SNAPSHOT; a different reviewed44 profile has its own rule.",
+      "family": "SCH",
+      "id": "SCH_BLANK19",
+      "positions": [
+        19
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "For selected document43, blank is valid; normalized quantity minimum stays unavailable.",
+      "subject": "Document-BLANK redemption minimum quantity"
+    },
+    {
+      "escalation": "Nonblank under selected document43 profile is SCHEMA_DRIFT: BLOCK_SNAPSHOT; no implicit schema upgrade.",
+      "family": "SCH",
+      "id": "SCH_BLANK43",
+      "positions": [
+        43
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "For selected document43, blank is valid; no reopening-date claim.",
+      "subject": "Document-BLANK reopening date"
+    },
+    {
+      "escalation": "Header-wide grammar/layout uncertainty is SCH_LAYOUT and blocks the snapshot; this row rule is for structurally valid, unsupported value semantics.",
+      "family": "SCH",
+      "id": "SCH_PLAN",
+      "positions": [
+        8
+      ],
+      "primary_effect": "WITHHOLD_ROW",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Keep evidence and mapping diagnostic, but exclude that source row from current_sch until exact plan is established. D/direct does not become Regular.",
+      "subject": "Unknown/blank/unverified non-D plan token"
+    },
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_MAPPING",
+      "positions": [
+        2,
+        5,
+        6,
+        8,
+        28
+      ],
+      "primary_effect": "WITHHOLD_ROW",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Unmapped/ambiguous/conflicting exact canonical candidates are excluded from current_sch; snapshot may retain them and publish independently resolved rows. No arbitrary candidate/name-only fallback.",
+      "subject": "Missing or conflicting AMC crosswalk, scheme/ISIN/plan/option evidence"
+    },
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_SCOPE",
+      "positions": [
+        8
+      ],
+      "primary_effect": "WITHHOLD_ROW",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Retain valid source evidence with OUT_OF_CURRENT_SCOPE, exclude only that row from current_sch. Do not change AMFI/reader scope.",
+      "subject": "Known Direct/other variant outside current Regular consumer scope"
+    },
+    {
+      "escalation": "Malformed declared type/length is SCH_LAYOUT: BLOCK_SNAPSHOT. An option-identity conflict uses SCH_MAPPING: WITHHOLD_ROW.",
+      "family": "SCH",
+      "id": "SCH_FLAGS_MODES",
+      "positions": [
+        10,
+        11,
+        17,
+        18,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        38,
+        40
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "For a structurally valid but unsupported token, null the affected normalized flag/mode and mark dependent facility unavailable/UNKNOWN. Never upgrade unknown to true.",
+      "subject": "Unknown flag or mode token, combined-mode or numeric/Y-N interpretation"
+    },
+    {
+      "escalation": "Malformed numeric/nonfinite/overflow/known min>max under selected grammar is invalid data: BLOCK_SNAPSHOT.",
+      "family": "SCH",
+      "id": "SCH_NUMERIC",
+      "positions": [
+        12,
+        13,
+        14,
+        15,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        35,
+        41
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Keep exact source lexeme; withhold only unresolved normalized numeric meaning and dependent constraint verdict. Never round or invent a unit.",
+      "subject": "Missing scale/width meaning or applicability of a structurally valid numeric rule"
+    },
+    {
+      "escalation": "Invalid HH:MM:SS under selected grammar is BLOCK_SNAPSHOT.",
+      "family": "SCH",
+      "id": "SCH_CUTOFF",
+      "positions": [
+        16,
+        25
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Source HH:MM:SS can remain labelled source text if classified; no UTC/instant or timing-eligibility field is derived.",
+      "subject": "Unspecified cutoff timezone"
+    },
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_SETTLEMENT",
+      "positions": [
+        33
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Keep source settlement text; withhold derived SET join/settlement applicability only. No invented FK or holiday rules.",
+      "subject": "SCH settlement code has no reviewed SET MF-domain crosswalk"
+    },
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_SOURCE_METADATA",
+      "positions": [
+        1,
+        3,
+        4,
+        7,
+        26,
+        34,
+        42
+      ],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Preserve source-only metadata; do not manufacture canonical identifiers/taxonomy or expose unclassified fields. Other exact identity evidence may still resolve the row.",
+      "subject": "Source serial, RTA/AMC scheme IDs, taxonomy, agent, AMC_IND/channel partner classification"
+    },
+    {
+      "escalation": "Missing exact identity/mapping facts -> WITHHOLD_ROW; structurally invalid/missing cells -> BLOCK_SNAPSHOT. No invented all-fields-required rule.",
+      "family": "SCH",
+      "id": "SCH_REQUIREDNESS",
+      "positions": [],
+      "primary_effect": "WITHHOLD_FIELD",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Optional/unneeded blanks do not block rows. A missing required facility fact withholds that field/constraint only.",
+      "subject": "Layout omits blanket source mandatory/optional declarations"
+    },
+    {
+      "escalation": null,
+      "family": "SCH",
+      "id": "SCH_DUPLICATES",
+      "positions": [],
+      "primary_effect": "BLOCK_SNAPSHOT",
+      "retained_evidence": "Original artifact and all cells always retained privately; no alteration of canonical AMFI/AMC values",
+      "rule": "Prevent publication of a contradictory complete snapshot; retain all evidence. Exact duplicate rows may be retained and deterministically normalized without additional business artifacts.",
+      "subject": "Conflicting payloads at a candidate business key"
     }
   ],
   "scope": "Acceptance specification, not executed tests",

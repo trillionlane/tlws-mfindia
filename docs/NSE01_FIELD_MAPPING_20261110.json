@@ -36,6 +36,10 @@
       "fields": [
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "UNIQUE NO",
           "document_remark": null,
@@ -64,6 +68,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_MAPPING"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SCHEME CODE",
           "document_remark": null,
@@ -92,6 +100,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "RTA SCHEME CODE",
           "document_remark": null,
@@ -120,6 +132,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "AMC SCHEME CODE",
           "document_remark": null,
@@ -148,6 +164,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_MAPPING"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "ISIN",
           "document_remark": null,
@@ -176,6 +196,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_MAPPING"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "AMC CODE",
           "document_remark": null,
@@ -204,6 +228,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "SCHEME TYPE",
           "document_remark": null,
@@ -231,6 +259,12 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_PLAN",
+            "SCH_SCOPE",
+            "SCH_LAYOUT",
+            "SCH_MAPPING"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SCHEME PLAN",
           "document_remark": "IF D THEN DIRECT ELSE REGULAR",
@@ -259,6 +293,9 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SCHEME NAME",
           "document_remark": null,
@@ -286,6 +323,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "PURCHASE ALLOWED",
           "document_remark": null,
@@ -313,6 +354,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "PURCHASE TRANSACTION MODE",
           "document_remark": null,
@@ -341,6 +386,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "MINIMUM PURCHASE AMOUNT",
           "document_remark": null,
@@ -369,6 +418,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "ADDITIONAL PURCHASE AMOUNT",
           "document_remark": null,
@@ -397,6 +450,11 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_FIELD14",
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "MAXIMUM PURCHASE AMOUNT",
           "document_remark": null,
@@ -425,6 +483,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "PURCHASE AMOUNT MULTIPLIER",
           "document_remark": null,
@@ -453,6 +515,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_CUTOFF",
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "PURCHASE CUTOFF TIME",
           "document_remark": "HH:MM:SS",
@@ -481,6 +547,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION ALLOWED",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -509,6 +579,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION TRANSACTION MODE",
           "document_remark": null,
@@ -537,6 +611,11 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_BLANK19",
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "MINIMUM REDEMPTION QTY",
           "document_remark": "BLANK",
@@ -565,6 +644,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION QTY MULTIPLIER",
           "document_remark": null,
@@ -593,6 +676,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "MAXIMUM REDEMPTION QTY",
           "document_remark": null,
@@ -621,6 +708,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION AMOUNT - MINIMUM",
           "document_remark": null,
@@ -649,6 +740,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION AMOUNT - MAXIMUM",
           "document_remark": null,
@@ -677,6 +772,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION AMOUNT MULTIPLE",
           "document_remark": null,
@@ -705,6 +804,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_CUTOFF",
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "REDEMPTION CUTOFF TIME",
           "document_remark": "HH:MM:SS",
@@ -733,6 +836,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "RTA AGENT CODE",
           "document_remark": null,
@@ -761,6 +868,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "AMC ACTIVE FLAG",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -789,6 +900,11 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_MAPPING",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "DIVIDEND REINVESTMENT FLAG",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -817,6 +933,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SIP FLAG",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -845,6 +965,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "STP FLAG",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -873,6 +997,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SWP FLAG",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -901,6 +1029,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SWITCH FLAG",
           "document_remark": "IF 1 THEN Y ELSE N",
@@ -928,6 +1060,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_SETTLEMENT",
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "SETTLEMENT TYPE",
           "document_remark": null,
@@ -955,6 +1091,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "AMC_IND",
           "document_remark": null,
@@ -983,6 +1123,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "FACE VALUE",
           "document_remark": null,
@@ -1011,6 +1155,9 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "START DATE",
           "document_remark": "DD-MM-YYYY",
@@ -1038,6 +1185,9 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "END DATE",
           "document_remark": "DD-MM-YYYY",
@@ -1065,6 +1215,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "EXIT LOAD FLAG",
           "document_remark": null,
@@ -1093,6 +1247,9 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "EXIT LOAD",
           "document_remark": null,
@@ -1120,6 +1277,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_FLAGS_MODES"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "LOCK IN PERIOD FLAG",
           "document_remark": null,
@@ -1148,6 +1309,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_NUMERIC"
+          ],
           "consumer_exposure": "SANITIZED_REFERENCE_ONLY_AFTER_VALIDATION",
           "document_field_name": "LOCK IN PERIOD",
           "document_remark": null,
@@ -1176,6 +1341,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_LAYOUT",
+            "SCH_SOURCE_METADATA"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "CHANNEL PARTNER CODE",
           "document_remark": null,
@@ -1204,6 +1373,10 @@
         },
         {
           "API_pdf_page": 163,
+          "ambiguity_policy_refs": [
+            "SCH_BLANK43",
+            "SCH_LAYOUT"
+          ],
           "consumer_exposure": "WITHHELD_PENDING_CLASSIFICATION",
           "document_field_name": "REOPENING DATE",
           "document_remark": "BLANK",
@@ -3914,6 +4087,15 @@
       "sha256": "9fe850dbef19ce7e7bfe3ea0ecdda2dc70f34fab2230803102b1d0b7eb239787"
     }
   ],
+  "sch_ambiguity_policy": {
+    "no_invented_eligibility": true,
+    "primary_effects": [
+      "BLOCK_SNAPSHOT",
+      "WITHHOLD_ROW",
+      "WITHHOLD_FIELD"
+    ],
+    "source": "NSE01_FIXTURE_ACCEPTANCE_20261110.json#sch_ambiguity_dispositions"
+  },
   "separate_observed_schemas": {
     "SCH44": {
       "extra_header": "OPEN/CLOSE ENDED SCHEME",

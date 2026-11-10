@@ -76,6 +76,34 @@ normalization still requires a schema-specific token profile: an unrecognized
 new token cannot silently become Regular. Synthetic fixtures can exercise chosen
 normalizations but cannot establish which tokens production currently emits.
 
+## SCH ambiguity effects for NSE01-A
+
+The acceptance matrix contains the machine-readable policy and escalation for
+all entries below. BLOCK_SNAPSHOT takes precedence over row withholding, then
+field withholding. Structural/type errors do not become silently tolerated
+unknown values. Semantic uncertainty alone does not reject unrelated valid data.
+
+| Ambiguity | Primary effect | Boundaries |
+| --- | --- | --- |
+| Unknown43/44 layout, header/count/encoding/delimiter or malformed declared value | **BLOCK_SNAPSHOT** | Retain prior head/read model; no guessed schema repair. Incomplete44 value-profile evidence means reject that version explicitly; it is not a prerequisite for document43 offline acceptance. |
+| Field14 maximum purchase versus additional purchase maximum | **WITHHOLD_FIELD** | Keep identity row; neither ambiguous maximum is asserted. Affected purchase constraint verdict stays UNKNOWN. |
+| Document43 blank quantity field19 / reopening field43 | **WITHHOLD_FIELD** | Valid blank creates no rule. Nonblank contrary to selected profile escalates to **BLOCK_SNAPSHOT**; do not implicitly switch to44. |
+| Unknown plan token or missing/conflicting exact AMC/ISIN/plan/option mapping | **WITHHOLD_ROW** | Retain original row/reason; omit from current_sch, accept independently resolved rows. Structural invalidity still blocks the snapshot. |
+| Known Direct or other out-of-scope variant | **WITHHOLD_ROW** | Keep source evidence; current Regular consumer scope is unchanged. |
+| Unsupported valid flag/mode or numeric-rule semantics | **WITHHOLD_FIELD** | Keep other verified fields; dependent facility verdict unavailable. Invalid type/overflow/known contradictory bounds blocks the snapshot; option identity conflict withholds the row. |
+| Unspecified cutoff timezone | **WITHHOLD_FIELD** | No derived UTC instant/timing eligibility. Invalid declared time format blocks the snapshot. |
+| SCH settlement code versus SET type domain | **WITHHOLD_FIELD** | No derived SET join; retain labelled source text. |
+| Source-only serial/RTA/AMC IDs/taxonomy/AMC_IND/channel metadata | **WITHHOLD_FIELD** | No inferred canonical key or unclassified consumer exposure. |
+| Unspecified source requiredness | **WITHHOLD_FIELD** | Optional blanks are valid. Missing identity facts withhold a row; malformed/missing cells block the snapshot. |
+| Conflicting duplicate candidate key | **BLOCK_SNAPSHOT** | No arbitrary winning row; identical duplicates retain evidence and normalize deterministically. |
+
+A structurally complete snapshot can be PUBLISHED_WITH_LIMITATIONS when rows or
+fields are withheld. Report source/exposed/withheld row counts, withheld fields
+and allowlisted reasons. Withheld rows cannot disappear from accounting or be
+labelled current/eligible. A field hold preserves the row but nulls only the
+unverified normalized/exposure field and dependent verdict. This never changes
+canonical funds, AMC values or previous immutable snapshots.
+
 ## Proposed storage schema
 
 Use a new `mf_nse` namespace; proposed names are not existing installed objects.
@@ -233,7 +261,11 @@ Required layers for implementation acceptance:
 with a fixture-backed accepted reference dataset. Implement the additive tables
 needed for artifacts/observations/attempts/snapshots/SCH rows/mappings/head/current_sch; a pure
 schema-versioned parser and import service; a local retained-file entrypoint;
-existing enrollment/discovery integration; and the acceptance cases marked A.
+existing enrollment/discovery integration; and only cases with `gates_NSE01_A=true`. The matrix explicitly separates
+26 SCH-only/foundation gates from8 later-family/live-activation cases. Static
+six-family inventory accounting is documentation, not six executable importers.
+Reject known SIP/STP/SWP/NAV/SET at the local execution boundary as
+FAMILY_NOT_IMPLEMENTED before connection/claim; reject unknown families as invalid.
 Keep six-family registry definitions so unknown families/layouts reject explicitly,
 but do not claim executable SIP/STP/SWP/NAV/SET import until their subsequent
 fixture-backed slices. A43-column document layout and44-column observed header
@@ -243,7 +275,8 @@ Regular/Direct/facility verdict. Do not invent tokens to unblock activation.
 
 The vertical acceptance is: sanitized/original-hash-bound SCH input -> validated
 snapshot -> exact canonical/ISIN-slot mappings (including explicit ambiguous,
-unmapped and out-of-scope results) -> atomic read-model/head -> authenticated
+unmapped and out-of-scope dispositions; unresolved rows are retained privately
+and withheld from current_sch) -> atomic read-model/head -> authenticated
 fixture API. Prove duplicate no-op, a same-date revision, disabled/removed scheme
 handling and failure/unknown-commit preservation. No NSE connector, credential
 migration, collector takeover, live DB installation, schedule or TLAM source change.
@@ -251,6 +284,13 @@ migration, collector takeover, live DB installation, schedule or TLAM source cha
 Follow with SIP/Step-Up and systematic-rule imports only after respective source
 contracts/fixtures are reviewed; NAV/SET stay separate source domains. These are
 subsequent implementation slices, not a claim that NSE01-A completes all NSE-01.
+
+The decimal test gates A for SCH only; SIP/STP/SWP/NAV extensions are later.
+SIP/Step-Up, STP, SWP, NAV, SET, cross-family snapshot vectors and later live
+reference checks do not gate offline A. No NSE HTTP client, credentials, live
+Cloud Run execution or actual service authentication test is introduced by A.
+Native/API cases exercise SCH storage/mapping/read authorization; existing
+authentication release controls remain intact.
 
 ## Review decisions / unresolved source facts
 
