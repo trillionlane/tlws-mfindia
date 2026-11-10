@@ -33,6 +33,7 @@ def nse_db(ro01_db):
             scheme_type,scheme_category,plan_type,plan_source,option_type,isin_growth_or_div_payout)
             VALUES(3,1,'Direct fixture','DIRECT FIXTURE','OPEN_ENDED','Equity','DIRECT','COLUMN','GROWTH','INFX00000004')""")
         conn.execute("INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav,source) VALUES(1,'2026-11-09',12.3456,'AMFI')")
+        conn.execute("INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav,source) VALUES(2,'2026-11-09',12345678901234.1234,'AMFI')")
         first = store.install(conn)
         second = store.install(conn)
         assert first['reader_permissions_verified'] and second['metadata_writes']==0
@@ -67,6 +68,14 @@ def page(client):
 @pytest.mark.parametrize('ro01_db',['core'],indirect=True)
 def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,tmp_path,monkeypatch):
     dsn=nse_db
+    # Exact NUMERIC(18,4) preservation, including values whose adjacent decimal
+    # lexemes collapse to the same binary float. This fixture mutation is rolled
+    # back; it is not a correction of any real NAV or a financial calculation.
+    with connect(dsn,autocommit=False) as conn:
+        exact_before=store._fingerprint(conn)
+        conn.execute("UPDATE mf.nav_history SET nav=12345678901234.1235 WHERE amfi_scheme_code=2")
+        assert store._fingerprint(conn)!=exact_before
+        conn.rollback()
     with connect(dsn) as conn:
         canonical_before=store._fingerprint(conn)
     generator_before=generator_capabilities(dsn)
@@ -166,6 +175,7 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
     assert historical['state']=='HISTORICAL_ONLY' and head(dsn)==active
     with connect(dsn,autocommit=False) as conn:
         assert store._fingerprint(conn)==canonical_before
+        assert str(conn.execute('SELECT nav FROM mf.nav_history WHERE amfi_scheme_code=2').fetchone()['nav'])=='12345678901234.1234'
         assert conn.execute('SELECT nav,nav_date FROM mf.nav_history WHERE amfi_scheme_code=1').fetchone()['nav_date']==date(2026,11,9)
         assert store.install(conn)['metadata_writes']==0
     assert generator_capabilities(dsn)==generator_before

@@ -25,10 +25,11 @@ NAMESPACE = UUID('7106831f-68c1-43cf-b21e-cbcd2ef791da')
 FUNDS = """SELECT f.amfi_scheme_code,a.amfi_amc_name,f.plan_type,f.option_type,f.in_scope,
     f.isin_growth_or_div_payout::text,f.isin_div_reinvest::text
     FROM mf.funds f JOIN mf.amcs a ON a.amc_id=f.amc_id ORDER BY f.amfi_scheme_code"""
-PRESERVE = """SELECT relation,value FROM (SELECT 'funds' AS relation,to_jsonb(t) AS value FROM mf.funds t
-    UNION ALL SELECT 'amcs',to_jsonb(t) FROM mf.amcs t
-    UNION ALL SELECT 'nav',to_jsonb(t) FROM mf.nav_history t) preserved
-    ORDER BY 1,value::text"""
+PRESERVE = """SELECT relation,value FROM (SELECT 'funds' AS relation,to_jsonb(t)::text AS value FROM mf.funds t
+    UNION ALL SELECT 'amcs',to_jsonb(t)::text FROM mf.amcs t
+    UNION ALL SELECT 'nav',to_jsonb(t)::text FROM mf.nav_history t) preserved
+    ORDER BY 1,value"""
+LIMITS = "SET LOCAL statement_timeout='5s'; SET LOCAL lock_timeout='5s'; SET LOCAL transaction_timeout='15s'"
 
 
 class OutcomeError(c.ImportError):
@@ -185,7 +186,7 @@ def publish(conn, parsed, walk, operation_id, *, expected_head):
     committing = False
     try:
         conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ')
-        conn.execute("SET LOCAL statement_timeout='5s'; SET LOCAL lock_timeout='5s'; SET LOCAL transaction_timeout='15s'")
+        conn.execute(LIMITS)
         staged = _stage(conn, parsed, walk, operation_id, expected_head)
         report.update(staged, stage='commit', effect='UNKNOWN', state='COMMIT_UNKNOWN', disposition='INSPECT_ONLY')
         committing = True
@@ -194,6 +195,7 @@ def publish(conn, parsed, walk, operation_id, *, expected_head):
         # No reconnect. Read original durable result without making a second
         # write/COMMIT. Failure here must retain known commit, not "no import".
         conn.execute('BEGIN READ ONLY')
+        conn.execute(LIMITS)
         observed = conn.execute('SELECT snapshot_id,disposition FROM mf_nse.observations WHERE operation_id=%s', (operation_id,)).fetchone()
         c.require(observed and str(observed['snapshot_id']) == staged['snapshot_id']
                   and observed['disposition'] == staged['state'], 'READBACK_DIFFERS')
@@ -217,6 +219,7 @@ def inspect(conn, operation_id):
     c.operation(operation_id)
     c.require(conn.info.transaction_status == TransactionStatus.IDLE, 'IMPORT_IDLE_CONNECTION_REQUIRED')
     conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+    conn.execute(LIMITS)
     try:
         _identity(conn)
         row = conn.execute('SELECT snapshot_id,disposition FROM mf_nse.observations WHERE operation_id=%s', (operation_id,)).fetchone()

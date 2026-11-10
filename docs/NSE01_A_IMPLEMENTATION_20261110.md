@@ -81,6 +81,12 @@ no new timing expansion. The fixture reports measured vertical duration without
 claiming a production throughput SLA. Full-scale measurement remains a later
 activation prerequisite.
 
+Preservation hashes use PostgreSQL's full `to_jsonb(row)::text`, preserving exact
+NUMERIC values rather than a JSON decoder's binary float. The native regression
+distinguishes adjacent NUMERIC(18,4) NAV values that collapse to the same float,
+rolls that fixture-only change back, and verifies the original value after import.
+Post-commit readback and inspect-only transactions retain the same5s/5s/15s limits.
+
 Identical work creates only a new observation; reference/filename changes cannot
 force a duplicate business publication. A same-date byte revision keeps both
 snapshots. Changed mapping inputs/crosswalk create a distinct version. Older dates

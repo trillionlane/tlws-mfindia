@@ -117,3 +117,22 @@ def test_stderr_failure_exits_unsuccessfully_without_retry(tmp_path,monkeypatch)
         raise OSError('synthetic-secret-marker')
     assert cli.main(arguments(tmp_path,str(uuid4())),environ={'MFDATAINDIA_DSN':'fixture'},connect=lambda *a,**kw:conn,output=unavailable)==1
     assert conn.commits==1
+
+
+def test_publication_and_readback_each_apply_existing_transaction_bounds(monkeypatch):
+    conn=Connection()
+    monkeypatch.setattr(store,'_stage',staged)
+    report=store.publish(conn,candidate(),WALK,str(uuid4()),expected_head=None)
+    assert report['effect']=='COMMITTED_VERIFIED'
+    assert conn.queries.count(store.LIMITS)==2
+    read=conn.queries.index('BEGIN READ ONLY')
+    assert conn.queries[read+1]==store.LIMITS
+
+
+def test_inspection_is_bounded_readonly_without_commit_or_write(monkeypatch):
+    conn=Connection()
+    monkeypatch.setattr(store,'_identity',lambda *a:None)
+    assert store.inspect(conn,str(uuid4()))['effect']=='COMMITTED_VERIFIED'
+    assert conn.queries[:2]==['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',store.LIMITS]
+    assert conn.commits==0 and conn.rollbacks==1
+    assert all(q.startswith(('BEGIN','SET LOCAL','SELECT')) for q in conn.queries)
