@@ -1,0 +1,935 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "TagAssessment": {
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "basis": {
+            "const": "observed_database_identity",
+            "title": "Basis",
+            "type": "string"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "currency": {
+            "const": "not_certified",
+            "title": "Currency",
+            "type": "string"
+          },
+          "dimension": {
+            "enum": [
+              "amc",
+              "scheme-category",
+              "scheme-structure",
+              "plan",
+              "option",
+              "vehicle",
+              "asset-class",
+              "risk",
+              "strategy",
+              "market-cap",
+              "geography",
+              "sector",
+              "theme",
+              "duration-credit",
+              "benchmark",
+              "esg-strategy",
+              "environment",
+              "values-screen",
+              "entity-exposure",
+              "assessment"
+            ],
+            "title": "Dimension",
+            "type": "string"
+          },
+          "evidence_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evidence Hash",
+            "type": "string"
+          },
+          "family_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family Id"
+          },
+          "in_scope": {
+            "title": "In Scope",
+            "type": "boolean"
+          },
+          "mapping_state": {
+            "enum": [
+              "FAMILY_VERIFIED",
+              "FAMILY_MISSING",
+              "FAMILY_AMBIGUOUS"
+            ],
+            "title": "Mapping State",
+            "type": "string"
+          },
+          "policy_version": {
+            "const": "mfdata-fund-tags-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "SUPPORTED_IDENTITY_OBSERVATION",
+              "OUTSIDE_CURRENT_PLAN_SCOPE",
+              "AUTHORITATIVE_EVIDENCE_NOT_ASSESSED",
+              "SOURCE_OBSERVATION_DATE_MISSING",
+              "CATEGORY_AUTHORITY_NOT_AMFI",
+              "EXPLICIT_PLAN_EVIDENCE_MISSING",
+              "UNMAPPED_FACT_VALUE"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "supported",
+              "contradicted",
+              "insufficient-evidence",
+              "not-assessed",
+              "not-applicable"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tag_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Id"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "code",
+          "dimension",
+          "state",
+          "reason",
+          "tag_id",
+          "value",
+          "family_id",
+          "mapping_state",
+          "currency",
+          "basis",
+          "in_scope",
+          "as_of",
+          "evidence_hash",
+          "policy_version"
+        ],
+        "title": "TagAssessment",
+        "type": "object"
+      },
+      "TagDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "dimension": {
+            "enum": [
+              "amc",
+              "scheme-category",
+              "scheme-structure",
+              "plan",
+              "option",
+              "vehicle",
+              "asset-class",
+              "risk",
+              "strategy",
+              "market-cap",
+              "geography",
+              "sector",
+              "theme",
+              "duration-credit",
+              "benchmark",
+              "esg-strategy",
+              "environment",
+              "values-screen",
+              "entity-exposure",
+              "assessment"
+            ],
+            "title": "Dimension",
+            "type": "string"
+          },
+          "policy_version": {
+            "const": "mfdata-fund-tags-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "tag_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Tag Id",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tag_id",
+          "policy_version",
+          "dimension",
+          "value"
+        ],
+        "title": "TagDefinition",
+        "type": "object"
+      },
+      "TagDefinitionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "definitions": {
+            "items": {
+              "$ref": "#/components/schemas/TagDefinition"
+            },
+            "maxItems": 100,
+            "title": "Definitions",
+            "type": "array"
+          },
+          "format": {
+            "const": "mfdata-fund-tag-api-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "snapshot_id",
+          "definitions",
+          "next_cursor",
+          "limit"
+        ],
+        "title": "TagDefinitionPage",
+        "type": "object"
+      },
+      "TagDiscovery": {
+        "additionalProperties": false,
+        "properties": {
+          "assessment_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "supported",
+                "contradicted",
+                "insufficient-evidence",
+                "not-assessed",
+                "not-applicable"
+              ]
+            },
+            "title": "Assessment Counts",
+            "type": "object"
+          },
+          "batch_url": {
+            "title": "Batch Url",
+            "type": "string"
+          },
+          "currency": {
+            "const": "not_certified",
+            "title": "Currency",
+            "type": "string"
+          },
+          "definitions_url": {
+            "title": "Definitions Url",
+            "type": "string"
+          },
+          "dimensions": {
+            "items": {
+              "enum": [
+                "amc",
+                "scheme-category",
+                "scheme-structure",
+                "plan",
+                "option",
+                "vehicle",
+                "asset-class",
+                "risk",
+                "strategy",
+                "market-cap",
+                "geography",
+                "sector",
+                "theme",
+                "duration-credit",
+                "benchmark",
+                "esg-strategy",
+                "environment",
+                "values-screen",
+                "entity-exposure",
+                "assessment"
+              ],
+              "type": "string"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "ethical_screening_enabled": {
+            "const": false,
+            "title": "Ethical Screening Enabled",
+            "type": "boolean"
+          },
+          "format": {
+            "const": "mfdata-fund-tag-api-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "funds_url": {
+            "title": "Funds Url",
+            "type": "string"
+          },
+          "policy_version": {
+            "const": "mfdata-fund-tags-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "published_funds": {
+            "maximum": 50000.0,
+            "minimum": 1.0,
+            "title": "Published Funds",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "policy_version",
+          "snapshot_id",
+          "dimensions",
+          "ethical_screening_enabled",
+          "currency",
+          "definitions_url",
+          "funds_url",
+          "batch_url",
+          "published_funds",
+          "assessment_counts"
+        ],
+        "title": "TagDiscovery",
+        "type": "object"
+      },
+      "TagErrorBody": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "TagErrorBody",
+        "type": "object"
+      },
+      "TaggedFund": {
+        "additionalProperties": false,
+        "properties": {
+          "assessments": {
+            "items": {
+              "$ref": "#/components/schemas/TagAssessment"
+            },
+            "maxItems": 20,
+            "title": "Assessments",
+            "type": "array"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "found",
+              "not-found"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "state",
+          "assessments"
+        ],
+        "title": "TaggedFund",
+        "type": "object"
+      },
+      "TaggedFundBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "const": "mfdata-fund-tag-api-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "funds": {
+            "items": {
+              "$ref": "#/components/schemas/TaggedFund"
+            },
+            "maxItems": 50,
+            "title": "Funds",
+            "type": "array"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "snapshot_id",
+          "funds"
+        ],
+        "title": "TaggedFundBatch",
+        "type": "object"
+      },
+      "TaggedFundPage": {
+        "additionalProperties": false,
+        "properties": {
+          "consistency": {
+            "const": "snapshot_bound_fresh_repeatable_read_each_page",
+            "title": "Consistency",
+            "type": "string"
+          },
+          "format": {
+            "const": "mfdata-fund-tag-api-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "funds": {
+            "items": {
+              "$ref": "#/components/schemas/TaggedFund"
+            },
+            "maxItems": 50,
+            "title": "Funds",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "snapshot_id",
+          "funds",
+          "next_cursor",
+          "limit",
+          "consistency"
+        ],
+        "title": "TaggedFundPage",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/fund-tags/v1": {
+      "get": {
+        "operationId": "discovery_api_fund_tags_v1_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagDiscovery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discovery"
+      }
+    },
+    "/api/fund-tags/v1/batch": {
+      "get": {
+        "operationId": "batch_api_fund_tags_v1_batch_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "codes",
+            "required": true,
+            "schema": {
+              "maxLength": 550,
+              "minLength": 1,
+              "title": "Codes",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaggedFundBatch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Batch"
+      }
+    },
+    "/api/fund-tags/v1/definitions": {
+      "get": {
+        "operationId": "definitions_api_fund_tags_v1_definitions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dimension",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dimension"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagDefinitionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Definitions"
+      }
+    },
+    "/api/fund-tags/v1/funds": {
+      "get": {
+        "operationId": "funds_api_fund_tags_v1_funds_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Tag",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "match",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "title": "Match",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaggedFundPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Funds"
+      }
+    },
+    "/api/fund-tags/v1/funds/{code}": {
+      "get": {
+        "operationId": "fund_api_fund_tags_v1_funds__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMaximum": 2147483648,
+              "exclusiveMinimum": 0,
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaggedFundBatch"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Fund"
+      }
+    }
+  }
+}
