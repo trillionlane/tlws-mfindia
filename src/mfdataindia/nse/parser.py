@@ -105,9 +105,26 @@ def normalize(ordinal, cells, values):
         'additional_purchase_maximum': 'SCH_FIELD14',
         'minimum_redemption_quantity': 'SCH_BLANK19', 'reopening_date': 'SCH_BLANK43',
         'purchase_cutoff_instant': 'SCH_CUTOFF', 'redemption_cutoff_instant': 'SCH_CUTOFF',
-        'settlement_join': 'SCH_SETTLEMENT', 'source_metadata': 'SCH_SOURCE_METADATA',
+        'settlement_join': 'SCH_SETTLEMENT',
     }
-    normalized = {key: None for key in holds if key != 'source_metadata'}
+    normalized = {key: None for key in holds}
+    # Every unclassified source field has its own private reason. An aggregate
+    # "metadata" hold must not conceal an omitted field in coverage accounting.
+    for key in ('unique_no', 'rta_scheme_code', 'amc_scheme_code', 'scheme_type',
+                'rta_agent_code', 'amc_ind', 'channel_partner_code'):
+        holds[key] = 'SCH_SOURCE_METADATA'
+    for name, i in (('source_amc_code', 5), ('source_scheme_name', 8),
+                    ('purchase_cutoff_text', 15), ('redemption_cutoff_text', 24),
+                    ('settlement_code', 32)):
+        normalized[name] = cells[i] or None
+        if not cells[i]:
+            holds[name] = 'SCH_REQUIREDNESS'
+    # Date-only source fields remain dates, never inferred UTC instants or
+    # a certificate of freshness/eligibility.
+    for name, i in (('source_start_date', 35), ('source_end_date', 36)):
+        normalized[name] = values[i].isoformat() if values[i] is not None else None
+        if values[i] is None:
+            holds[name] = 'SCH_REQUIREDNESS'
     normalized.update(purchase_eligibility='UNKNOWN', redemption_eligibility='UNKNOWN')
     # Explicit synthetic-only tokens. Unknown is never the document's implicit
     # "else Regular". Source semantics not reviewed here remain field holds.
@@ -136,7 +153,8 @@ def normalize(ordinal, cells, values):
         elif ('multiple' in name or name == 'face_value') and values[i] <= 0:
             c.require(False, 'NONPOSITIVE_RULE')
     for name, i in (('sip_flag', 28), ('stp_flag', 29), ('swp_flag', 30),
-                    ('switch_flag', 31), ('exit_load', 38), ('lock_in_period', 40)):
+                    ('switch_flag', 31), ('exit_load_flag', 37), ('exit_load', 38),
+                    ('lock_in_period_flag', 39), ('lock_in_period', 40)):
         # Later-family eligibility / unverified unit and grammar are withheld.
         normalized[name] = None
         holds[name] = 'SCH_FLAGS_MODES' if 'flag' in name else 'SCH_NUMERIC'

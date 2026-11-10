@@ -40,6 +40,12 @@ and limitations. Malformed structure/type, nonblank document-BLANK fields,
 contradictory bounds and conflicting duplicates reject the snapshot. No positive
 transaction eligibility is claimed: the dataset always labels it UNKNOWN.
 
+Coverage accounting names all43 source positions: source AMC/name, validated
+date-only fields, cutoff source text and settlement source code are safe labelled
+references. No timezone or cross-family settlement join is inferred. Every
+unclassified source-metadata field and unverified exit/lock flag has its own
+withholding reason; no aggregate metadata label hides omitted fields.
+
 `nse.mapping` requires an explicit versioned AMC crosswalk and scheme-code target,
 exact source ISIN and slot, plan, option, source-name corroboration and dividend
 reinvestment evidence, plus the actual canonical AMFI row. Names/ISIN alone,

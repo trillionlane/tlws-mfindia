@@ -99,6 +99,12 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
         assert len(original_page['rows'])==3
         assert {r['isin_slot'] for r in original_page['rows']}=={'isin_growth_or_div_payout','isin_div_reinvest'}
         assert all(r['reference_fields']['maximum_purchase_amount'] is None and r['eligibility']=='UNKNOWN' for r in original_page['rows'])
+        assert {r['reference_fields']['source_scheme_name'] for r in original_page['rows']}=={'FIXTURE SCH_G','FIXTURE SCH_P','FIXTURE SCH_R'}
+        assert all(r['reference_fields']['source_start_date']=='2020-01-01' and
+                   r['reference_fields']['purchase_cutoff_text']=='15:00:00' and
+                   r['reference_fields']['purchase_cutoff_instant'] is None for r in original_page['rows'])
+        assert all('rta_scheme_code' not in r['reference_fields'] and
+                   r['limitations']['rta_scheme_code']=='SCH_SOURCE_METADATA' for r in original_page['rows'])
         first_page=client.get('/api/datasets/v1/'+store.DATASET_ID+'/rows',params={'limit':2}).json()
         second=client.get('/api/datasets/v1/'+store.DATASET_ID+'/rows',params={'limit':2,'cursor':first_page['next_cursor']}).json()
         assert len(first_page['rows'])==2 and len(second['rows'])==1 and second['next_cursor'] is None

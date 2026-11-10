@@ -149,6 +149,35 @@ def test_ambiguity_boundaries_all_fourteen_policies():
         'SCH_LAYOUT','SCH_PLAN','SCH_MAPPING','SCH_SCOPE','SCH_REQUIREDNESS','SCH_DUPLICATES'}
 
 
+def test_every_sch_position_is_exposed_or_privately_held_with_a_reason():
+    row = candidate().rows[0]
+    # Identity columns are explicit top-level read-model fields; the remaining
+    # approved references are in reference_fields. All other positions have
+    # named reasons in the immutable private row, not silent omissions.
+    identity = {2:'nse_scheme_code', 5:'isin', 8:'plan_type'}
+    reference = {6:'source_amc_code',9:'source_scheme_name',10:'purchase_allowed',
+        11:'purchase_mode',12:'minimum_purchase_amount',13:'additional_purchase_amount',
+        15:'purchase_multiple',16:'purchase_cutoff_text',17:'redemption_allowed',
+        18:'redemption_mode',20:'redemption_quantity_multiple',21:'maximum_redemption_quantity',
+        22:'minimum_redemption_amount',23:'maximum_redemption_amount',24:'redemption_amount_multiple',
+        25:'redemption_cutoff_text',27:'amc_active',28:'dividend_reinvestment',
+        35:'face_value',36:'source_start_date',37:'source_end_date',33:'settlement_code'}
+    private = {1:'unique_no',3:'rta_scheme_code',4:'amc_scheme_code',7:'scheme_type',
+        14:'maximum_purchase_amount',19:'minimum_redemption_quantity',26:'rta_agent_code',
+        29:'sip_flag',30:'stp_flag',31:'swp_flag',32:'switch_flag',34:'amc_ind',
+        38:'exit_load_flag',39:'exit_load',40:'lock_in_period_flag',41:'lock_in_period',
+        42:'channel_partner_code',43:'reopening_date'}
+    assert set(identity) | set(reference) | set(private) == set(range(1,44))
+    assert not (set(identity)&set(reference) or set(reference)&set(private))
+    assert all(key in row['normalized'] for key in reference.values())
+    assert all(key in row['field_holds'] for key in private.values())
+    assert row['normalized']['source_scheme_name']=='FIXTURE SCH_G'
+    assert row['normalized']['source_start_date']=='2020-01-01'
+    assert row['normalized']['source_end_date'] is None
+    assert row['normalized']['purchase_cutoff_text']=='15:00:00'
+    assert row['normalized']['purchase_cutoff_instant'] is None
+
+
 @pytest.mark.parametrize('extra', [{'unexpected':True}, {'scope':'PARTIAL'}, {'environment':'PROD'},
                                   {'completeness_basis':'CALLER_SAYS_FULL'}, {'expected_rows':True}])
 def test_unknown_incomplete_and_unverified_manifest(extra):

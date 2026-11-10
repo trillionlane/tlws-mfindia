@@ -4,7 +4,8 @@
       "gates_NSE01_A": true,
       "id": "FAMILY_FIELD_ACCOUNTING",
       "tests": [
-        "tests/test_nse01_parser.py::test_family_field_accounting"
+        "tests/test_nse01_parser.py::test_family_field_accounting",
+        "tests/test_nse01_parser.py::test_every_sch_position_is_exposed_or_privately_held_with_a_reason"
       ]
     },
     {
