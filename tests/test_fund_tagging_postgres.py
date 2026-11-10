@@ -156,3 +156,37 @@ def test_native_unexpected_source_column_write_rejected_before_snapshot(tagging_
         with pytest.raises(p.TaggingError, match='TAGGING_UNSAFE_WRITER'):
             store.publish(conn)
         assert conn.execute('SELECT count(*) AS n FROM mf_tagging.snapshots').fetchone()['n'] == 0
+
+
+@pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
+def test_native_same_head_damaged_projection_or_history_never_reports_unchanged(tagging_db):
+    with writer(tagging_db) as conn:
+        initial = store.publish(conn)
+    with connect(tagging_db, autocommit=False) as owner:
+        owner.execute('DELETE FROM mf_tagging.current WHERE code=1')
+    with writer(tagging_db) as conn:
+        with pytest.raises(p.TaggingError, match='TAGGING_PUBLICATION_INCOMPLETE'):
+            store.publish(conn)
+        assert conn.execute('SELECT count(*) AS n FROM mf_tagging.snapshots').fetchone()['n'] == 1
+        assert conn.execute('SELECT snapshot_id FROM mf_tagging.head').fetchone()['snapshot_id'] == initial['snapshot_id']
+    # Fixture-only owner reconciliation restores known original projection; publisher never repairs it.
+    with connect(tagging_db, autocommit=False) as owner:
+        owner.execute('INSERT INTO mf_tagging.current SELECT code,dimension,document FROM mf_tagging.assessments WHERE snapshot_id=%s AND code=1', (initial['snapshot_id'],))
+        owner.execute("UPDATE mf_tagging.observations SET document='{}' WHERE code=1")
+    with writer(tagging_db) as conn:
+        with pytest.raises(p.TaggingError, match='TAGGING_HISTORY_DIFFERS'):
+            store.publish(conn)
+        assert conn.execute('SELECT count(*) AS n FROM mf_tagging.snapshots').fetchone()['n'] == 1
+
+
+@pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
+def test_native_definitions_from_other_version_survive_current_publication(tagging_db):
+    with writer(tagging_db) as conn:
+        candidate = store.census(conn)
+        first = candidate['definitions'][0]
+        conn.execute('INSERT INTO mf_tagging.definitions VALUES(%s,%s,%s,%s)',
+                     ('0'*64, 'synthetic-previous-version', first['dimension'], first['value']))
+        assert store.publish(conn)['state'] == 'PUBLISHED'
+        assert conn.execute('SELECT count(*) AS n FROM mf_tagging.definitions WHERE dimension=%s AND value=%s',
+                            (first['dimension'], first['value'])).fetchone()['n'] == 2
+        assert store.publish(conn)['state'] == 'UNCHANGED'

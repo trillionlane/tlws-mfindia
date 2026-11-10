@@ -146,3 +146,34 @@ def test_real_main_is_offline_and_does_not_read_environment(tmp_path, capsys, mo
     path.write_text('synthetic-secret-marker')
     assert main(['--input', str(path)]) == 1
     assert 'synthetic-secret-marker' not in capsys.readouterr().out
+
+
+def test_same_head_cannot_hide_damaged_projection(monkeypatch):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    from psycopg.pq import TransactionStatus
+    candidate = p.prepare([row()])
+    class Result:
+        def fetchone(self): return {'snapshot_id': candidate['snapshot_id']}
+        def fetchall(self): return []  # Previously published projection was damaged.
+    class Connection:
+        info = SimpleNamespace(transaction_status=TransactionStatus.IDLE)
+        def transaction(self): return nullcontext()
+        def execute(self, *args): return Result()
+    for name in ('limits', 'principal', 'installed'):
+        monkeypatch.setattr(store, name, lambda *args: None)
+    monkeypatch.setattr(store, 'census', lambda conn: candidate)
+    with pytest.raises(p.TaggingError, match='TAGGING_PUBLICATION_INCOMPLETE'):
+        store.publish(Connection())
+
+
+def test_definitions_bind_explicit_version_and_namespaced_identity(monkeypatch):
+    before = p.prepare([row(amc='REGULAR')])
+    defs = {d['dimension']: d for d in before['definitions']}
+    assert defs['amc']['value'] == defs['plan']['value']
+    assert defs['amc']['tag_id'] != defs['plan']['tag_id']
+    assert all(d['policy_version'] == p.VERSION for d in defs.values())
+    monkeypatch.setattr(p, 'VERSION', 'synthetic-next-taxonomy-v2')
+    after = p.prepare([row(amc='REGULAR')])
+    assert {d['tag_id'] for d in before['definitions']}.isdisjoint(
+        {d['tag_id'] for d in after['definitions']})

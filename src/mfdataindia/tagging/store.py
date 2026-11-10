@@ -11,7 +11,7 @@ from mfdataindia.datasets import enrollment
 from . import policy as p
 
 FILE = 'sql/operations/fund_tagging_v1.sql'
-SQL_SHA256 = '8b9809c3feecc6f54ac3ca145b111288566215c43c1e69af4e37b6516441c047'
+SQL_SHA256 = '388f64a8d1e8ae8978bb647633b697b29b8aa6f546853115a48587067ddb0a1d'
 TABLES = ('assessments', 'current', 'definitions', 'head', 'observations', 'snapshots')
 CENSUS_SQL = '''SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS amc,
  f.scheme_name,f.scheme_type,f.scheme_category,f.category_source,f.plan_type,f.plan_source,
@@ -104,6 +104,31 @@ def _insert(conn, table, rows):
             sql.Identifier(table), sql.Identifier(table)), (Jsonb(rows[offset:offset+500]),))
 
 
+def verify_candidate(conn, candidate):
+    """Same exact readback on first publication AND unchanged re-entry.
+
+    A matching head never substitutes for complete persisted business evidence.
+    Damaged history/projection is stopped, not repaired or silently replayed.
+    """
+    snapshot = candidate['snapshot_id']
+    expected_current = sorted(({'code': a['code'], 'dimension': a['dimension'], 'document': a}
+        for a in candidate['assessments']), key=lambda r: (r['code'], r['dimension']))
+    actual = conn.execute('SELECT code,dimension,document FROM mf_tagging.current ORDER BY code,dimension').fetchall()
+    p.require(actual == expected_current, 'TAGGING_PUBLICATION_INCOMPLETE')
+    historical = conn.execute('SELECT code,dimension,document FROM mf_tagging.assessments WHERE snapshot_id=%s ORDER BY code,dimension', (snapshot,)).fetchall()
+    p.require(historical == expected_current, 'TAGGING_HISTORY_DIFFERS')
+    observations = conn.execute('SELECT code,document FROM mf_tagging.observations WHERE snapshot_id=%s ORDER BY code', (snapshot,)).fetchall()
+    p.require(observations == [{'code': r['code'], 'document': r} for r in candidate['observations']],
+              'TAGGING_HISTORY_DIFFERS')
+    definitions = conn.execute('SELECT tag_id,policy_version,dimension,value FROM mf_tagging.definitions WHERE tag_id=ANY(%s) ORDER BY tag_id',
+                               ([d['tag_id'] for d in candidate['definitions']],)).fetchall()
+    p.require(definitions == candidate['definitions'], 'TAGGING_DEFINITIONS_DIFFER')
+    report = {k: v for k, v in candidate.items() if k not in {'definitions', 'assessments', 'observations'}}
+    stored = conn.execute('SELECT source_hash,policy_hash,funds,report FROM mf_tagging.snapshots WHERE snapshot_id=%s', (snapshot,)).fetchone()
+    p.require(stored == {'source_hash': candidate['source_hash'], 'policy_hash': candidate['policy_hash'],
+                         'funds': candidate['funds'], 'report': report}, 'TAGGING_HISTORY_DIFFERS')
+
+
 def publish(conn):
     """Own exactly one transaction; an escaping COMMIT error is not replayable.
 
@@ -122,6 +147,7 @@ def publish(conn):
         snapshot = candidate['snapshot_id']
         head = conn.execute('SELECT snapshot_id FROM mf_tagging.head WHERE singleton').fetchone()
         if head and head['snapshot_id'] == snapshot:
+            verify_candidate(conn, candidate)
             return {'state': 'UNCHANGED', 'snapshot_id': snapshot, 'source_rows_changed': 0,
                     'consumer_acceptance': 'NOT_OBSERVED'}
         # An old snapshot cannot be restored as a silent head rollback.
@@ -138,9 +164,6 @@ def publish(conn):
         _insert(conn, 'assessments', historical)
         conn.execute('DELETE FROM mf_tagging.current')
         _insert(conn, 'current', [{k: r[k] for k in ('code', 'dimension', 'document')} for r in historical])
-        actual = conn.execute('SELECT code,dimension,document FROM mf_tagging.current ORDER BY code,dimension').fetchall()
-        expected = sorted(({k: r[k] for k in ('code', 'dimension', 'document')} for r in historical),
-                          key=lambda r: (r['code'], r['dimension']))
-        p.require(actual == expected, 'TAGGING_PUBLICATION_INCOMPLETE')
+        verify_candidate(conn, candidate)
         conn.execute('INSERT INTO mf_tagging.head VALUES(true,%s) ON CONFLICT(singleton) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id', (snapshot,))
         return {'state': 'PUBLISHED', **report, 'source_rows_changed': 0}

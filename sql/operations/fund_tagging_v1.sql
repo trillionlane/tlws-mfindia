@@ -3,8 +3,8 @@ CREATE SCHEMA mf_tagging AUTHORIZATION mfdata_admin;
 REVOKE ALL ON SCHEMA mf_tagging FROM PUBLIC;
 CREATE TABLE mf_tagging.definitions (
     tag_id text PRIMARY KEY CHECK(tag_id ~ '^[0-9a-f]{64}$'),
-    dimension text NOT NULL, value text NOT NULL,
-    UNIQUE(dimension,value)
+    policy_version text NOT NULL, dimension text NOT NULL, value text NOT NULL,
+    UNIQUE(policy_version,dimension,value)
 );
 CREATE TABLE mf_tagging.snapshots (
     snapshot_id text PRIMARY KEY CHECK(snapshot_id ~ '^[0-9a-f]{64}$'),

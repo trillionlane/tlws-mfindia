@@ -113,7 +113,7 @@ def prepare(rows):
                                 'hybrid scheme': 'hybrid'}.get(prefix)
         for dimension in DIMENSIONS:
             value = values.get(dimension)
-            reason = 'SUPPORTED_AMFI_OBSERVATION'
+            reason = 'SUPPORTED_IDENTITY_OBSERVATION'
             state = 'supported'
             if not r['in_scope']:
                 value, state, reason = None, 'not-applicable', 'OUTSIDE_CURRENT_PLAN_SCOPE'
@@ -129,7 +129,7 @@ def prepare(rows):
                 value, state, reason = None, 'insufficient-evidence', 'UNMAPPED_FACT_VALUE'
             tag_id = digest({'version': VERSION, 'dimension': dimension, 'value': value}) if value is not None else None
             if tag_id:
-                definitions[tag_id] = {'tag_id': tag_id, 'dimension': dimension, 'value': value}
+                definitions[tag_id] = {'tag_id': tag_id, 'policy_version': VERSION, 'dimension': dimension, 'value': value}
             assessments.append({'snapshot_id': snapshot, 'code': r['code'], 'dimension': dimension,
                 'state': state, 'reason': reason, 'tag_id': tag_id, 'value': value,
                 'family_id': r['family_id'] if mapping == 'FAMILY_VERIFIED' else None,
