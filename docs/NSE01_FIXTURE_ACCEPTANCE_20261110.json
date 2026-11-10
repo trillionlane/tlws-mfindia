@@ -1,0 +1,410 @@
+{
+  "acceptance_cases": [
+    {
+      "effect_assertion": "No field omission or source mutation",
+      "executed_by_this_draft": false,
+      "id": "FAMILY_FIELD_ACCOUNTING",
+      "input_or_fault": "All six inventory layouts",
+      "layer": "contract",
+      "required_result": "Every one of132 positions has exact source/type/width/disposition; source43 and retained44 differ explicitly",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "Unknown schema cannot publish",
+      "executed_by_this_draft": false,
+      "id": "SCH_DOC43_RETAINED44",
+      "input_or_fault": "Distinct43 and44 headers and version-bound token profiles",
+      "layer": "parser",
+      "required_result": "Select only exact declared layout; field14 conflict remains unresolved, no added-column shift",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No identity rewrite",
+      "executed_by_this_draft": false,
+      "id": "SCH_OPAQUE_ID",
+      "input_or_fault": "Leading-zero serial/code and synthetic ISIN",
+      "layer": "parser",
+      "required_result": "Identifiers unchanged; provider serial never becomes AMFI code",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "Zero fetch/connect/mutation",
+      "executed_by_this_draft": false,
+      "id": "REQUEST_ALLOWLIST",
+      "input_or_fault": "Unknown file type, extra request field or fabricated Step-Up code",
+      "layer": "preflight",
+      "required_result": "Value-free reject before provider/DB",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No invalid active snapshot",
+      "executed_by_this_draft": false,
+      "id": "PRECISE_DECIMAL",
+      "input_or_fault": "Large exact values, NaN/Inf/exponent, width/scale overflow",
+      "layer": "parser",
+      "required_result": "Exact Decimal; reject invalid or unresolved grammar, never round/truncate",
+      "slice": "A_and_later"
+    },
+    {
+      "effect_assertion": "No inferred count repair",
+      "executed_by_this_draft": false,
+      "id": "HEADERS_CELLS_BOM",
+      "input_or_fault": "Missing/extra/duplicate header; BOM/CRLF; terminal delimiter",
+      "layer": "parser",
+      "required_result": "Version-specific grammar; preserve empty final fields",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No active retirement or replacement",
+      "executed_by_this_draft": false,
+      "id": "ERROR_AND_TRUNCATION",
+      "input_or_fault": "HTTP200 failure JSON,HTML,empty/header-only,truncated line",
+      "layer": "parser",
+      "required_result": "Not a valid empty universe; original last head remains",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No positive unknown eligibility",
+      "executed_by_this_draft": false,
+      "id": "REQUIREDNESS",
+      "input_or_fault": "Blank optional versus identity/facility-required cells",
+      "layer": "parser",
+      "required_result": "No invented blanket mandatory flags; missing mapping facts explicitly unavailable",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No facility grant from unknown",
+      "executed_by_this_draft": false,
+      "id": "FLAGS_PLANS",
+      "input_or_fault": "0/1 versusY/N;D versusunknown plan token",
+      "layer": "parser",
+      "required_result": "Only versioned reviewed normalization; unknown never Regular/eligible",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "Canonical/AMC records unchanged",
+      "executed_by_this_draft": false,
+      "id": "CROSSWALK_EXACT",
+      "input_or_fault": "Explicit syntheticAMC crosswalk+matching AMFI code/ISIN slot/plan",
+      "layer": "mapping",
+      "required_result": "Exact mapping; distinct payout/reinvestment,Regular/Direct preserved",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No arbitrary mapping",
+      "executed_by_this_draft": false,
+      "id": "MAPPING_AMBIGUITY",
+      "input_or_fault": "Same ISIN several AMFI rows, wrongAMC, plan conflict/name-only",
+      "layer": "mapping",
+      "required_result": "Retain AMBIGUOUS/CONFLICT/UNMAPPED, one-to-many facilities explicit",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No expansion of serving scope",
+      "executed_by_this_draft": false,
+      "id": "OUT_OF_SCOPE",
+      "input_or_fault": "Known Direct or missing current Regular eligibility",
+      "layer": "mapping",
+      "required_result": "Retain source evidence with out-of-scope status",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No silent duplicate overwrites",
+      "executed_by_this_draft": false,
+      "id": "DUPLICATE_KEYS",
+      "input_or_fault": "Identical duplicates versus conflicting candidate business keys",
+      "layer": "parser_native",
+      "required_result": "All original rows retained; deterministic identical semantics; conflicts block head",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "One successful publication COMMIT",
+      "executed_by_this_draft": false,
+      "id": "FIRST_IMPORT",
+      "input_or_fault": "Sanitized SCH plus synthetic canonical rows",
+      "layer": "native",
+      "required_result": "Validated snapshot+mapping+head+current_sch together; immutable source hashes",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No repeated publisher or business artifact",
+      "executed_by_this_draft": false,
+      "id": "REENTRY",
+      "input_or_fault": "Same bytes/schema/parser and repeated operation",
+      "layer": "native",
+      "required_result": "No duplicate rows/head advance; separate observation",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "At most one publication",
+      "executed_by_this_draft": false,
+      "id": "CONCURRENT_SAME_WORK",
+      "input_or_fault": "Two contenders same work identity",
+      "layer": "native",
+      "required_result": "Unique work claim; one publisher, other unchanged/inspect",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No overwrite or false unchanged",
+      "executed_by_this_draft": false,
+      "id": "SAME_DATE_REVISION",
+      "input_or_fault": "Same date,new bytes, then same semantic content/new parser",
+      "layer": "native",
+      "required_result": "New versioned candidate; distinguish bytes/business/schema/mapping changes",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "Partial/error file cannot remove",
+      "executed_by_this_draft": false,
+      "id": "REMOVAL_DISABLED",
+      "input_or_fault": "Validated FULL next snapshot removes/disables source variant",
+      "layer": "native",
+      "required_result": "Current applicability updated atomically; old snapshot remains",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No successful partial publication",
+      "executed_by_this_draft": false,
+      "id": "PRESERVATION_FAILURE",
+      "input_or_fault": "Mismatch/fault between staging and head/current publish",
+      "layer": "native",
+      "required_result": "Confirmed rollback retains all old data/head",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "Zero recovery writes/reconnect-and-write",
+      "executed_by_this_draft": false,
+      "id": "COMMIT_UNKNOWN",
+      "input_or_fault": "Connection lost around COMMIT; later inspect",
+      "layer": "native_or_fake_transport",
+      "required_result": "UNKNOWN until original durable outcome resolved; no blind replay",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "Missing reconciliation not consumer-ready",
+      "executed_by_this_draft": false,
+      "id": "API_DATASET_CHAIN",
+      "input_or_fault": "Enroll current_sch using existing trusted creator seam",
+      "layer": "native_api",
+      "required_result": "Discovery/metadata/pagination/read with authenticated non-elevated reader",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No auth bypass/new function EXECUTE; no claim ASGI alone verifies Cloud Run authentication",
+      "executed_by_this_draft": false,
+      "id": "API_DENIALS",
+      "input_or_fault": "Unsafe database identity, SELECT grant option, missing SELECT, writes/DDL; separately unsigned/wrong-invoker service requests",
+      "layer": "native_api_and_existing_auth_boundary",
+      "required_result": "Native fixture verifies DB/route authorization. Existing private-ingress/OIDC release checks retained; actual unsigned/wrong-invoker denial needs later authorized service-boundary evidence, not a fabricated ASGI401.",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No AMFI NAV overwrite or ingestion blockage",
+      "executed_by_this_draft": false,
+      "id": "AMC_CANONICAL_PRESERVATION",
+      "input_or_fault": "Import/re-entry/failure while unrelated AMC work runs",
+      "layer": "native",
+      "required_result": "Original full-row values/provenance unchanged; independent source continues",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No missing-parser or environment regression",
+      "executed_by_this_draft": false,
+      "id": "PACKAGE_MAIN",
+      "input_or_fault": "Real main with os.environ mapping and synthetic transports",
+      "layer": "image_provider_free",
+      "required_result": "Parser wired; strict complete input; dry-run spends no execution",
+      "slice": "A"
+    },
+    {
+      "effect_assertion": "No false Step-Up capability",
+      "executed_by_this_draft": false,
+      "id": "SIP27_28_STEPUP",
+      "input_or_fault": "Separate sanitized27/28; unknown28value/nonblank filler",
+      "layer": "parser",
+      "required_result": "No shift;DP contract explicit;untyped pause unknown;no fabricated Step-Up operation",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No order permission",
+      "executed_by_this_draft": false,
+      "id": "STP_DESTINATION",
+      "input_or_fault": "ASTP rules + mismatched destination/unknown modes",
+      "layer": "parser_mapping",
+      "required_result": "No inferred eligible pair;in/out and units preserved",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No quantity rounding",
+      "executed_by_this_draft": false,
+      "id": "SWP_SCALE",
+      "input_or_fault": "0.001units vs100.00amount",
+      "layer": "parser",
+      "required_result": "Distinct exact scales; bad token fails",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No AMFI replacement",
+      "executed_by_this_draft": false,
+      "id": "NAV_HEADERLESS",
+      "input_or_fault": "8positions,date errors,Zflag,same code ambiguousAMC",
+      "layer": "parser_mapping",
+      "required_result": "No header inference;separate NSE NAV;ambiguous mapping unavailable",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No holiday/order inference",
+      "executed_by_this_draft": false,
+      "id": "SET_DOMAIN",
+      "input_or_fault": "MF vsSCH L1,dates,leading-zero settlement",
+      "layer": "parser_mapping",
+      "required_result": "Context only;no implicit join/calendar completeness",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No mixed positive eligibility",
+      "executed_by_this_draft": false,
+      "id": "FAMILY_VECTOR",
+      "input_or_fault": "Fresh SCH with stale/missing/incompatibleSIP/NAV/SET",
+      "layer": "native_api",
+      "required_result": "Explicit vector conflict/staleness; source status stays independent",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No global source blockade",
+      "executed_by_this_draft": false,
+      "id": "FAILURE_ISOLATION",
+      "input_or_fault": "One family parse/publish failure, other family and AMC valid",
+      "layer": "native",
+      "required_result": "Independent progress; last valid data retained with dates",
+      "slice": "later"
+    },
+    {
+      "effect_assertion": "No call authorized by draft/fixtures",
+      "executed_by_this_draft": false,
+      "id": "LIVE_PROD_REFERENCE",
+      "input_or_fault": "Actual bounded read of current originals",
+      "layer": "separately_authorized_runtime",
+      "required_result": "Complete immutable bytes + verified headers/tokens + publication/API evidence",
+      "slice": "later"
+    }
+  ],
+  "base": "db07e53a509a39556214bec80cca084086c37b2a",
+  "format": "nse01-review-draft-v1",
+  "inventory_sha256": "cefd9759679ea300a2aaacc61f4ebfe10678d6cb8aa2467941a8ba4d9ecd3440",
+  "negative_error_example": {
+    "must_not_import_as_text_rows": true,
+    "path": "examples/nse01/documented_failure.json",
+    "sha256": "a9ed7e7e66f9829b84b35a988dac28bfffdb1da5b7fbaada4382fd2a89e49fc7"
+  },
+  "no_execution_claim": true,
+  "no_new_test_framework": true,
+  "original_primary_documents": [
+    {
+      "name": "NSEMF_API_Details_V1.9.8.pdf",
+      "sha256": "2affc2cef801d5219d3ebbcc78cf9a06321ebb7a60a5387667242b3e30b608b0"
+    },
+    {
+      "name": "NSE_MF_WebfileStructure.pdf",
+      "sha256": "67ee2e34c7cf776a2731e950837bd3aa6f2e6f7e5f521cbdbbce5cc60aae307d"
+    },
+    {
+      "name": "Connection level pre-requisite for API connection of NSEINVEST 1_Draft1.pdf",
+      "sha256": "9fe850dbef19ce7e7bfe3ea0ecdda2dc70f34fab2230803102b1d0b7eb239787"
+    }
+  ],
+  "retained_fixture_requirements": [
+    {
+      "available_in_this_draft": false,
+      "needed": "Sanitized complete retained file, private original hash/provenance and all value token profiles; no raw UAT body copied",
+      "schema": "SCH44"
+    },
+    {
+      "available_in_this_draft": false,
+      "needed": "Sanitized28 positions with source provenance; production request/layout still unresolved",
+      "schema": "SIP28_STEPUP"
+    }
+  ],
+  "scope": "Acceptance specification, not executed tests",
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "synthetic_examples": [
+    {
+      "bytes": 1002,
+      "data_rows": 1,
+      "family": "SCH",
+      "header": true,
+      "live_acceptance": false,
+      "path": "examples/nse01/sch_document_43.psv",
+      "positions": 43,
+      "production_tokens_or_semantics_verified": false,
+      "provenance": "FULLY_SYNTHETIC_DOCUMENT_LAYOUT_EXAMPLE",
+      "sha256": "084f8aa327b47d1b23ee68080698450b00d54a8bc72b0440c954de1d4b27aaf5",
+      "special_assertion": "Document field19/43 blank; D/direct only; numeric flags separate from header44 Y/N"
+    },
+    {
+      "bytes": 619,
+      "data_rows": 1,
+      "family": "SIP",
+      "header": true,
+      "live_acceptance": false,
+      "path": "examples/nse01/sip_document_27.psv",
+      "positions": 27,
+      "production_tokens_or_semantics_verified": false,
+      "provenance": "FULLY_SYNTHETIC_DOCUMENT_LAYOUT_EXAMPLE",
+      "sha256": "205f854fb4f5b2bb522f14e0bbb583e713cc4dba6219635d4283699da1c4e7ba",
+      "special_assertion": "Four untyped pause cells and five final filler cells retained"
+    },
+    {
+      "bytes": 746,
+      "data_rows": 1,
+      "family": "STP",
+      "header": true,
+      "live_acceptance": false,
+      "path": "examples/nse01/stp_document_26.psv",
+      "positions": 26,
+      "production_tokens_or_semantics_verified": false,
+      "provenance": "FULLY_SYNTHETIC_DOCUMENT_LAYOUT_EXAMPLE",
+      "sha256": "f5f82ec9aba6f34dd231b9571d636e58097fe82080d6cc19f4f8a512353fac42",
+      "special_assertion": "ASTP spelling and separate IN/OUT limits"
+    },
+    {
+      "bytes": 577,
+      "data_rows": 1,
+      "family": "SWP",
+      "header": true,
+      "live_acceptance": false,
+      "path": "examples/nse01/swp_document_21.psv",
+      "positions": 21,
+      "production_tokens_or_semantics_verified": false,
+      "provenance": "FULLY_SYNTHETIC_DOCUMENT_LAYOUT_EXAMPLE",
+      "sha256": "de6a99e71684216add738b7f83d24e9ec22e500acf351ca9124668fb83fef79a",
+      "special_assertion": "Amount2 versus units3 decimal scales"
+    },
+    {
+      "bytes": 96,
+      "data_rows": 1,
+      "family": "NAV",
+      "header": false,
+      "live_acceptance": false,
+      "path": "examples/nse01/nav_document_8.psv",
+      "positions": 8,
+      "production_tokens_or_semantics_verified": false,
+      "provenance": "FULLY_SYNTHETIC_DOCUMENT_LAYOUT_EXAMPLE",
+      "sha256": "b419c77c7a0295ea3eb3b2ec4a600e6fbf9c3671d6d3f4789900d9f4eae1a6fe",
+      "special_assertion": "Headerless; date differs from filename example; keep six fractional digits and do not infer Growth from Z"
+    },
+    {
+      "bytes": 182,
+      "data_rows": 1,
+      "family": "SET",
+      "header": true,
+      "live_acceptance": false,
+      "path": "examples/nse01/set_document_7.psv",
+      "positions": 7,
+      "production_tokens_or_semantics_verified": false,
+      "provenance": "FULLY_SYNTHETIC_DOCUMENT_LAYOUT_EXAMPLE",
+      "sha256": "3434da198b3b3eabe1649ba8ceef156e44952f8925977ca3c74ee424234c4426",
+      "special_assertion": "Preserve leading zeros; do not join MF to SCH L1"
+    }
+  ]
+}
