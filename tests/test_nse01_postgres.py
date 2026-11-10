@@ -160,13 +160,21 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
     with connect(dsn) as conn:
         assert conn.execute('SELECT count(*) AS n FROM mf_nse.snapshots').fetchone()['n']==2
         assert conn.execute('SELECT count(*) AS n FROM mf_nse.sch_rows').fetchone()['n']==14
+    unknown_activity=ingest(dsn,candidate(change(column=26,value='2')),previous=revised['snapshot_id'])
+    assert unknown_activity['exposed_rows']==3 and head(dsn)[1]==3
+    with api(dsn) as client:
+        data=page(client)['rows']
+        held=next(r for r in data if r['nse_scheme_code']=='SCH_G')
+        assert held['reference_fields']['amc_active'] is None
+        assert held['limitations']['amc_active']=='SCH_FLAGS_MODES'
+        assert held['eligibility']=='UNKNOWN' and len(data)==3
     # FULL replacement removes one source row, disables another; old history
     # survives and canonical funds are never "retired" by NSE source absence.
     replacement=change(column=26,value='0')
     lines=replacement.splitlines()
     replacement=b'\n'.join([lines[0],*lines[1:2],*lines[3:]])+b'\n'
-    removed=ingest(dsn,candidate(replacement),previous=revised['snapshot_id'])
-    assert removed['exposed_rows']==1 and head(dsn)[1]==3
+    removed=ingest(dsn,candidate(replacement),previous=unknown_activity['snapshot_id'])
+    assert removed['exposed_rows']==1 and head(dsn)[1]==4
     with api(dsn) as client:
         assert len(page(client)['rows'])==1
     # Older evidence can be retained but cannot replace the active FULL head.

@@ -105,11 +105,50 @@ def test_crosswalk_exact_code_amc_plan_option_and_isin_slots():
     resolved = [mapping.resolve(r,WALK,funds()) for r in rows]
     assert [r['status'] for r in resolved] == ['MAPPED','MAPPED','MAPPED','OUT_OF_SCOPE','UNMAPPED','CONFLICT','CONFLICT']
     assert [r['candidates'][0]['isin_slot'] for r in resolved[:3]] == ['isin_growth_or_div_payout','isin_growth_or_div_payout','isin_div_reinvest']
-    for column, value in ((1,'UNKNOWN'), (5,'UNKNOWN'), (4,'INFX00009999'),(8,'Other name')):
+    for column, value in ((1,'UNKNOWN'), (5,'UNKNOWN'), (4,'INFX00009999')):
         assert mapping.resolve(candidate(change(column=column,value=value)).rows[0],WALK,funds())['status'] != 'MAPPED'
     altered = funds()
     altered[0]['option_type'] = 'IDCW'
     assert mapping.resolve(rows[0],WALK,altered)['status'] == 'CONFLICT'
+
+
+@pytest.mark.parametrize('column,value,field',[
+    (9,'Q','purchase_allowed'),(10,'QQ','purchase_mode'),(16,'2','redemption_allowed'),
+    (17,'QQ','redemption_mode'),(26,'2','amc_active'),(27,'2','dividend_reinvestment'),
+    (28,'2','sip_flag'),(29,'2','stp_flag'),(30,'2','swp_flag'),(31,'Q','switch_flag'),
+    (37,'2','exit_load_flag'),(39,'2','lock_in_period_flag'),
+])
+def test_valid_unknown_flags_withhold_only_fields_when_identity_is_exact(column,value,field):
+    row=candidate(change(column=column,value=value)).rows[0]
+    resolved=mapping.resolve(row,WALK,funds())
+    assert resolved['status']=='MAPPED'
+    assert row['normalized'][field] is None
+    assert row['field_holds'][field]=='SCH_FLAGS_MODES'
+    assert row['normalized']['purchase_eligibility']==row['normalized']['redemption_eligibility']=='UNKNOWN'
+
+
+def test_optional_name_is_not_a_join_key_and_known_option_conflict_still_withholds_row():
+    for name in ('','RENAMED SOURCE REFERENCE'):
+        row=candidate(change(column=8,value=name)).rows[0]
+        assert mapping.resolve(row,WALK,funds())['status']=='MAPPED'
+        assert row['normalized']['source_scheme_name']==(name or None)
+    missing=candidate(change(column=8,value='')).rows[0]
+    assert missing['field_holds']['source_scheme_name']=='SCH_REQUIREDNESS'
+    contradictory=candidate(change(column=27,value='1')).rows[0]
+    assert mapping.resolve(contradictory,WALK,funds())['status']=='CONFLICT'
+    disabled=candidate(change(column=26,value='0')).rows[0]
+    assert mapping.resolve(disabled,WALK,funds())['status']=='SOURCE_DISABLED'
+
+
+def test_unknown_flag_cannot_choose_between_conflicting_isin_slots():
+    row=candidate(change(row=2,column=27,value='2')).rows[1]
+    walk=deepcopy(WALK)
+    primary=next(t for t in walk['targets'] if t['scheme_code']=='SCH_P')
+    walk['targets'].append({**primary,'isin_slot':'isin_div_reinvest','reinvestment_flag':'1'})
+    canonical=funds()
+    canonical[1]['isin_div_reinvest']='INFX00000002'
+    resolved=mapping.resolve(row,walk,canonical)
+    assert resolved['status']=='AMBIGUOUS' and len(resolved['candidates'])==2
 
 
 def test_mapping_ambiguity_and_out_of_scope_retained():

@@ -35,15 +35,19 @@ def crosswalk(value):
 def resolve(row, walk, funds):
     cells = row['cells']
     result = {**row, 'status': 'UNMAPPED', 'row_reason': 'SCH_MAPPING', 'candidates': []}
-    if not all(cells[i] for i in (1, 4, 5, 7, 8)):
+    if not all(cells[i] for i in (1, 4, 5, 7)):
         return {**result, 'row_reason': 'SCH_REQUIREDNESS'}
     if row['plan'] is None:
         return {**result, 'row_reason': 'SCH_PLAN'}
     if cells[5] not in walk['amcs']:
         return result
     targets = [t for t in walk['targets'] if t['amc_code'] == cells[5] and t['scheme_code'] == cells[1]]
+    # The reviewed code crosswalk supplies option/slot evidence. Display names
+    # are NOT identity keys or mandatory source facts. Unknown optional flags
+    # withhold their fields; only a KNOWN reinvestment contradiction rejects the
+    # otherwise exact AMC/code/ISIN/plan/option mapping.
     exact = [t for t in targets if t['isin'] == cells[4] and t['plan'] == row['plan']
-             and t['source_name'] == cells[8] and t['reinvestment_flag'] == cells[27]]
+             and (cells[27] not in {'0', '1'} or t['reinvestment_flag'] == cells[27])]
     if not exact:
         return {**result, 'status': 'CONFLICT' if targets else 'UNMAPPED'}
     candidates = []
@@ -66,7 +70,7 @@ def resolve(row, walk, funds):
         return {**result, 'status': 'AMBIGUOUS' if candidates else 'UNMAPPED'}
     if not candidates[0]['in_scope'] or row['plan'] != 'REGULAR':
         return {**result, 'status': 'OUT_OF_SCOPE', 'row_reason': 'SCH_SCOPE'}
-    if row['normalized']['amc_active'] is not True:
-        return {**result, 'status': 'SOURCE_DISABLED' if row['normalized']['amc_active'] is False else 'UNMAPPED',
+    if row['normalized']['amc_active'] is False:
+        return {**result, 'status': 'SOURCE_DISABLED',
                 'row_reason': 'SCH_FLAGS_MODES'}
     return {**result, 'status': 'MAPPED', 'row_reason': None}

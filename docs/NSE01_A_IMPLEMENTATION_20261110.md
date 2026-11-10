@@ -32,7 +32,7 @@ families reject before connection/claim as `FAMILY_NOT_IMPLEMENTED`.
 
 All43 cells remain private and lossless. The14 reviewed ambiguity policies are
 implemented with block > row > field precedence. Unknown plans, unresolved,
-ambiguous and conflicting mappings, Direct scope and disabled/unknown source
+ambiguous and conflicting mappings, Direct scope and known disabled source
 activity withhold rows; private evidence retains every row and reason. Field14,
 BLANK19/43, timezone, settlement-domain and source-metadata interpretations are
 not invented. Valid field uncertainty retains the mapped row with null fields
@@ -47,8 +47,12 @@ unclassified source-metadata field and unverified exit/lock flag has its own
 withholding reason; no aggregate metadata label hides omitted fields.
 
 `nse.mapping` requires an explicit versioned AMC crosswalk and scheme-code target,
-exact source ISIN and slot, plan, option, source-name corroboration and dividend
-reinvestment evidence, plus the actual canonical AMFI row. Names/ISIN alone,
+exact source ISIN and slot, plan and reviewed option evidence, plus the actual
+canonical AMFI row. Known reinvestment contradictions still reject identity;
+an unknown optional flag withholds its field if the remaining exact identity is
+unambiguous. Names are retained references, not join keys or mandatory mapping
+facts. Unknown AMC activity retains the row with UNKNOWN eligibility; known
+disabled activity withholds it. Names/ISIN alone,
 source serial and family grouping cannot resolve identity. Missing or multiple
 candidates stay private. A crosswalk is offline reviewed input, not a claim that
 synthetic normalizations certify current production tokens.
