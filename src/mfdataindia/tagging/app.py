@@ -7,6 +7,7 @@ its own partner authorization. It never installs or publishes on startup.
 from __future__ import annotations
 
 from time import perf_counter
+from typing import Literal
 
 import psycopg
 from fastapi import Depends, HTTPException, Path, Query, Request
@@ -77,7 +78,7 @@ def create_app(dsn=None):
 
     @app.get(reads.PREFIX+'/definitions',response_model=s.TagDefinitionPage,responses=errors,
              dependencies=[Depends(parameters({'dimension','limit','cursor'}))])
-    def definitions(dimension: str | None = None, limit: int = Query(50,ge=1,le=100),
+    def definitions(dimension: s.Dimension | None = None, limit: int = Query(50,ge=1,le=100),
                     cursor: str | None = Query(None,min_length=1,max_length=2048)):
         if dimension is not None and dimension not in p.DIMENSIONS:
             raise HTTPException(422,detail='INVALID_TAG_QUERY')
@@ -98,7 +99,7 @@ def create_app(dsn=None):
 
     @app.get(reads.PREFIX+'/funds',response_model=s.TaggedFundPage,responses=errors,
              dependencies=[Depends(parameters({'tag','match','limit','cursor'},repeated={'tag'}))])
-    def funds(tag: list[str] = Query(default=[]), match: str = 'all',
+    def funds(tag: list[str] = Query(default=[]), match: Literal['all','any'] = 'all',
               limit: int = Query(20,ge=1,le=50), cursor: str | None = Query(None,min_length=1,max_length=2048)):
         try:
             reads.validate_filters(tag,match,limit)

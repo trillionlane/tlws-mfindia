@@ -156,6 +156,16 @@ def test_new_contract_matches_committed_paths_and_does_not_redefine_legacy_route
     assert contract == json.loads((ROOT/'contracts/mfdataindia-fund-tags-v1.json').read_text())
 
 
+def test_openapi_declares_closed_query_vocabularies_not_unrestricted_strings():
+    document = app.create_app('offline').openapi()
+    def parameter(path,name):
+        return next(p['schema'] for p in document['paths'][path]['get']['parameters'] if p['name']==name)
+    dimension = parameter(reads.PREFIX+'/definitions','dimension')
+    values = next(branch['enum'] for branch in dimension['anyOf'] if 'enum' in branch)
+    assert values == list(p.DIMENSIONS)
+    assert parameter(reads.PREFIX+'/funds','match')['enum'] == ['all','any']
+
+
 def test_actual_request_keeps_existing_pool_and_database_telemetry_on_failure(monkeypatch,capsys):
     from itertools import count
     class Connection:

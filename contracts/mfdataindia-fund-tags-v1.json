@@ -682,6 +682,28 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "amc",
+                    "scheme-category",
+                    "scheme-structure",
+                    "plan",
+                    "option",
+                    "vehicle",
+                    "asset-class",
+                    "risk",
+                    "strategy",
+                    "market-cap",
+                    "geography",
+                    "sector",
+                    "theme",
+                    "duration-credit",
+                    "benchmark",
+                    "esg-strategy",
+                    "environment",
+                    "values-screen",
+                    "entity-exposure",
+                    "assessment"
+                  ],
                   "type": "string"
                 },
                 {
@@ -790,6 +812,10 @@
             "required": false,
             "schema": {
               "default": "all",
+              "enum": [
+                "all",
+                "any"
+              ],
               "title": "Match",
               "type": "string"
             }
