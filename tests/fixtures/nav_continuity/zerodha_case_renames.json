@@ -1,0 +1,152 @@
+[
+  {
+    "amfi_scheme_code": "154619",
+    "old_scheme_name": "Zerodha Arbitrage Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Arbitrage Fund",
+    "isin_growth_or_payout": "INF0R8F01232"
+  },
+  {
+    "amfi_scheme_code": "153932",
+    "old_scheme_name": "Zerodha BSE SENSEX Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE BSE SENSEX Index Fund",
+    "isin_growth_or_payout": "INF0R8F01174"
+  },
+  {
+    "amfi_scheme_code": "154813",
+    "old_scheme_name": "Zerodha BSE TOP 10 BANKS ETF",
+    "new_amfi_scheme_name": "Zerodha CASE BSE TOP 10 BANKS ETF",
+    "isin_growth_or_payout": "INF0R8F01265"
+  },
+  {
+    "amfi_scheme_code": "152157",
+    "old_scheme_name": "Zerodha ELSS Tax Saver Nifty LargeMidcap 250 Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE ELSS Tax Saver Nifty LargeMidcap 250 Index Fund",
+    "isin_growth_or_payout": "INF0R8F01026"
+  },
+  {
+    "amfi_scheme_code": "152476",
+    "old_scheme_name": "Zerodha Gold ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Gold ETF",
+    "isin_growth_or_payout": "INF0R8F01042"
+  },
+  {
+    "amfi_scheme_code": "153011",
+    "old_scheme_name": "Zerodha Gold ETF FoF",
+    "new_amfi_scheme_name": "Zerodha CASE Gold ETF FoF",
+    "isin_growth_or_payout": "INF0R8F01083"
+  },
+  {
+    "amfi_scheme_code": "154697",
+    "old_scheme_name": "Zerodha Life Cycle Fund 2031",
+    "new_amfi_scheme_name": "Zerodha CASE Life Cycle Fund 2031",
+    "isin_growth_or_payout": "INF0R8F01240"
+  },
+  {
+    "amfi_scheme_code": "154436",
+    "old_scheme_name": "Zerodha Life Cycle Fund 2036",
+    "new_amfi_scheme_name": "Zerodha CASE Life Cycle Fund 2036",
+    "isin_growth_or_payout": "INF0R8F01224"
+  },
+  {
+    "amfi_scheme_code": "154437",
+    "old_scheme_name": "Zerodha Life Cycle Fund 2041",
+    "new_amfi_scheme_name": "Zerodha CASE Life Cycle Fund 2041",
+    "isin_growth_or_payout": "INF0R8F01216"
+  },
+  {
+    "amfi_scheme_code": "153757",
+    "old_scheme_name": "Zerodha Multi Asset Passive FoF",
+    "new_amfi_scheme_name": "Zerodha CASE Multi Asset Passive FoF",
+    "isin_growth_or_payout": "INF0R8F01117"
+  },
+  {
+    "amfi_scheme_code": "152667",
+    "old_scheme_name": "Zerodha Nifty 100 ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty 100 ETF",
+    "isin_growth_or_payout": "INF0R8F01067"
+  },
+  {
+    "amfi_scheme_code": "152327",
+    "old_scheme_name": "Zerodha Nifty 1D Rate Liquid ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty 1D Rate Liquid ETF",
+    "isin_growth_or_payout": "INF0R8F01034"
+  },
+  {
+    "amfi_scheme_code": "153905",
+    "old_scheme_name": "Zerodha Nifty 50 ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty 50 ETF",
+    "isin_growth_or_payout": "INF0R8F01166"
+  },
+  {
+    "amfi_scheme_code": "153906",
+    "old_scheme_name": "Zerodha Nifty 50 Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty 50 Index Fund",
+    "isin_growth_or_payout": "INF0R8F01158"
+  },
+  {
+    "amfi_scheme_code": "153811",
+    "old_scheme_name": "Zerodha Nifty 8-13 Yr G-Sec ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty 8-13 Yr G-Sec ETF",
+    "isin_growth_or_payout": "INF0R8F01133"
+  },
+  {
+    "amfi_scheme_code": "152156",
+    "old_scheme_name": "Zerodha Nifty LargeMidcap 250 Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty LargeMidcap 250 Index Fund",
+    "isin_growth_or_payout": "INF0R8F01018"
+  },
+  {
+    "amfi_scheme_code": "154321",
+    "old_scheme_name": "Zerodha Nifty LargeMidcap250 Plus 8-13 Yr G-Sec 70:30 Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty LargeMidcap250 Plus 8-13 Yr G-Sec 70:30 Index Fund",
+    "isin_growth_or_payout": "INF0R8F01208"
+  },
+  {
+    "amfi_scheme_code": "152668",
+    "old_scheme_name": "Zerodha Nifty Midcap 150 ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty Midcap 150 ETF",
+    "isin_growth_or_payout": "INF0R8F01059"
+  },
+  {
+    "amfi_scheme_code": "154306",
+    "old_scheme_name": "Zerodha Nifty MidSmallcap400 50:50 Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty MidSmallcap400 50:50 Index Fund",
+    "isin_growth_or_payout": "INF0R8F01190"
+  },
+  {
+    "amfi_scheme_code": "154764",
+    "old_scheme_name": "Zerodha Nifty Next 100 ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty Next 100 ETF",
+    "isin_growth_or_payout": "INF0R8F01257"
+  },
+  {
+    "amfi_scheme_code": "154109",
+    "old_scheme_name": "Zerodha Nifty Short Duration G-Sec Index Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty Short Duration G-Sec Index Fund",
+    "isin_growth_or_payout": "INF0R8F01182"
+  },
+  {
+    "amfi_scheme_code": "153837",
+    "old_scheme_name": "Zerodha Nifty Smallcap 100 ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Nifty Smallcap 100 ETF",
+    "isin_growth_or_payout": "INF0R8F01141"
+  },
+  {
+    "amfi_scheme_code": "153436",
+    "old_scheme_name": "Zerodha Overnight Fund",
+    "new_amfi_scheme_name": "Zerodha CASE Overnight Fund",
+    "isin_growth_or_payout": "INF0R8F01075"
+  },
+  {
+    "amfi_scheme_code": "153413",
+    "old_scheme_name": "Zerodha Silver ETF",
+    "new_amfi_scheme_name": "Zerodha CASE Silver ETF",
+    "isin_growth_or_payout": "INF0R8F01091"
+  },
+  {
+    "amfi_scheme_code": "153656",
+    "old_scheme_name": "Zerodha Silver ETF FoF",
+    "new_amfi_scheme_name": "Zerodha CASE Silver ETF FoF",
+    "isin_growth_or_payout": "INF0R8F01109"
+  }
+]
