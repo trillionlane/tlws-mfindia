@@ -1,18 +1,17 @@
 """Actual packaged offline main/parser smoke; no provider or database I/O."""
 from hashlib import sha256
-from importlib.resources import files
 import json
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from . import cli, contract as c, store
+from .fixture import FULL_MANIFEST_JSON, FULL_SOURCE
 
 
 def run():
-    fixtures = files(__package__).joinpath('fixtures')
-    raw = fixtures.joinpath('sch43_full.psv').read_bytes()
-    meta = c.decode(fixtures.joinpath('sch43_full.manifest.json').read_bytes())
+    raw = FULL_SOURCE
+    meta = c.decode(FULL_MANIFEST_JSON)
     walk = {'format': 'nse01-crosswalk-v1', 'version': 'synthetic-v1', 'amcs': {}, 'targets': []}
     calls = []
     def forbidden(*args, **kwargs):

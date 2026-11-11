@@ -19,7 +19,7 @@ MAX_ROW_BYTES = 16 * 1024
 HASH = re.compile(r'[0-9a-f]{64}\Z')
 NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,95}\Z')
 FAMILIES = frozenset({'SCH', 'SIP', 'STP', 'SWP', 'NAV', 'SET'})
-# SHA-256 of the canonical packaged sch43_full.manifest.json. Pin the complete
+# SHA-256 of the canonical manifest shipped in nse.fixture. Pin the complete
 # manifest, including its fixture reference and date, independently of any input.
 _TRUSTED_FULL_MANIFESTS = frozenset({
     '827020c3c035e17a0f5ace58a3c3a48e0faf7e1224a30c1b125190ba9b2d34eb',

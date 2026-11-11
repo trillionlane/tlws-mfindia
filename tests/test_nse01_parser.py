@@ -10,7 +10,7 @@ import pytest
 from mfdataindia.nse import contract as c, mapping, parser
 from mfdataindia.nse.cli import main
 from mfdataindia.nse.schema import HEADERS43, HEADERS44, SCHEMA44
-from nse01_fixtures import ROOT, RAW, MANIFEST, WALK, FIXTURES, FULL_FILE, FULL_MANIFEST, candidate, change, funds
+from nse01_fixtures import ROOT, RAW, MANIFEST, WALK, FIXTURES, candidate, change, funds, write_full_fixture
 
 
 def test_family_field_accounting():
@@ -39,19 +39,20 @@ def test_sch_opaque_id_and_original_bytes():
 
 @pytest.mark.parametrize('family', ['SIP', 'STP', 'SWP', 'NAV', 'SET', 'STEPUP', 'sch'])
 def test_request_allowlist_no_db_or_intent(tmp_path, family):
+    full_file, _ = write_full_fixture(tmp_path)
     meta = tmp_path/'manifest.json'
     meta.write_text(json.dumps({**MANIFEST, 'family': family}))
     output = []
     def forbidden(*args, **kwargs):
         raise AssertionError('must not connect')
-    result = main(['--file',str(FULL_FILE),'--manifest',str(meta),
+    result = main(['--file',str(full_file),'--manifest',str(meta),
                    '--crosswalk',str(FIXTURES/'crosswalk.json'),'--import-file',
                    '--operation',str(uuid4()),'--journal-dir',str(tmp_path)], connect=forbidden, output=output.append)
     assert result == 1
     body = json.loads(output[-1])
     assert body['effect'] == 'NO_PUBLICATION'
     assert body['reason'] == ('FAMILY_NOT_IMPLEMENTED' if family in c.FAMILIES else 'INVALID_FAMILY')
-    assert list(tmp_path.iterdir()) == [meta]
+    assert set(tmp_path.iterdir()) == {meta, full_file.parent}
 
 
 def test_precise_decimal_without_rounding():
@@ -245,23 +246,25 @@ def test_unknown_incomplete_and_unverified_manifest(extra):
 
 
 def test_duplicate_metadata_member_and_secret_safe_cli(tmp_path):
+    full_file, _ = write_full_fixture(tmp_path)
     with pytest.raises(c.ImportError):
         c.decode(b'{"family":"SCH","family":"NAV"}')
     p = tmp_path/'bad.json'
     p.write_text('synthetic-secret-marker not json')
     output=[]
-    assert main(['--dry-run','--file',str(FULL_FILE), '--manifest',str(p),
+    assert main(['--dry-run','--file',str(full_file), '--manifest',str(p),
                  '--crosswalk',str(FIXTURES/'crosswalk.json')],output=output.append) == 1
     assert 'synthetic-secret-marker' not in ''.join(output)
 
 
-def test_package_main_actual_environ_dry_run_no_connection_or_operation(monkeypatch):
+def test_package_main_actual_environ_dry_run_no_connection_or_operation(monkeypatch, tmp_path):
+    full_file, full_manifest = write_full_fixture(tmp_path)
     monkeypatch.setenv('NSE01_SYNTHETIC_SENTINEL','synthetic-secret-marker')
     output=[]
     def forbidden(*a,**kw):
         pytest.fail('dry-run connected')
-    assert main(['--dry-run','--file',str(FULL_FILE),
-                 '--manifest',str(FULL_MANIFEST),
+    assert main(['--dry-run','--file',str(full_file),
+                 '--manifest',str(full_manifest),
                  '--crosswalk',str(FIXTURES/'crosswalk.json')],connect=forbidden,output=output.append) == 0
     report=json.loads(output[-1])
     assert report['state']=='VALIDATED_NOT_PUBLISHED' and report['source_rows']==7

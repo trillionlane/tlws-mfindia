@@ -6,7 +6,7 @@ from psycopg.pq import TransactionStatus
 import pytest
 
 from mfdataindia.nse import cli, contract, store
-from nse01_fixtures import FIXTURES, FULL_FILE, FULL_MANIFEST, RAW, WALK, candidate
+from nse01_fixtures import FIXTURES, RAW, WALK, candidate, write_full_fixture
 
 
 class Connection:
@@ -69,8 +69,9 @@ def test_store_rejects_structurally_valid_but_untrusted_full_before_sql():
 
 
 def arguments(tmp_path,op):
-    return ['--import-file','--file',str(FULL_FILE),
-            '--manifest',str(FULL_MANIFEST),
+    full_file, full_manifest = write_full_fixture(tmp_path)
+    return ['--import-file','--file',str(full_file),
+            '--manifest',str(full_manifest),
             '--crosswalk',str(FIXTURES/'crosswalk.json'),'--operation',op,'--journal-dir',str(tmp_path)]
 
 

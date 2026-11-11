@@ -16,7 +16,7 @@ from mfdataindia.datasets.app import create_app
 from mfdataindia.datasets import enrollment
 from mfdataindia.nse import contract as c, store
 from mfdataindia.nse.cli import main
-from nse01_fixtures import FIXTURES, FULL_FILE, FULL_MANIFEST, MANIFEST, RAW, WALK, candidate, change
+from nse01_fixtures import FIXTURES, MANIFEST, RAW, WALK, candidate, change, write_full_fixture
 from test_ro01_reader_policy_postgres import (
     ro01_db as ro01_db, connect, adopt, PASSWORD, generator_capabilities,
 )
@@ -102,10 +102,11 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
     generator_before=generator_capabilities(dsn)
     start=perf_counter()
     # Real main() + real connection + parser/crosswalk + production publication.
+    full_file, full_manifest = write_full_fixture(tmp_path)
     output=[]
     op=str(uuid4())
-    code=main(['--import-file','--file',str(FULL_FILE),
-        '--manifest',str(FULL_MANIFEST), '--crosswalk',str(FIXTURES/'crosswalk.json'),
+    code=main(['--import-file','--file',str(full_file),
+        '--manifest',str(full_manifest), '--crosswalk',str(FIXTURES/'crosswalk.json'),
         '--operation',op,'--journal-dir',str(tmp_path)],
         environ={'MFDATAINDIA_DSN':make_conninfo(dsn,user='mfdata_ingest',password=PASSWORD)},output=output.append)
     assert code==0,output
@@ -155,7 +156,7 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
         def forbidden(*a, **kw):
             pytest.fail('incomplete file connected')
 
-        for manifest_file, reason in ((FULL_MANIFEST, 'FULL_BYTES_MISMATCH'),
+        for manifest_file, reason in ((full_manifest, 'FULL_BYTES_MISMATCH'),
                                       (forged, 'FULL_MANIFEST_UNTRUSTED')):
             emitted = []
             bad_op = str(uuid4())

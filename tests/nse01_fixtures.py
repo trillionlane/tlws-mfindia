@@ -5,15 +5,23 @@ import json
 from pathlib import Path
 
 from mfdataindia.nse import parser
+from mfdataindia.nse.fixture import FULL_MANIFEST_JSON, FULL_SOURCE
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'tests/fixtures/nse01'
-PACKAGED_FIXTURES = ROOT / 'src/mfdataindia/nse/fixtures'
-FULL_FILE = PACKAGED_FIXTURES / 'sch43_full.psv'
-FULL_MANIFEST = PACKAGED_FIXTURES / 'sch43_full.manifest.json'
-RAW = FULL_FILE.read_bytes()
-MANIFEST = json.loads(FULL_MANIFEST.read_bytes())
+RAW = FULL_SOURCE
+MANIFEST = json.loads(FULL_MANIFEST_JSON)
 WALK = json.loads((FIXTURES / 'crosswalk.json').read_bytes())
+
+
+def write_full_fixture(root):
+    folder = root / 'approved'
+    folder.mkdir(exist_ok=True)
+    source = folder / 'sch43_full.psv'
+    manifest = folder / 'sch43_full.manifest.json'
+    source.write_bytes(RAW)
+    manifest.write_bytes(FULL_MANIFEST_JSON)
+    return source, manifest
 
 
 def candidate(raw=RAW, **metadata):

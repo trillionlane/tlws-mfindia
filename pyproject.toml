@@ -48,7 +48,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 mfdataindia = ["web/*.css", "web/*.html", "web/*.js"]
-"mfdataindia.nse" = ["fixtures/sch43_full.manifest.json", "fixtures/sch43_full.psv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

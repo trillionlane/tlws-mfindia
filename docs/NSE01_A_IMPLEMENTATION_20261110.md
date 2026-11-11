@@ -9,14 +9,14 @@ preserved byte-for-byte; this record describes the actual first slice.
 ## Composition and FULL gate
 
 `nse.contract` validates the complete caller manifest against a fixed SHA-256
-pin for the repository-packaged `sch43_full.manifest.json`. That approved
+pin for the manifest shipped in `nse.fixture`. That approved
 manifest supplies the expected hash, byte length and count for the known-complete
 seven-row fixture. Both CLI validation and transaction entry enforce the pin.
 A file that ends after one valid row fails even if its caller recomputes all three
 values and repeats the approved fixture reference. The CLI refuses it before
 reserving an operation or connecting. The PostgreSQL regression verifies the
 active snapshot, dataset discovery, metadata and API rows stay intact. The image
-smoke uses the same packaged fixture and exercises the forged manifest offline.
+smoke writes the packaged manifest and source bytes to temporary files and exercises the forged manifest offline.
 
 This is a **fixture-certified**, not production-certified, profile. An original
 export must be retained privately and its intended complete scope established
