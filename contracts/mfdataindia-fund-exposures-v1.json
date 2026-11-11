@@ -1,0 +1,1148 @@
+{
+  "components": {
+    "schemas": {
+      "ExposureAttribute": {
+        "additionalProperties": false,
+        "properties": {
+          "dimension": {
+            "enum": [
+              "issuer-domicile",
+              "sector",
+              "theme"
+            ],
+            "title": "Dimension",
+            "type": "string"
+          },
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "evidence_hashes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Evidence Hashes",
+            "type": "array"
+          },
+          "item_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "value": {
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+            "title": "Value",
+            "type": "string"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/ExposureWeight"
+          }
+        },
+        "required": [
+          "item_id",
+          "dimension",
+          "value",
+          "weight",
+          "entity_ids",
+          "evidence_hashes"
+        ],
+        "title": "ExposureAttribute",
+        "type": "object"
+      },
+      "ExposureDiscovery": {
+        "additionalProperties": false,
+        "properties": {
+          "absence_or_exclusion_certified": {
+            "const": false,
+            "title": "Absence Or Exclusion Certified",
+            "type": "boolean"
+          },
+          "coverage_basis": {
+            "const": "retained_snapshots_not_current_universe_coverage",
+            "title": "Coverage Basis",
+            "type": "string"
+          },
+          "entity_mapping_records": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Entity Mapping Records",
+            "type": "integer"
+          },
+          "entity_registry_format": {
+            "const": "mfdata-security-entities-v1",
+            "title": "Entity Registry Format",
+            "type": "string"
+          },
+          "entity_registry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Entity Registry Hash",
+            "type": "string"
+          },
+          "first_reporting_date": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Reporting Date"
+          },
+          "format": {
+            "const": "mfdata-observed-fund-exposures-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "freshness_certified": {
+            "const": false,
+            "title": "Freshness Certified",
+            "type": "boolean"
+          },
+          "funds_url": {
+            "title": "Funds Url",
+            "type": "string"
+          },
+          "last_reporting_date": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Reporting Date"
+          },
+          "related_news_requires_verified_bridge": {
+            "const": true,
+            "title": "Related News Requires Verified Bridge",
+            "type": "boolean"
+          },
+          "retained_snapshots": {
+            "minimum": 0.0,
+            "title": "Retained Snapshots",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "enum": [
+                "positions",
+                "securities",
+                "entities",
+                "attributes"
+              ],
+              "type": "string"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "source_enrollment_verified": {
+            "const": true,
+            "title": "Source Enrollment Verified",
+            "type": "boolean"
+          },
+          "source_format": {
+            "const": "official-complete-portfolio-v1",
+            "title": "Source Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "source_format",
+          "source_enrollment_verified",
+          "retained_snapshots",
+          "first_reporting_date",
+          "last_reporting_date",
+          "coverage_basis",
+          "entity_registry_format",
+          "entity_registry_hash",
+          "entity_mapping_records",
+          "sections",
+          "funds_url",
+          "related_news_requires_verified_bridge",
+          "absence_or_exclusion_certified",
+          "freshness_certified"
+        ],
+        "title": "ExposureDiscovery",
+        "type": "object"
+      },
+      "ExposureEntity": {
+        "additionalProperties": false,
+        "properties": {
+          "entity_id": {
+            "pattern": "^[a-z][a-z0-9-]{0,31}:[A-Za-z0-9][A-Za-z0-9._-]{0,95}$",
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_kind": {
+            "enum": [
+              "company",
+              "sovereign",
+              "fund",
+              "other"
+            ],
+            "title": "Entity Kind",
+            "type": "string"
+          },
+          "evidence_hashes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Evidence Hashes",
+            "type": "array"
+          },
+          "item_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 1000,
+            "title": "Rows",
+            "type": "array"
+          },
+          "security_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Security Ids",
+            "type": "array"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/ExposureWeight"
+          }
+        },
+        "required": [
+          "item_id",
+          "entity_id",
+          "entity_kind",
+          "weight",
+          "rows",
+          "security_ids",
+          "evidence_hashes"
+        ],
+        "title": "ExposureEntity",
+        "type": "object"
+      },
+      "ExposureError": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ExposureError",
+        "type": "object"
+      },
+      "ExposureMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "absence_or_exclusion_certified": {
+            "const": false,
+            "title": "Absence Or Exclusion Certified",
+            "type": "boolean"
+          },
+          "assessment_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "basis": {
+            "const": "dated_held_issuer_attributes_not_scheme_mandate",
+            "title": "Basis",
+            "type": "string"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "derivation_policy_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Derivation Policy Hash",
+            "type": "string"
+          },
+          "derivative_position_count": {
+            "minimum": 0.0,
+            "title": "Derivative Position Count",
+            "type": "integer"
+          },
+          "evidence_age_days": {
+            "minimum": 0.0,
+            "title": "Evidence Age Days",
+            "type": "integer"
+          },
+          "format": {
+            "const": "mfdata-observed-fund-exposures-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "freshness_certified": {
+            "const": false,
+            "title": "Freshness Certified",
+            "type": "boolean"
+          },
+          "holdings_count": {
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Holdings Count",
+            "type": "integer"
+          },
+          "identity_content_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Identity Content Hash",
+            "type": "string"
+          },
+          "lookthrough_performed": {
+            "const": false,
+            "title": "Lookthrough Performed",
+            "type": "boolean"
+          },
+          "mapped_holding_count": {
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Mapped Holding Count",
+            "type": "integer"
+          },
+          "observed_on": {
+            "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+            "title": "Observed On",
+            "type": "string"
+          },
+          "originals_replaced": {
+            "const": false,
+            "title": "Originals Replaced",
+            "type": "boolean"
+          },
+          "portfolio_as_of": {
+            "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+            "title": "Portfolio As Of",
+            "type": "string"
+          },
+          "portfolio_engine_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Portfolio Engine Hash",
+            "type": "string"
+          },
+          "portfolio_snapshot_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Portfolio Snapshot Id",
+            "type": "string"
+          },
+          "registry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Registry Hash",
+            "type": "string"
+          },
+          "source_content_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Content Hash",
+            "type": "string"
+          },
+          "statement_complete": {
+            "const": true,
+            "title": "Statement Complete",
+            "type": "boolean"
+          },
+          "withheld_row_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "NON_ISSUER_CASH_OR_NET_BALANCE",
+                "SECURITY_IDENTITY_UNVERIFIED",
+                "SECURITY_ENTITY_AMBIGUOUS",
+                "SECURITY_ENTITY_NOT_MAPPED_AT_DATE",
+                "ENTITY_ATTRIBUTE_CONFLICT",
+                "ENTITY_KIND_CONFLICT",
+                "FUND_LOOKTHROUGH_UNAVAILABLE",
+                "ENTITY_CLASSIFICATION_UNAVAILABLE"
+              ]
+            },
+            "title": "Withheld Row Reasons",
+            "type": "object"
+          }
+        },
+        "required": [
+          "format",
+          "assessment_id",
+          "derivation_policy_hash",
+          "code",
+          "portfolio_snapshot_id",
+          "portfolio_as_of",
+          "portfolio_engine_hash",
+          "source_content_hash",
+          "identity_content_hash",
+          "registry_hash",
+          "observed_on",
+          "evidence_age_days",
+          "freshness_certified",
+          "basis",
+          "statement_complete",
+          "holdings_count",
+          "mapped_holding_count",
+          "withheld_row_reasons",
+          "derivative_position_count",
+          "lookthrough_performed",
+          "absence_or_exclusion_certified",
+          "originals_replaced"
+        ],
+        "title": "ExposureMetadata",
+        "type": "object"
+      },
+      "ExposurePage": {
+        "additionalProperties": false,
+        "properties": {
+          "absence_or_exclusion_certified": {
+            "const": false,
+            "title": "Absence Or Exclusion Certified",
+            "type": "boolean"
+          },
+          "assessment_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Id"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "format": {
+            "const": "mfdata-observed-fund-exposures-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExposurePosition"
+                },
+                {
+                  "$ref": "#/components/schemas/ExposureSecurity"
+                },
+                {
+                  "$ref": "#/components/schemas/ExposureEntity"
+                },
+                {
+                  "$ref": "#/components/schemas/ExposureAttribute"
+                }
+              ]
+            },
+            "maxItems": 50,
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "next_after": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next After"
+          },
+          "portfolio_as_of": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio As Of"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_accepted_complete_portfolio",
+                  "current_identity_differs",
+                  "same_date_distinct_retained_sources"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "section": {
+            "enum": [
+              "positions",
+              "securities",
+              "entities",
+              "attributes"
+            ],
+            "title": "Section",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "not_captured",
+              "identity_changed",
+              "conflicting"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "state",
+          "reason",
+          "section",
+          "assessment_id",
+          "portfolio_as_of",
+          "items",
+          "next_after",
+          "limit",
+          "absence_or_exclusion_certified"
+        ],
+        "title": "ExposurePage",
+        "type": "object"
+      },
+      "ExposurePosition": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_class": {
+            "enum": [
+              "equity",
+              "debt",
+              "government",
+              "cash",
+              "current_assets_liabilities",
+              "derivative"
+            ],
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Long",
+                  "Short"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9-]{0,31}:[A-Za-z0-9][A-Za-z0-9._-]{0,95}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "evidence_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evidence Hash",
+            "type": "string"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
+          },
+          "identifier_kind": {
+            "enum": [
+              "isin",
+              "issuer_local",
+              "not_applicable"
+            ],
+            "title": "Identifier Kind",
+            "type": "string"
+          },
+          "item_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "mapping_state": {
+            "enum": [
+              "mapped",
+              "unmapped",
+              "ambiguous",
+              "identity-unverified",
+              "entity-kind-conflict",
+              "not-applicable"
+            ],
+            "title": "Mapping State",
+            "type": "string"
+          },
+          "position_kind": {
+            "enum": [
+              "holding",
+              "derivative"
+            ],
+            "title": "Position Kind",
+            "type": "string"
+          },
+          "row": {
+            "exclusiveMinimum": 0.0,
+            "title": "Row",
+            "type": "integer"
+          },
+          "source_label": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Source Label",
+            "type": "string"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/ExposurePositionWeight"
+          }
+        },
+        "required": [
+          "item_id",
+          "position_kind",
+          "row",
+          "source_label",
+          "asset_class",
+          "identifier",
+          "identifier_kind",
+          "direction",
+          "weight",
+          "mapping_state",
+          "entity_id",
+          "evidence_hash"
+        ],
+        "title": "ExposurePosition",
+        "type": "object"
+      },
+      "ExposurePositionWeight": {
+        "additionalProperties": false,
+        "properties": {
+          "lower": {
+            "maxLength": 160,
+            "pattern": "^-?\\d+(?:\\.\\d+)?$",
+            "title": "Lower",
+            "type": "string"
+          },
+          "unit": {
+            "const": "percent_of_original_disclosed_AUM",
+            "title": "Unit",
+            "type": "string"
+          },
+          "upper": {
+            "maxLength": 160,
+            "pattern": "^-?\\d+(?:\\.\\d+)?$",
+            "title": "Upper",
+            "type": "string"
+          },
+          "upper_exclusive": {
+            "title": "Upper Exclusive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "upper_exclusive",
+          "unit"
+        ],
+        "title": "ExposurePositionWeight",
+        "type": "object"
+      },
+      "ExposureSecurity": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_class": {
+            "enum": [
+              "equity",
+              "debt",
+              "government"
+            ],
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "item_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "row": {
+            "exclusiveMinimum": 0.0,
+            "title": "Row",
+            "type": "integer"
+          },
+          "security_id": {
+            "pattern": "^[A-Z]{2}[A-Z0-9]{9}[0-9]$",
+            "title": "Security Id",
+            "type": "string"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/ExposureWeight"
+          }
+        },
+        "required": [
+          "item_id",
+          "security_id",
+          "row",
+          "asset_class",
+          "weight"
+        ],
+        "title": "ExposureSecurity",
+        "type": "object"
+      },
+      "ExposureSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "attribute_count": {
+            "minimum": 0.0,
+            "title": "Attribute Count",
+            "type": "integer"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "entity_count": {
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "exact_scheme_news_unchanged": {
+            "const": true,
+            "title": "Exact Scheme News Unchanged",
+            "type": "boolean"
+          },
+          "format": {
+            "const": "mfdata-observed-fund-exposures-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExposureMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position_count": {
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Position Count",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_accepted_complete_portfolio",
+                  "current_identity_differs",
+                  "same_date_distinct_retained_sources"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "related_news_linkage": {
+            "const": "requires_verified_article_entity_evidence_in_TI",
+            "title": "Related News Linkage",
+            "type": "string"
+          },
+          "security_count": {
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Security Count",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "not_captured",
+              "identity_changed",
+              "conflicting"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "state",
+          "reason",
+          "metadata",
+          "entity_count",
+          "attribute_count",
+          "security_count",
+          "position_count",
+          "related_news_linkage",
+          "exact_scheme_news_unchanged"
+        ],
+        "title": "ExposureSummary",
+        "type": "object"
+      },
+      "ExposureWeight": {
+        "additionalProperties": false,
+        "properties": {
+          "lower": {
+            "maxLength": 160,
+            "pattern": "^\\d+(?:\\.\\d+)?$",
+            "title": "Lower",
+            "type": "string"
+          },
+          "unit": {
+            "const": "percent_of_original_disclosed_AUM",
+            "title": "Unit",
+            "type": "string"
+          },
+          "upper": {
+            "maxLength": 160,
+            "pattern": "^\\d+(?:\\.\\d+)?$",
+            "title": "Upper",
+            "type": "string"
+          },
+          "upper_exclusive": {
+            "title": "Upper Exclusive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "upper_exclusive",
+          "unit"
+        ],
+        "title": "ExposureWeight",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/fund-exposures/v1": {
+      "get": {
+        "operationId": "discovery_api_fund_exposures_v1_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureDiscovery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discovery"
+      }
+    },
+    "/api/fund-exposures/v1/funds/{code}": {
+      "get": {
+        "operationId": "summary_api_fund_exposures_v1_funds__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMaximum": 2147483648,
+              "exclusiveMinimum": 0,
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Summary"
+      }
+    },
+    "/api/fund-exposures/v1/funds/{code}/{section}": {
+      "get": {
+        "operationId": "page_api_fund_exposures_v1_funds__code___section__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section",
+            "required": true,
+            "schema": {
+              "enum": [
+                "positions",
+                "securities",
+                "entities",
+                "attributes"
+              ],
+              "title": "Section",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMaximum": 2147483648,
+              "exclusiveMinimum": 0,
+              "title": "Code",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assessment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assessment Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[0-9a-f]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposurePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExposureError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Page"
+      }
+    }
+  }
+}
