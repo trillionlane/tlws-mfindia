@@ -143,3 +143,23 @@ def test_native_backfill_selects_only_missing_keys(nav_store):
         assert nav.missing_history_prices(conn, prices, from_date=older, to_date=DAY) == []
     assert store.connect().execute("SELECT nav FROM mf.nav_history WHERE nav_date=%s",
                                    (DAY,)).fetchone()["nav"] == Decimal("10.5000")
+
+
+def test_native_rename_recomputes_invalidated_nav_derivations(nav_store):
+    store = nav_store
+    prior = scheme(1, "Old Regular Fund", "INFTEST00001")
+    start(store, [replace(prior, nav_date=date(2026, 11, 4))])
+    conn = store.connect()
+    old_id = family_links(conn)[0]["family_id"]
+    source = [replace(prior, scheme_name="Renamed Regular Fund")]
+    assert nav.publish_prices(store, source, fetch(), as_of=DAY)["load"]["inserted"] == 1
+    before = conn.execute("SELECT revision FROM mf.nav_source_revisions WHERE amfi_scheme_code=1").fetchone()
+    assert publish_catalogue(store, source)["state"] == "CATALOGUE_PUBLISHED"
+    revision = conn.execute("""
+        SELECT r.revision, c.source_revision, c.as_of FROM mf.nav_source_revisions r
+        JOIN mf.nav_calculations c USING(amfi_scheme_code)
+        WHERE r.amfi_scheme_code=1
+    """).fetchone()
+    assert revision["revision"] > before["revision"]
+    assert revision["revision"] == revision["source_revision"] and revision["as_of"] == DAY
+    assert family_links(conn)[0]["family_id"] == old_id

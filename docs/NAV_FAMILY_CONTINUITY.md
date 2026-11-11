@@ -17,7 +17,12 @@ three ordered hashes, row count and version from the reviewed result with
 `--apply`, `--expected-version`, `--expected-rows` and `--source-sha256`. Any changed input, competing
 operation, conflicting source observation or non-insert outcome fails closed.
 All missing NAVs and their existing calculation/summary updates commit in one
-transaction. A successful replay plan shows zero missing keys. Check the
+transaction. Use the existing DEV ingestion identity on a runner in the same
+region as Cloud SQL. The calculation phase reads each affected series and does
+several database operations per scheme, so a workstation proxy can exceed the
+transaction deadline even with zero lock waits. The November 11 attempt stopped
+at the 840-second bound. A fresh reader confirmed that the prices, receipts and
+summary all rolled back. A successful replay plan shows zero missing keys. Check the
 committed daily counts and authenticated stats and NAV routes after application.
 
 ## Stable identity and automatic rename
@@ -53,6 +58,8 @@ The v2 job validates the official NAVAll feed once. It first commits prices
 for verified existing in-scope scheme identities, preserving the published
 catalogue and FULL snapshot ledger. It then validates and commits the
 catalogue and any newly verified scheme prices in a separate transaction.
+Recompute calculations invalidated by a catalogue-only identity revision before
+committing that catalogue.
 Both use the existing NAV operation lock. A catalogue hold is durably recorded
 and produces a failed job result even when verified prices committed.
 

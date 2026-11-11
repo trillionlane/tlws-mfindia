@@ -7,6 +7,7 @@ from datetime import date
 
 from psycopg.types.json import Jsonb
 
+from mfdataindia.jobs.nav_calculations import METHODOLOGY_VERSION, recompute
 from mfdataindia.load import family_continuity as families
 from mfdataindia.load.amfi_to_store import load_parsed_amfi, nav_rows
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
@@ -51,6 +52,21 @@ def publish_prices(store, schemes, fetch, *, as_of: date):
         return {"state": "VERIFIED_PRICES", "load": result.as_dict()}
 
 
+def _recompute_invalidated_calculations(conn):
+    # Catalogue changes can bump a NAV source revision independently of prices.
+    # The existing version-bound calculation code remains the authority.
+    codes = [row["amfi_scheme_code"] for row in conn.execute("""
+        SELECT r.amfi_scheme_code FROM mf.nav_source_revisions r
+        LEFT JOIN mf.nav_calculations c USING(amfi_scheme_code)
+        WHERE (c.amfi_scheme_code IS NULL OR c.source_revision<>r.revision
+               OR c.methodology_version<>%s)
+          AND EXISTS (SELECT 1 FROM mf.nav_history n WHERE n.amfi_scheme_code=r.amfi_scheme_code)
+        ORDER BY r.amfi_scheme_code
+    """, (METHODOLOGY_VERSION,))]
+    if codes:
+        recompute(conn, codes)
+
+
 def publish_catalogue(store, schemes, report, fetch, *, as_of: date, feed_date: date,
                       scope: str, integrity_manifest, validate_completeness, validate_summary):
     if scope != "FULL":
@@ -86,6 +102,8 @@ def publish_catalogue(store, schemes, report, fetch, *, as_of: date, feed_date: 
         new_prices = verified_prices(schemes, additional, source, conflicts)
         if new_prices:
             store.upsert_nav(iter(new_prices))
+        else:
+            _recompute_invalidated_calculations(conn)
         after = integrity_manifest(store)
         if (after["funds"] < before["funds"] or after["nav_rows"] < before["nav_rows"]
                 or (before["nav_max_date"] and (not after["nav_max_date"]
