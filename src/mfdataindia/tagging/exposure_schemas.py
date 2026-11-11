@@ -4,7 +4,7 @@ from pydantic import Field
 from .schemas import TagModel
 from . import exposure_policy as p
 
-Section = Literal['securities','entities','attributes']
+Section = Literal['positions','securities','entities','attributes']
 State = Literal['available','not_captured','identity_changed','conflicting']
 Reason = Literal['no_accepted_complete_portfolio','current_identity_differs','same_date_distinct_retained_sources']
 
@@ -18,6 +18,33 @@ class ExposureWeight(TagModel):
     upper: str = Field(max_length=160,pattern=r'^\d+(?:\.\d+)?$')
     upper_exclusive: bool
     unit: Literal['percent_of_original_disclosed_AUM']
+
+
+class ExposurePositionWeight(TagModel):
+    lower: str = Field(max_length=160,pattern=r'^-?\d+(?:\.\d+)?$')
+    upper: str = Field(max_length=160,pattern=r'^-?\d+(?:\.\d+)?$')
+    upper_exclusive: bool
+    unit: Literal['percent_of_original_disclosed_AUM']
+
+
+class ExposurePosition(TagModel):
+    item_id: str = Field(pattern=r'^[0-9a-f]{64}$')
+    position_kind: Literal['holding','derivative']
+    row: int = Field(gt=0)
+    source_label: str = Field(min_length=1,max_length=500)
+    asset_class: Literal[
+        'equity','debt','government','cash','current_assets_liabilities','derivative'
+    ]
+    identifier: str | None = Field(max_length=200)
+    identifier_kind: Literal['isin','issuer_local','not_applicable']
+    direction: Literal['Long','Short'] | None
+    weight: ExposurePositionWeight
+    mapping_state: Literal[
+        'mapped','unmapped','ambiguous','identity-unverified','entity-kind-conflict',
+        'not-applicable'
+    ]
+    entity_id: str | None = Field(pattern='^'+p.ENTITY.pattern+'$')
+    evidence_hash: str = Field(pattern=r'^[0-9a-f]{64}$')
 
 
 class ExposureSecurity(TagModel):
@@ -83,6 +110,7 @@ class ExposureSummary(TagModel):
     entity_count: int = Field(ge=0,le=1000)
     attribute_count: int = Field(ge=0)
     security_count: int = Field(ge=0,le=1000)
+    position_count: int = Field(ge=0,le=2000)
     related_news_linkage: Literal['requires_verified_article_entity_evidence_in_TI']
     exact_scheme_news_unchanged: Literal[True]
 
@@ -95,7 +123,7 @@ class ExposurePage(TagModel):
     section: Section
     assessment_id: str | None = Field(pattern=r'^[0-9a-f]{64}$')
     portfolio_as_of: str | None = Field(pattern=r'^\d{4}-\d\d-\d\d$')
-    items: list[ExposureSecurity | ExposureEntity | ExposureAttribute] = Field(max_length=50)
+    items: list[ExposurePosition | ExposureSecurity | ExposureEntity | ExposureAttribute] = Field(max_length=50)
     next_after: str | None = Field(pattern=r'^[0-9a-f]{64}$')
     limit: int = Field(ge=1,le=50)
     absence_or_exclusion_certified: Literal[False]

@@ -134,6 +134,7 @@
           "sections": {
             "items": {
               "enum": [
+                "positions",
                 "securities",
                 "entities",
                 "attributes"
@@ -444,6 +445,9 @@
             "items": {
               "anyOf": [
                 {
+                  "$ref": "#/components/schemas/ExposurePosition"
+                },
+                {
                   "$ref": "#/components/schemas/ExposureSecurity"
                 },
                 {
@@ -506,6 +510,7 @@
           },
           "section": {
             "enum": [
+              "positions",
               "securities",
               "entities",
               "attributes"
@@ -538,6 +543,165 @@
           "absence_or_exclusion_certified"
         ],
         "title": "ExposurePage",
+        "type": "object"
+      },
+      "ExposurePosition": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_class": {
+            "enum": [
+              "equity",
+              "debt",
+              "government",
+              "cash",
+              "current_assets_liabilities",
+              "derivative"
+            ],
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "enum": [
+                  "Long",
+                  "Short"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9-]{0,31}:[A-Za-z0-9][A-Za-z0-9._-]{0,95}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "evidence_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evidence Hash",
+            "type": "string"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
+          },
+          "identifier_kind": {
+            "enum": [
+              "isin",
+              "issuer_local",
+              "not_applicable"
+            ],
+            "title": "Identifier Kind",
+            "type": "string"
+          },
+          "item_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "mapping_state": {
+            "enum": [
+              "mapped",
+              "unmapped",
+              "ambiguous",
+              "identity-unverified",
+              "entity-kind-conflict",
+              "not-applicable"
+            ],
+            "title": "Mapping State",
+            "type": "string"
+          },
+          "position_kind": {
+            "enum": [
+              "holding",
+              "derivative"
+            ],
+            "title": "Position Kind",
+            "type": "string"
+          },
+          "row": {
+            "exclusiveMinimum": 0.0,
+            "title": "Row",
+            "type": "integer"
+          },
+          "source_label": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Source Label",
+            "type": "string"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/ExposurePositionWeight"
+          }
+        },
+        "required": [
+          "item_id",
+          "position_kind",
+          "row",
+          "source_label",
+          "asset_class",
+          "identifier",
+          "identifier_kind",
+          "direction",
+          "weight",
+          "mapping_state",
+          "entity_id",
+          "evidence_hash"
+        ],
+        "title": "ExposurePosition",
+        "type": "object"
+      },
+      "ExposurePositionWeight": {
+        "additionalProperties": false,
+        "properties": {
+          "lower": {
+            "maxLength": 160,
+            "pattern": "^-?\\d+(?:\\.\\d+)?$",
+            "title": "Lower",
+            "type": "string"
+          },
+          "unit": {
+            "const": "percent_of_original_disclosed_AUM",
+            "title": "Unit",
+            "type": "string"
+          },
+          "upper": {
+            "maxLength": 160,
+            "pattern": "^-?\\d+(?:\\.\\d+)?$",
+            "title": "Upper",
+            "type": "string"
+          },
+          "upper_exclusive": {
+            "title": "Upper Exclusive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "upper_exclusive",
+          "unit"
+        ],
+        "title": "ExposurePositionWeight",
         "type": "object"
       },
       "ExposureSecurity": {
@@ -621,6 +785,12 @@
               }
             ]
           },
+          "position_count": {
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Position Count",
+            "type": "integer"
+          },
           "reason": {
             "anyOf": [
               {
@@ -668,6 +838,7 @@
           "entity_count",
           "attribute_count",
           "security_count",
+          "position_count",
           "related_news_linkage",
           "exact_scheme_news_unchanged"
         ],
@@ -851,6 +1022,7 @@
             "required": true,
             "schema": {
               "enum": [
+                "positions",
                 "securities",
                 "entities",
                 "attributes"

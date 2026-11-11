@@ -53,24 +53,27 @@ def discovery(conn):
         'coverage_basis':'retained_snapshots_not_current_universe_coverage',
         'entity_registry_format':registry['format'],'entity_registry_hash':fingerprint(registry),
         'entity_mapping_records':len(registry['records']),
-        'sections':['securities','entities','attributes'],'funds_url':PREFIX+'/funds/{code}',
+        'sections':['positions','securities','entities','attributes'],'funds_url':PREFIX+'/funds/{code}',
         'related_news_requires_verified_bridge':True,'absence_or_exclusion_certified':False,
         'freshness_certified':False})
 
 
 def summary(conn, code):
     state, reason, result = _derive(conn,code)
-    metadata = None if result is None else {k:v for k,v in result.items() if k not in ('entities','attributes','securities')}
+    metadata = None if result is None else {k:v for k,v in result.items()
+                                            if k not in ('positions','entities','attributes','securities')}
     return tags.bounded({'format':p.VERSION,'code':code,'state':state,'reason':reason,
         'metadata':metadata,'entity_count':0 if result is None else len(result['entities']),
         'attribute_count':0 if result is None else len(result['attributes']),
         'security_count':0 if result is None else len(result['securities']),
+        'position_count':0 if result is None else len(result['positions']),
         'related_news_linkage':'requires_verified_article_entity_evidence_in_TI',
         'exact_scheme_news_unchanged':True})
 
 
 def page(conn, code, section, *, limit=50, assessment_id=None, after=None):
-    p.require(section in ('entities','attributes','securities') and type(limit) is int and 1 <= limit <= 50,
+    p.require(section in ('positions','entities','attributes','securities')
+              and type(limit) is int and 1 <= limit <= 50,
               'INVALID_EXPOSURE_QUERY')
     p.require((assessment_id is None and after is None) or
               (type(assessment_id) is str and p.HASH.fullmatch(assessment_id)

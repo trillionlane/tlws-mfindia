@@ -62,7 +62,42 @@ def test_dated_positive_exposures_preserve_original_denominator_and_unknown_abse
     assert result['absence_or_exclusion_certified'] is result['freshness_certified'] is False
     assert result['lookthrough_performed'] is False and result['evidence_age_days'] == 71
     assert result['originals_replaced'] is False and document() == before
+    assert len(result['positions']) == result['holdings_count'] == 5
     assert result == derive(before)
+
+
+def test_position_evidence_preserves_signed_cash_non_isin_and_derivative_observations():
+    body = document()
+    body['holdings'][0]['identifier'] = 'LOCAL123'
+    body['holdings'][0]['identifier_kind'] = 'issuer_local'
+    body['derivative_positions'] = [{
+        'row': 20,
+        'underlying_name': 'Synthetic Index',
+        'direction': 'Long',
+        'purchase_price_inr': '100',
+        'current_price_inr': '101',
+        'margin_inr_lakh': '2',
+        'reported_exposure_percent': '5',
+        'identifier': None,
+        'quantity': None,
+        'notional_inr': None,
+    }]
+    result = derive(reseal(body))
+    local = next(item for item in result['positions'] if item['row'] == body['holdings'][0]['row'])
+    assert local['identifier'] == 'LOCAL123'
+    assert local['identifier_kind'] == 'issuer_local'
+    assert local['mapping_state'] == 'identity-unverified'
+    cash = [item for item in result['positions']
+            if item['asset_class'] in {'cash', 'current_assets_liabilities'}]
+    assert [item['weight']['lower'] for item in cash] == ['9.00', '2.00', '-1.00']
+    assert all(item['mapping_state'] == 'not-applicable' for item in cash)
+    derivative = next(item for item in result['positions']
+                      if item['position_kind'] == 'derivative')
+    assert derivative['source_label'] == 'Synthetic Index'
+    assert derivative['direction'] == 'Long'
+    assert derivative['weight']['lower'] == derivative['weight']['upper'] == '5'
+    assert result['derivative_position_count'] == 1
+    assert len(result['securities']) == 1
 
 
 def test_empty_registry_retains_every_unknown_without_name_inference():
@@ -186,6 +221,48 @@ def test_boolean_code_is_not_an_integer_scheme_identity():
     body = document()
     body['code'] = True
     with pytest.raises(TaggingError,match='^EXPOSURE_PORTFOLIO_DIFFERS$'):
+        derive(reseal(body))
+
+
+@pytest.mark.parametrize('field,value', [
+    ('identity-code', True),
+    ('identity-amfi-code', True),
+    ('holdings-count', 5.0),
+    ('holding-row', True),
+    ('subtotal-row', 1.0),
+    ('grand-total-row', True),
+    ('derivative-row', 20.0),
+])
+def test_nested_identity_row_and_count_fields_require_exact_integers(field, value):
+    body = document()
+    body['derivative_positions'] = [{
+        'row': 20,
+        'underlying_name': 'Synthetic Index',
+        'direction': 'Long',
+        'purchase_price_inr': '100',
+        'current_price_inr': '101',
+        'margin_inr_lakh': '2',
+        'reported_exposure_percent': '5',
+        'identifier': None,
+        'quantity': None,
+        'notional_inr': None,
+    }]
+    if field == 'identity-code':
+        body['identity']['code'] = value
+        body['identity_hash'] = fingerprint(body['identity'])
+    elif field == 'identity-amfi-code':
+        body['identity_evidence']['amfi_code'] = value
+    elif field == 'holdings-count':
+        body['holdings_count'] = value
+    elif field == 'holding-row':
+        body['holdings'][0]['row'] = value
+    elif field == 'subtotal-row':
+        body['subtotals'][0]['row'] = value
+    elif field == 'grand-total-row':
+        body['grand_total_row'] = value
+    else:
+        body['derivative_positions'][0]['row'] = value
+    with pytest.raises(TaggingError, match='^EXPOSURE_PORTFOLIO_DIFFERS$'):
         derive(reseal(body))
 
 

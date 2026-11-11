@@ -81,7 +81,8 @@ def test_real_summary_and_page_output_fit_actual_closed_response_models(monkeypa
     summary = api.get(reads.PREFIX+'/funds/1')
     assert summary.status_code == 200 and summary.json()['metadata']['absence_or_exclusion_certified'] is False
     assert summary.json()['security_count'] == 2
-    for section in ('securities','entities','attributes'):
+    assert summary.json()['position_count'] == 5
+    for section in ('positions','securities','entities','attributes'):
         response = api.get(reads.PREFIX+'/funds/1/'+section)
         assert response.status_code == 200 and len(response.json()['items']) > 0
         assert 'notes' not in response.text and 'source_url' not in response.text
@@ -115,7 +116,7 @@ def test_current_contract_preserves_tag_dataset_and_legacy_paths_and_closed_sect
     new = app.create_app('offline').openapi()
     assert all(new['paths'][path]==value for path,value in old['paths'].items())
     section = next(x['schema'] for x in new['paths'][reads.PREFIX+'/funds/{code}/{section}']['get']['parameters'] if x['name']=='section')
-    assert section['enum'] == ['securities','entities','attributes']
+    assert section['enum'] == ['positions','securities','entities','attributes']
     assert contract(new)==json.loads((ROOT/'contracts/mfdataindia-fund-exposures-v1.json').read_text())
 
 

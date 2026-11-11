@@ -124,6 +124,40 @@ def _text(value):
     return format(value, 'f')
 
 
+def _strict_source_integers(document):
+    """Reject JSON booleans/floats before non-strict model coercion.
+
+    Snapshot hashes prove byte-level consistency, not that a self-consistent
+    document used the contract's exact scalar types.  Python also considers
+    ``True == 1``, so the later model-dump equality check cannot do this job.
+    """
+    try:
+        values = [
+            document['code'],
+            document['identity']['code'],
+            document['identity_evidence']['amfi_code'],
+            document['holdings_count'],
+            document['grand_total_row'],
+            *(item['row'] for item in document['holdings']),
+            *(item['row'] for item in document['subtotals']),
+            *(item['row'] for item in document['derivative_positions']),
+        ]
+    except (KeyError, TypeError):
+        raise TaggingError('EXPOSURE_PORTFOLIO_DIFFERS') from None
+    require(all(type(value) is int for value in values)
+            and len(document['derivative_positions']) <= 1000,
+            'EXPOSURE_PORTFOLIO_DIFFERS')
+
+
+def _position_weight(lower, upper, exclusive):
+    return {
+        'lower': _text(lower),
+        'upper': _text(upper),
+        'upper_exclusive': exclusive,
+        'unit': 'percent_of_original_disclosed_AUM',
+    }
+
+
 def derive(document, registry, *, observed_on):
     """Keep original AUM denominator and explicit unknowns; never infer absence.
 
@@ -135,6 +169,7 @@ def derive(document, registry, *, observed_on):
     require(type(document) is dict and type(document.get('code')) is int
             and 0 < document['code'] < 2**31, 'EXPOSURE_PORTFOLIO_DIFFERS')
     _bounded(document, 16*1024*1024, 'EXPOSURE_PORTFOLIO_DIFFERS')
+    _strict_source_integers(document)
     try:
         snapshot = portfolio_schemas.Snapshot.model_validate(document).model_dump(mode='json')
     except (ValidationError, ValueError, TypeError):
@@ -155,7 +190,7 @@ def derive(document, registry, *, observed_on):
         for record in records:
             if _active(record,as_of.isoformat()):
                 kinds.setdefault(record['entity_id'],set()).add(record['entity_kind'])
-    entities, attributes, securities, reasons = {}, {}, [], Counter()
+    entities, attributes, securities, positions, reasons = {}, {}, [], [], Counter()
     mapped_rows, rows = 0, set()
     with localcontext(Context(prec=50,rounding=ROUND_HALF_EVEN)):
         weights = [_weight(h) for h in snapshot['holdings']]
@@ -181,13 +216,39 @@ def derive(document, registry, *, observed_on):
                     'EXPOSURE_PORTFOLIO_DIFFERS')
             rows.add(holding['row'])
             lower, upper, exclusive = _weight(holding)
+            require(type(holding['name']) is str and 0 < len(holding['name']) <= 500,
+                    'EXPOSURE_PORTFOLIO_DIFFERS')
+            require(holding['identifier'] is None or (
+                type(holding['identifier']) is str
+                and 0 < len(holding['identifier']) <= 200
+                and not any(ord(value) < 32 for value in holding['identifier'])
+            ), 'EXPOSURE_PORTFOLIO_DIFFERS')
+            position = {
+                'position_kind': 'holding',
+                'row': holding['row'],
+                'source_label': holding['name'],
+                'asset_class': holding['asset_class'],
+                'identifier': holding['identifier'],
+                'identifier_kind': holding['identifier_kind'],
+                'direction': None,
+                'weight': _position_weight(lower, upper, exclusive),
+                'mapping_state': 'identity-unverified',
+                'entity_id': None,
+            }
             if holding['asset_class'] in ('cash', 'current_assets_liabilities'):
+                position['mapping_state'] = 'not-applicable'
                 reasons['NON_ISSUER_CASH_OR_NET_BALANCE'] += 1
+                positions.append({**position, 'evidence_hash': fingerprint({
+                    'portfolio_snapshot_id': snapshot['snapshot_id'], 'source_position': holding
+                })})
                 continue
             require(lower >= 0, 'EXPOSURE_SIGNED_SECURITY_UNSUPPORTED')
             if (holding['identifier_kind'] != 'isin' or type(holding['identifier']) is not str
                     or not valid_isin(holding['identifier'])):
                 reasons['SECURITY_IDENTITY_UNVERIFIED'] += 1
+                positions.append({**position, 'evidence_hash': fingerprint({
+                    'portfolio_snapshot_id': snapshot['snapshot_id'], 'source_position': holding
+                })})
                 continue
             securities.append({'security_id':holding['identifier'],'row':holding['row'],
                 'asset_class':holding['asset_class'],
@@ -195,13 +256,26 @@ def derive(document, registry, *, observed_on):
                           'unit':'percent_of_original_disclosed_AUM'}})
             candidates = [r for r in by_security.get(holding['identifier'], []) if _active(r, as_of.isoformat())]
             if len(candidates) != 1 or candidates[0]['state'] != 'verified':
+                position['mapping_state'] = 'ambiguous' if candidates else 'unmapped'
                 reasons['SECURITY_ENTITY_AMBIGUOUS' if candidates else 'SECURITY_ENTITY_NOT_MAPPED_AT_DATE'] += 1
+                positions.append({**position, 'evidence_hash': fingerprint({
+                    'portfolio_snapshot_id': snapshot['snapshot_id'], 'source_position': holding
+                })})
                 continue
             record = candidates[0]
             entity = record['entity_id']
             if len(kinds[entity]) != 1:
+                position['mapping_state'] = 'entity-kind-conflict'
                 reasons['ENTITY_KIND_CONFLICT'] += 1
+                positions.append({**position, 'evidence_hash': fingerprint({
+                    'portfolio_snapshot_id': snapshot['snapshot_id'], 'source_position': holding
+                })})
                 continue
+            position['mapping_state'] = 'mapped'
+            position['entity_id'] = entity
+            positions.append({**position, 'evidence_hash': fingerprint({
+                'portfolio_snapshot_id': snapshot['snapshot_id'], 'source_position': holding
+            })})
             mapped_rows += 1
             group = entities.setdefault(entity, {'lower':Decimal(0), 'upper':Decimal(0),
                 'exclusive':False, 'rows':[], 'security_ids':set(), 'evidence_hashes':set(),
@@ -241,6 +315,27 @@ def derive(document, registry, *, observed_on):
         facets = [{'dimension':key[0], 'value':key[1], 'weight':bounds(group),
             'entity_ids':sorted(group['entities']), 'evidence_hashes':sorted(group['evidence_hashes'])}
             for key,group in sorted(attributes.items())]
+        for derivative in snapshot['derivative_positions']:
+            require(type(derivative['underlying_name']) is str
+                    and 0 < len(derivative['underlying_name']) <= 500,
+                    'EXPOSURE_PORTFOLIO_DIFFERS')
+            reported = _number(derivative['reported_exposure_percent'])
+            positions.append({
+                'position_kind': 'derivative',
+                'row': derivative['row'],
+                'source_label': derivative['underlying_name'],
+                'asset_class': 'derivative',
+                'identifier': None,
+                'identifier_kind': 'not_applicable',
+                'direction': derivative['direction'],
+                'weight': _position_weight(reported, reported, False),
+                'mapping_state': 'not-applicable',
+                'entity_id': None,
+                'evidence_hash': fingerprint({
+                    'portfolio_snapshot_id': snapshot['snapshot_id'],
+                    'source_position': derivative,
+                }),
+            })
     result = {'format':VERSION, 'derivation_policy_hash':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'code':snapshot['code'], 'portfolio_snapshot_id':snapshot['snapshot_id'],
         'portfolio_as_of':as_of.isoformat(), 'portfolio_engine_hash':snapshot['engine_code_hash'],
@@ -252,6 +347,7 @@ def derive(document, registry, *, observed_on):
         'withheld_row_reasons':dict(sorted(reasons.items())),
         'derivative_position_count':len(snapshot['derivative_positions']),
         'lookthrough_performed':False, 'absence_or_exclusion_certified':False,
+        'positions':sorted(positions,key=lambda item:(item['row'],item['position_kind'])),
         'securities':sorted(securities,key=lambda item:item['security_id']),
         'entities':company, 'attributes':facets, 'originals_replaced':False}
     return {**result, 'assessment_id':fingerprint(result)}

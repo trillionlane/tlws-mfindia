@@ -50,10 +50,15 @@ def test_native_observed_security_paging_verified_fixture_mapping_and_generator_
         assert summary.status_code == 200
         data = summary.json()
         assert data['state']=='available' and data['security_count']==2 and data['entity_count']==0
+        assert data['position_count']==5
         assert data['metadata']['portfolio_snapshot_id']==snapshot['snapshot_id']
         assert data['metadata']['portfolio_as_of']=='2026-08-31'
         assert data['metadata']['withheld_row_reasons']['SECURITY_ENTITY_NOT_MAPPED_AT_DATE']==2
         assert data['metadata']['absence_or_exclusion_certified'] is False
+        positions = api.get(exposure_reads.PREFIX+'/funds/1/positions').json()['items']
+        assert len(positions)==5
+        assert sorted(item['weight']['lower'] for item in positions
+                      if item['asset_class'] in {'cash','current_assets_liabilities'})==['-1.00','2.00','9.00']
         first = api.get(exposure_reads.PREFIX+'/funds/1/securities?limit=1').json()
         second = api.get(exposure_reads.PREFIX+'/funds/1/securities',params={
             'limit':1,'assessment_id':first['assessment_id'],'after':first['next_after']}).json()
