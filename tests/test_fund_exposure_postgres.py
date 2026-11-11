@@ -43,7 +43,9 @@ def test_native_observed_security_paging_verified_fixture_mapping_and_generator_
     started = perf_counter()
     with client(dsn) as api:
         discovery = api.get(exposure_reads.PREFIX)
-        assert discovery.status_code == 200 and discovery.json()['retained_snapshots']==1
+        # The generator fixture deliberately publishes the overlap pair for
+        # funds 1 and 2 before this read-only surface is enrolled.
+        assert discovery.status_code == 200 and discovery.json()['retained_snapshots']==2
         assert discovery.json()['last_reporting_date']=='2026-08-31'
         assert discovery.json()['entity_mapping_records']==0
         summary = api.get(exposure_reads.PREFIX+'/funds/1')
