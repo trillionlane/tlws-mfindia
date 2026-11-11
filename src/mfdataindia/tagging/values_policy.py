@@ -299,41 +299,43 @@ def assess(exposure, screens, activities):
                         bucket['entity_ids'].add(entity['entity_id'])
                         bucket['evidence_hashes'].add(candidates[0]['evidence_hash'])
                 reasons = sorted(set(reasons))
-                if reasons:
+                coverage_incomplete = bool(reasons)
+                uncertain = False
+                contradicted = False
+                for criterion in screen['exclusions']:
+                    bucket = activity_weights.get(criterion['activity'])
+                    lower = Decimal(0) if bucket is None else bucket['lower']
+                    upper = Decimal(0) if bucket is None else bucket['upper']
+                    maximum = _number(criterion['max_weight_percent'],
+                                      'VALUES_SCREEN_REGISTRY_DIFFERS')
+                    # A proven lower bound above the maximum is conclusive even
+                    # when unrelated positions remain unclassified.
+                    if lower > maximum:
+                        contradicted = True
+                        reasons.append('EXCLUSION_THRESHOLD_EXCEEDED')
+                    elif upper > maximum:
+                        uncertain = True
+                        reasons.append('EXCLUSION_THRESHOLD_UNCERTAIN')
+                for criterion in screen['inclusions']:
+                    bucket = activity_weights.get(criterion['activity'])
+                    lower = Decimal(0) if bucket is None else bucket['lower']
+                    upper = Decimal(0) if bucket is None else bucket['upper']
+                    upper_exclusive = False if bucket is None else bucket['upper_exclusive']
+                    minimum = _number(criterion['min_weight_percent'],
+                                      'VALUES_SCREEN_REGISTRY_DIFFERS')
+                    proven_miss = upper < minimum or (upper == minimum and upper_exclusive)
+                    if proven_miss and not coverage_incomplete:
+                        contradicted = True
+                        reasons.append('INCLUSION_THRESHOLD_NOT_MET')
+                    elif proven_miss or lower < minimum:
+                        uncertain = True
+                        reasons.append('INCLUSION_THRESHOLD_UNCERTAIN')
+                if contradicted:
+                    state = 'contradicted'
+                elif coverage_incomplete or uncertain:
                     state = 'insufficient-evidence'
                 else:
-                    uncertain = False
-                    contradicted = False
-                    for criterion in screen['exclusions']:
-                        bucket = activity_weights.get(criterion['activity'])
-                        lower = Decimal(0) if bucket is None else bucket['lower']
-                        upper = Decimal(0) if bucket is None else bucket['upper']
-                        maximum = _number(criterion['max_weight_percent'],
-                                          'VALUES_SCREEN_REGISTRY_DIFFERS')
-                        if lower > maximum:
-                            contradicted = True
-                            reasons.append('EXCLUSION_THRESHOLD_EXCEEDED')
-                        elif upper > maximum:
-                            uncertain = True
-                            reasons.append('EXCLUSION_THRESHOLD_UNCERTAIN')
-                    for criterion in screen['inclusions']:
-                        bucket = activity_weights.get(criterion['activity'])
-                        lower = Decimal(0) if bucket is None else bucket['lower']
-                        upper = Decimal(0) if bucket is None else bucket['upper']
-                        minimum = _number(criterion['min_weight_percent'],
-                                          'VALUES_SCREEN_REGISTRY_DIFFERS')
-                        if upper < minimum:
-                            contradicted = True
-                            reasons.append('INCLUSION_THRESHOLD_NOT_MET')
-                        elif lower < minimum:
-                            uncertain = True
-                            reasons.append('INCLUSION_THRESHOLD_UNCERTAIN')
-                    if contradicted:
-                        state = 'contradicted'
-                    elif uncertain:
-                        state = 'insufficient-evidence'
-                    else:
-                        reasons.append('ALL_EXPLICIT_CRITERIA_MET')
+                    reasons.append('ALL_EXPLICIT_CRITERIA_MET')
             serialized = [{
                 'activity': activity,
                 'weight': {

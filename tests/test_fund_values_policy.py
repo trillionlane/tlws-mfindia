@@ -103,6 +103,37 @@ def test_observed_excluded_activity_is_contradicted_with_dated_weight():
     assert observed['weight']['lower'] == observed['weight']['upper'] == '50.0'
 
 
+@pytest.mark.parametrize(('incomplete', 'expected_reason'), [
+    ('unmapped', 'PORTFOLIO_ENTITY_COVERAGE_INCOMPLETE'),
+    ('lookthrough', 'FUND_LOOKTHROUGH_INCOMPLETE'),
+    ('derivative', 'DERIVATIVE_CLASSIFICATION_INCOMPLETE'),
+])
+def test_proven_exclusion_breach_overrides_unrelated_incomplete_coverage(
+        incomplete, expected_reason):
+    exposure = derive()
+    if incomplete == 'unmapped':
+        exposure['withheld_row_reasons']['SECURITY_ENTITY_NOT_MAPPED_AT_DATE'] = 1
+    elif incomplete == 'lookthrough':
+        exposure['withheld_row_reasons']['FUND_LOOKTHROUGH_UNAVAILABLE'] = 1
+    else:
+        exposure['derivative_position_count'] = 1
+        exposure['positions'].append({
+            'position_kind': 'derivative', 'row': 20,
+            'source_label': 'Synthetic Index', 'asset_class': 'derivative',
+            'identifier': None, 'identifier_kind': 'not_applicable',
+            'direction': 'Long',
+            'weight': {'lower': '5', 'upper': '5', 'upper_exclusive': False,
+                       'unit': 'percent_of_original_disclosed_AUM'},
+            'mapping_state': 'not-applicable', 'entity_id': None,
+            'evidence_hash': 'd' * 64,
+        })
+    refresh(exposure)
+    value = result(exposure, screens(exclusions=(('alcohol', '0'),)),
+                   activities(one=('alcohol',)))
+    assert value['state'] == 'contradicted'
+    assert {'EXCLUSION_THRESHOLD_EXCEEDED', expected_reason} <= set(value['reasons'])
+
+
 def test_missing_or_incomplete_entity_classification_never_becomes_zero():
     for registry in (activities(omit_two=True), activities(complete=False)):
         value = result(screen_document=screens(exclusions=(('tobacco', '0'),)),
@@ -163,6 +194,18 @@ def test_inclusion_threshold_supported_and_proven_miss_contradicted():
     assert missed['state'] == 'contradicted' and missed['reasons'] == ['INCLUSION_THRESHOLD_NOT_MET']
 
 
+def test_exclusive_inclusion_upper_bound_equal_to_minimum_is_contradicted():
+    exposure = derive()
+    exposure['entities'][0]['weight'].update(
+        lower='40', upper='50', upper_exclusive=True
+    )
+    refresh(exposure)
+    value = result(exposure, screens(inclusions=(('renewable-energy', '50'),)),
+                   activities(one=('renewable-energy',)))
+    assert value['state'] == 'contradicted'
+    assert value['reasons'] == ['INCLUSION_THRESHOLD_NOT_MET']
+
+
 def test_replay_is_deterministic_and_evidence_changes_identity():
     rule = screens(exclusions=(('alcohol', '0'),))
     registry = activities()
@@ -197,4 +240,3 @@ def test_invalid_or_ambiguous_policy_evidence_fails_closed(defect):
         registry['records'][0]['valid_from'] = 'not-a-date'
     with pytest.raises(TaggingError):
         policy.assess(derive(), rule, registry)
-

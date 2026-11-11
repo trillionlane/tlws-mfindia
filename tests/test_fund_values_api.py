@@ -137,4 +137,3 @@ def test_contract_preserves_all_tag_and_exposure_routes_and_is_deterministic():
     )
     assert values_registry.screens() == values_registry.screens()
     assert values_registry.activities() == values_registry.activities()
-

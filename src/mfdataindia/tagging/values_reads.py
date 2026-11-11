@@ -61,4 +61,3 @@ def summary(conn, code):
         'positive_live_assignments_claimed': False,
         'certification_claimed': False,
     })
-

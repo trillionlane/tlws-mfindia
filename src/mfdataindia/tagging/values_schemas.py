@@ -106,4 +106,3 @@ class ValuesSummary(TagModel):
     assessments: list[ValuesAssessment] = Field(max_length=policy.MAX_SCREENS)
     positive_live_assignments_claimed: Literal[False]
     certification_claimed: Literal[False]
-
