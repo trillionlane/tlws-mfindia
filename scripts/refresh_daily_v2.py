@@ -21,6 +21,18 @@ from mfdataindia.store.dsn import resolve_dsn  # noqa: E402
 from mfdataindia.store.postgres import PostgresStore  # noqa: E402
 
 
+def receipt(prices, catalogue, freshness, fetch, *, as_of):
+    published = catalogue["state"] in {"CATALOGUE_PUBLISHED", "CATALOGUE_UNCHANGED"}
+    return {
+        "status": "DAILY_REFRESH_OK" if published else "DAILY_REFRESH_CATALOGUE_HELD",
+        "as_of": as_of,
+        "fetch": {"content_sha256": fetch.content_sha256},
+        "prices": prices,
+        "catalogue": catalogue,
+        **freshness,
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -67,17 +79,17 @@ def main(argv=None):
         # Require the stable identity schema before any data publication.
         store.connect().execute("SELECT 1 FROM mf_identity.variant_families LIMIT 0")
         prices = nav.publish_prices(store, schemes, fetch, as_of=as_of)
-        print(json.dumps({"prices": prices}, default=str, sort_keys=True), flush=True)
+        # Keep stdout to one final receipt for the post-success tag hook.
+        print(json.dumps({"prices": prices}, default=str, sort_keys=True), file=sys.stderr, flush=True)
         catalogue = nav.publish_catalogue(
             store, schemes, report, fetch, as_of=as_of, feed_date=feed_date, scope=scope,
             integrity_manifest=integrity_manifest,
             validate_completeness=validate_full_snapshot_completeness,
             validate_summary=validate_dataset_summary,
         )
-        print(json.dumps({"catalogue": catalogue, **nav.freshness(store)},
-                         default=str, sort_keys=True), flush=True)
-    # A held catalogue is observable even if verified prices committed.
-    return 0 if catalogue["state"] in {"CATALOGUE_PUBLISHED", "CATALOGUE_UNCHANGED"} else 1
+        result = receipt(prices, catalogue, nav.freshness(store), fetch, as_of=as_of)
+        print(json.dumps(result, default=str, sort_keys=True), flush=True)
+    return 0 if result["status"] == "DAILY_REFRESH_OK" else 1
 
 
 if __name__ == "__main__":

@@ -33,7 +33,9 @@ certified image using its current ingestion identity and FULL mode. Preserve
 the scheduler, task count, retries, timeout, DSN and Cloud SQL binding. The
 existing legacy deployment workflows select the v1 command. A continuity
 release must retain the v2 command when replacing the job image. Verify it on
-the resulting job definition.
+the resulting job definition. The post-success tagging wrapper can select
+v2 once it is released. V2 emits the same single daily success receipt on stdout
+after a committed catalogue and reports the separate price commit on stderr.
 
 The resolver accepts a one-to-one move only when the whole family membership,
 issuer, plan, option and nonempty exact ISIN slots match. It rekeys the existing

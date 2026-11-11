@@ -2,6 +2,7 @@ from dataclasses import replace
 from datetime import date
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from mfdataindia.ingest.amfi_navall import AmfiScheme
 from mfdataindia.jobs.nav_continuity import verified_prices
@@ -77,3 +78,17 @@ def test_conflicting_nav_price_observations_are_withheld():
     duplicate = replace(old, nav=20.25)
     after, conflicts = family.read_source([old, duplicate])
     assert verified_prices([old, duplicate], before, after, conflicts) == []
+
+def test_only_a_committed_catalogue_emits_the_daily_success_receipt(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "scripts"))
+    from refresh_daily_v2 import receipt
+
+    prices = {"state": "VERIFIED_PRICES"}
+    fetch = SimpleNamespace(content_sha256="a" * 64)
+    for state, expected in (("CATALOGUE_PUBLISHED", "DAILY_REFRESH_OK"),
+                            ("CATALOGUE_UNCHANGED", "DAILY_REFRESH_OK"),
+                            ("CATALOGUE_HELD", "DAILY_REFRESH_CATALOGUE_HELD")):
+        result = receipt(prices, {"state": state}, {"nav_last": DAY}, fetch, as_of=DAY)
+        assert result["status"] == expected
+        assert result["as_of"] == DAY and result["fetch"]["content_sha256"] == "a" * 64
+        assert result["prices"] == prices
