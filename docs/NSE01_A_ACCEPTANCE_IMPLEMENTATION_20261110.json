@@ -204,7 +204,7 @@
       "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
     ]
   },
-  "base": "7389fd22e8c7e44ef2a1da87caa7c1f1145b07d6",
+  "base": "474a6928844fe07db5810f1524b6c2b84eba46fc",
   "deferred_gates": [
     "SIP27_28_STEPUP",
     "STP_DESTINATION",

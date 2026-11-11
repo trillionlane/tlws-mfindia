@@ -1,7 +1,7 @@
 # NSE01-A — offline SCH import and existing dataset API
 
 Implementation basis: reviewed contract `357c13e6c432aa890f5a96f5eff2ef829fcd56e0`;
-current remote base `7389fd22e8c7e44ef2a1da87caa7c1f1145b07d6`. One focused PR,
+current remote base `474a6928844fe07db5810f1524b6c2b84eba46fc`. One focused PR,
 no merge/live activation authority. HDFC discovery and the daily schedule remain
 separate. The three reviewed contract drafts and other-family examples are
 preserved byte-for-byte; this record describes the actual first slice.
