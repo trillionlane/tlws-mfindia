@@ -5,8 +5,8 @@ from uuid import uuid4
 from psycopg.pq import TransactionStatus
 import pytest
 
-from mfdataindia.nse import cli, store
-from nse01_fixtures import FIXTURES, WALK, candidate
+from mfdataindia.nse import cli, contract, store
+from nse01_fixtures import FIXTURES, FULL_FILE, FULL_MANIFEST, RAW, WALK, candidate
 
 
 class Connection:
@@ -60,9 +60,17 @@ def test_commit_rollback_ambiguity_dominates_and_no_retry(monkeypatch,fault,effe
     assert 'synthetic-secret-marker' not in json.dumps(report)
 
 
+def test_store_rejects_structurally_valid_but_untrusted_full_before_sql():
+    clean = b'\n'.join(RAW.splitlines()[:2]) + b'\n'
+    conn = Connection()
+    with pytest.raises(contract.ImportError, match='FULL_MANIFEST_UNTRUSTED'):
+        store.publish(conn, candidate(clean), WALK, str(uuid4()), expected_head=None)
+    assert conn.queries == [] and conn.commits == conn.rollbacks == 0
+
+
 def arguments(tmp_path,op):
-    return ['--import-file','--file',str(FIXTURES/'sch43_full.psv'),
-            '--manifest',str(FIXTURES/'sch43_full.manifest.json'),
+    return ['--import-file','--file',str(FULL_FILE),
+            '--manifest',str(FULL_MANIFEST),
             '--crosswalk',str(FIXTURES/'crosswalk.json'),'--operation',op,'--journal-dir',str(tmp_path)]
 
 

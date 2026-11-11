@@ -10,7 +10,7 @@ import pytest
 from mfdataindia.nse import contract as c, mapping, parser
 from mfdataindia.nse.cli import main
 from mfdataindia.nse.schema import HEADERS43, HEADERS44, SCHEMA44
-from nse01_fixtures import ROOT, RAW, MANIFEST, WALK, FIXTURES, candidate, change, funds
+from nse01_fixtures import ROOT, RAW, MANIFEST, WALK, FIXTURES, FULL_FILE, FULL_MANIFEST, candidate, change, funds
 
 
 def test_family_field_accounting():
@@ -44,7 +44,7 @@ def test_request_allowlist_no_db_or_intent(tmp_path, family):
     output = []
     def forbidden(*args, **kwargs):
         raise AssertionError('must not connect')
-    result = main(['--file',str(FIXTURES/'sch43_full.psv'),'--manifest',str(meta),
+    result = main(['--file',str(FULL_FILE),'--manifest',str(meta),
                    '--crosswalk',str(FIXTURES/'crosswalk.json'),'--import-file',
                    '--operation',str(uuid4()),'--journal-dir',str(tmp_path)], connect=forbidden, output=output.append)
     assert result == 1
@@ -78,6 +78,26 @@ def test_clean_truncation_full_expected_hash_and_count_are_independent():
     # A correct hash/byte count alone still does not make a shorter file FULL.
     with pytest.raises(c.ImportError, match='FULL_ROW_COUNT_MISMATCH'):
         parser.parse(clean, {**MANIFEST, 'expected_sha256':sha256(clean).hexdigest(), 'expected_bytes':len(clean)})
+
+
+def test_caller_cannot_certify_clean_truncation_as_full(tmp_path):
+    clean = b'\n'.join(RAW.splitlines()[:2]) + b'\n'
+    forged = {**MANIFEST, 'expected_sha256': sha256(clean).hexdigest(),
+              'expected_bytes': len(clean), 'expected_rows': 1}
+    source = tmp_path / 'truncated.psv'
+    metadata = tmp_path / 'manifest.json'
+    source.write_bytes(clean)
+    metadata.write_bytes(c.canonical(forged))
+    output = []
+    connections = []
+    op = str(uuid4())
+    assert main(['--import-file', '--file', str(source), '--manifest', str(metadata),
+                 '--crosswalk', str(FIXTURES / 'crosswalk.json'), '--operation', op,
+                 '--journal-dir', str(tmp_path)],
+                environ={'MFDATAINDIA_DSN': 'fixture'},
+                connect=lambda *a, **kw: connections.append(1), output=output.append) == 1
+    assert json.loads(output[-1])['reason'] == 'FULL_MANIFEST_UNTRUSTED'
+    assert connections == [] and not (tmp_path / (op + '.json')).exists()
 
 
 @pytest.mark.parametrize('raw', [b'', b'{"response_status":"F"}\n', b'<html>failure</html>\n',
@@ -230,7 +250,7 @@ def test_duplicate_metadata_member_and_secret_safe_cli(tmp_path):
     p = tmp_path/'bad.json'
     p.write_text('synthetic-secret-marker not json')
     output=[]
-    assert main(['--dry-run','--file',str(FIXTURES/'sch43_full.psv'), '--manifest',str(p),
+    assert main(['--dry-run','--file',str(FULL_FILE), '--manifest',str(p),
                  '--crosswalk',str(FIXTURES/'crosswalk.json')],output=output.append) == 1
     assert 'synthetic-secret-marker' not in ''.join(output)
 
@@ -240,8 +260,8 @@ def test_package_main_actual_environ_dry_run_no_connection_or_operation(monkeypa
     output=[]
     def forbidden(*a,**kw):
         pytest.fail('dry-run connected')
-    assert main(['--dry-run','--file',str(FIXTURES/'sch43_full.psv'),
-                 '--manifest',str(FIXTURES/'sch43_full.manifest.json'),
+    assert main(['--dry-run','--file',str(FULL_FILE),
+                 '--manifest',str(FULL_MANIFEST),
                  '--crosswalk',str(FIXTURES/'crosswalk.json')],connect=forbidden,output=output.append) == 0
     report=json.loads(output[-1])
     assert report['state']=='VALIDATED_NOT_PUBLISHED' and report['source_rows']==7

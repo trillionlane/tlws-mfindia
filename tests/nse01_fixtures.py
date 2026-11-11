@@ -8,8 +8,11 @@ from mfdataindia.nse import parser
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'tests/fixtures/nse01'
-RAW = (FIXTURES / 'sch43_full.psv').read_bytes()
-MANIFEST = json.loads((FIXTURES / 'sch43_full.manifest.json').read_bytes())
+PACKAGED_FIXTURES = ROOT / 'src/mfdataindia/nse/fixtures'
+FULL_FILE = PACKAGED_FIXTURES / 'sch43_full.psv'
+FULL_MANIFEST = PACKAGED_FIXTURES / 'sch43_full.manifest.json'
+RAW = FULL_FILE.read_bytes()
+MANIFEST = json.loads(FULL_MANIFEST.read_bytes())
 WALK = json.loads((FIXTURES / 'crosswalk.json').read_bytes())
 
 

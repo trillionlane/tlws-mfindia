@@ -198,10 +198,13 @@
     "id": "FULL_CLEAN_TRUNCATION",
     "tests": [
       "tests/test_nse01_parser.py::test_clean_truncation_full_expected_hash_and_count_are_independent",
+      "tests/test_nse01_parser.py::test_caller_cannot_certify_clean_truncation_as_full",
+      "tests/test_nse01_failures.py::test_store_rejects_structurally_valid_but_untrusted_full_before_sql",
+      "tests/test_nse01_package.py::test_packaged_main_parser_and_migration_without_db_or_provider",
       "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
     ]
   },
-  "base": "db07e53a509a39556214bec80cca084086c37b2a",
+  "base": "7389fd22e8c7e44ef2a1da87caa7c1f1145b07d6",
   "deferred_gates": [
     "SIP27_28_STEPUP",
     "STP_DESTINATION",

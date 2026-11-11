@@ -76,7 +76,7 @@ def main(argv=None, *, environ=None, connect=psycopg.connect, output=print):
         else:
             c.require(all((options.file, options.manifest, options.crosswalk)), 'COMPLETE_INPUT_REQUIRED')
             meta = c.decode(_read(options.manifest, 256 * 1024))
-            candidate = parser.parse(_read(options.file, c.MAX_BYTES), meta)
+            candidate = parser.parse_full(_read(options.file, c.MAX_BYTES), meta)
             walk = mapping.crosswalk(c.decode(_read(options.crosswalk, 256 * 1024)))
             report.update(source_sha256=candidate.manifest['expected_sha256'],
                           source_rows=len(candidate.rows), state='VALIDATED_NOT_PUBLISHED')

@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import date
+from hashlib import sha256
 import json
 from time import perf_counter
 from uuid import uuid4
@@ -15,12 +16,32 @@ from mfdataindia.datasets.app import create_app
 from mfdataindia.datasets import enrollment
 from mfdataindia.nse import contract as c, store
 from mfdataindia.nse.cli import main
-from nse01_fixtures import FIXTURES, RAW, WALK, candidate, change
+from nse01_fixtures import FIXTURES, FULL_FILE, FULL_MANIFEST, MANIFEST, RAW, WALK, candidate, change
 from test_ro01_reader_policy_postgres import (
     ro01_db as ro01_db, connect, adopt, PASSWORD, generator_capabilities,
 )
 
 pytestmark = pytest.mark.postgres
+
+
+# Independent, precomputed manifest pins for the other disposable transaction
+# scenarios. None is installed in the packaged importer.
+@pytest.fixture
+def trusted_scenarios(monkeypatch):
+    def enable():
+        pins = {
+            '1272721f4f453d508c849c7009b5bda2c6877058bc2fd5546b3f4798df716251',  # replay reference
+            '199c150e56f2c21a538069d2906fb4bf8dff5d85a2edf534071a7b7a5d04baaf',  # revision
+            '21ece0050a8b526a920f66dcbe7a75207945a4805fbcedd5a3bcf0f3ad968a68',  # unknown activity
+            'a971d73e40907139088fda4880685095c9e7a7baaeee63ce54d28ad4bc6efe3d',  # removal
+            '3a93289bd39d68b2c9f142997aa3013f6c7ac8d44ff48d1004f83bcf4acfa5c4',  # historical
+            '4e25e80b8fdf4069fe492c7b5b45ce5019b45ecb21b7361c80e1443a85d0c3f6',  # stale head
+            '0e7ff50c96d261a97551715c262a64717bd9836bc7c90f2abe620d4234e55589',  # date conflict
+            '35e13df91e87b73277645277f394c6b8063183c0850a75ca4ce464338e08f878',  # duplicates
+        }
+        monkeypatch.setattr(c, '_TRUSTED_FULL_MANIFESTS', c._TRUSTED_FULL_MANIFESTS | pins)
+
+    return enable
 
 
 @pytest.fixture
@@ -66,7 +87,7 @@ def page(client):
 
 
 @pytest.mark.parametrize('ro01_db',['core'],indirect=True)
-def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,tmp_path,monkeypatch):
+def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,tmp_path,monkeypatch,trusted_scenarios):
     dsn=nse_db
     # Exact NUMERIC(18,4) preservation, including values whose adjacent decimal
     # lexemes collapse to the same binary float. This fixture mutation is rolled
@@ -83,8 +104,8 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
     # Real main() + real connection + parser/crosswalk + production publication.
     output=[]
     op=str(uuid4())
-    code=main(['--import-file','--file',str(FIXTURES/'sch43_full.psv'),
-        '--manifest',str(FIXTURES/'sch43_full.manifest.json'), '--crosswalk',str(FIXTURES/'crosswalk.json'),
+    code=main(['--import-file','--file',str(FULL_FILE),
+        '--manifest',str(FULL_MANIFEST), '--crosswalk',str(FIXTURES/'crosswalk.json'),
         '--operation',op,'--journal-dir',str(tmp_path)],
         environ={'MFDATAINDIA_DSN':make_conninfo(dsn,user='mfdata_ingest',password=PASSWORD)},output=output.append)
     assert code==0,output
@@ -120,20 +141,36 @@ def test_native_first_import_reentry_revision_removal_full_gate_and_api(nse_db,t
         assert len({r['id'] for r in first_page['rows']+second['rows']})==3
         assert client.get('/api/datasets/v1/'+store.DATASET_ID+'/rows?limit=101').status_code==422
         assert client.post('/api/datasets/v1/'+store.DATASET_ID+'/rows',json={}).status_code==405
-        # Clean EOF after a valid whole row omits five expected rows. Actual CLI
-        # rejects BEFORE connection or intent, cannot retire or alter API data.
-        truncated=tmp_path/'truncated.psv'
-        truncated.write_bytes(b'\n'.join(RAW.splitlines()[:3])+b'\n')
-        emitted=[]
-        def forbidden(*a,**kw):
+        # Stop after one complete valid row and try both the approved manifest
+        # and caller metadata with all three expectations recalculated.
+        truncated = tmp_path / 'truncated.psv'
+        clean = b'\n'.join(RAW.splitlines()[:2]) + b'\n'
+        truncated.write_bytes(clean)
+        forged = tmp_path / 'forged.json'
+        forged.write_bytes(c.canonical({
+            **MANIFEST, 'expected_sha256': sha256(clean).hexdigest(),
+            'expected_bytes': len(clean), 'expected_rows': 1,
+        }))
+
+        def forbidden(*a, **kw):
             pytest.fail('incomplete file connected')
-        bad_op=str(uuid4())
-        assert main(['--import-file','--file',str(truncated),
-            '--manifest',str(FIXTURES/'sch43_full.manifest.json'),'--crosswalk',str(FIXTURES/'crosswalk.json'),
-            '--operation',bad_op,'--journal-dir',str(tmp_path)],connect=forbidden,output=emitted.append)==1
-        assert json.loads(emitted[-1])['reason']=='FULL_BYTES_MISMATCH'
-        assert not (tmp_path/(bad_op+'.json')).exists()
-        assert head(dsn)==original and page(client)==original_page
+
+        for manifest_file, reason in ((FULL_MANIFEST, 'FULL_BYTES_MISMATCH'),
+                                      (forged, 'FULL_MANIFEST_UNTRUSTED')):
+            emitted = []
+            bad_op = str(uuid4())
+            assert main(['--import-file', '--file', str(truncated),
+                '--manifest', str(manifest_file), '--crosswalk', str(FIXTURES / 'crosswalk.json'),
+                '--operation', bad_op, '--journal-dir', str(tmp_path)],
+                environ={'MFDATAINDIA_DSN': make_conninfo(dsn, user='mfdata_ingest', password=PASSWORD)},
+                connect=forbidden, output=emitted.append) == 1
+            report = json.loads(emitted[-1])
+            assert report['reason'] == reason and report['effect'] == 'NO_PUBLICATION'
+            assert not (tmp_path / (bad_op + '.json')).exists()
+            assert head(dsn) == original and page(client) == original_page
+            assert client.get('/api/datasets/v1').json() == discovery.json()
+            assert client.get('/api/datasets/v1/' + store.DATASET_ID).json() == metadata.json()
+        trusted_scenarios()
         # Simulated preservation mismatch is inside the real transaction AFTER
         # staging deletion/inserts; rollback must restore every previous row.
         original_fingerprint=store._fingerprint
@@ -246,7 +283,7 @@ def test_native_concurrent_same_work_one_publisher_and_no_duplicate(nse_db):
 
 
 @pytest.mark.parametrize('ro01_db',['core'],indirect=True)
-def test_native_commit_unknown_inspect_only_and_stale_head_preservation(nse_db):
+def test_native_commit_unknown_inspect_only_and_stale_head_preservation(nse_db,trusted_scenarios):
     op=str(uuid4())
     real=connect(nse_db,'mfdata_ingest')
     real.autocommit=False
@@ -266,6 +303,7 @@ def test_native_commit_unknown_inspect_only_and_stale_head_preservation(nse_db):
         observed=store.inspect(conn,op)
         assert observed['effect']=='COMMITTED_VERIFIED'
     original=head(nse_db)
+    trusted_scenarios()
     with pytest.raises(store.OutcomeError) as stale:
         ingest(nse_db,candidate(change(column=11,value='400')),previous=None)
     assert stale.value.report['reason']=='HEAD_CHANGED' and head(nse_db)==original
@@ -278,7 +316,8 @@ def test_native_commit_unknown_inspect_only_and_stale_head_preservation(nse_db):
 
 
 @pytest.mark.parametrize('ro01_db',['core'],indirect=True)
-def test_native_exact_mapping_ambiguity_and_duplicate_accounting(nse_db):
+def test_native_exact_mapping_ambiguity_and_duplicate_accounting(nse_db,trusted_scenarios):
+    trusted_scenarios()
     walk=deepcopy(WALK)
     walk['targets'].append({**walk['targets'][0],'amfi_scheme_code':4})
     with connect(nse_db,autocommit=False) as conn:

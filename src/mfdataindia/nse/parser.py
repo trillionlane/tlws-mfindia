@@ -50,9 +50,18 @@ def _value(text, kind, width):
 
 
 def parse(raw, manifest):
-    meta = c.manifest(manifest)
+    """Parse a document structurally without authorizing FULL publication."""
+    return _parse(raw, c.manifest(manifest))
+
+
+def parse_full(raw, manifest):
+    """Authorize the manifest against the fixed trust pin, then verify its file."""
+    return _parse(raw, c.trusted_full_manifest(manifest))
+
+
+def _parse(raw, meta):
     c.require(type(raw) is bytes and 0 < len(raw) <= c.MAX_BYTES, 'INVALID_FILE')
-    # Independent expected values are checked BEFORE decoding or any DB effect.
+    # Check the supplied expectations before decoding the source.
     c.require(len(raw) == meta['expected_bytes']
               and sha256(raw).hexdigest() == meta['expected_sha256'], 'FULL_BYTES_MISMATCH')
     try:

@@ -1,22 +1,22 @@
 # NSE01-A — offline SCH import and existing dataset API
 
 Implementation basis: reviewed contract `357c13e6c432aa890f5a96f5eff2ef829fcd56e0`;
-current remote base `db07e53a509a39556214bec80cca084086c37b2a`. One focused PR,
+current remote base `7389fd22e8c7e44ef2a1da87caa7c1f1145b07d6`. One focused PR,
 no merge/live activation authority. HDFC discovery and the daily schedule remain
 separate. The three reviewed contract drafts and other-family examples are
 preserved byte-for-byte; this record describes the actual first slice.
 
 ## Composition and FULL gate
 
-`nse.contract` strictly validates the separate manifest. The known-complete
-synthetic seven-row fixture is bound to `sch43_full.manifest.json` by expected
-SHA-256, byte length and data-row count (excluding the exact header). FULL also
-requires the explicit synthetic completeness basis. A clean EOF after a valid
-row is insufficient. Both expected hash/length and expected count are checked
-before any database connection or create-only operation record. The regression
-also updates the short file's hash/length while retaining the expected count,
-to prove count is an independent gate. Native/API coverage checks that a clean
-truncation cannot advance the head, remove schemes or change existing responses.
+`nse.contract` validates the complete caller manifest against a fixed SHA-256
+pin for the repository-packaged `sch43_full.manifest.json`. That approved
+manifest supplies the expected hash, byte length and count for the known-complete
+seven-row fixture. Both CLI validation and transaction entry enforce the pin.
+A file that ends after one valid row fails even if its caller recomputes all three
+values and repeats the approved fixture reference. The CLI refuses it before
+reserving an operation or connecting. The PostgreSQL regression verifies the
+active snapshot, dataset discovery, metadata and API rows stay intact. The image
+smoke uses the same packaged fixture and exercises the forged manifest offline.
 
 This is a **fixture-certified**, not production-certified, profile. An original
 export must be retained privately and its intended complete scope established

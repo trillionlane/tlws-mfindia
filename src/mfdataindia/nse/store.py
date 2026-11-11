@@ -177,7 +177,7 @@ def publish(conn, parsed, walk, operation_id, *, expected_head):
     The original connection is rolled back only for known pre-COMMIT failure.
     """
     c.operation(operation_id)
-    parsed = parser.parse(parsed.raw, parsed.manifest)
+    parsed = parser.parse_full(parsed.raw, parsed.manifest)
     walk = mapping.crosswalk(walk)
     c.require(conn.info.transaction_status == TransactionStatus.IDLE, 'IMPORT_IDLE_CONNECTION_REQUIRED')
     report = {'format': 'nse01-import-result-v1', 'operation_id': operation_id, 'stage': 'transaction',

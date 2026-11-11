@@ -1,4 +1,4 @@
-"""Strict local manifests. FULL is an independently supplied byte/count binding.
+"""Strict local manifests. FULL requires a repository-approved manifest.
 
 Only the reviewed synthetic fixture profile is executable in NSE01-A. Neither a
 clean EOF nor a caller's `FULL` string certifies an original export's scope.
@@ -19,6 +19,11 @@ MAX_ROW_BYTES = 16 * 1024
 HASH = re.compile(r'[0-9a-f]{64}\Z')
 NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,95}\Z')
 FAMILIES = frozenset({'SCH', 'SIP', 'STP', 'SWP', 'NAV', 'SET'})
+# SHA-256 of the canonical packaged sch43_full.manifest.json. Pin the complete
+# manifest, including its fixture reference and date, independently of any input.
+_TRUSTED_FULL_MANIFESTS = frozenset({
+    '827020c3c035e17a0f5ace58a3c3a48e0faf7e1224a30c1b125190ba9b2d34eb',
+})
 
 
 class ImportError(ValueError):
@@ -86,3 +91,9 @@ def manifest(value):
     except ValueError:
         raise ImportError('INVALID_SOURCE_DATE') from None
     return decode(canonical(value))
+
+
+def trusted_full_manifest(value):
+    validated = manifest(value)
+    require(digest(validated) in _TRUSTED_FULL_MANIFESTS, 'FULL_MANIFEST_UNTRUSTED')
+    return validated
