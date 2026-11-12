@@ -17,7 +17,7 @@ from mfdataindia.load.amfi_to_store import load_parsed_amfi
 from mfdataindia.load.family_continuity import normalize_issuers
 from mfdataindia.load.fund_family import build_fund_family
 from mfdataindia.store.postgres import PostgresStore
-from test_nav_family_continuity import DAY, scheme, zerodha
+from test_nav_family_continuity import DAY, scheme, sundaram_idcw, zerodha
 
 pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,29 +77,43 @@ def family_links(conn):
 def test_native_all_25_rekeys_preserve_ids_slugs_tags_and_replay(nav_store):
     store = nav_store
     stable = scheme(1, "Stable Fund", "INFTEST00001")
-    old = [replace(s, nav_date=date(2026, 11, 4)) for s in [stable, *zerodha(True)]]
+    old = [replace(s, nav_date=date(2026, 11, 4))
+           for s in [stable, *zerodha(True), *sundaram_idcw(with_reinvestment=False)]]
     start(store, old)
     conn = store.connect()
     before = family_links(conn)
+    prior_nav = conn.execute("SELECT * FROM mf.nav_history WHERE nav_date < %s "
+                             "ORDER BY amfi_scheme_code, nav_date", (DAY,)).fetchall()
     conn.execute("""
         INSERT INTO mf.fund_family_association_tags (tlws_mf_id,value,tag_type,source)
         VALUES (%s,'existing-link','scheme_alias','trillion-insights')
     """, (before[1]["tlws_mf_id"],))
     tags = conn.execute("SELECT * FROM mf.fund_family_association_tags").fetchall()
-    source = normalize_issuers([stable, *zerodha(False)])
-    assert nav.publish_prices(store, source, fetch(), as_of=DAY)["load"]["inserted"] == 1
+    source = normalize_issuers([stable, *zerodha(False), *sundaram_idcw(with_reinvestment=True)])
+    assert nav.publish_prices(store, source, fetch(), as_of=DAY)["load"]["inserted"] == 2
     report = publish_catalogue(store, source)
     assert report["state"] == "CATALOGUE_PUBLISHED" and len(report["renames"]) == 25
     after = family_links(conn)
-    assert len(after) == 26
+    assert len(after) == 28
     for original, current in zip(before, after):
         assert current["amfi_scheme_code"] == original["amfi_scheme_code"]
         assert current["tlws_mf_id"] == current["family_id"] == original["tlws_mf_id"]
         assert current["slug"] == original["slug"]
-        if current["amfi_scheme_code"] != 1:
+        if current["amfi_scheme_code"] not in {1, 154124, 154125}:
             assert current["base_scheme_name"].startswith("Zerodha CASE ")
             assert current["variant_name"] == current["base_scheme_name"]
+    assert conn.execute("""
+        SELECT amfi_scheme_code, isin_growth_or_div_payout, isin_div_reinvest
+        FROM mf.funds WHERE amfi_scheme_code IN (154124, 154125) ORDER BY amfi_scheme_code
+    """).fetchall() == [
+        {"amfi_scheme_code": 154124, "isin_growth_or_div_payout": "INF903JA1MA8",
+         "isin_div_reinvest": "INF903JA1MB6"},
+        {"amfi_scheme_code": 154125, "isin_growth_or_div_payout": "INF903JA1MD2",
+         "isin_div_reinvest": "INF903JA1ME0"},
+    ]
     assert conn.execute("SELECT * FROM mf.fund_family_association_tags").fetchall() == tags
+    assert conn.execute("SELECT * FROM mf.nav_history WHERE nav_date < %s "
+                        "ORDER BY amfi_scheme_code, nav_date", (DAY,)).fetchall() == prior_nav
     assert integrity_manifest(store)["orphan_families"] == 0
     assert nav.freshness(store)["nav_last"] == nav.freshness(store)["catalogue_snapshot_date"] == DAY
     version = nav.freshness(store)["dataset_version"]

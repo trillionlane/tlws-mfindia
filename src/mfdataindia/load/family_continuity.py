@@ -16,6 +16,13 @@ from mfdataindia.load.normalise import slugify
 # Resolve the feed label to the existing AMC row and its registered bindings.
 ISSUER_ALIASES = {"Zerodha CASE Mutual Fund": "Zerodha Mutual Fund"}
 
+# NSE/NMFTM/72131 lists the payout and reinvestment ISINs for both plans.
+# The prior AMFI rows published only payout; the current feed fills the second slot.
+SUNDARAM_IDCW_SLOTS = {
+    154124: ("DIRECT", "INF903JA1MA8", "INF903JA1MB6"),
+    154125: ("REGULAR", "INF903JA1MD2", "INF903JA1ME0"),
+}
+
 
 @dataclass(frozen=True)
 class Variant:
@@ -97,9 +104,22 @@ def read_source(schemes: list[AmfiScheme]) -> tuple[dict[int, Variant], set[int]
     return incoming, conflicts
 
 
+def _identifiers_continue(old: Variant, new: Variant) -> bool:
+    if (old.code, old.issuer, old.plan, old.option) != (new.code, new.issuer, new.plan, new.option):
+        return False
+    if old.isins == new.isins:
+        return True
+    evidence = SUNDARAM_IDCW_SLOTS.get(old.code)
+    if evidence is None:
+        return False
+    plan, payout, reinvestment = evidence
+    return (old.issuer == "Sundaram Mutual Fund" and old.plan == plan and old.option == "IDCW"
+            and old.key == new.key == "SUNDARAM INCOME PLUS ARBITRAGE ACTIVE FOF"
+            and old.isins == (payout, None) and new.isins == (payout, reinvestment))
+
+
 def matches(old: Variant, new: Variant) -> bool:
-    return (any(old.isins) and old.isins == new.isins
-            and old.issuer == new.issuer and old.plan == new.plan and old.option == new.option)
+    return any(old.isins) and _identifiers_continue(old, new)
 
 
 def resolve(
@@ -113,9 +133,7 @@ def resolve(
         if old.key:
             current_members[old.key].add(code)
         new = incoming.get(code)
-        if new and (new.issuer, new.plan, new.option, new.isins) != (
-            old.issuer, old.plan, old.option, old.isins
-        ):
+        if new and not _identifiers_continue(old, new):
             holds.add((str(code), "IDENTIFIERS_CHANGED"))
         key = new.key if new and new.key else old.key
         if old.key and new and not new.key:

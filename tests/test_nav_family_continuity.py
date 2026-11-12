@@ -79,6 +79,34 @@ def test_conflicting_nav_price_observations_are_withheld():
     after, conflicts = family.read_source([old, duplicate])
     assert verified_prices([old, duplicate], before, after, conflicts) == []
 
+
+def sundaram_idcw(*, with_reinvestment):
+    records = [(154124, "DIRECT", "INF903JA1MA8", "INF903JA1MB6"),
+               (154125, "REGULAR", "INF903JA1MD2", "INF903JA1ME0")]
+    return [replace(scheme(code, "Sundaram Income Plus Arbitrage Active FoF", payout,
+                           amc="Sundaram Mutual Fund", plan=plan),
+                    option="IDCW", isin_div_reinvestment=reinvestment if with_reinvestment else None)
+            for code, plan, payout, reinvestment in records]
+
+
+def test_verified_sundaram_secondary_isins_can_fill_only_the_reported_empty_slots():
+    before, _ = family.read_source(sundaram_idcw(with_reinvestment=False))
+    schemes = sundaram_idcw(with_reinvestment=True)
+    incoming, conflicts = family.read_source(schemes)
+    keys = {row.key: "existing-family" for row in before.values()}
+    assert family.resolve(before, keys, incoming, conflicts) == family.Resolution((), ())
+    assert [row[0] for row in verified_prices(schemes, before, incoming, conflicts)] == [154125]
+
+    for change in ({"isins": ("INF903JA1MA8", "INF903JA1ME0")},
+                   {"isins": ("INF903JA1MD2", "INF903JA1MB6")},
+                   {"key": "ANOTHER FAMILY"}, {"plan": "REGULAR"}, {"issuer": "Other Mutual Fund"}):
+        changed = {**incoming, 154124: replace(incoming[154124], **change)}
+        assert ("154124", "IDENTIFIERS_CHANGED") in family.resolve(before, keys, changed, set()).holds
+    assert ("154124", "IDENTIFIERS_CHANGED") in family.resolve(incoming, keys, before, set()).holds
+    unknown = replace(before[154124], code=999999)
+    assert not family.matches(unknown, replace(incoming[154124], code=999999))
+
+
 def test_only_a_committed_catalogue_emits_the_daily_success_receipt(monkeypatch):
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "scripts"))
     from refresh_daily_v2 import receipt

@@ -52,6 +52,13 @@ Zerodha CASE issuer spelling resolves to the existing Zerodha AMC identity
 based on issuer Addendum 21/2026–27. Other issuer changes require verified
 continuity evidence before adding an alias.
 
+The November 12 AMFI feed also fills previously empty IDCW reinvestment
+slots for Sundaram Income Plus Arbitrage Active FoF codes 154124 and 154125.
+[NSE circular 72131](https://nsearchives.nseindia.com/content/circulars/NMF72131.pdf)
+confirms both pairs. Only those exact additions are allowed, with the existing
+code, family key, issuer, plan, option and payout ISIN preserved. A conflicting
+value, removed ISIN or unverified addition still holds the catalogue.
+
 ## Independent freshness
 
 The v2 job validates the official NAVAll feed once. It first commits prices
