@@ -40,7 +40,7 @@ def test_versioned_book_authority_changes_only_reader_compatibility_source():
     assert source.verify_packaged_source(ROOT)["permission_enabled"] is False
 
 
-def test_current_diagnostic_attribution_is_one_explicit_changed_policy_source():
+def test_current_diagnostic_attribution_versions_intentional_source_changes():
     from mfdataindia.review import reader_policy_source_version as version
     from mfdataindia.review import core_permission_spec, core_access_metadata_spec, core_access_metadata_spec_v2
     for module in (core_permission_spec, core_access_metadata_spec, core_access_metadata_spec_v2):
@@ -53,7 +53,10 @@ def test_current_diagnostic_attribution_is_one_explicit_changed_policy_source():
         assert {k: v for k, v in old.items() if k != version.PATH} == {k: ro01[k] for k in old if k != version.PATH}
         assert old[version.CONFIGURATION_PATH] == version.CONFIGURATION_PREVIOUS_SHA256
         assert new[version.CONFIGURATION_PATH] == version.CONFIGURATION_CURRENT_SHA256
-        untouched = set(old) - {version.PATH, version.CONFIGURATION_PATH}
+        ro02 = version.historical_ro02_attribution(old)
+        assert old[version.QUERY_PATH] == ro02[version.QUERY_PATH] == version.QUERY_PREVIOUS_SHA256
+        assert new[version.QUERY_PATH] == hashlib.sha256((ROOT / version.QUERY_PATH).read_bytes()).hexdigest()
+        untouched = set(old) - {version.PATH, version.CONFIGURATION_PATH, version.QUERY_PATH}
         assert {k: old[k] for k in untouched} == {k: new[k] for k in untouched}
         added = {"src/mfdataindia/review/reader_access_profile.py",
                  "src/mfdataindia/review/reader_policy_source_version.py",
@@ -62,6 +65,8 @@ def test_current_diagnostic_attribution_is_one_explicit_changed_policy_source():
         assert all(new[path] == hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in added)
     with pytest.raises(ValueError, match="UNRECOGNIZED_READER_POLICY_SOURCE_PREDECESSOR"):
         version.current_attribution({version.PATH: "0" * 64})
+    with pytest.raises(ValueError, match="UNRECOGNIZED_READER_QUERY_SOURCE_PREDECESSOR"):
+        version.current_attribution({**old, version.QUERY_PATH: "0" * 64})
 
 
 def test_existing_controllers_pin_the_current_versioned_specs_exactly():
