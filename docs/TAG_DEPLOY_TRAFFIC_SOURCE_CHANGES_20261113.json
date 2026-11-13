@@ -26,6 +26,10 @@
       "current_sha256": "c3388387959bc5fe11c2f02860c1e5a834e014fd02ac03ee95bb0c55b33d8c31",
       "previous_sha256": "b39467591850959569029438b08a09cafbe33c20e202201e986c2ce99d34716d"
     },
+    "tests/test_pypdf_security_20261030.py": {
+      "current_sha256": "401d07a590eadf1820b8e650285d0110d49eadc063b603f9a1a10b50445725de",
+      "previous_sha256": "2c7cef15fa14d1bbc933eceb393cb4d7ba93cfb8500a1fad1f78580ffc022be2"
+    },
     "tests/test_private_deployment.py": {
       "current_sha256": "484ab171996b9646bf6e5d762a4869e36310f50186d412457d3b8b6410b56fdd",
       "previous_sha256": "283b4da1a4da63a926f944398aa2ff5384b15f052f31aa83d7c68eed384377d0"

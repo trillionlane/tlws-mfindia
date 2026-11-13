@@ -17,6 +17,7 @@ def test_exact_modified_files_restore_to_tag04_main() -> None:
         "tests/test_dataset_source_changes.py",
         "tests/test_dev_reader_compatibility_history.py",
         "tests/test_pypdf_patch_preservation.py",
+        "tests/test_pypdf_security_20261030.py",
         "tests/test_private_deployment.py",
         "tests/test_release_admission.py",
         "tests/test_reader_execution_source.py",
