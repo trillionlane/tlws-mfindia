@@ -265,6 +265,14 @@ jobs:
             --timeout=60 \
             --labels=product=mfdataindia,environment=dev,managed-by=github-actions \
             --quiet
+          # A prior named rollout can pin default traffic to an older revision.
+          # Promote the newly deployed revision while retaining named zero-traffic
+          # tags used for bounded rollback and acceptance evidence.
+          gcloud run services update-traffic "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --to-latest \
+            --quiet
 
       - name: Deploy private association writer disabled
         if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'
@@ -387,7 +395,13 @@ jobs:
           test -n "$service_url"
           jq -e '.metadata.annotations["run.googleapis.com/ingress"] == "internal"' <<<"$service_json" >/dev/null
           jq -e '.status.conditions[] | select(.type == "Ready") | .status == "True"' <<<"$service_json" >/dev/null
-          jq -e '.status.traffic | length == 1 and .[0].percent == 100' <<<"$service_json" >/dev/null
+          serving_revision="$(jq -er '
+            [.status.traffic[] | select((.percent // 0) == 100)]
+            | if length == 1 and .[0].revisionName then .[0].revisionName
+              else error("expected one 100-percent serving revision") end
+          ' <<<"$service_json")"
+          latest_ready_revision="$(jq -er '.status.latestReadyRevisionName' <<<"$service_json")"
+          test "$serving_revision" = "$latest_ready_revision"
           bash scripts/private_read_invokers_dev.sh required
           external_status="$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$service_url/api/health" || true)"
           case "$external_status" in
