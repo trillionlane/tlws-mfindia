@@ -12,6 +12,7 @@ def test_exact_modified_files_restore_to_tag04_main() -> None:
     rows = manifest()
     assert set(rows) == {
         ".github/workflows/deploy-dev.yml",
+        "uv.lock",
         "tests/pypdf_patch_preservation.py",
         "tests/test_dataset_source_changes.py",
         "tests/test_dev_reader_compatibility_history.py",

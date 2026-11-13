@@ -6,8 +6,12 @@
       "current_sha256": "617384b91a68fe2c480074a18256471070abd0533c1c0338f665d1d91bc40b76",
       "previous_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421"
     },
+    "uv.lock": {
+      "current_sha256": "ba6835d8def1b5a26f97dadef4f031433a41656ea6cc93fb8107e01e055e985c",
+      "previous_sha256": "cbad265c09394d0ec424e3f48d651396f8af764b08049680f073bf5b2b4be1f6"
+    },
     "tests/pypdf_patch_preservation.py": {
-      "current_sha256": "ff7f5a53a817b01080ba5ff89e3bd43e85e20f3b67b6b23a5e782b65dc2c6cba",
+      "current_sha256": "f10e7995582d209d119f40b0441fb621ec72e48762b4f873f85ea789f15a0828",
       "previous_sha256": "c81906623ddb76cf83a3a9a9650bd09ecc8c6f6272939c92963a176a53de2f80"
     },
     "tests/test_dataset_source_changes.py": {

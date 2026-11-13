@@ -20,13 +20,13 @@ assert not PATCH_MODIFIED & PATCH_ADDED
 
 def restore_pypdf_parent(path, data):
     assert type(data) is bytes
-    data = traffic_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:
-        return data
+        return traffic_previous(path, data)
     if name in PATCH_MODIFIED and hashlib.sha256(data).hexdigest() == PLAN["modified"][name]["old_full_sha256"]:
         return data
+    data = traffic_previous(path, data)
     data = historical_parent(path, data)
     if name not in PATCH_MODIFIED:
         return data
