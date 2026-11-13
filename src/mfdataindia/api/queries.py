@@ -505,7 +505,9 @@ _FAMILY_SAFE_FACTS_FIELDS = (
 #: across AMCs, and borrowing across plan/option/periodicity would leak
 #: variant-specific facts (a Regular expense ratio shown on a Direct scheme,
 #: or Monthly IDCW data shown on a Quarterly scheme). Among qualifying
-#: re-issues the lowest AMFI code (oldest tranche) is canonical.
+#: re-issues the lowest AMFI code (oldest tranche) is canonical. As in the
+#: batch query, keep the facts lookup parameterized so PostgreSQL cannot flatten
+#: it into a join that evaluates the current-facts view across the catalogue.
 _SIBLING_SOURCE_SQL = f"""
     SELECT f.amfi_scheme_code AS source_code
     FROM mf.fund_variants v1
@@ -514,7 +516,10 @@ _SIBLING_SOURCE_SQL = f"""
          ON v2.group_key = v1.group_key
         AND v2.amfi_scheme_code <> v1.amfi_scheme_code
     JOIN mf.funds f ON f.amfi_scheme_code = v2.amfi_scheme_code
-    JOIN mf.current_fund_facts ff ON ff.amfi_scheme_code = v2.amfi_scheme_code
+    JOIN LATERAL (
+        SELECT * FROM mf.current_fund_facts
+        WHERE amfi_scheme_code = v2.amfi_scheme_code OFFSET 0
+    ) ff ON true
     WHERE v1.amfi_scheme_code = %(code)s
       AND f.plan_type = f1.plan_type
       AND f.option_type = f1.option_type

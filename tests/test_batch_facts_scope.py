@@ -145,3 +145,10 @@ def test_sibling_selection_cannot_flatten_into_a_global_facts_join():
     assert "WHERE amfi_scheme_code = v2.amfi_scheme_code OFFSET 0" in query
     assert "PARTITION BY v1.amfi_scheme_code" in query
     assert "f.periodicity IS NOT DISTINCT FROM f1.periodicity" in query
+
+
+def test_detail_sibling_selection_scopes_the_facts_view_to_each_candidate():
+    query = queries._SIBLING_SOURCE_SQL
+    assert "JOIN LATERAL" in query
+    assert "WHERE amfi_scheme_code = v2.amfi_scheme_code OFFSET 0" in query
+    assert "f.periodicity IS NOT DISTINCT FROM f1.periodicity" in query
