@@ -9,16 +9,20 @@ import pytest
 from ro01_historical_source import ROOT, BASE, authority, historical_parent
 from mfdataindia.review import broad_reader_source_authority as source
 from mfdataindia.review import broad_reader_embedded_authority as embedded
+from tag_deploy_traffic_history import previous as traffic_previous
 
 
 @pytest.mark.parametrize("name", sorted(authority()))
 def test_intentional_current_full_bytes_and_tamper_are_not_ignored(name):
     raw = (ROOT / name).read_bytes()
     previous = subprocess.check_output(["git", "show", BASE + ":" + name], cwd=ROOT)
-    assert historical_parent(ROOT / name, raw) == previous
+    assert historical_parent(ROOT / name, traffic_previous(ROOT / name, raw)) == previous
     assert raw != previous
     with pytest.raises(AssertionError):
-        historical_parent(ROOT / name, raw + b"\n# unreviewed")
+        historical_parent(
+            ROOT / name,
+            traffic_previous(ROOT / name, raw + b"\n# unreviewed"),
+        )
 
 
 def test_versioned_book_authority_changes_only_reader_compatibility_source():
