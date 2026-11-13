@@ -1,0 +1,656 @@
+{
+  "components": {
+    "schemas": {
+      "ActivityExposure": {
+        "additionalProperties": false,
+        "properties": {
+          "activity": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "title": "Activity",
+            "type": "string"
+          },
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Entity Ids",
+            "type": "array"
+          },
+          "evidence_hashes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "title": "Evidence Hashes",
+            "type": "array"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/ValuesWeight"
+          }
+        },
+        "required": [
+          "activity",
+          "weight",
+          "entity_ids",
+          "evidence_hashes"
+        ],
+        "title": "ActivityExposure",
+        "type": "object"
+      },
+      "ScreenCriterion": {
+        "additionalProperties": false,
+        "properties": {
+          "activity": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "title": "Activity",
+            "type": "string"
+          },
+          "comparison": {
+            "enum": [
+              "maximum",
+              "minimum"
+            ],
+            "title": "Comparison",
+            "type": "string"
+          },
+          "threshold_percent": {
+            "maxLength": 160,
+            "pattern": "^\\d+(?:\\.\\d+)?$",
+            "title": "Threshold Percent",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity",
+          "threshold_percent",
+          "comparison"
+        ],
+        "title": "ScreenCriterion",
+        "type": "object"
+      },
+      "ScreenDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "certification_claim": {
+            "const": false,
+            "title": "Certification Claim",
+            "type": "boolean"
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenCriterion"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Criteria",
+            "type": "array"
+          },
+          "evidence_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Evidence Hash",
+            "type": "string"
+          },
+          "interpretation": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "declared-esg",
+              "environmental",
+              "custom-values"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "max_evidence_age_days": {
+            "maximum": 3660.0,
+            "minimum": 0.0,
+            "title": "Max Evidence Age Days",
+            "type": "integer"
+          },
+          "require_complete_entity_mapping": {
+            "const": true,
+            "title": "Require Complete Entity Mapping",
+            "type": "boolean"
+          },
+          "require_derivative_classification": {
+            "title": "Require Derivative Classification",
+            "type": "boolean"
+          },
+          "require_lookthrough": {
+            "title": "Require Lookthrough",
+            "type": "boolean"
+          },
+          "screen_id": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "title": "Screen Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "draft"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "valid_from": {
+            "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "screen_id",
+          "label",
+          "kind",
+          "status",
+          "valid_from",
+          "valid_until",
+          "max_evidence_age_days",
+          "require_complete_entity_mapping",
+          "require_lookthrough",
+          "require_derivative_classification",
+          "criteria",
+          "certification_claim",
+          "interpretation",
+          "evidence_hash"
+        ],
+        "title": "ScreenDefinition",
+        "type": "object"
+      },
+      "ValuesAssessment": {
+        "additionalProperties": false,
+        "properties": {
+          "activity_exposures": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityExposure"
+            },
+            "maxItems": 100,
+            "title": "Activity Exposures",
+            "type": "array"
+          },
+          "activity_registry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Activity Registry Hash",
+            "type": "string"
+          },
+          "assessment_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "certification_claim": {
+            "const": false,
+            "title": "Certification Claim",
+            "type": "boolean"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "custom_screen_not_religious_or_regulatory_certification": {
+            "const": true,
+            "title": "Custom Screen Not Religious Or Regulatory Certification",
+            "type": "boolean"
+          },
+          "exposure_assessment_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Exposure Assessment Id",
+            "type": "string"
+          },
+          "format": {
+            "const": "mfdata-sustainability-values-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "missing_evidence_never_means_zero": {
+            "const": true,
+            "title": "Missing Evidence Never Means Zero",
+            "type": "boolean"
+          },
+          "portfolio_as_of": {
+            "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+            "title": "Portfolio As Of",
+            "type": "string"
+          },
+          "portfolio_snapshot_id": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Portfolio Snapshot Id",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "enum": [
+                "SCREEN_NOT_ACTIVE_AT_PORTFOLIO_DATE",
+                "PORTFOLIO_EVIDENCE_STALE",
+                "PORTFOLIO_ENTITY_COVERAGE_INCOMPLETE",
+                "FUND_LOOKTHROUGH_INCOMPLETE",
+                "DERIVATIVE_CLASSIFICATION_INCOMPLETE",
+                "ENTITY_ACTIVITY_CLASSIFICATION_INCOMPLETE",
+                "EXCLUSION_THRESHOLD_EXCEEDED",
+                "EXCLUSION_THRESHOLD_UNCERTAIN",
+                "INCLUSION_THRESHOLD_NOT_MET",
+                "INCLUSION_THRESHOLD_UNCERTAIN",
+                "ALL_EXPLICIT_CRITERIA_MET"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Reasons",
+            "type": "array"
+          },
+          "screen_evidence_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Screen Evidence Hash",
+            "type": "string"
+          },
+          "screen_id": {
+            "pattern": "^[a-z][a-z0-9-]{0,63}$",
+            "title": "Screen Id",
+            "type": "string"
+          },
+          "screen_kind": {
+            "enum": [
+              "declared-esg",
+              "environmental",
+              "custom-values"
+            ],
+            "title": "Screen Kind",
+            "type": "string"
+          },
+          "screen_label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Screen Label",
+            "type": "string"
+          },
+          "screen_registry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Screen Registry Hash",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "supported",
+              "contradicted",
+              "insufficient-evidence",
+              "not-assessed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "assessment_id",
+          "screen_id",
+          "screen_label",
+          "screen_kind",
+          "state",
+          "reasons",
+          "code",
+          "portfolio_snapshot_id",
+          "portfolio_as_of",
+          "exposure_assessment_id",
+          "screen_registry_hash",
+          "activity_registry_hash",
+          "screen_evidence_hash",
+          "activity_exposures",
+          "certification_claim",
+          "custom_screen_not_religious_or_regulatory_certification",
+          "missing_evidence_never_means_zero"
+        ],
+        "title": "ValuesAssessment",
+        "type": "object"
+      },
+      "ValuesDiscovery": {
+        "additionalProperties": false,
+        "properties": {
+          "activity_mapping_records": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Activity Mapping Records",
+            "type": "integer"
+          },
+          "activity_registry_format": {
+            "const": "mfdata-entity-activities-v1",
+            "title": "Activity Registry Format",
+            "type": "string"
+          },
+          "activity_registry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Activity Registry Hash",
+            "type": "string"
+          },
+          "certification_claimed": {
+            "const": false,
+            "title": "Certification Claimed",
+            "type": "boolean"
+          },
+          "exact_scheme_news_unchanged": {
+            "const": true,
+            "title": "Exact Scheme News Unchanged",
+            "type": "boolean"
+          },
+          "format": {
+            "const": "mfdata-sustainability-values-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "funds_url": {
+            "title": "Funds Url",
+            "type": "string"
+          },
+          "positive_live_assignments_claimed": {
+            "const": false,
+            "title": "Positive Live Assignments Claimed",
+            "type": "boolean"
+          },
+          "screen_definitions": {
+            "items": {
+              "$ref": "#/components/schemas/ScreenDefinition"
+            },
+            "maxItems": 50,
+            "title": "Screen Definitions",
+            "type": "array"
+          },
+          "screen_registry_format": {
+            "const": "mfdata-values-screen-registry-v1",
+            "title": "Screen Registry Format",
+            "type": "string"
+          },
+          "screen_registry_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Screen Registry Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format",
+          "screen_registry_format",
+          "activity_registry_format",
+          "screen_registry_hash",
+          "activity_registry_hash",
+          "screen_definitions",
+          "activity_mapping_records",
+          "funds_url",
+          "positive_live_assignments_claimed",
+          "certification_claimed",
+          "exact_scheme_news_unchanged"
+        ],
+        "title": "ValuesDiscovery",
+        "type": "object"
+      },
+      "ValuesError": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ValuesError",
+        "type": "object"
+      },
+      "ValuesSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "assessments": {
+            "items": {
+              "$ref": "#/components/schemas/ValuesAssessment"
+            },
+            "maxItems": 50,
+            "title": "Assessments",
+            "type": "array"
+          },
+          "certification_claimed": {
+            "const": false,
+            "title": "Certification Claimed",
+            "type": "boolean"
+          },
+          "code": {
+            "exclusiveMaximum": 2147483648.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Code",
+            "type": "integer"
+          },
+          "exposure_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_accepted_complete_portfolio",
+                  "current_identity_differs",
+                  "same_date_distinct_retained_sources"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Reason"
+          },
+          "exposure_state": {
+            "enum": [
+              "available",
+              "not_captured",
+              "identity_changed",
+              "conflicting"
+            ],
+            "title": "Exposure State",
+            "type": "string"
+          },
+          "format": {
+            "const": "mfdata-sustainability-values-v1",
+            "title": "Format",
+            "type": "string"
+          },
+          "portfolio_as_of": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}-\\d\\d-\\d\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio As Of"
+          },
+          "positive_live_assignments_claimed": {
+            "const": false,
+            "title": "Positive Live Assignments Claimed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "format",
+          "code",
+          "exposure_state",
+          "exposure_reason",
+          "portfolio_as_of",
+          "assessments",
+          "positive_live_assignments_claimed",
+          "certification_claimed"
+        ],
+        "title": "ValuesSummary",
+        "type": "object"
+      },
+      "ValuesWeight": {
+        "additionalProperties": false,
+        "properties": {
+          "lower": {
+            "maxLength": 160,
+            "pattern": "^\\d+(?:\\.\\d+)?$",
+            "title": "Lower",
+            "type": "string"
+          },
+          "unit": {
+            "const": "percent_of_original_disclosed_AUM",
+            "title": "Unit",
+            "type": "string"
+          },
+          "upper": {
+            "maxLength": 160,
+            "pattern": "^\\d+(?:\\.\\d+)?$",
+            "title": "Upper",
+            "type": "string"
+          },
+          "upper_exclusive": {
+            "title": "Upper Exclusive",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lower",
+          "upper",
+          "upper_exclusive",
+          "unit"
+        ],
+        "title": "ValuesWeight",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/fund-values/v1": {
+      "get": {
+        "operationId": "discovery_api_fund_values_v1_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesDiscovery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Discovery"
+      }
+    },
+    "/api/fund-values/v1/funds/{code}": {
+      "get": {
+        "operationId": "summary_api_fund_values_v1_funds__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "exclusiveMaximum": 2147483648,
+              "exclusiveMinimum": 0,
+              "title": "Code",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuesError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Summary"
+      }
+    }
+  }
+}
