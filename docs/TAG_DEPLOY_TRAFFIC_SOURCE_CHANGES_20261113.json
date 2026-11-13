@@ -1,0 +1,26 @@
+{
+  "base": "3741d683c78447cc9f53890625b449f709423406",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/deploy-dev.yml": {
+      "current_sha256": "617384b91a68fe2c480074a18256471070abd0533c1c0338f665d1d91bc40b76",
+      "previous_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421"
+    },
+    "tests/pypdf_patch_preservation.py": {
+      "current_sha256": "ff7f5a53a817b01080ba5ff89e3bd43e85e20f3b67b6b23a5e782b65dc2c6cba",
+      "previous_sha256": "c81906623ddb76cf83a3a9a9650bd09ecc8c6f6272939c92963a176a53de2f80"
+    },
+    "tests/test_pypdf_patch_preservation.py": {
+      "current_sha256": "c3388387959bc5fe11c2f02860c1e5a834e014fd02ac03ee95bb0c55b33d8c31",
+      "previous_sha256": "b39467591850959569029438b08a09cafbe33c20e202201e986c2ce99d34716d"
+    },
+    "tests/test_private_deployment.py": {
+      "current_sha256": "484ab171996b9646bf6e5d762a4869e36310f50186d412457d3b8b6410b56fdd",
+      "previous_sha256": "283b4da1a4da63a926f944398aa2ff5384b15f052f31aa83d7c68eed384377d0"
+    },
+    "tests/test_release_admission.py": {
+      "current_sha256": "fea5f0589486a62541a31b56e6aaeecee1aeb8d5a960e318c6c67282d4e813b0",
+      "previous_sha256": "3a83beebd9921606a4c3cff449a3a83b2e1085b57ccecec2cee9847ea54d48e0"
+    }
+  }
+}

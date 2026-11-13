@@ -303,6 +303,7 @@ def test_runtime_dependency_workflow_and_unknown_changes_remain_full_coverage():
 def test_ro03_current_authority_preserves_every_whole_predecessor_and_rejects_tamper():
     import ro03_historical_source as history
     from dev_reader_compatibility_history import previous as compatibility_previous
+    from tag_deploy_traffic_history import previous as traffic_previous
     rows = history.authority()
     assert set(rows) == {
         ".github/workflows/deploy-dev.yml", ".github/workflows/rollout-verified-review-dev.yml",
@@ -313,7 +314,7 @@ def test_ro03_current_authority_preserves_every_whole_predecessor_and_rejects_ta
     }
     for name, row in rows.items():
         observed = (ROOT / name).read_bytes()
-        current = compatibility_previous(ROOT / name, observed)
+        current = compatibility_previous(ROOT / name, traffic_previous(ROOT / name, observed))
         assert hashlib.sha256(current).hexdigest() == row["current_sha256"]
         previous = history.previous(name, current)
         assert hashlib.sha256(previous).hexdigest() == row["previous_sha256"]
