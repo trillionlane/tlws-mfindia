@@ -5,9 +5,11 @@ from datetime import date
 from decimal import Decimal
 import importlib.util
 from pathlib import Path
-from types import SimpleNamespace
+import subprocess
+from types import ModuleType, SimpleNamespace
 
 import pytest
+from hdfc_history import FUND_DETAIL_BASE
 from test_verified_review_store import verified_db as verified_db
 
 
@@ -15,6 +17,31 @@ WORKER = Path(__file__).parents[1] / "scripts/diagnose_core_fund_plan_dev.py"
 spec = importlib.util.spec_from_file_location("core_plan_diagnostic", WORKER)
 worker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(worker)
+
+
+@pytest.fixture(autouse=True)
+def historical_query_source(request, monkeypatch, tmp_path):
+    # This consumed worker is intentionally pinned to the original SQL.
+    # Run its guard tests against that exact source and leave production
+    # binding checks unchanged.
+    if request.node.name == "test_consumed_worker_rejects_current_query_source":
+        return
+    path = tmp_path / "queries.py"
+    path.write_bytes(subprocess.check_output(
+        ["git", "show", FUND_DETAIL_BASE + ":src/mfdataindia/api/queries.py"],
+        cwd=WORKER.parents[1],
+    ))
+    original = ModuleType("historical_core_plan_queries")
+    original.__file__ = str(path)
+    exec(compile(path.read_bytes(), str(path), "exec"), original.__dict__)
+    monkeypatch.setattr(worker, "queries", original)
+
+
+def test_consumed_worker_rejects_current_query_source():
+    conn = Connection()
+    with pytest.raises(ValueError, match="query module"):
+        worker.diagnose(conn)
+    assert conn.calls == []
 
 
 class Rows:
