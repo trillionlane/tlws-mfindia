@@ -10,6 +10,10 @@
       "current_sha256": "ff7f5a53a817b01080ba5ff89e3bd43e85e20f3b67b6b23a5e782b65dc2c6cba",
       "previous_sha256": "c81906623ddb76cf83a3a9a9650bd09ecc8c6f6272939c92963a176a53de2f80"
     },
+    "tests/test_dataset_source_changes.py": {
+      "current_sha256": "99a918a6c038a2ea045f01af393ca132071d4abff6d71efa173819686493ae4e",
+      "previous_sha256": "b5aa1ea34405bc52e4b556197b0a3633393abc84021d9b5884a855c4d0ca1436"
+    },
     "tests/test_dev_reader_compatibility_history.py": {
       "current_sha256": "025d76bed5796f84809fb71fe6ab8d94559c5f7afcb4009281d631f9311183e6",
       "previous_sha256": "8b6d18aef7d28de42d39849bf5183a461e8458a720429b0bef0fc6913280716d"
@@ -25,6 +29,10 @@
     "tests/test_release_admission.py": {
       "current_sha256": "fea5f0589486a62541a31b56e6aaeecee1aeb8d5a960e318c6c67282d4e813b0",
       "previous_sha256": "3a83beebd9921606a4c3cff449a3a83b2e1085b57ccecec2cee9847ea54d48e0"
+    },
+    "tests/test_reader_execution_source.py": {
+      "current_sha256": "414645c500e5ef7fbcb26ec4cb3843fc9799165b446bac4cf0c8c789d9b6b845",
+      "previous_sha256": "00fd31bf3cc2ac80ada7832a389746c9bcbe69bda3545005f6e3e2fd1c22a066"
     },
     "tests/test_ro01_current_authority.py": {
       "current_sha256": "557ff6504a5f309ef73149af930d904e70b00da453d82002e5120e018a29b931",

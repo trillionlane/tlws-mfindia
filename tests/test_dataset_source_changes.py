@@ -10,6 +10,7 @@ import pytest
 import yaml
 
 from dataset_source_history import previous
+from tag_deploy_traffic_history import previous as traffic_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = '6e074b0d32fe5923d8adba384d9784d08ae4afaa'
@@ -22,13 +23,13 @@ def test_current_source_changes_are_finite_whole_files_and_reject_tampering():
     assert set(document['modified']) == {'Dockerfile','scripts/migrate.py','.github/workflows/verify.yml',
         'tests/dev_reader_compatibility_history.py','tests/test_dev_reader_compatibility_history.py'}
     for name, row in document['modified'].items():
-        raw = (ROOT/name).read_bytes()
+        raw = traffic_previous(ROOT / name, (ROOT / name).read_bytes())
         old = subprocess.check_output(['git','show',BASE+':'+name],cwd=ROOT)
         assert hashlib.sha256(raw).hexdigest() == row['current_sha256']
         assert previous(ROOT/name,raw) == old
         for modified in (raw+b'\n# tamper',raw[:-1],raw+raw):
             with pytest.raises(AssertionError):
-                previous(ROOT/name,modified)
+                previous(ROOT / name, traffic_previous(ROOT / name, modified))
     historical = json.loads((ROOT / 'docs/RO03_CURRENT_SOURCE_CHANGES_20261101.json').read_text())['modified']['.github/workflows/verify.yml']
     assert document['modified']['.github/workflows/verify.yml']['historical_passthrough_sha256'] == [
         historical['current_sha256'],historical['previous_sha256']]

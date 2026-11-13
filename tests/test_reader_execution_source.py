@@ -11,6 +11,7 @@ from mfdataindia.review import dev_reader_source_reference as current
 from mfdataindia.review import broad_reader_view_profile as views
 from ro02_historical_source import ROOT, authority, previous
 from ro03_historical_source import previous as ro03_previous
+from tag_deploy_traffic_history import previous as traffic_previous
 
 
 def test_current_source_is_ten_complete_files_and_prior_nine_file_doc_immutable():
@@ -30,13 +31,13 @@ def test_current_source_is_ten_complete_files_and_prior_nine_file_doc_immutable(
 @pytest.mark.parametrize("name", sorted(authority()))
 def test_only_listed_complete_current_files_restore_and_every_byte_tamper_rejects(name):
     raw = (ROOT / name).read_bytes()
-    restored = previous(ROOT / name, raw)
+    restored = previous(ROOT / name, traffic_previous(ROOT / name, raw))
     row = authority()[name]
     assert raw != restored
     assert hashlib.sha256(restored).hexdigest() == row["previous_sha256"]
     for changed in (raw + b"\n#tamper", raw[:-1], raw + raw):
         with pytest.raises(AssertionError):
-            previous(ROOT / name, changed)
+            previous(ROOT / name, traffic_previous(ROOT / name, changed))
 
 
 def test_both_images_add_actual_current_entrypoint_smoke_without_changing_old_body():
