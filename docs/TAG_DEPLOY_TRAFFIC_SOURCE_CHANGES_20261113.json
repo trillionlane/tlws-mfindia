@@ -1,0 +1,50 @@
+{
+  "base": "3741d683c78447cc9f53890625b449f709423406",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/deploy-dev.yml": {
+      "current_sha256": "617384b91a68fe2c480074a18256471070abd0533c1c0338f665d1d91bc40b76",
+      "previous_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421"
+    },
+    "uv.lock": {
+      "current_sha256": "ba6835d8def1b5a26f97dadef4f031433a41656ea6cc93fb8107e01e055e985c",
+      "previous_sha256": "cbad265c09394d0ec424e3f48d651396f8af764b08049680f073bf5b2b4be1f6"
+    },
+    "tests/pypdf_patch_preservation.py": {
+      "current_sha256": "f10e7995582d209d119f40b0441fb621ec72e48762b4f873f85ea789f15a0828",
+      "previous_sha256": "c81906623ddb76cf83a3a9a9650bd09ecc8c6f6272939c92963a176a53de2f80"
+    },
+    "tests/test_dataset_source_changes.py": {
+      "current_sha256": "99a918a6c038a2ea045f01af393ca132071d4abff6d71efa173819686493ae4e",
+      "previous_sha256": "b5aa1ea34405bc52e4b556197b0a3633393abc84021d9b5884a855c4d0ca1436"
+    },
+    "tests/test_dev_reader_compatibility_history.py": {
+      "current_sha256": "025d76bed5796f84809fb71fe6ab8d94559c5f7afcb4009281d631f9311183e6",
+      "previous_sha256": "8b6d18aef7d28de42d39849bf5183a461e8458a720429b0bef0fc6913280716d"
+    },
+    "tests/test_pypdf_patch_preservation.py": {
+      "current_sha256": "c3388387959bc5fe11c2f02860c1e5a834e014fd02ac03ee95bb0c55b33d8c31",
+      "previous_sha256": "b39467591850959569029438b08a09cafbe33c20e202201e986c2ce99d34716d"
+    },
+    "tests/test_pypdf_security_20261030.py": {
+      "current_sha256": "401d07a590eadf1820b8e650285d0110d49eadc063b603f9a1a10b50445725de",
+      "previous_sha256": "2c7cef15fa14d1bbc933eceb393cb4d7ba93cfb8500a1fad1f78580ffc022be2"
+    },
+    "tests/test_private_deployment.py": {
+      "current_sha256": "484ab171996b9646bf6e5d762a4869e36310f50186d412457d3b8b6410b56fdd",
+      "previous_sha256": "283b4da1a4da63a926f944398aa2ff5384b15f052f31aa83d7c68eed384377d0"
+    },
+    "tests/test_release_admission.py": {
+      "current_sha256": "fea5f0589486a62541a31b56e6aaeecee1aeb8d5a960e318c6c67282d4e813b0",
+      "previous_sha256": "3a83beebd9921606a4c3cff449a3a83b2e1085b57ccecec2cee9847ea54d48e0"
+    },
+    "tests/test_reader_execution_source.py": {
+      "current_sha256": "414645c500e5ef7fbcb26ec4cb3843fc9799165b446bac4cf0c8c789d9b6b845",
+      "previous_sha256": "00fd31bf3cc2ac80ada7832a389746c9bcbe69bda3545005f6e3e2fd1c22a066"
+    },
+    "tests/test_ro01_current_authority.py": {
+      "current_sha256": "557ff6504a5f309ef73149af930d904e70b00da453d82002e5120e018a29b931",
+      "previous_sha256": "7bebebe95f7f2716df1d63e0725a7d15ec85627c4f34405685c7fc0913af0c1d"
+    }
+  }
+}

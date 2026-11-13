@@ -16,6 +16,23 @@ def test_dev_deployment_is_internal_and_authenticated_only() -> None:
     assert "roles/run.invoker" in workflow
 
 
+def test_dev_deployment_promotes_latest_revision_without_dropping_named_tags() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
+
+    read_service_block = workflow.split(
+        "      - name: Deploy private read-only service", 1
+    )[1].split("      - name: Deploy private association writer disabled", 1)[0]
+    assert 'gcloud run services update-traffic "$SERVICE_NAME"' in read_service_block
+    assert "--to-latest" in read_service_block
+    assert "--clear-tags" not in read_service_block
+
+    reconcile_block = workflow.split(
+        "      - name: Reconcile private service and immutable revision", 1
+    )[1].split("      - name: Reconcile the optional association writer revision", 1)[0]
+    assert "select((.percent // 0) == 100)" in reconcile_block
+    assert 'test "$serving_revision" = "$latest_ready_revision"' in reconcile_block
+
+
 def test_dev_preflight_verifies_the_deployed_insights_identity_without_iam_read() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 

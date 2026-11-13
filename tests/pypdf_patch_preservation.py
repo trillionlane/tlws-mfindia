@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from ro01_historical_source import historical_parent
+from tag_deploy_traffic_history import previous as traffic_previous
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_SHA = "b415b3a256aff8883d6f4ffe3f3e4dd18f1e8b95f7b35708640632cc7fa2a5c8"
@@ -22,9 +23,10 @@ def restore_pypdf_parent(path, data):
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:
-        return data
+        return traffic_previous(path, data)
     if name in PATCH_MODIFIED and hashlib.sha256(data).hexdigest() == PLAN["modified"][name]["old_full_sha256"]:
         return data
+    data = traffic_previous(path, data)
     data = historical_parent(path, data)
     if name not in PATCH_MODIFIED:
         return data

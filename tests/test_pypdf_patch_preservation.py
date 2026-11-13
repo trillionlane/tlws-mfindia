@@ -12,6 +12,7 @@ from ro01_historical_source import BASE as RO01_BASE, historical_parent
 from pypdf_patch_preservation import (
     PATCH_ADDED, PATCH_MODIFIED, PLAN, PLAN_BYTES, PLAN_SHA, ROOT, restore_pypdf_parent,
 )
+from tag_deploy_traffic_history import previous as traffic_previous
 
 BASE = "03f3932eb22218478f82e7985e1d0ba527f22cde"
 
@@ -42,7 +43,7 @@ def test_all_1059_parent_bytes_modes_and_exact_finite_patch():
             assert path.is_file() and not path.is_symlink()
             assert stat.S_ISREG(path.stat().st_mode)
             assert bool(path.stat().st_mode & 0o111) == (mode == "100755")
-            raw = historical_parent(path, path.read_bytes())
+            raw = historical_parent(path, traffic_previous(path, path.read_bytes()))
         if name in PATCH_MODIFIED:
             recipe = PLAN["modified"][name]
             assert mode == recipe["mode"]

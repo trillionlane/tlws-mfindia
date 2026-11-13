@@ -15,6 +15,7 @@ import pytest
 
 from pypdf_patch_preservation import PLAN, ROOT
 from ro01_historical_source import historical_parent
+from tag_deploy_traffic_history import previous as traffic_previous
 
 BASE = "03f3932eb22218478f82e7985e1d0ba527f22cde"
 
@@ -120,7 +121,7 @@ def test_119204_flattened_attribute_budget_charged_before_page_allocation():
 
 def test_only_pypdf_lock_and_its_exact_project_requirement_changed():
     old = tomllib.loads(subprocess.check_output(["git", "show", BASE + ":uv.lock"], cwd=ROOT).decode())
-    new = tomllib.loads((ROOT / "uv.lock").read_text())
+    new = tomllib.loads(traffic_previous(ROOT / "uv.lock", (ROOT / "uv.lock").read_bytes()).decode())
     assert old.keys() == new.keys()
     old_packages = {p["name"]: p for p in old.pop("package")}
     new_packages = {p["name"]: p for p in new.pop("package")}
