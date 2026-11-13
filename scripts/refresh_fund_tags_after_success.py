@@ -53,16 +53,18 @@ def execute(operation, child_args, *, runner=subprocess.run, refresher=after_suc
     source_receipt_hash = hashlib.sha256(child.stdout.encode()).hexdigest()
     if operation == 'daily-amfi-refresh':
         receipt, trigger = _daily_trigger(child.stdout)
-        tag_refresh = refresher(trigger or {})
-        output = ({
-            'status': 'DAILY_REFRESH_OK',
-            'source_receipt_sha256': source_receipt_hash,
-            'tag_refresh': tag_refresh,
-        } if receipt is None else {
-            **receipt,
-            'source_receipt_sha256': source_receipt_hash,
-            'tag_refresh': tag_refresh,
-        })
+        if receipt is None:
+            output = {
+                'status': 'SOURCE_SUCCESS_RECEIPT_INVALID',
+                'source_receipt_sha256': source_receipt_hash,
+                'tag_refresh': {'state': 'NOT_REQUESTED_INVALID_SOURCE_RECEIPT'},
+            }
+        else:
+            output = {
+                **receipt,
+                'source_receipt_sha256': source_receipt_hash,
+                'tag_refresh': refresher(trigger),
+            }
     elif '--dry-run' in child_args:
         output = {
             'status': 'FUND_FAMILY_DRY_RUN_OK',

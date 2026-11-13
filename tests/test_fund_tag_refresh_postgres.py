@@ -5,7 +5,7 @@ import pytest
 
 from mfdataindia.tagging import refresh
 from test_fund_tagging_postgres import tagging_db as tagging_db, writer
-from test_ro01_reader_policy_postgres import connect, values
+from test_ro01_reader_policy_postgres import connect, ro01_db as ro01_db, values
 
 pytestmark = pytest.mark.postgres
 

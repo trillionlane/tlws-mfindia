@@ -153,6 +153,24 @@ def test_wrapper_never_attempts_tags_after_source_failure():
     ) == (7, 'source-output', 'source-failed')
 
 
+def test_wrapper_preserves_zero_exit_but_skips_tags_for_invalid_daily_receipt():
+    module = wrapper()
+
+    def runner(*args, **kwargs):
+        return SimpleNamespace(returncode=0, stdout='not-a-source-receipt', stderr='')
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('tag refresh ran without a valid source receipt')
+
+    code, stdout, stderr = module.execute(
+        'daily-amfi-refresh', [], runner=runner, refresher=forbidden
+    )
+    result = json.loads(stdout)
+    assert code == 0 and stderr == ''
+    assert result['status'] == 'SOURCE_SUCCESS_RECEIPT_INVALID'
+    assert result['tag_refresh'] == {'state': 'NOT_REQUESTED_INVALID_SOURCE_RECEIPT'}
+
+
 def test_family_wrapper_skips_dry_run_and_uses_success_receipt_hash():
     module = wrapper()
 
