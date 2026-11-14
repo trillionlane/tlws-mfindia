@@ -38,6 +38,9 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Validate supervised execution contract
         env:
           CONFIRM_PROJECT: ${{ inputs.confirm_project }}
@@ -49,6 +52,11 @@ jobs:
           test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
           test "$GITHUB_REPOSITORY_ID" = "1403671867"
           test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -r scripts/tag_publication_log.jq
+          jq -e -f scripts/tag_publication_log.jq >/dev/null <<'JSON'
+          [{"jsonPayload":{"format":"mfdata-tag-refresh-attempt-v1","state":"UNCHANGED","tag_snapshot_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source_publication_id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","source_publication_sequence":1}}]
+          JSON
       - id: auth
         uses: google-github-actions/auth@v2
         with:

@@ -258,10 +258,26 @@ jobs:
             ingest_has_tag_access=true
           fi
           if [[ "$ingest_has_tag_access" == "true" ]]; then
+            access_token="$(gcloud auth print-access-token)"
+            permission_json="$(curl --fail --silent --show-error --request POST \
+              --header "Authorization: Bearer $access_token" \
+              --header "Content-Type: application/json" \
+              --data '{"permissions":["secretmanager.secrets.setIamPolicy"]}' \
+              "https://secretmanager.googleapis.com/v1/projects/$EXPECTED_PROJECT/secrets/tlws-mf-data-tag-writer-dsn-dev:testIamPermissions")"
+            jq -e '.permissions == ["secretmanager.secrets.setIamPolicy"]' \
+              <<<"$permission_json" >/dev/null
             jq -e --arg member "$deploy_member" '
-              .bindings[]? |
-              select(.role == "roles/secretmanager.admin" and (.condition? == null)) |
-              .members[]? | select(. == $member)
+              any(.bindings[]?;
+                .role == "roles/secretmanager.admin"
+                and .condition.title == "mfdata-tag-writer-cutover"
+                and (.condition.expression | startswith("request.time < timestamp("))
+                and any(.members[]?; . == $member))
+              and all(.bindings[]?;
+                if .role == "roles/secretmanager.admin"
+                then all(.members[]?; . != $member) or (
+                  .condition.title == "mfdata-tag-writer-cutover"
+                  and (.condition.expression | startswith("request.time < timestamp(")))
+                else true end)
             ' <<<"$tag_secret_policy" >/dev/null
           fi
           legacy_job=false
@@ -412,19 +428,7 @@ jobs:
               --condition=None \
               --quiet >/dev/null
           fi
-          tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
-            --project="$EXPECTED_PROJECT" --format=json)"
-          if jq -e --arg member "$deploy_member" '
-            [.bindings[]? | select(.role == "roles/secretmanager.admin") |
-             .members[]?] | any(. == $member)
-          ' <<<"$tag_secret_policy" >/dev/null; then
-            gcloud secrets remove-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev \
-              --project="$EXPECTED_PROJECT" \
-              --member="$deploy_member" \
-              --role=roles/secretmanager.admin \
-              --condition=None \
-              --quiet >/dev/null
-          fi
+          bash scripts/remove_tag_cutover_admin.sh "$EXPECTED_PROJECT" "$DEPLOY_SERVICE_ACCOUNT"
           tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
             --project="$EXPECTED_PROJECT" --format=json)"
           jq -e --arg member "$tag_member" '
