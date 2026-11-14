@@ -8,6 +8,7 @@ response bodies.
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 from typing import Any
@@ -20,6 +21,28 @@ METADATA_IDENTITY_URL = (
 )
 REQUEST_TIMEOUT_SECONDS = 15
 METADATA_TIMEOUT_SECONDS = 3
+EXPECTED_TAG_DIMENSIONS = (
+    "amc",
+    "scheme-category",
+    "scheme-structure",
+    "plan",
+    "option",
+    "vehicle",
+    "asset-class",
+    "risk",
+    "strategy",
+    "market-cap",
+    "geography",
+    "sector",
+    "theme",
+    "duration-credit",
+    "benchmark",
+    "esg-strategy",
+    "environment",
+    "values-screen",
+    "entity-exposure",
+    "assessment",
+)
 
 
 class PrivateSmokeError(RuntimeError):
@@ -86,7 +109,14 @@ def _get_json(
         raise PrivateSmokeError(f"private API returned invalid JSON for {label}") from exc
 
 
-def run_smoke(base_url: str, audience: str, session: requests.Session) -> None:
+def run_smoke(
+    base_url: str,
+    audience: str,
+    session: requests.Session,
+    *,
+    require_tags: bool = False,
+    expected_tag_snapshot: str | None = None,
+) -> None:
     base_url = _service_url(base_url, name="MFDATAINDIA_PRIVATE_BASE_URL")
     audience = _service_url(audience, name="MFDATAINDIA_PRIVATE_AUDIENCE")
     if audience != base_url:
@@ -133,20 +163,94 @@ def run_smoke(base_url: str, audience: str, session: requests.Session) -> None:
     if nav.get("code") != code or not isinstance(points, list) or not points:
         raise PrivateSmokeError("private API NAV contract failed")
 
+    if require_tags:
+        if (
+            not isinstance(expected_tag_snapshot, str)
+            or len(expected_tag_snapshot) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in expected_tag_snapshot
+            )
+        ):
+            raise PrivateSmokeError("expected factual-tag publication snapshot is absent")
+        discovery = _get_json(
+            session,
+            base_url,
+            "/api/fund-tags/v1",
+            token,
+            label="factual-tag discovery",
+        )
+        published_snapshot = (
+            discovery.get("snapshot_id") if isinstance(discovery, dict) else None
+        )
+        if (
+            not isinstance(published_snapshot, str)
+            or published_snapshot != expected_tag_snapshot
+            or discovery.get("dimensions") != list(EXPECTED_TAG_DIMENSIONS)
+            or not isinstance(discovery.get("published_funds"), int)
+            or discovery["published_funds"] < 1
+        ):
+            raise PrivateSmokeError("private API factual-tag discovery contract failed")
+        tags = _get_json(
+            session,
+            base_url,
+            f"/api/fund-tags/v1/funds/{code}",
+            token,
+            label="factual tags",
+        )
+        funds = tags.get("funds") if isinstance(tags, dict) else None
+        snapshot_id = tags.get("snapshot_id") if isinstance(tags, dict) else None
+        assessments = funds[0].get("assessments") if (
+            isinstance(funds, list) and len(funds) == 1 and isinstance(funds[0], dict)
+        ) else None
+        if (
+            not isinstance(snapshot_id, str)
+            or snapshot_id != published_snapshot
+            or not isinstance(funds, list)
+            or len(funds) != 1
+            or not isinstance(funds[0], dict)
+            or funds[0].get("code") != code
+            or funds[0].get("state") != "found"
+            or not isinstance(assessments, list)
+            or len(assessments) != len(EXPECTED_TAG_DIMENSIONS)
+            or {
+                assessment.get("dimension")
+                for assessment in assessments
+                if isinstance(assessment, dict)
+            }
+            != set(EXPECTED_TAG_DIMENSIONS)
+            or any(
+                not isinstance(assessment, dict)
+                or assessment.get("snapshot_id") != snapshot_id
+                for assessment in assessments
+            )
+        ):
+            raise PrivateSmokeError("private API factual-tag contract failed")
 
-def main() -> int:
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--require-tags", action="store_true")
+    parser.add_argument("--expected-tag-snapshot")
+    args = parser.parse_args(argv)
     base_url = os.environ.get("MFDATAINDIA_PRIVATE_BASE_URL", "")
     audience = os.environ.get("MFDATAINDIA_PRIVATE_AUDIENCE", "")
     session = requests.Session()
     session.trust_env = False
     try:
-        run_smoke(base_url, audience, session)
+        run_smoke(
+            base_url,
+            audience,
+            session,
+            require_tags=args.require_tags,
+            expected_tag_snapshot=args.expected_tag_snapshot,
+        )
     except (PrivateSmokeError, requests.RequestException) as exc:
         print(f"private MFDataIndia smoke failed: {exc}", file=sys.stderr)
         return 1
     finally:
         session.close()
-    print("private MFDataIndia smoke passed: endpoints=5")
+    print(f"private MFDataIndia smoke passed: endpoints={7 if args.require_tags else 5}")
     return 0
 
 

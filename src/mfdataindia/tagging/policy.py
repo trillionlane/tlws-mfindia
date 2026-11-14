@@ -5,8 +5,7 @@ from datetime import date
 import hashlib
 import json
 from pathlib import Path
-
-from mfdataindia.load.fund_family import tlws_mf_id
+import uuid
 
 VERSION = 'mfdata-fund-tags-v1'
 OWNER = 'mfdata_admin'
@@ -26,11 +25,11 @@ RESERVED = tuple(n for n in NAMESPACES if n not in {'identity', 'asset-class', '
 DIMENSIONS = FIELDS + RESERVED
 ROW_KEYS = frozenset('code amc_id amc scheme_name scheme_type scheme_category category_source '
                      'plan_type plan_source option_type is_etf in_scope last_seen '
-                     'group_key family_id'.split())
+                     'group_key family_id durable_family_id'.split())
 CONTRACT = {'format': VERSION, 'dimensions': list(DIMENSIONS),
             'factual_inputs': 'AMFI database identity observations, not certified SID or portfolio evidence',
             'reserved': list(RESERVED), 'ethical_screening_enabled': False,
-            'family_identity': 'existing UUID retained only with unique AMC/category membership',
+            'family_identity': 'durable variant binding must match unique current family projection and AMC/category membership',
             'source_rows_changed': False}
 
 
@@ -52,6 +51,13 @@ def digest(value):
     return hashlib.sha256(canonical(value)).hexdigest()
 
 
+def valid_family_id(value):
+    try:
+        return type(value) is str and str(uuid.UUID(value)) == value
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
 def validate(rows):
     require(type(rows) is list and 0 < len(rows) <= MAX_FUNDS, 'INVALID_FUND_CENSUS')
     seen = set()
@@ -62,12 +68,12 @@ def validate(rows):
         seen.add(row['code'])
         require(type(row['amc_id']) is int and row['amc_id'] > 0, 'INVALID_FUND_CENSUS_ROW')
         for key in ROW_KEYS - {'code', 'amc_id', 'is_etf', 'in_scope', 'last_seen',
-                               'group_key', 'family_id'}:
+                               'group_key', 'family_id', 'durable_family_id'}:
             require(type(row[key]) is str and 0 < len(row[key]) <= 1000
                     and not any(ord(c) < 32 for c in row[key]), 'INVALID_FUND_CENSUS_ROW')
         require(type(row['is_etf']) is bool and type(row['in_scope']) is bool,
                 'INVALID_FUND_CENSUS_ROW')
-        for key in ('group_key', 'family_id'):
+        for key in ('group_key', 'family_id', 'durable_family_id'):
             require(row[key] is None or (type(row[key]) is str and len(row[key]) <= 1000),
                     'INVALID_FUND_CENSUS_ROW')
         try:
@@ -84,21 +90,41 @@ def prepare(rows):
     """Pure complete-census proposal; no IDs rewritten or external facts inferred."""
     validate(rows)
     rows = sorted(rows, key=lambda r: r['code'])
-    source_hash = digest(rows)
+    catalogue_rows = [{key: row[key] for key in (
+        'code', 'amc_id', 'amc', 'scheme_name', 'scheme_type', 'scheme_category',
+        'category_source', 'plan_type', 'plan_source', 'option_type', 'is_etf',
+        'in_scope', 'last_seen',
+    )} for row in rows]
+    family_rows = [{key: row[key] for key in (
+        'code', 'group_key', 'family_id', 'durable_family_id')}
+                   for row in rows]
+    catalogue_census_hash = digest(catalogue_rows)
+    family_projection_hash = digest(family_rows)
+    source_hash = digest({
+        'catalogue_census_hash': catalogue_census_hash,
+        'family_projection_hash': family_projection_hash,
+    })
     policy_hash = digest({'contract': CONTRACT,
                           'implementation_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()})
     snapshot = digest({'policy_hash': policy_hash, 'source_hash': source_hash})
-    groups = {}
+    groups, family_ids, family_keys = {}, {}, {}
     for r in rows:
         if r['group_key']:
             groups.setdefault(r['group_key'], set()).add(
                 (r['amc_id'], r['scheme_type'], r['scheme_category']))
+            if r['family_id']:
+                family_ids.setdefault(r['group_key'], set()).add(r['family_id'])
+                family_keys.setdefault(r['family_id'], set()).add(r['group_key'])
     definitions, assessments, mapping_counts = {}, [], {}
     for r in rows:
         key = r['group_key']
         if not key or not r['family_id']:
-            mapping = 'FAMILY_MISSING'
-        elif len(groups[key]) != 1 or r['family_id'] != tlws_mf_id(key):
+            mapping = ('FAMILY_MISSING' if r['durable_family_id'] is None
+                       else 'FAMILY_AMBIGUOUS')
+        elif (len(groups[key]) != 1 or not valid_family_id(r['family_id'])
+              or r['durable_family_id'] != r['family_id']
+              or family_ids.get(key) != {r['family_id']}
+              or family_keys.get(r['family_id']) != {key}):
             mapping = 'FAMILY_AMBIGUOUS'
         else:
             mapping = 'FAMILY_VERIFIED'
@@ -138,7 +164,9 @@ def prepare(rows):
                 'evidence_hash': digest(r), 'policy_version': VERSION})
     counts = {s: sum(a['state'] == s for a in assessments)
               for s in ('supported', 'insufficient-evidence', 'not-assessed', 'not-applicable')}
-    return {'snapshot_id': snapshot, 'source_hash': source_hash, 'policy_hash': policy_hash,
+    return {'snapshot_id': snapshot, 'source_hash': source_hash,
+            'catalogue_census_hash': catalogue_census_hash,
+            'family_projection_hash': family_projection_hash, 'policy_hash': policy_hash,
             'funds': len(rows), 'in_scope_funds': sum(r['in_scope'] for r in rows),
             'mapping_counts': mapping_counts, 'counts': counts,
             'observations': rows, 'definitions': sorted(definitions.values(), key=lambda d: d['tag_id']),

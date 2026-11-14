@@ -1,0 +1,124 @@
+name: Refresh MFDataIndia factual tags DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_job:
+        description: "Type tlws-mf-data-tag-refresh-dev"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-dev-mutations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  SERVICE_NAME: tlws-mf-data-dev
+  TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
+  TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@trillionlane-dev.iam.gserviceaccount.com
+  PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
+  SMOKE_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Validate supervised execution contract
+        env:
+          CONFIRM_PROJECT: ${{ inputs.confirm_project }}
+          CONFIRM_JOB: ${{ inputs.confirm_job }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_PROJECT" = "$EXPECTED_PROJECT"
+          test "$CONFIRM_JOB" = "$TAG_REFRESH_JOB"
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REPOSITORY_ID" = "1403671867"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -r scripts/tag_publication_log.jq
+          jq -e -f scripts/tag_publication_log.jq >/dev/null <<'JSON'
+          [{"jsonPayload":{"format":"mfdata-tag-refresh-attempt-v1","state":"UNCHANGED","tag_snapshot_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source_publication_id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","source_publication_sequence":1}}]
+          JSON
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - id: publication
+        name: Execute one independent zero-retry factual-tag publication
+        run: |
+          set -euo pipefail
+          job_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          live_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$job_json")" = "$live_image"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$job_json")" = "$TAG_RUNTIME_SERVICE_ACCOUNT"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$job_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN")] | length == 0' <<<"$job_json" >/dev/null
+          execution_name="$(gcloud run jobs execute "$TAG_REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --wait --quiet --format='value(metadata.name)')"
+          [[ "$execution_name" == "$TAG_REFRESH_JOB"-* ]]
+          log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$TAG_REFRESH_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$execution_name\""
+          publish_result=""
+          for attempt in 1 2 3 4 5; do
+            logs_json="$(gcloud logging read "$log_filter" \
+              --project="$EXPECTED_PROJECT" --freshness=10m --limit=50 \
+              --order=desc --format=json)"
+            if candidate="$(jq -cer -f scripts/tag_publication_log.jq <<<"$logs_json")"; then
+              publish_result="$candidate"
+              break
+            fi
+            if [[ "$attempt" -eq 5 ]]; then
+              echo "Exact tag publication receipt unavailable for completed execution" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          published_snapshot="$(jq -er '.tag_snapshot_id |
+            select(type == "string" and test("^[0-9a-f]{64}$"))' <<<"$publish_result")"
+          jq -e '.source_publication_id |
+            type == "string" and test("^[0-9a-f]{64}$")' <<<"$publish_result" >/dev/null
+          jq -e '.source_publication_sequence | type == "number" and . > 0' \
+            <<<"$publish_result" >/dev/null
+          echo "published_snapshot=$published_snapshot" >> "$GITHUB_OUTPUT"
+      - name: Verify published tags through packaged authenticated service
+        run: |
+          set -euo pipefail
+          smoke_json="$(gcloud run jobs describe "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          live_image="$(gcloud run services describe "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --format='value(spec.template.spec.containers[0].image)')"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$smoke_json")" = "$live_image"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$smoke_json")" = "$SMOKE_RUNTIME_SERVICE_ACCOUNT"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$smoke_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/smoke_private_api.py"]' <<<"$smoke_json" >/dev/null
+          gcloud run jobs execute "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --args=/app/scripts/smoke_private_api.py,--require-tags,--expected-tag-snapshot,${{ steps.publication.outputs.published_snapshot }} \
+            --wait \
+            --quiet

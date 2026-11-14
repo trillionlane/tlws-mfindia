@@ -43,6 +43,8 @@ env:
   ASSOCIATION_WRITER_PROVISIONED: ${{ vars.MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED || 'false' }}
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   REFRESH_JOB: tlws-mf-data-nav-refresh-dev
+  TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
+  TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@trillionlane-dev.iam.gserviceaccount.com
   TAG_INSTALL_JOB: tlws-mf-data-tag-install-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
@@ -194,6 +196,113 @@ jobs:
               "$ASSOCIATION_SERVICE_NAME"
           fi
 
+      - name: Verify dedicated tag runtime prerequisites before mutation
+        shell: bash
+        env:
+          DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          INGEST_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          tag_member="serviceAccount:$TAG_RUNTIME_SERVICE_ACCOUNT"
+          deploy_member="serviceAccount:$DEPLOY_SERVICE_ACCOUNT"
+          ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"
+          test "$TAG_RUNTIME_SERVICE_ACCOUNT" != "$INGEST_SERVICE_ACCOUNT"
+          tag_identity="$(gcloud iam service-accounts describe "$TAG_RUNTIME_SERVICE_ACCOUNT" \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg email "$TAG_RUNTIME_SERVICE_ACCOUNT" \
+            '.email == $email and (.disabled // false) == false' <<<"$tag_identity" >/dev/null
+          project_policy="$(gcloud projects get-iam-policy "$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$tag_member" '
+            .bindings[] | select(.role == "roles/cloudsql.client" and (.condition? == null)) |
+            .members[]? | select(. == $member)
+          ' <<<"$project_policy" >/dev/null
+          if jq -e --arg tag "$tag_member" --arg ingest "$ingest_member" '
+            [.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+             .members[]? | select(. == $tag or . == $ingest)] | length > 0
+          ' <<<"$project_policy" >/dev/null; then
+            echo "Tag or ingest runtime has project-wide secret access" >&2
+            exit 1
+          fi
+          tag_identity_policy="$(gcloud iam service-accounts get-iam-policy \
+            "$TAG_RUNTIME_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$deploy_member" '
+            .bindings[] | select(.role == "roles/iam.serviceAccountUser" and (.condition? == null)) |
+            .members[]? | select(. == $member)
+          ' <<<"$tag_identity_policy" >/dev/null
+          tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg tag "$tag_member" --arg ingest "$ingest_member" '
+            ([.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+              .members[]?] | sort) as $members
+            | ($members == ([$tag] | sort) or $members == ([$tag,$ingest] | sort))
+            and all(.bindings[]? | select(.role == "roles/secretmanager.secretAccessor");
+                    .condition? == null)
+          ' <<<"$tag_secret_policy" >/dev/null
+          ingest_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-ingest-dsn-dev \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$ingest_member" '
+            ([.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+              .members[]?] | sort) == ([$member] | sort)
+            and all(.bindings[]? | select(.role == "roles/secretmanager.secretAccessor");
+                    .condition? == null)
+          ' <<<"$ingest_secret_policy" >/dev/null
+          refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$refresh_json")" = "$INGEST_SERVICE_ACCOUNT"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
+          ingest_has_tag_access=false
+          if jq -e --arg member "$ingest_member" '
+            [.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+             .members[]?] | any(. == $member)
+          ' <<<"$tag_secret_policy" >/dev/null; then
+            ingest_has_tag_access=true
+          fi
+          if [[ "$ingest_has_tag_access" == "true" ]]; then
+            access_token="$(gcloud auth print-access-token)"
+            permission_json="$(curl --fail --silent --show-error --request POST \
+              --header "Authorization: Bearer $access_token" \
+              --header "Content-Type: application/json" \
+              --data '{"permissions":["secretmanager.secrets.setIamPolicy"]}' \
+              "https://secretmanager.googleapis.com/v1/projects/$EXPECTED_PROJECT/secrets/tlws-mf-data-tag-writer-dsn-dev:testIamPermissions")"
+            jq -e '.permissions == ["secretmanager.secrets.setIamPolicy"]' \
+              <<<"$permission_json" >/dev/null
+            jq -e --arg member "$deploy_member" '
+              any(.bindings[]?;
+                .role == "roles/secretmanager.admin"
+                and .condition.title == "mfdata-tag-writer-cutover"
+                and (.condition.expression | startswith("request.time < timestamp("))
+                and any(.members[]?; . == $member))
+              and all(.bindings[]?;
+                if .role == "roles/secretmanager.admin"
+                then all(.members[]?; . != $member) or (
+                  .condition.title == "mfdata-tag-writer-cutover"
+                  and (.condition.expression | startswith("request.time < timestamp(")))
+                else true end)
+            ' <<<"$tag_secret_policy" >/dev/null
+          fi
+          legacy_job=false
+          if jq -e '.spec.template.spec.template.spec.containers[0].args ==
+              ["/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"]' <<<"$refresh_json" >/dev/null \
+            && jq -e '.spec.template.spec.template.spec.containers[0].env[] |
+              select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") |
+              .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$refresh_json" >/dev/null
+          then
+            legacy_job=true
+          fi
+          current_job=false
+          if jq -e '.spec.template.spec.template.spec.containers[0].args ==
+              ["/app/scripts/refresh_daily_v2.py"]' <<<"$refresh_json" >/dev/null \
+            && jq -e '[.spec.template.spec.template.spec.containers[0].env[] |
+              select(.name == "MFDATAINDIA_TAG_REFRESH_DSN")] | length == 0' <<<"$refresh_json" >/dev/null
+          then
+            current_job=true
+          fi
+          if [[ "$legacy_job" == "true" ]]; then
+            test "$ingest_has_tag_access" = "true"
+          else
+            test "$current_job" = "true"
+          fi
+
       - name: Verify private-read access before publishing
         shell: bash
         run: bash scripts/private_read_invokers_dev.sh preflight
@@ -267,6 +376,72 @@ jobs:
             --wait \
             --quiet
 
+      - name: Cut over NAV job before revoking legacy tag-secret access
+        shell: bash
+        env:
+          DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          INGEST_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          deploy_member="serviceAccount:$DEPLOY_SERVICE_ACCOUNT"
+          ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"
+          tag_member="serviceAccount:$TAG_RUNTIME_SERVICE_ACCOUNT"
+          gcloud run jobs deploy "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="$INGEST_SERVICE_ACCOUNT" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
+            --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/refresh_daily_v2.py \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=10m \
+            --cpu=1 \
+            --memory=1Gi \
+            --labels=product=mfdataindia,environment=dev,operation=nav-refresh,managed-by=github-actions \
+            --quiet
+          refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          jq -e '.spec.template.spec.template.spec.containers[0].args ==
+            ["/app/scripts/refresh_daily_v2.py"]' <<<"$refresh_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] |
+            select(.name == "MFDATAINDIA_TAG_REFRESH_DSN")] | length == 0' <<<"$refresh_json" >/dev/null
+          executions_json="$(gcloud run jobs executions list \
+            --job="$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --format=json)"
+          jq -e 'all(.[]; (.status.completionTime? // "") != "")' \
+            <<<"$executions_json" >/dev/null
+          tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          if jq -e --arg member "$ingest_member" '
+            [.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+             .members[]?] | any(. == $member)
+          ' <<<"$tag_secret_policy" >/dev/null; then
+            gcloud secrets remove-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev \
+              --project="$EXPECTED_PROJECT" \
+              --member="$ingest_member" \
+              --role=roles/secretmanager.secretAccessor \
+              --condition=None \
+              --quiet >/dev/null
+          fi
+          bash scripts/remove_tag_cutover_admin.sh "$EXPECTED_PROJECT" "$DEPLOY_SERVICE_ACCOUNT"
+          tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$tag_member" '
+            ([.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+              .members[]?] | sort) == ([$member] | sort)
+            and all(.bindings[]? | select(.role == "roles/secretmanager.secretAccessor");
+                    .condition? == null)
+          ' <<<"$tag_secret_policy" >/dev/null
+          jq -e --arg member "$deploy_member" '
+            [.bindings[]? | select(.role == "roles/secretmanager.admin") |
+             .members[]?] | all(. != $member)
+          ' <<<"$tag_secret_policy" >/dev/null
+
       - name: Deploy private read-only service
         shell: bash
         run: |
@@ -283,7 +458,7 @@ jobs:
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-review-read-dsn-dev:latest \
             --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$RELEASE_CANDIDATE_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
             --command=/app/.venv/bin/uvicorn \
-            --args=mfdataindia.tagging.app:create_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
+            --args=mfdataindia.tagging.values_app:create_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
             --cpu=1 \
             --memory=512Mi \
             --concurrency=40 \
@@ -362,27 +537,26 @@ jobs:
         shell: bash
         run: bash scripts/private_read_invokers_dev.sh reconcile
 
-      - name: Reconcile the six-hour refresh job to the immutable image
+      - name: Reconcile the independent zero-retry factual-tag refresh job
         shell: bash
         run: |
           set -euo pipefail
-          gcloud run jobs deploy "$REFRESH_JOB" \
+          gcloud run jobs deploy "$TAG_REFRESH_JOB" \
             --project="$EXPECTED_PROJECT" \
             --region="$EXPECTED_REGION" \
             --image="${{ steps.image.outputs.uri }}" \
-            --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
+            --service-account="$TAG_RUNTIME_SERVICE_ACCOUNT" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
-            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest,MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
-            --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
+            --set-secrets=MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
             --command=/app/.venv/bin/python \
-            --args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh \
+            --args=/app/scripts/publish_fund_tags.py \
             --tasks=1 \
             --parallelism=1 \
             --max-retries=0 \
-            --task-timeout=10m \
+            --task-timeout=2m \
             --cpu=1 \
-            --memory=1Gi \
-            --labels=product=mfdataindia,environment=dev,operation=nav-refresh,managed-by=github-actions \
+            --memory=512Mi \
+            --labels=product=mfdataindia,environment=dev,operation=tag-refresh,managed-by=github-actions \
             --quiet
 
       - name: Deploy and execute the internal zero-retry smoke job
@@ -442,7 +616,7 @@ jobs:
           deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
           test "$deployed_sha" = "$RELEASE_CANDIDATE_SHA"
           jq -e '.spec.template.spec.containers[0].command == ["/app/.venv/bin/uvicorn"]' <<<"$service_json" >/dev/null
-          jq -e '.spec.template.spec.containers[0].args == ["mfdataindia.tagging.app:create_app","--factory","--host","0.0.0.0","--port","8080","--no-access-log"]' <<<"$service_json" >/dev/null
+          jq -e '.spec.template.spec.containers[0].args == ["mfdataindia.tagging.values_app:create_app","--factory","--host","0.0.0.0","--port","8080","--no-access-log"]' <<<"$service_json" >/dev/null
           jq -e '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-review-read-dsn-dev"' <<<"$service_json" >/dev/null
 
           refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
@@ -457,9 +631,17 @@ jobs:
           test "$refresh_scope" = "FULL"
           jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].command == ["/app/.venv/bin/python"]' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"]' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$refresh_json" >/dev/null
-          echo "MFDataIndia private DEV read service and refresh job reconciled"
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_daily_v2.py"]' <<<"$refresh_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN")] | length == 0' <<<"$refresh_json" >/dev/null
+
+          tag_refresh_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$tag_refresh_json")" = "$refresh_image"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$tag_refresh_json")" = "$TAG_RUNTIME_SERVICE_ACCOUNT"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$tag_refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$tag_refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$tag_refresh_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN")] | length == 0' <<<"$tag_refresh_json" >/dev/null
+          echo "MFDataIndia private DEV read service, NAV job, and independent tag job reconciled"
 
       - name: Reconcile the optional association writer revision
         if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'

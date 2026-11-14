@@ -16,6 +16,10 @@ import psycopg
 from psycopg.rows import dict_row
 
 from mfdataindia.review.policy import fingerprint
+from mfdataindia.store.catalogue_lock import (
+    CataloguePublicationBusy,
+    catalogue_publication_lock,
+)
 from . import (
     entity_registry,
     exposure_policy,
@@ -93,7 +97,8 @@ def after_success(trigger, *, environ=None, connector=None, publisher=None):
         connect = psycopg.connect if connector is None else connector
         publish = store.publish if publisher is None else publisher
         with connect(dsn, autocommit=True, row_factory=dict_row, connect_timeout=5) as conn:
-            report = publish(conn)
+            with catalogue_publication_lock(conn, wait=False):
+                report = publish(conn)
         if type(report) is not dict or report.get('state') not in {'PUBLISHED', 'UNCHANGED'}:
             raise ValueError('tag refresh result differs')
         snapshot = report.get('snapshot_id')
@@ -114,3 +119,57 @@ def after_success(trigger, *, environ=None, connector=None, publisher=None):
             'consumer_acceptance': 'NOT_OBSERVED',
             'tag_snapshot_id': None,
         }
+
+
+def publish_verified(*, environ=None, connector=None, publisher=None):
+    """Publish from the latest database-attested catalogue/family receipt only."""
+    environment = os.environ if environ is None else environ
+    evidence = policy_evidence()
+    base = {
+        'format': FORMAT,
+        **evidence,
+        'retry_performed': False,
+        'source_ingestion_outcome': 'PRESERVED',
+        'consumer_acceptance': 'NOT_OBSERVED',
+    }
+    dsn = environment.get(DSN_ENV)
+    if not dsn:
+        return {**base, 'attempt_id': None, 'state': 'NOT_CONFIGURED',
+                'tag_snapshot_id': None}
+    connect = psycopg.connect if connector is None else connector
+    publish = store.publish if publisher is None else publisher
+    try:
+        with connect(dsn, autocommit=True, row_factory=dict_row, connect_timeout=5) as conn:
+            with catalogue_publication_lock(conn, wait=False):
+                report = publish(conn)
+        if type(report) is not dict or report.get('state') not in {'PUBLISHED', 'UNCHANGED'}:
+            raise ValueError('tag refresh result differs')
+        snapshot = report.get('snapshot_id')
+        publication = report.get('source_publication_id')
+        sequence = report.get('source_publication_sequence')
+        if (type(snapshot) is not str or not HASH.fullmatch(snapshot)
+                or type(publication) is not str or not HASH.fullmatch(publication)
+                or type(sequence) is not int or sequence <= 0):
+            raise ValueError('tag refresh result differs')
+        attempt = fingerprint({
+            'format': FORMAT, 'source_publication_id': publication,
+            'source_publication_sequence': sequence, 'policy': evidence,
+        })
+        return {
+            **base, 'attempt_id': attempt, 'state': report['state'],
+            'source_publication_id': publication,
+            'source_publication_sequence': sequence,
+            'tag_snapshot_id': snapshot,
+        }
+    except CataloguePublicationBusy:
+        return {**base, 'attempt_id': None, 'state': 'SOURCE_BUSY',
+                'tag_snapshot_id': None}
+    except policy.TaggingError as error:
+        if str(error) == 'TAGGING_SOURCE_RECEIPT_UNAVAILABLE':
+            return {**base, 'attempt_id': None, 'state': 'SOURCE_RECEIPT_UNAVAILABLE',
+                    'tag_snapshot_id': None}
+        return {**base, 'attempt_id': None, 'state': 'FAILED',
+                'reason': 'TAG_REFRESH_FAILED', 'tag_snapshot_id': None}
+    except Exception:
+        return {**base, 'attempt_id': None, 'state': 'FAILED',
+                'reason': 'TAG_REFRESH_FAILED', 'tag_snapshot_id': None}

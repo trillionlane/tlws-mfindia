@@ -74,10 +74,10 @@ jobs:
             --image="$image" \
             --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
-            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest,MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
             --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
             --command=/app/.venv/bin/python \
-            --args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh \
+            --args=/app/scripts/refresh_daily_v2.py \
             --tasks=1 \
             --parallelism=1 \
             --max-retries=0 \
@@ -91,8 +91,8 @@ jobs:
           test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$refresh_json")" = "$image"
           test "$(jq -er '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_SNAPSHOT_SCOPE") | .value' <<<"$refresh_json")" = "FULL"
           jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"]' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_daily_v2.py"]' <<<"$refresh_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN")] | length == 0' <<<"$refresh_json" >/dev/null
 
       - name: Execute the governed refresh with transactional integrity checks
         shell: bash

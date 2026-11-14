@@ -27,6 +27,7 @@ RUNTIME_SA="tlws-mf-data-runtime-dev@$PROJECT_ID.iam.gserviceaccount.com"
 MIGRATE_SA="tlws-mf-data-migrate-dev@$PROJECT_ID.iam.gserviceaccount.com"
 RESTORE_SA="tlws-mf-data-restore-dev@$PROJECT_ID.iam.gserviceaccount.com"
 INGEST_SA="tlws-mf-data-ingest-dev@$PROJECT_ID.iam.gserviceaccount.com"
+TAG_WRITER_SA="tlws-mf-data-tag-writer-dev@$PROJECT_ID.iam.gserviceaccount.com"
 SCHEDULER_SA="tlws-mf-data-scheduler-dev@$PROJECT_ID.iam.gserviceaccount.com"
 ASSOCIATION_WRITER_SA="tlws-mf-assoc-writer-dev@$PROJECT_ID.iam.gserviceaccount.com"
 AUDIT_SA="tlws-mf-data-audit-dev@$PROJECT_ID.iam.gserviceaccount.com"
@@ -90,6 +91,7 @@ ensure_service_account tlws-mf-data-runtime-dev "MFDataIndia DEV read-only runti
 ensure_service_account tlws-mf-data-migrate-dev "MFDataIndia DEV migration runner"
 ensure_service_account tlws-mf-data-restore-dev "MFDataIndia DEV snapshot restore runner"
 ensure_service_account tlws-mf-data-ingest-dev "MFDataIndia DEV ingestion runner"
+ensure_service_account tlws-mf-data-tag-writer-dev "MFDataIndia DEV factual-tag writer"
 ensure_service_account tlws-mf-data-scheduler-dev "MFDataIndia DEV scheduler invoker"
 ensure_service_account tlws-mf-assoc-writer-dev "MFDataIndia DEV association writer"
 ensure_service_account tlws-mf-data-audit-dev "MFDataIndia DEV NAV-quality auditor"
@@ -115,7 +117,10 @@ ensure_project_role "serviceAccount:$DEPLOY_SA" roles/run.admin
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudsql.viewer
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudscheduler.admin
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/logging.viewer
-for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA" "$ASSOCIATION_WRITER_SA" "$AUDIT_SA"; do
+# Read-only IAM inspection lets deployment fail before its first mutation when
+# the dedicated tag identity or either scoped binding was not provisioned.
+ensure_project_role "serviceAccount:$DEPLOY_SA" roles/iam.securityReviewer
+for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA" "$TAG_WRITER_SA" "$ASSOCIATION_WRITER_SA" "$AUDIT_SA"; do
   ensure_project_role "serviceAccount:$account" roles/cloudsql.client
   ensure_act_as "$account"
 done
@@ -247,7 +252,60 @@ ensure_secret_access tlws-mf-data-admin-dsn-dev "$RESTORE_SA"
 ensure_secret_access tlws-mf-data-ingest-dsn-dev "$INGEST_SA"
 ensure_secret_access tlws-mf-data-association-writer-dsn-dev "$ASSOCIATION_WRITER_SA"
 ensure_secret_access tlws-mf-data-audit-dsn-dev "$AUDIT_SA"
-ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"
+ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"
+
+# Grant the deployer a short-lived, exact-secret policy mutation capability only
+# while the verified legacy NAV job still mounts the tag-writer secret. Routine
+# provisioning after cutover removes any surviving grant instead of restoring it.
+refresh_json=""
+if refresh_json="$(gcloud run jobs describe tlws-mf-data-nav-refresh-dev \
+  --project="$PROJECT_ID" --region="$REGION" --format=json 2>/dev/null)"; then
+  legacy_job=false
+  if jq -e '.spec.template.spec.template.spec.containers[0].args ==
+      ["/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"]
+      and any(.spec.template.spec.template.spec.containers[0].env[]?;
+        .name == "MFDATAINDIA_TAG_REFRESH_DSN"
+        and .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev")' \
+    <<<"$refresh_json" >/dev/null; then
+    legacy_job=true
+  fi
+  current_job=false
+  if jq -e '.spec.template.spec.template.spec.containers[0].args ==
+      ["/app/scripts/refresh_daily_v2.py"]
+      and all(.spec.template.spec.template.spec.containers[0].env[]?;
+        .name != "MFDATAINDIA_TAG_REFRESH_DSN")' \
+    <<<"$refresh_json" >/dev/null; then
+    current_job=true
+  fi
+  tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
+    --project="$PROJECT_ID" --format=json)"
+  ingest_has_tag_access=false
+  if jq -e --arg member "serviceAccount:$INGEST_SA" '
+    any(.bindings[]? | select(.role == "roles/secretmanager.secretAccessor");
+        any(.members[]?; . == $member))
+  ' <<<"$tag_secret_policy" >/dev/null; then
+    ingest_has_tag_access=true
+  fi
+  if [[ "$ingest_has_tag_access" == "true" \
+      && ( "$legacy_job" == "true" || "$current_job" == "true" ) ]]; then
+    cutover_expiry="$(python3 -c 'from datetime import datetime, timedelta, timezone; print((datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+    gcloud secrets add-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev \
+      --project="$PROJECT_ID" \
+      --member="serviceAccount:$DEPLOY_SA" \
+      --role=roles/secretmanager.admin \
+      --condition="expression=request.time < timestamp('$cutover_expiry'),title=mfdata-tag-writer-cutover,description=Expires after the one-time legacy NAV cutover" \
+      --quiet >/dev/null
+    # deploy-dev installs migrations first, replaces and drains the legacy job,
+    # revokes ingest access, then runs the independently executable cleanup.
+  elif [[ "$legacy_job" == "true" || "$current_job" != "true" ]]; then
+    echo "Incoherent legacy tag-secret cutover state" >&2
+    exit 1
+  else
+    bash "$(dirname "$0")/remove_tag_cutover_admin.sh" "$PROJECT_ID" "$DEPLOY_SA"
+  fi
+else
+  bash "$(dirname "$0")/remove_tag_cutover_admin.sh" "$PROJECT_ID" "$DEPLOY_SA"
+fi
 
 gcloud storage buckets add-iam-policy-binding gs://tlws_mf_data_source \
   --member="serviceAccount:$RESTORE_SA" \

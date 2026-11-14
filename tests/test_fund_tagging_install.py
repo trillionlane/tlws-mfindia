@@ -25,6 +25,26 @@ class Connection:
         return self
 
 
+class Database:
+    def __init__(self, dsn, **kwargs):
+        self.dsn = dsn
+        self.kwargs = kwargs
+        self.connection = Connection()
+        self.migrations = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def apply_migrations(self, root, *, files):
+        self.migrations = (root, files)
+
+    def connect(self):
+        return self.connection
+
+
 def test_install_requires_configuration_and_emits_no_environment(monkeypatch, capsys):
     loaded = module()
     monkeypatch.delenv("MFDATAINDIA_DSN", raising=False)
@@ -38,34 +58,54 @@ def test_install_requires_configuration_and_emits_no_environment(monkeypatch, ca
 
 def test_install_uses_one_direct_owner_transaction(monkeypatch, capsys):
     loaded = module()
-    connection = Connection()
     observed = {}
     monkeypatch.setenv("MFDATAINDIA_DSN", "secret-value")
 
-    def connect(dsn, **kwargs):
-        observed.update(dsn=dsn, kwargs=kwargs)
-        return connection
+    def database(dsn, **kwargs):
+        result = Database(dsn, **kwargs)
+        observed["database"] = result
+        return result
 
     def install(conn, root):
-        assert conn is connection and root == ROOT
+        assert conn is observed["database"].connection and root == ROOT
         return {"state": "INSTALLED", "source_rows_changed": 0}
 
-    monkeypatch.setattr(loaded.psycopg, "connect", connect)
+    monkeypatch.setattr(loaded, "PostgresStore", database)
     monkeypatch.setattr(loaded.store, "install", install)
 
     assert loaded.main() == 0
-    assert observed["dsn"] == "secret-value"
-    assert observed["kwargs"]["autocommit"] is True
+    assert observed["database"].dsn == "secret-value"
+    assert observed["database"].kwargs == {"connect_timeout": 5, "use_copy": True}
+    assert observed["database"].migrations == (
+        ROOT / "sql" / "optional", loaded.SOURCE_MIGRATIONS,
+    )
     assert json.loads(capsys.readouterr().out) == {
         "source_rows_changed": 0,
         "state": "INSTALLED",
     }
 
 
+def test_install_accepts_recognized_preserving_upgrade(monkeypatch, capsys):
+    loaded = module()
+    monkeypatch.setenv("MFDATAINDIA_DSN", "secret-value")
+    monkeypatch.setattr(loaded, "PostgresStore", Database)
+    monkeypatch.setattr(
+        loaded.store,
+        "install",
+        lambda *_args, **_kwargs: {"state": "UPGRADED", "source_rows_changed": 0},
+    )
+
+    assert loaded.main() == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "source_rows_changed": 0,
+        "state": "UPGRADED",
+    }
+
+
 def test_install_failure_is_bounded_and_value_safe(monkeypatch, capsys):
     loaded = module()
     monkeypatch.setenv("MFDATAINDIA_DSN", "must-not-appear")
-    monkeypatch.setattr(loaded.psycopg, "connect", lambda *_args, **_kwargs: Connection())
+    monkeypatch.setattr(loaded, "PostgresStore", Database)
     monkeypatch.setattr(
         loaded.store,
         "install",

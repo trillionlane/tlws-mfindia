@@ -19,9 +19,9 @@ def test_dev_deployment_is_internal_and_authenticated_only() -> None:
 def test_dev_deployment_promotes_latest_revision_without_dropping_named_tags() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
-    read_service_block = workflow.split(
-        "      - name: Deploy private read-only service", 1
-    )[1].split("      - name: Deploy private association writer disabled", 1)[0]
+    read_service_block = workflow.split("      - name: Deploy private read-only service", 1)[
+        1
+    ].split("      - name: Deploy private association writer disabled", 1)[0]
     assert 'gcloud run services update-traffic "$SERVICE_NAME"' in read_service_block
     assert "--to-latest" in read_service_block
     assert "--clear-tags" not in read_service_block
@@ -33,20 +33,47 @@ def test_dev_deployment_promotes_latest_revision_without_dropping_named_tags() -
     assert 'test "$serving_revision" = "$latest_ready_revision"' in reconcile_block
 
 
-def test_dev_preflight_verifies_the_deployed_insights_identity_without_iam_read() -> None:
+def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutation() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
     assert "INSIGHTS_SERVICE_NAME: trillion-insights-api-dev" in workflow
     assert 'gcloud run services describe "$INSIGHTS_SERVICE_NAME"' in workflow
     assert "value(spec.template.spec.serviceAccountName)" in workflow
     assert ' = "$INSIGHTS_RUNTIME_SERVICE_ACCOUNT"' in workflow
-    assert "gcloud iam service-accounts describe" not in workflow
     assert "gcloud run services describe tl-dwf-dev-api" in workflow
     assert ' = "tl-dwf-dev-runtime@trillionlane-dev.iam.gserviceaccount.com"' in workflow
+    preflight = workflow.split(
+        "      - name: Verify dedicated tag runtime prerequisites before mutation", 1
+    )[1].split("      - name: Verify private-read access before publishing", 1)[0]
+    assert 'gcloud iam service-accounts describe "$TAG_RUNTIME_SERVICE_ACCOUNT"' in preflight
+    assert 'gcloud projects get-iam-policy "$EXPECTED_PROJECT"' in preflight
+    assert "roles/cloudsql.client" in preflight
+    assert "roles/iam.serviceAccountUser" in preflight
+    assert "tlws-mf-data-tag-writer-dsn-dev" in preflight
+    assert "roles/secretmanager.secretAccessor" in preflight
+    assert preflight.count(".condition? == null") == 4
+    assert 'ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"' in preflight
+    assert 'test "$TAG_RUNTIME_SERVICE_ACCOUNT" != "$INGEST_SERVICE_ACCOUNT"' in preflight
+    assert "Tag or ingest runtime has project-wide secret access" in preflight
+    assert "tlws-mf-data-ingest-dsn-dev" in preflight
+    assert ":testIamPermissions" in preflight
+    assert "https://secretmanager.googleapis.com/v1/projects/" in preflight
+    assert "secretmanager.secrets.setIamPolicy" in preflight
+    assert "mfdata-tag-writer-cutover" in preflight
+    assert 'if [[ "$ingest_has_tag_access" == "true" ]]' in preflight
+    assert "$members == ([$tag] | sort) or $members == ([$tag,$ingest] | sort)" in preflight
+    assert '"/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"' in preflight
+    assert '["/app/scripts/refresh_daily_v2.py"]' in preflight
+    assert workflow.index(
+        "Verify dedicated tag runtime prerequisites before mutation"
+    ) < workflow.index("Build and publish immutable image")
 
 
 def test_dev_deployment_uses_internal_zero_retry_smoke_job() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
+    smoke_block = workflow.split(
+        "      - name: Deploy and execute the internal zero-retry smoke job", 1
+    )[1]
 
     assert "tlws-mf-data-private-smoke-dev" in workflow
     assert "VPC_NETWORK: tl-dev-vpc" in workflow
@@ -58,7 +85,7 @@ def test_dev_deployment_uses_internal_zero_retry_smoke_job() -> None:
     assert "--max-retries=0" in workflow
     assert "MFDATAINDIA_PRIVATE_BASE_URL" in workflow
     assert "MFDATAINDIA_PRIVATE_AUDIENCE" in workflow
-    assert "curl --fail" not in workflow
+    assert "curl --fail" not in smoke_block
 
     verify = (ROOT / ".github" / "workflows" / "verify.yml").read_text()
     assert 'Path("/app/scripts/smoke_private_api.py").is_file()' in verify
@@ -100,19 +127,35 @@ def test_association_writer_is_separate_private_and_default_off() -> None:
     assert "verify_optional_association_writer_dev.sh" in workflow
 
 
-def test_read_deployment_reconciles_refresh_job_without_executing_it() -> None:
+def test_read_deployment_cuts_over_refresh_job_before_legacy_secret_revoke() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
     assert "REFRESH_JOB: tlws-mf-data-nav-refresh-dev" in workflow
-    assert "Reconcile the six-hour refresh job to the immutable image" in workflow
+    assert "Cut over NAV job before revoking legacy tag-secret access" in workflow
     assert '--image="${{ steps.image.outputs.uri }}"' in workflow
-    assert '--service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"' in workflow
+    assert '--service-account="$INGEST_SERVICE_ACCOUNT"' in workflow
     assert "--set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL" in workflow
-    assert "--args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh" in workflow
+    assert "--args=/app/scripts/refresh_daily_v2.py" in workflow
+    assert "TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev" in workflow
+    assert "--args=/app/scripts/publish_fund_tags.py" in workflow
     assert "MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest" in workflow
     assert "refresh_scope" in workflow
     assert 'gcloud run jobs execute "$REFRESH_JOB"' not in workflow
     assert "gcloud scheduler" not in workflow
+    cutover = workflow.split(
+        "      - name: Cut over NAV job before revoking legacy tag-secret access", 1
+    )[1].split("      - name: Deploy private read-only service", 1)[0]
+    assert workflow.index(
+        "Install or verify the zero-retry factual-tagging sidecar"
+    ) < workflow.index("Cut over NAV job before revoking legacy tag-secret access")
+    assert "MFDATAINDIA_TAG_REFRESH_DSN" in cutover
+    assert "status.completionTime" in cutover
+    assert "gcloud secrets remove-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev" in cutover
+    assert "all(. != $member)" in cutover
+    assert 'bash scripts/remove_tag_cutover_admin.sh "$EXPECTED_PROJECT"' in cutover
+    assert cutover.index("gcloud run jobs deploy") < cutover.index(
+        "gcloud secrets remove-iam-policy-binding"
+    )
 
 
 def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None:
@@ -126,22 +169,91 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "--max-retries=0" in deploy
     assert "MFDATAINDIA_DSN=tlws-mf-data-admin-dsn-dev:latest" in deploy
     assert "MFDATAINDIA_DSN=tlws-mf-review-read-dsn-dev:latest" in deploy
-    assert "mfdataindia.tagging.app:create_app" in deploy
+    assert "mfdataindia.tagging.values_app:create_app" in deploy
     for workflow in (deploy, refresh):
         assert "MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest" in workflow
-        assert "MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest" in workflow
-        assert "--args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh" in workflow
-    assert "create_database_principal mfdata_tag_writer tlws-mf-data-tag-writer-dsn-dev" in provision
+        assert "--args=/app/scripts/refresh_daily_v2.py" in workflow
+    tag_refresh = (ROOT / ".github/workflows/refresh-tags-dev.yml").read_text()
+    assert "MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest" in deploy
+    assert "tlws-mf-data-tag-writer-dsn-dev" in tag_refresh
+    for workflow in (deploy, tag_refresh):
+        assert "/app/scripts/publish_fund_tags.py" in workflow
+    assert "MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest" not in tag_refresh
+    assert "value(spec.template.spec.containers[0].image)" in tag_refresh
+    assert 'containers[0].image\' <<<"$job_json")" = "$live_image"' in tag_refresh
+    assert "TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@" in deploy
+    assert "TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@" in tag_refresh
+    assert '--service-account="$TAG_RUNTIME_SERVICE_ACCOUNT"' in deploy
+    assert 'serviceAccountName\' <<<"$job_json")" = "$TAG_RUNTIME_SERVICE_ACCOUNT"' in tag_refresh
+    validation_shell = (
+        tag_refresh.split("      - name: Validate supervised execution contract", 1)[1]
+        .split("      - id: auth", 1)[0]
+        .split("        run: |", 1)[1]
+    )
+    assert "${{ inputs." not in validation_shell
+    assert 'test "$CONFIRM_PROJECT" = "$EXPECTED_PROJECT"' in validation_shell
+    assert 'test "$CONFIRM_JOB" = "$TAG_REFRESH_JOB"' in validation_shell
+    assert "PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev" in tag_refresh
+    assert "Verify published tags through packaged authenticated service" in tag_refresh
+    assert 'containers[0].args == ["/app/scripts/smoke_private_api.py"]' in tag_refresh
+    assert "--args=/app/scripts/smoke_private_api.py,--require-tags" in tag_refresh
+    assert 'id: publication' in tag_refresh
+    assert 'labels.\\"run.googleapis.com/execution_name\\"' in tag_refresh
+    assert "scripts/tag_publication_log.jq" in tag_refresh
+    assert "for attempt in 1 2 3 4 5" in tag_refresh
+    assert "sleep 5" in tag_refresh
+    assert "steps.publication.outputs.published_snapshot" in tag_refresh
+    assert "--expected-tag-snapshot" in tag_refresh
+    assert 'gcloud run jobs execute "$PRIVATE_SMOKE_JOB"' in tag_refresh
+    assert (
+        "create_database_principal mfdata_tag_writer tlws-mf-data-tag-writer-dsn-dev" in provision
+    )
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
-    assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"' in provision
+    assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"' in provision
+    assert '--role=roles/secretmanager.admin' in provision
+    assert '--member="serviceAccount:$DEPLOY_SA"' in provision
+    assert "timedelta(hours=2)" in provision
+    assert "mfdata-tag-writer-cutover" in provision
+    assert '"$legacy_job" == "true" || "$current_job" == "true"' in provision
+    assert '[[ "$legacy_job" == "true" || "$current_job" != "true" ]]' in provision
+    assert 'ensure_secret_access tlws-mf-data-ingest-dsn-dev "$TAG_WRITER_SA"' not in provision
+    assert 'remove_secret_access' not in provision
+    assert "deploy-dev installs migrations first" in provision
+    assert "ensure_service_account tlws-mf-data-tag-writer-dev" in provision
+    assert 'ensure_project_role "serviceAccount:$DEPLOY_SA" roles/iam.securityReviewer' in provision
     assert "store.install(conn, ROOT)" in installer
+    assert '"UPGRADED"' in installer
+    assert "047_tag_input_publications.sql" in installer
     assert "TAGGING_INSTALL_FAILED" in installer
 
 
+def test_tag_refresh_checks_out_parser_before_publication_submission() -> None:
+    workflow = (ROOT / ".github/workflows/refresh-tags-dev.yml").read_text()
+
+    assert "actions/checkout@v4" in workflow
+    assert "ref: ${{ github.sha }}" in workflow
+    assert 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"' in workflow
+    assert "test -r scripts/tag_publication_log.jq" in workflow
+    assert workflow.index("test -r scripts/tag_publication_log.jq") < workflow.index(
+        'gcloud run jobs execute "$TAG_REFRESH_JOB"'
+    )
+
+
+def test_tag_cutover_admin_cleanup_is_independent_and_preserves_other_members() -> None:
+    cleanup = (ROOT / "scripts/remove_tag_cutover_admin.sh").read_text()
+    deploy = (ROOT / ".github/workflows/deploy-dev.yml").read_text()
+    provision = (ROOT / "scripts/provision_dev_infra.sh").read_text()
+
+    assert "gcloud secrets set-iam-policy" in cleanup
+    assert 'if .role == "roles/secretmanager.admin"' in cleanup
+    assert '.members = [.members[]? | select(. != $member)]' in cleanup
+    assert 'select((.members | length) > 0)' in cleanup
+    assert 'bash scripts/remove_tag_cutover_admin.sh "$EXPECTED_PROJECT"' in deploy
+    assert 'bash "$(dirname "$0")/remove_tag_cutover_admin.sh"' in provision
+
+
 def test_association_activation_is_manual_exact_sha_bound() -> None:
-    workflow = (
-        ROOT / ".github" / "workflows" / "enable-association-writes-dev.yml"
-    ).read_text()
+    workflow = (ROOT / ".github" / "workflows" / "enable-association-writes-dev.yml").read_text()
 
     assert "workflow_dispatch:" in workflow
     assert "push:" not in workflow
@@ -180,9 +292,10 @@ def test_association_writer_gets_dedicated_identity_and_database_principal() -> 
     assert "GRANT SELECT ON mf.fund_family TO mfdata_association_writer" in migration
     assert "GRANT SELECT, INSERT ON mf.fund_family_association_tags" in migration
     assert "DELETE ON mf.fund_family_association_tags" not in migration
-    assert '"019_reconcile_association_writer_privileges.sql"' in (
-        ROOT / "src" / "mfdataindia" / "store" / "postgres.py"
-    ).read_text()
+    assert (
+        '"019_reconcile_association_writer_privileges.sql"'
+        in (ROOT / "src" / "mfdataindia" / "store" / "postgres.py").read_text()
+    )
 
 
 def test_supervised_refresh_is_explicitly_a_full_snapshot_candidate() -> None:

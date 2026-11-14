@@ -11,6 +11,8 @@ from mfdataindia.jobs.nav_calculations import METHODOLOGY_VERSION, recompute
 from mfdataindia.load import family_continuity as families
 from mfdataindia.load.amfi_to_store import load_parsed_amfi, nav_rows
 from mfdataindia.store.locks import acquire_nav_data_operation_lock
+from mfdataindia.store.catalogue_lock import catalogue_publication_lock
+from mfdataindia.tagging import source_evidence
 
 
 def _prices(schemes, existing, conflicts):
@@ -71,62 +73,83 @@ def publish_catalogue(store, schemes, report, fetch, *, as_of: date, feed_date: 
                       scope: str, integrity_manifest, validate_completeness, validate_summary):
     if scope != "FULL":
         raise RuntimeError("family continuity publication requires a FULL catalogue")
-    with store.transaction() as conn:
-        acquire_nav_data_operation_lock(conn)
-        prior = store.latest_full_snapshot()
-        if prior and prior["snapshot_date"] > as_of:
-            raise RuntimeError("catalogue observation predates the committed snapshot")
-        if prior and prior["snapshot_date"] == as_of and prior["content_hash"] == fetch.content_sha256:
-            return {"state": "CATALOGUE_UNCHANGED", "snapshot": prior}
-        existing, keys = families.read_identities(conn)
-        source, conflicts = families.read_source(schemes)
-        resolution = families.resolve(existing, keys, source, conflicts)
-        if resolution.holds:
-            conn.execute("""
-                INSERT INTO mf_identity.catalogue_holds (source_hash, source_date, reasons)
-                VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
-            """, (fetch.content_sha256, as_of, Jsonb(resolution.holds)))
-            return {"state": "CATALOGUE_HELD", "holds": resolution.holds}
-        before = integrity_manifest(store)
-        completeness = validate_completeness(schemes, report, before=before,
-                                             previous_full=prior)
-        families.apply_renames(conn, resolution.renames, source, source_hash=fetch.content_sha256,
-                              snapshot_date=as_of)
-        catalogue = load_parsed_amfi(store, schemes, source_date=as_of, include_nav=False)
-        families.rebuild(conn)
-        # The new catalogue may establish identity for a new in-scope scheme.
-        # Prices for existing verified codes were already committed independently.
-        verified, _ = families.read_identities(conn)
-        additional = {code: row for code, row in verified.items()
-                      if code not in existing or not existing[code].in_scope or existing[code].defunct}
-        new_prices = verified_prices(schemes, additional, source, conflicts)
-        if new_prices:
-            store.upsert_nav(iter(new_prices))
-        else:
-            _recompute_invalidated_calculations(conn)
-        after = integrity_manifest(store)
-        if (after["funds"] < before["funds"] or after["nav_rows"] < before["nav_rows"]
-                or (before["nav_max_date"] and (not after["nav_max_date"]
-                    or after["nav_max_date"] < before["nav_max_date"]))
-                or not after["nav_max_date"] or after["nav_max_date"] < feed_date
-                or any(after[k] for k in ("missing_families", "orphan_families", "default_partition_rows"))):
-            raise RuntimeError("catalogue preservation or integrity check failed")
-        source_id = store.record_fetch(fetch.as_source_metadata("AMFI", "LATEST_NAV", as_of.isoformat()) | {
-            "records_in": len(schemes), "records_ok": len(schemes),
-            "records_quarantined": report.quarantined,
-            "notes": {"snapshot_scope": scope, "snapshot_date": as_of.isoformat(),
-                      "latest_nav_date": feed_date.isoformat(), "family_renames": len(resolution.renames)},
-        })
-        snapshot = store.record_snapshot_run(
-            source_fetch_id=source_id, source="AMFI", snapshot_scope=scope, snapshot_date=as_of,
-            latest_nav_date=feed_date, content_hash=fetch.content_sha256,
-            records_in=report.data_rows, records_ok=len(schemes), records_quarantined=report.quarantined,
-            distinct_amcs=report.distinct_amcs, distinct_categories=report.distinct_categories,
-        )
-        summary = store.refresh_dataset_summary("amfi_catalogue_refresh", source_content_hash=fetch.content_sha256)
-        validate_summary(summary, after, source_content_hash=fetch.content_sha256)
-        return {"state": "CATALOGUE_PUBLISHED", "renames": [asdict(row) for row in resolution.renames],
-                "snapshot": snapshot, "catalogue": catalogue, "completeness": completeness}
+    with catalogue_publication_lock(store.connect(), wait=True):
+        with store.transaction() as conn:
+            acquire_nav_data_operation_lock(conn)
+            prior = store.latest_full_snapshot()
+            if prior and prior["snapshot_date"] > as_of:
+                raise RuntimeError("catalogue observation predates the committed snapshot")
+            if (prior and prior["snapshot_date"] == as_of
+                    and prior["content_hash"] == fetch.content_sha256):
+                return {"state": "CATALOGUE_UNCHANGED", "snapshot": prior}
+            existing, keys = families.read_identities(conn)
+            source, conflicts = families.read_source(schemes)
+            resolution = families.resolve(existing, keys, source, conflicts)
+            if resolution.holds:
+                conn.execute("""
+                    INSERT INTO mf_identity.catalogue_holds (source_hash, source_date, reasons)
+                    VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
+                """, (fetch.content_sha256, as_of, Jsonb(resolution.holds)))
+                return {"state": "CATALOGUE_HELD", "holds": resolution.holds}
+            before = integrity_manifest(store)
+            completeness = validate_completeness(schemes, report, before=before,
+                                                 previous_full=prior)
+            families.apply_renames(conn, resolution.renames, source,
+                                  source_hash=fetch.content_sha256, snapshot_date=as_of)
+            catalogue = load_parsed_amfi(store, schemes, source_date=as_of, include_nav=False)
+            families.rebuild(conn)
+            # The new catalogue may establish identity for a new in-scope scheme.
+            # Prices for existing verified codes were already committed independently.
+            verified, _ = families.read_identities(conn)
+            additional = {code: row for code, row in verified.items()
+                          if code not in existing or not existing[code].in_scope
+                          or existing[code].defunct}
+            new_prices = verified_prices(schemes, additional, source, conflicts)
+            if new_prices:
+                store.upsert_nav(iter(new_prices))
+            else:
+                _recompute_invalidated_calculations(conn)
+            after = integrity_manifest(store)
+            if (after["funds"] < before["funds"] or after["nav_rows"] < before["nav_rows"]
+                    or (before["nav_max_date"] and (not after["nav_max_date"]
+                        or after["nav_max_date"] < before["nav_max_date"]))
+                    or not after["nav_max_date"] or after["nav_max_date"] < feed_date
+                    or any(after[k] for k in (
+                        "missing_families", "orphan_families", "default_partition_rows"
+                    ))):
+                raise RuntimeError("catalogue preservation or integrity check failed")
+            source_id = store.record_fetch(
+                fetch.as_source_metadata("AMFI", "LATEST_NAV", as_of.isoformat()) | {
+                    "records_in": len(schemes), "records_ok": len(schemes),
+                    "records_quarantined": report.quarantined,
+                    "notes": {"snapshot_scope": scope, "snapshot_date": as_of.isoformat(),
+                              "latest_nav_date": feed_date.isoformat(),
+                              "family_renames": len(resolution.renames)},
+                }
+            )
+            snapshot = store.record_snapshot_run(
+                source_fetch_id=source_id, source="AMFI", snapshot_scope=scope,
+                snapshot_date=as_of, latest_nav_date=feed_date,
+                content_hash=fetch.content_sha256, records_in=report.data_rows,
+                records_ok=len(schemes), records_quarantined=report.quarantined,
+                distinct_amcs=report.distinct_amcs,
+                distinct_categories=report.distinct_categories,
+            )
+            summary = store.refresh_dataset_summary(
+                "amfi_catalogue_refresh", source_content_hash=fetch.content_sha256
+            )
+            validate_summary(summary, after, source_content_hash=fetch.content_sha256)
+            tag_input = source_evidence.append(
+                conn, source_kind="full-catalogue",
+                source_snapshot_run_id=snapshot["snapshot_run_id"],
+                catalogue_observed_on=as_of, observed_on=as_of,
+            )
+            return {
+                "state": "CATALOGUE_PUBLISHED",
+                "renames": [asdict(row) for row in resolution.renames],
+                "snapshot": snapshot, "catalogue": catalogue,
+                "completeness": completeness, "tag_input": tag_input,
+            }
 
 
 def freshness(store):
