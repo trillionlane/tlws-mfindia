@@ -25,6 +25,8 @@ env:
   SERVICE_NAME: tlws-mf-data-dev
   TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
   TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@trillionlane-dev.iam.gserviceaccount.com
+  PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
+  SMOKE_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
 
 jobs:
   refresh:
@@ -68,3 +70,21 @@ jobs:
           jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN")] | length == 0' <<<"$job_json" >/dev/null
           gcloud run jobs execute "$TAG_REFRESH_JOB" \
             --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --wait --quiet
+      - name: Verify published tags through packaged authenticated service
+        run: |
+          set -euo pipefail
+          smoke_json="$(gcloud run jobs describe "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          live_image="$(gcloud run services describe "$SERVICE_NAME" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --format='value(spec.template.spec.containers[0].image)')"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$smoke_json")" = "$live_image"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$smoke_json")" = "$SMOKE_RUNTIME_SERVICE_ACCOUNT"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$smoke_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/smoke_private_api.py"]' <<<"$smoke_json" >/dev/null
+          gcloud run jobs execute "$PRIVATE_SMOKE_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --args=/app/scripts/smoke_private_api.py,--require-tags \
+            --wait \
+            --quiet

@@ -61,6 +61,16 @@ def successful_responses() -> list[Response]:
     ]
 
 
+def successful_tag_response() -> Response:
+    return Response(
+        200,
+        {
+            "snapshot_id": "a" * 64,
+            "funds": [{"code": 100033, "assessments": []}],
+        },
+    )
+
+
 def test_private_smoke_uses_metadata_oidc_and_bounded_reads() -> None:
     session = Session(successful_responses())
 
@@ -81,6 +91,22 @@ def test_private_smoke_uses_metadata_oidc_and_bounded_reads() -> None:
         assert request["headers"]["Authorization"] == "Bearer short-lived-token"
         assert request["timeout"] == smoke_private_api.REQUEST_TIMEOUT_SECONDS
         assert request["allow_redirects"] is False
+
+
+def test_private_smoke_can_require_tags_through_the_same_oidc_boundary() -> None:
+    session = Session([*successful_responses(), successful_tag_response()])
+
+    smoke_private_api.run_smoke(
+        "https://mfdata.example.run.app",
+        "https://mfdata.example.run.app",
+        session,
+        require_tags=True,
+    )
+
+    assert len(session.requests) == 7
+    tag_url, tag_request = session.requests[-1]
+    assert tag_url == "https://mfdata.example.run.app/api/fund-tags/v1/funds/100033"
+    assert tag_request["headers"]["Authorization"] == "Bearer short-lived-token"
 
 
 @pytest.mark.parametrize(

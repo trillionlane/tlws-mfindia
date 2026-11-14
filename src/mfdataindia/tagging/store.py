@@ -148,7 +148,22 @@ def publish(conn):
         p.require(candidate['catalogue_census_hash'] == receipt['catalogue_census_hash']
                   and candidate['family_projection_hash'] == receipt['family_projection_hash'],
                   'TAGGING_SOURCE_RECEIPT_DIFFERS')
-        snapshot = candidate['snapshot_id']
+        # A factual state may legitimately recur after an intervening committed
+        # transition (A -> B -> A). Bind the stored version to the ordered source
+        # receipt so history remains immutable without treating the final A as a
+        # silent rollback. Immediate replay of the same receipt remains a no-op.
+        snapshot = p.digest({
+            'policy_hash': candidate['policy_hash'],
+            'source_hash': candidate['source_hash'],
+            'source_publication_id': receipt['publication_id'],
+        })
+        candidate['snapshot_id'] = snapshot
+        candidate['source_publication_id'] = receipt['publication_id']
+        candidate['source_publication_sequence'] = receipt['publication_sequence']
+        candidate['assessments'] = [
+            {**assessment, 'snapshot_id': snapshot}
+            for assessment in candidate['assessments']
+        ]
         head = conn.execute('SELECT snapshot_id FROM mf_tagging.head WHERE singleton').fetchone()
         if head and head['snapshot_id'] == snapshot:
             verify_candidate(conn, candidate)

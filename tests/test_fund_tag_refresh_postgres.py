@@ -30,7 +30,6 @@ def test_native_legacy_full_waits_for_new_full_v2_receipt_then_publishes_once(
     tagging_db, monkeypatch, capsys
 ):
     dsn = tagging_db
-    baseline = values(dsn)
 
     def connector(value, **kwargs):
         assert value == "postgresql://separate-tag-writer"
@@ -92,6 +91,10 @@ def test_native_legacy_full_waits_for_new_full_v2_receipt_then_publishes_once(
     with connect(dsn) as owner:
         receipt = source_evidence.latest(owner)
         assert receipt["source_kind"] == "full-catalogue"
+    # The real v2 publication intentionally changes the source catalogue. The
+    # preservation baseline belongs immediately before the independent tag
+    # writer so only that writer is proved source-read-only.
+    baseline = values(dsn)
     first = refresh.publish_verified(environ=environment, connector=connector)
     second = refresh.publish_verified(environ=environment, connector=connector)
     assert first["state"] == "PUBLISHED"

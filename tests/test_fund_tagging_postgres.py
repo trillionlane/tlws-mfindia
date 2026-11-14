@@ -14,6 +14,7 @@ import pytest
 
 from mfdataindia.datasets import policy as datasets
 from mfdataindia.datasets.app import create_app
+from mfdataindia.load.fund_family import build_fund_family
 from mfdataindia.store.postgres import PostgresStore
 from mfdataindia.tagging import policy as p, source_evidence, store
 from test_ro01_reader_policy_postgres import (
@@ -41,6 +42,25 @@ def append_source_receipt(conn, *, source_kind="full-catalogue"):
     )
 
 
+def seed_legacy_full_snapshot(conn):
+    fetch_id = conn.execute(
+        """INSERT INTO mf.source_metadata(
+            source,endpoint,entity_kind,entity_key,content_hash)
+            VALUES('AMFI','FIXTURE_ONLY','LATEST_NAV','tagging-legacy-full',%s)
+            RETURNING fetch_id""",
+        ("e" * 64,),
+    ).fetchone()["fetch_id"]
+    return conn.execute(
+        """INSERT INTO mf.source_snapshot_runs(
+            source_fetch_id,source,snapshot_scope,snapshot_date,latest_nav_date,
+            content_hash,records_in,records_ok,records_quarantined,
+            distinct_amcs,distinct_categories)
+            VALUES(%s,'AMFI','FULL','2026-10-31','2026-10-31',%s,2,2,0,1,1)
+            RETURNING snapshot_run_id""",
+        (fetch_id, "e" * 64),
+    ).fetchone()["snapshot_run_id"]
+
+
 @pytest.fixture
 def tagging_db(ro01_db, pg_dsn):
     # The existing fixture enforces GITHUB_ACTIONS=true and creates a disposable DB.
@@ -53,6 +73,7 @@ def tagging_db(ro01_db, pg_dsn):
         try:
             adopt(ro01_db)
             with PostgresStore(ro01_db, use_copy=False) as database:
+                build_fund_family(database)
                 database.apply_migrations(
                     ROOT / "sql" / "optional",
                     files=("046_fund_family_continuity.sql", "047_tag_input_publications.sql"),
@@ -61,6 +82,7 @@ def tagging_db(ro01_db, pg_dsn):
                 owner.execute(
                     "UPDATE mf.funds SET last_seen_in_source='2026-10-31',plan_source='COLUMN',scheme_category='Equity Scheme - Large Cap Fund'"
                 )
+                seed_legacy_full_snapshot(owner)
                 append_source_receipt(owner)
                 assert store.install(owner, ROOT)["state"] == "INSTALLED"
                 assert store.install(owner, ROOT)["state"] == "ALREADY_INSTALLED"
@@ -143,7 +165,10 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
     with pytest.raises(p.TaggingError, match="SYNTHETIC_RECEIPT_FAILURE"):
         module.main()
     with connect(dsn) as owner:
-        assert owner.execute("SELECT * FROM mf.fund_family ORDER BY group_key").fetchall() == before_family
+        assert (
+            owner.execute("SELECT * FROM mf.fund_family ORDER BY group_key").fetchall()
+            == before_family
+        )
         assert module.source_evidence.latest(owner) == before_receipt
 
     monkeypatch.setattr(module.source_evidence, "append", original_append)
@@ -313,9 +338,7 @@ def test_native_definitions_from_other_version_survive_current_publication(taggi
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
-def test_native_same_day_family_a_b_a_creates_ordered_transition_receipts(
-    tagging_db, monkeypatch
-):
+def test_native_same_day_family_a_b_a_creates_ordered_transition_receipts(tagging_db, monkeypatch):
     dsn = tagging_db
     module = family_script()
     monkeypatch.setattr(sys, "argv", ["build_fund_family.py", "--dsn", dsn])
@@ -324,20 +347,42 @@ def test_native_same_day_family_a_b_a_creates_ordered_transition_receipts(
 
     with connect(dsn) as owner:
         first_a = source_evidence.latest(owner)
+    with writer(dsn) as conn:
+        first_a_tags = store.publish(conn)
+        assert first_a_tags["state"] == "PUBLISHED"
+        assert first_a_tags["source_publication_id"] == first_a["publication_id"]
     with connect(dsn, autocommit=False) as owner:
         owner.execute("UPDATE mf.fund_family SET group_key='1B' WHERE group_key='1'")
         owner.execute("UPDATE mf.fund_variants SET group_key='1B' WHERE group_key='1'")
         b = append_source_receipt(owner, source_kind="fund-family-rebuild")
+    with writer(dsn) as conn:
+        b_tags = store.publish(conn)
+        assert b_tags["state"] == "PUBLISHED"
+        assert b_tags["source_publication_id"] == b["publication_id"]
     with connect(dsn, autocommit=False) as owner:
         owner.execute("UPDATE mf.fund_family SET group_key='1' WHERE group_key='1B'")
         owner.execute("UPDATE mf.fund_variants SET group_key='1' WHERE group_key='1B'")
         second_a = append_source_receipt(owner, source_kind="fund-family-rebuild")
+    with writer(dsn) as conn:
+        second_a_tags = store.publish(conn)
+        unchanged = store.publish(conn)
 
     assert first_a["family_projection_hash"] != b["family_projection_hash"]
     assert first_a["family_projection_hash"] == second_a["family_projection_hash"]
     assert first_a["publication_id"] != second_a["publication_id"]
-    assert first_a["publication_sequence"] < b["publication_sequence"] < second_a["publication_sequence"]
+    assert (
+        first_a["publication_sequence"]
+        < b["publication_sequence"]
+        < second_a["publication_sequence"]
+    )
     assert b["predecessor_publication_id"] == first_a["publication_id"]
     assert second_a["predecessor_publication_id"] == b["publication_id"]
-    with writer(dsn) as conn:
-        assert store.publish(conn)["state"] == "PUBLISHED"
+    assert second_a_tags["state"] == "PUBLISHED"
+    assert second_a_tags["source_publication_id"] == second_a["publication_id"]
+    assert (
+        len({first_a_tags["snapshot_id"], b_tags["snapshot_id"], second_a_tags["snapshot_id"]}) == 3
+    )
+    assert unchanged["state"] == "UNCHANGED"
+    assert unchanged["snapshot_id"] == second_a_tags["snapshot_id"]
+    with connect(dsn) as owner:
+        assert owner.execute("SELECT count(*) AS n FROM mf_tagging.snapshots").fetchone()["n"] == 3

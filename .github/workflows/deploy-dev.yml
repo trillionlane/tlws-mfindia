@@ -196,6 +196,45 @@ jobs:
               "$ASSOCIATION_SERVICE_NAME"
           fi
 
+      - name: Verify dedicated tag runtime prerequisites before mutation
+        shell: bash
+        env:
+          DEPLOY_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          INGEST_SERVICE_ACCOUNT: ${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          tag_member="serviceAccount:$TAG_RUNTIME_SERVICE_ACCOUNT"
+          deploy_member="serviceAccount:$DEPLOY_SERVICE_ACCOUNT"
+          ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"
+          tag_identity="$(gcloud iam service-accounts describe "$TAG_RUNTIME_SERVICE_ACCOUNT" \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg email "$TAG_RUNTIME_SERVICE_ACCOUNT" \
+            '.email == $email and (.disabled // false) == false' <<<"$tag_identity" >/dev/null
+          project_policy="$(gcloud projects get-iam-policy "$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$tag_member" '
+            .bindings[] | select(.role == "roles/cloudsql.client") |
+            .members[]? | select(. == $member)
+          ' <<<"$project_policy" >/dev/null
+          tag_identity_policy="$(gcloud iam service-accounts get-iam-policy \
+            "$TAG_RUNTIME_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$deploy_member" '
+            .bindings[] | select(.role == "roles/iam.serviceAccountUser") |
+            .members[]? | select(. == $member)
+          ' <<<"$tag_identity_policy" >/dev/null
+          tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$tag_member" '
+            .bindings[] | select(.role == "roles/secretmanager.secretAccessor") |
+            .members[]? | select(. == $member)
+          ' <<<"$tag_secret_policy" >/dev/null
+          if jq -e --arg member "$ingest_member" '
+            .bindings[] | select(.role == "roles/secretmanager.secretAccessor") |
+            .members[]? | select(. == $member)
+          ' <<<"$tag_secret_policy" >/dev/null; then
+            echo "Ingest runtime still has tag-writer secret access" >&2
+            exit 1
+          fi
+
       - name: Verify private-read access before publishing
         shell: bash
         run: bash scripts/private_read_invokers_dev.sh preflight

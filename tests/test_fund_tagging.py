@@ -230,6 +230,8 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
         store.source_evidence,
         "latest",
         lambda conn: {
+                "publication_id": "a" * 64,
+                "publication_sequence": 1,
             "catalogue_census_hash": candidate["catalogue_census_hash"],
             "family_projection_hash": candidate["family_projection_hash"],
         },

@@ -8,6 +8,7 @@ response bodies.
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 from typing import Any
@@ -86,7 +87,13 @@ def _get_json(
         raise PrivateSmokeError(f"private API returned invalid JSON for {label}") from exc
 
 
-def run_smoke(base_url: str, audience: str, session: requests.Session) -> None:
+def run_smoke(
+    base_url: str,
+    audience: str,
+    session: requests.Session,
+    *,
+    require_tags: bool = False,
+) -> None:
     base_url = _service_url(base_url, name="MFDATAINDIA_PRIVATE_BASE_URL")
     audience = _service_url(audience, name="MFDATAINDIA_PRIVATE_AUDIENCE")
     if audience != base_url:
@@ -133,20 +140,43 @@ def run_smoke(base_url: str, audience: str, session: requests.Session) -> None:
     if nav.get("code") != code or not isinstance(points, list) or not points:
         raise PrivateSmokeError("private API NAV contract failed")
 
+    if require_tags:
+        tags = _get_json(
+            session,
+            base_url,
+            f"/api/fund-tags/v1/funds/{code}",
+            token,
+            label="factual tags",
+        )
+        funds = tags.get("funds") if isinstance(tags, dict) else None
+        snapshot_id = tags.get("snapshot_id") if isinstance(tags, dict) else None
+        if (
+            not isinstance(snapshot_id, str)
+            or len(snapshot_id) != 64
+            or not isinstance(funds, list)
+            or len(funds) != 1
+            or not isinstance(funds[0], dict)
+            or funds[0].get("code") != code
+        ):
+            raise PrivateSmokeError("private API factual-tag contract failed")
 
-def main() -> int:
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--require-tags", action="store_true")
+    args = parser.parse_args(argv)
     base_url = os.environ.get("MFDATAINDIA_PRIVATE_BASE_URL", "")
     audience = os.environ.get("MFDATAINDIA_PRIVATE_AUDIENCE", "")
     session = requests.Session()
     session.trust_env = False
     try:
-        run_smoke(base_url, audience, session)
+        run_smoke(base_url, audience, session, require_tags=args.require_tags)
     except (PrivateSmokeError, requests.RequestException) as exc:
         print(f"private MFDataIndia smoke failed: {exc}", file=sys.stderr)
         return 1
     finally:
         session.close()
-    print("private MFDataIndia smoke passed: endpoints=5")
+    print(f"private MFDataIndia smoke passed: endpoints={6 if args.require_tags else 5}")
     return 0
 
 
