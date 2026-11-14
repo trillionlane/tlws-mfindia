@@ -84,7 +84,19 @@ def prepare(rows):
     """Pure complete-census proposal; no IDs rewritten or external facts inferred."""
     validate(rows)
     rows = sorted(rows, key=lambda r: r['code'])
-    source_hash = digest(rows)
+    catalogue_rows = [{key: row[key] for key in (
+        'code', 'amc_id', 'amc', 'scheme_name', 'scheme_type', 'scheme_category',
+        'category_source', 'plan_type', 'plan_source', 'option_type', 'is_etf',
+        'in_scope', 'last_seen',
+    )} for row in rows]
+    family_rows = [{key: row[key] for key in ('code', 'group_key', 'family_id')}
+                   for row in rows]
+    catalogue_census_hash = digest(catalogue_rows)
+    family_projection_hash = digest(family_rows)
+    source_hash = digest({
+        'catalogue_census_hash': catalogue_census_hash,
+        'family_projection_hash': family_projection_hash,
+    })
     policy_hash = digest({'contract': CONTRACT,
                           'implementation_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()})
     snapshot = digest({'policy_hash': policy_hash, 'source_hash': source_hash})
@@ -138,7 +150,9 @@ def prepare(rows):
                 'evidence_hash': digest(r), 'policy_version': VERSION})
     counts = {s: sum(a['state'] == s for a in assessments)
               for s in ('supported', 'insufficient-evidence', 'not-assessed', 'not-applicable')}
-    return {'snapshot_id': snapshot, 'source_hash': source_hash, 'policy_hash': policy_hash,
+    return {'snapshot_id': snapshot, 'source_hash': source_hash,
+            'catalogue_census_hash': catalogue_census_hash,
+            'family_projection_hash': family_projection_hash, 'policy_hash': policy_hash,
             'funds': len(rows), 'in_scope_funds': sum(r['in_scope'] for r in rows),
             'mapping_counts': mapping_counts, 'counts': counts,
             'observations': rows, 'definitions': sorted(definitions.values(), key=lambda d: d['tag_id']),

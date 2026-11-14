@@ -1,4 +1,5 @@
 """Automatic tag refresh is idempotent, separate, and failure-isolated."""
+
 from datetime import datetime, timezone
 import importlib.util
 import json
@@ -6,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from mfdataindia.tagging import policy, refresh
+from psycopg.pq import TransactionStatus
 from test_fund_tagging import row
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,28 +15,31 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def trigger():
     return {
-        'source_kind': 'daily-amfi-refresh',
-        'source_content_hash': 'a' * 64,
-        'observed_on': '2026-11-11',
+        "source_kind": "daily-amfi-refresh",
+        "source_content_hash": "a" * 64,
+        "observed_on": "2026-11-11",
     }
 
 
 def test_unconfigured_refresh_is_explicit_and_never_connects():
     def forbidden(*args, **kwargs):
-        raise AssertionError('unconfigured refresh attempted a connection')
+        raise AssertionError("unconfigured refresh attempted a connection")
 
     result = refresh.after_success(trigger(), environ={}, connector=forbidden)
-    assert result['state'] == 'NOT_CONFIGURED'
-    assert result['source_ingestion_outcome'] == 'PRESERVED'
-    assert result['retry_performed'] is False
-    assert result['consumer_acceptance'] == 'NOT_OBSERVED'
-    assert result['attempt_id'] and result['tag_snapshot_id'] is None
+    assert result["state"] == "NOT_CONFIGURED"
+    assert result["source_ingestion_outcome"] == "PRESERVED"
+    assert result["retry_performed"] is False
+    assert result["consumer_acceptance"] == "NOT_OBSERVED"
+    assert result["attempt_id"] and result["tag_snapshot_id"] is None
 
 
 def test_identical_inputs_are_one_attempt_and_report_unchanged_without_retry():
     connections = []
 
     class Connection:
+        autocommit = True
+        info = SimpleNamespace(transaction_status=TransactionStatus.IDLE)
+
         def __enter__(self):
             connections.append(self)
             return self
@@ -42,68 +47,143 @@ def test_identical_inputs_are_one_attempt_and_report_unchanged_without_retry():
         def __exit__(self, *args):
             return False
 
+        def execute(self, statement, _parameters):
+            return SimpleNamespace(
+                fetchone=lambda: {
+                    "acquired": True,
+                    "released": True,
+                }
+            )
+
     def connect(dsn, **kwargs):
-        assert dsn == 'postgresql://separate-tag-writer'
-        assert kwargs['autocommit'] is True
-        assert kwargs['connect_timeout'] == 5
+        assert dsn == "postgresql://separate-tag-writer"
+        assert kwargs["autocommit"] is True
+        assert kwargs["connect_timeout"] == 5
         return Connection()
 
     def published(conn):
-        return {'state': 'UNCHANGED', 'snapshot_id': 'b' * 64}
+        return {"state": "UNCHANGED", "snapshot_id": "b" * 64}
+
     first = refresh.after_success(
-        trigger(), environ={refresh.DSN_ENV: 'postgresql://separate-tag-writer'},
-        connector=connect, publisher=published,
+        trigger(),
+        environ={refresh.DSN_ENV: "postgresql://separate-tag-writer"},
+        connector=connect,
+        publisher=published,
     )
     second = refresh.after_success(
-        trigger(), environ={refresh.DSN_ENV: 'postgresql://separate-tag-writer'},
-        connector=connect, publisher=published,
+        trigger(),
+        environ={refresh.DSN_ENV: "postgresql://separate-tag-writer"},
+        connector=connect,
+        publisher=published,
     )
     assert first == second
-    assert first['state'] == 'UNCHANGED' and first['tag_snapshot_id'] == 'b' * 64
+    assert first["state"] == "UNCHANGED" and first["tag_snapshot_id"] == "b" * 64
     assert len(connections) == 2  # one caller invocation each; no internal retry
+
+
+def test_verified_refresh_binds_attempt_to_attested_source_publication():
+    class Connection:
+        autocommit = True
+        info = SimpleNamespace(transaction_status=TransactionStatus.IDLE)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, statement, _parameters):
+            return SimpleNamespace(fetchone=lambda: {"acquired": True, "released": True})
+
+    report = refresh.publish_verified(
+        environ={refresh.DSN_ENV: "postgresql://separate-tag-writer"},
+        connector=lambda *args, **kwargs: Connection(),
+        publisher=lambda conn: {
+            "state": "PUBLISHED",
+            "snapshot_id": "b" * 64,
+            "source_publication_id": "c" * 64,
+            "source_publication_sequence": 7,
+        },
+    )
+    assert report["state"] == "PUBLISHED"
+    assert report["source_publication_id"] == "c" * 64
+    assert report["source_publication_sequence"] == 7
+    assert report["attempt_id"]
+    assert report["retry_performed"] is False
+
+
+def test_verified_refresh_busy_is_bounded_and_does_not_call_publisher():
+    class Connection:
+        autocommit = True
+        info = SimpleNamespace(transaction_status=TransactionStatus.IDLE)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, statement, _parameters):
+            return SimpleNamespace(fetchone=lambda: {"acquired": False})
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("publisher called while catalogue lock was busy")
+
+    result = refresh.publish_verified(
+        environ={refresh.DSN_ENV: "postgresql://separate-tag-writer"},
+        connector=lambda *args, **kwargs: Connection(),
+        publisher=forbidden,
+    )
+    assert result["state"] == "SOURCE_BUSY"
+    assert result["retry_performed"] is False
 
 
 def test_revised_source_and_changed_rules_have_traceable_attempt_identities(monkeypatch):
     original = refresh.after_success(trigger(), environ={})
-    revised = refresh.after_success({**trigger(), 'source_content_hash': 'c' * 64}, environ={})
-    assert revised['attempt_id'] != original['attempt_id']
+    revised = refresh.after_success({**trigger(), "source_content_hash": "c" * 64}, environ={})
+    assert revised["attempt_id"] != original["attempt_id"]
 
     evidence = refresh.policy_evidence()
-    monkeypatch.setattr(refresh, 'policy_evidence',
-                        lambda: {**evidence, 'factual_policy_hash': 'd' * 64})
+    monkeypatch.setattr(
+        refresh, "policy_evidence", lambda: {**evidence, "factual_policy_hash": "d" * 64}
+    )
     changed_rule = refresh.after_success(trigger(), environ={})
-    assert changed_rule['attempt_id'] != original['attempt_id']
+    assert changed_rule["attempt_id"] != original["attempt_id"]
 
 
 def test_failure_is_value_safe_and_cannot_reverse_source_success():
     def fail(*args, **kwargs):
-        raise RuntimeError('postgresql://secret-host/password=secret')
+        raise RuntimeError("postgresql://secret-host/password=secret")
 
     result = refresh.after_success(
-        trigger(), environ={refresh.DSN_ENV: 'postgresql://secret-writer'},
+        trigger(),
+        environ={refresh.DSN_ENV: "postgresql://secret-writer"},
         connector=fail,
     )
-    assert result['state'] == 'FAILED'
-    assert result['reason'] == 'TAG_REFRESH_FAILED'
-    assert result['source_ingestion_outcome'] == 'PRESERVED'
-    assert 'secret' not in repr(result)
+    assert result["state"] == "FAILED"
+    assert result["reason"] == "TAG_REFRESH_FAILED"
+    assert result["source_ingestion_outcome"] == "PRESERVED"
+    assert "secret" not in repr(result)
 
 
 def test_new_fund_enters_complete_census_with_explicit_unassessed_dimensions():
     candidate = policy.prepare([row(code=1), row(code=2)])
-    new = [value for value in candidate['assessments'] if value['code'] == 2]
+    new = [value for value in candidate["assessments"] if value["code"] == 2]
     assert len(new) == len(policy.DIMENSIONS)
-    assert {value['dimension'] for value in new} == set(policy.DIMENSIONS)
-    assert all(value['state'] == 'not-assessed' for value in new
-               if value['dimension'] in policy.RESERVED)
-    assert all(value['state'] in {'supported', 'insufficient-evidence', 'not-assessed'}
-               for value in new
-               if value['dimension'] in policy.FIELDS)
+    assert {value["dimension"] for value in new} == set(policy.DIMENSIONS)
+    assert all(
+        value["state"] == "not-assessed" for value in new if value["dimension"] in policy.RESERVED
+    )
+    assert all(
+        value["state"] in {"supported", "insufficient-evidence", "not-assessed"}
+        for value in new
+        if value["dimension"] in policy.FIELDS
+    )
 
 
 def wrapper():
-    path = ROOT / 'scripts/refresh_fund_tags_after_success.py'
-    spec = importlib.util.spec_from_file_location('refresh_fund_tags_after_success', path)
+    path = ROOT / "scripts/refresh_fund_tags_after_success.py"
+    spec = importlib.util.spec_from_file_location("refresh_fund_tags_after_success", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -114,82 +194,106 @@ def test_wrapper_attempts_tags_only_after_exact_daily_success_receipt():
     module = wrapper()
     order = []
     source = {
-        'status': 'DAILY_REFRESH_OK', 'as_of': '2026-11-11',
-        'fetch': {'content_sha256': 'e' * 64},
+        "status": "DAILY_REFRESH_OK",
+        "as_of": "2026-11-11",
+        "fetch": {"content_sha256": "e" * 64},
     }
 
     def runner(*args, **kwargs):
-        order.append('source-completed')
-        return SimpleNamespace(returncode=0, stdout=json.dumps(source), stderr='source-log\n')
+        order.append("source-completed")
+        return SimpleNamespace(returncode=0, stdout=json.dumps(source), stderr="source-log\n")
 
     def refresher(value):
-        order.append('tag-attempted')
+        order.append("tag-attempted")
         assert value == {
-            'source_kind': 'daily-amfi-refresh',
-            'source_content_hash': 'e' * 64,
-            'observed_on': '2026-11-11',
+            "source_kind": "daily-amfi-refresh",
+            "source_content_hash": "e" * 64,
+            "observed_on": "2026-11-11",
         }
-        return {'state': 'UNCHANGED'}
+        return {"state": "UNCHANGED"}
 
     code, stdout, stderr = module.execute(
-        'daily-amfi-refresh', [], runner=runner, refresher=refresher
+        "daily-amfi-refresh", [], runner=runner, refresher=refresher
     )
-    assert code == 0 and order == ['source-completed', 'tag-attempted']
-    assert json.loads(stdout)['tag_refresh'] == {'state': 'UNCHANGED'}
-    assert stderr == 'source-log\n'
+    assert code == 0 and order == ["source-completed", "tag-attempted"]
+    assert json.loads(stdout)["tag_refresh"] == {"state": "UNCHANGED"}
+    assert stderr == "source-log\n"
 
 
 def test_wrapper_never_attempts_tags_after_source_failure():
     module = wrapper()
 
     def runner(*args, **kwargs):
-        return SimpleNamespace(returncode=7, stdout='source-output', stderr='source-failed')
+        return SimpleNamespace(returncode=7, stdout="source-output", stderr="source-failed")
 
     def forbidden(*args, **kwargs):
-        raise AssertionError('tag refresh ran after failed source')
+        raise AssertionError("tag refresh ran after failed source")
 
-    assert module.execute(
-        'daily-amfi-refresh', [], runner=runner, refresher=forbidden
-    ) == (7, 'source-output', 'source-failed')
+    assert module.execute("daily-amfi-refresh", [], runner=runner, refresher=forbidden) == (
+        7,
+        "source-output",
+        "source-failed",
+    )
 
 
 def test_wrapper_preserves_zero_exit_but_skips_tags_for_invalid_daily_receipt():
     module = wrapper()
 
     def runner(*args, **kwargs):
-        return SimpleNamespace(returncode=0, stdout='not-a-source-receipt', stderr='')
+        return SimpleNamespace(returncode=0, stdout="not-a-source-receipt", stderr="")
 
     def forbidden(*args, **kwargs):
-        raise AssertionError('tag refresh ran without a valid source receipt')
+        raise AssertionError("tag refresh ran without a valid source receipt")
 
     code, stdout, stderr = module.execute(
-        'daily-amfi-refresh', [], runner=runner, refresher=forbidden
+        "daily-amfi-refresh", [], runner=runner, refresher=forbidden
     )
     result = json.loads(stdout)
-    assert code == 0 and stderr == ''
-    assert result['status'] == 'SOURCE_SUCCESS_RECEIPT_INVALID'
-    assert result['tag_refresh'] == {'state': 'NOT_REQUESTED_INVALID_SOURCE_RECEIPT'}
+    assert code == 0 and stderr == ""
+    assert result["status"] == "SOURCE_SUCCESS_RECEIPT_INVALID"
+    assert result["tag_refresh"] == {"state": "NOT_REQUESTED_INVALID_SOURCE_RECEIPT"}
 
 
 def test_family_wrapper_skips_dry_run_and_uses_success_receipt_hash():
     module = wrapper()
 
     def runner(*args, **kwargs):
-        return SimpleNamespace(returncode=0, stdout='FUND_FAMILY REPORT: {}\n', stderr='')
+        return SimpleNamespace(returncode=0, stdout="FUND_FAMILY REPORT: {}\n", stderr="")
 
     def forbidden(*args, **kwargs):
-        raise AssertionError('tag refresh ran during dry run')
+        raise AssertionError("tag refresh ran during dry run")
 
-    dry = module.execute('fund-family-build', ['--dry-run'], runner=runner,
-                         refresher=forbidden)
-    assert json.loads(dry[1])['tag_refresh'] == {'state': 'NOT_REQUESTED_DRY_RUN'}
+    dry = module.execute("fund-family-build", ["--dry-run"], runner=runner, refresher=forbidden)
+    assert json.loads(dry[1])["tag_refresh"] == {"state": "NOT_REQUESTED_DRY_RUN"}
 
     observed = []
     built = module.execute(
-        'fund-family-build', [], runner=runner,
-        refresher=lambda value: observed.append(value) or {'state': 'PUBLISHED'},
+        "fund-family-build",
+        [],
+        runner=runner,
+        refresher=lambda value: observed.append(value) or {"state": "PUBLISHED"},
         now=lambda: datetime(2026, 11, 11, tzinfo=timezone.utc),
     )
-    assert built[0] == 0 and json.loads(built[1])['tag_refresh']['state'] == 'PUBLISHED'
-    assert observed[0]['source_kind'] == 'fund-family-build'
-    assert observed[0]['observed_on'] == '2026-11-11'
+    assert built[0] == 0 and json.loads(built[1])["tag_refresh"]["state"] == "PUBLISHED"
+    assert observed[0]["source_kind"] == "fund-family-build"
+    assert observed[0]["observed_on"] == "2026-11-11"
+
+
+def test_independent_job_exits_success_only_after_actual_tag_publication(monkeypatch, capsys):
+    path = ROOT / "scripts/publish_fund_tags.py"
+    spec = importlib.util.spec_from_file_location("publish_fund_tags", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    expected = {
+        "PUBLISHED": 0,
+        "UNCHANGED": 0,
+        "SOURCE_RECEIPT_UNAVAILABLE": 2,
+        "SOURCE_BUSY": 2,
+        "FAILED": 1,
+    }
+    for state, exit_code in expected.items():
+        monkeypatch.setattr(module, "publish_verified", lambda state=state: {"state": state})
+        assert module.main() == exit_code
+        assert json.loads(capsys.readouterr().out) == {"state": state}

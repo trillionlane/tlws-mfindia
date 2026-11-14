@@ -43,6 +43,7 @@ env:
   ASSOCIATION_WRITER_PROVISIONED: ${{ vars.MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED || 'false' }}
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   REFRESH_JOB: tlws-mf-data-nav-refresh-dev
+  TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
   TAG_INSTALL_JOB: tlws-mf-data-tag-install-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
@@ -283,7 +284,7 @@ jobs:
             --set-secrets=MFDATAINDIA_DSN=tlws-mf-review-read-dsn-dev:latest \
             --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$RELEASE_CANDIDATE_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
             --command=/app/.venv/bin/uvicorn \
-            --args=mfdataindia.tagging.app:create_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
+            --args=mfdataindia.tagging.values_app:create_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
             --cpu=1 \
             --memory=512Mi \
             --concurrency=40 \
@@ -362,7 +363,7 @@ jobs:
         shell: bash
         run: bash scripts/private_read_invokers_dev.sh reconcile
 
-      - name: Reconcile the six-hour refresh job to the immutable image
+      - name: Reconcile the six-hour NAV and catalogue refresh job
         shell: bash
         run: |
           set -euo pipefail
@@ -372,10 +373,10 @@ jobs:
             --image="${{ steps.image.outputs.uri }}" \
             --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
-            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest,MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
             --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
             --command=/app/.venv/bin/python \
-            --args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh \
+            --args=/app/scripts/refresh_daily_v2.py \
             --tasks=1 \
             --parallelism=1 \
             --max-retries=0 \
@@ -383,6 +384,28 @@ jobs:
             --cpu=1 \
             --memory=1Gi \
             --labels=product=mfdataindia,environment=dev,operation=nav-refresh,managed-by=github-actions \
+            --quiet
+
+      - name: Reconcile the independent zero-retry factual-tag refresh job
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$TAG_REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/publish_fund_tags.py \
+            --tasks=1 \
+            --parallelism=1 \
+            --max-retries=0 \
+            --task-timeout=2m \
+            --cpu=1 \
+            --memory=512Mi \
+            --labels=product=mfdataindia,environment=dev,operation=tag-refresh,managed-by=github-actions \
             --quiet
 
       - name: Deploy and execute the internal zero-retry smoke job
@@ -442,7 +465,7 @@ jobs:
           deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
           test "$deployed_sha" = "$RELEASE_CANDIDATE_SHA"
           jq -e '.spec.template.spec.containers[0].command == ["/app/.venv/bin/uvicorn"]' <<<"$service_json" >/dev/null
-          jq -e '.spec.template.spec.containers[0].args == ["mfdataindia.tagging.app:create_app","--factory","--host","0.0.0.0","--port","8080","--no-access-log"]' <<<"$service_json" >/dev/null
+          jq -e '.spec.template.spec.containers[0].args == ["mfdataindia.tagging.values_app:create_app","--factory","--host","0.0.0.0","--port","8080","--no-access-log"]' <<<"$service_json" >/dev/null
           jq -e '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-review-read-dsn-dev"' <<<"$service_json" >/dev/null
 
           refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
@@ -457,9 +480,17 @@ jobs:
           test "$refresh_scope" = "FULL"
           jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].command == ["/app/.venv/bin/python"]' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"]' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$refresh_json" >/dev/null
-          echo "MFDataIndia private DEV read service and refresh job reconciled"
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_daily_v2.py"]' <<<"$refresh_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN")] | length == 0' <<<"$refresh_json" >/dev/null
+
+          tag_refresh_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$tag_refresh_json")" = "$refresh_image"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$tag_refresh_json")" = "${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$tag_refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$tag_refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$tag_refresh_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN")] | length == 0' <<<"$tag_refresh_json" >/dev/null
+          echo "MFDataIndia private DEV read service, NAV job, and independent tag job reconciled"
 
       - name: Reconcile the optional association writer revision
         if: env.ASSOCIATION_WRITER_PROVISIONED == 'true'

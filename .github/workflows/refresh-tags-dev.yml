@@ -1,0 +1,65 @@
+name: Refresh MFDataIndia factual tags DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_project:
+        description: "Type trillionlane-dev"
+        required: true
+        type: string
+      confirm_job:
+        description: "Type tlws-mf-data-tag-refresh-dev"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tlws-mf-data-dev-mutations
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PROJECT: trillionlane-dev
+  EXPECTED_REGION: asia-south1
+  SERVICE_NAME: tlws-mf-data-dev
+  TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
+
+jobs:
+  refresh:
+    if: github.ref == 'refs/heads/main' && github.repository_id == '1403671867'
+    environment: mf-data-dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Validate supervised execution contract
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
+          test "${{ inputs.confirm_job }}" = "$TAG_REFRESH_JOB"
+          test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
+          test "$GITHUB_REPOSITORY_ID" = "1403671867"
+          test "$GITHUB_REF" = "refs/heads/main"
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Execute one independent zero-retry factual-tag publication
+        run: |
+          set -euo pipefail
+          job_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
+          live_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
+          test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$job_json")" = "$live_image"
+          jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$job_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$job_json" >/dev/null
+          jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN")] | length == 0' <<<"$job_json" >/dev/null
+          gcloud run jobs execute "$TAG_REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --wait --quiet

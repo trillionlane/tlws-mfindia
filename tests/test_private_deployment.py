@@ -104,11 +104,13 @@ def test_read_deployment_reconciles_refresh_job_without_executing_it() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
     assert "REFRESH_JOB: tlws-mf-data-nav-refresh-dev" in workflow
-    assert "Reconcile the six-hour refresh job to the immutable image" in workflow
+    assert "Reconcile the six-hour NAV and catalogue refresh job" in workflow
     assert '--image="${{ steps.image.outputs.uri }}"' in workflow
     assert '--service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"' in workflow
     assert "--set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL" in workflow
-    assert "--args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh" in workflow
+    assert "--args=/app/scripts/refresh_daily_v2.py" in workflow
+    assert "TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev" in workflow
+    assert "--args=/app/scripts/publish_fund_tags.py" in workflow
     assert "MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest" in workflow
     assert "refresh_scope" in workflow
     assert 'gcloud run jobs execute "$REFRESH_JOB"' not in workflow
@@ -126,15 +128,23 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "--max-retries=0" in deploy
     assert "MFDATAINDIA_DSN=tlws-mf-data-admin-dsn-dev:latest" in deploy
     assert "MFDATAINDIA_DSN=tlws-mf-review-read-dsn-dev:latest" in deploy
-    assert "mfdataindia.tagging.app:create_app" in deploy
+    assert "mfdataindia.tagging.values_app:create_app" in deploy
     for workflow in (deploy, refresh):
         assert "MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest" in workflow
-        assert "MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest" in workflow
-        assert "--args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh" in workflow
+        assert "--args=/app/scripts/refresh_daily_v2.py" in workflow
+    tag_refresh = (ROOT / ".github/workflows/refresh-tags-dev.yml").read_text()
+    assert "MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest" in deploy
+    assert "tlws-mf-data-tag-writer-dsn-dev" in tag_refresh
+    for workflow in (deploy, tag_refresh):
+        assert "/app/scripts/publish_fund_tags.py" in workflow
+    assert "MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest" not in tag_refresh
+    assert 'value(spec.template.spec.containers[0].image)' in tag_refresh
+    assert 'containers[0].image\' <<<"$job_json")" = "$live_image"' in tag_refresh
     assert "create_database_principal mfdata_tag_writer tlws-mf-data-tag-writer-dsn-dev" in provision
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
     assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"' in provision
     assert "store.install(conn, ROOT)" in installer
+    assert "047_tag_input_publications.sql" in installer
     assert "TAGGING_INSTALL_FAILED" in installer
 
 

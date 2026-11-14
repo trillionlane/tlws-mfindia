@@ -8,7 +8,7 @@ from psycopg.pq import TransactionStatus
 from psycopg.types.json import Jsonb
 
 from mfdataindia.datasets import enrollment
-from . import policy as p
+from . import policy as p, source_evidence
 
 FILE = 'sql/operations/fund_tagging_v1.sql'
 SQL_SHA256 = '388f64a8d1e8ae8978bb647633b697b29b8aa6f546853115a48587067ddb0a1d'
@@ -143,12 +143,19 @@ def publish(conn):
         limits(conn)
         principal(conn, p.WRITER)
         installed(conn)
+        receipt = source_evidence.latest(conn)
         candidate = census(conn)
+        p.require(candidate['catalogue_census_hash'] == receipt['catalogue_census_hash']
+                  and candidate['family_projection_hash'] == receipt['family_projection_hash'],
+                  'TAGGING_SOURCE_RECEIPT_DIFFERS')
         snapshot = candidate['snapshot_id']
         head = conn.execute('SELECT snapshot_id FROM mf_tagging.head WHERE singleton').fetchone()
         if head and head['snapshot_id'] == snapshot:
             verify_candidate(conn, candidate)
-            return {'state': 'UNCHANGED', 'snapshot_id': snapshot, 'source_rows_changed': 0,
+            return {'state': 'UNCHANGED', 'snapshot_id': snapshot,
+                    'source_publication_id': receipt['publication_id'],
+                    'source_publication_sequence': receipt['publication_sequence'],
+                    'source_rows_changed': 0,
                     'consumer_acceptance': 'NOT_OBSERVED'}
         # An old snapshot cannot be restored as a silent head rollback.
         p.require(not conn.execute('SELECT 1 FROM mf_tagging.snapshots WHERE snapshot_id=%s',
@@ -166,4 +173,7 @@ def publish(conn):
         _insert(conn, 'current', [{k: r[k] for k in ('code', 'dimension', 'document')} for r in historical])
         verify_candidate(conn, candidate)
         conn.execute('INSERT INTO mf_tagging.head VALUES(true,%s) ON CONFLICT(singleton) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id', (snapshot,))
-        return {'state': 'PUBLISHED', **report, 'source_rows_changed': 0}
+        return {'state': 'PUBLISHED', **report,
+                'source_publication_id': receipt['publication_id'],
+                'source_publication_sequence': receipt['publication_sequence'],
+                'source_rows_changed': 0}
