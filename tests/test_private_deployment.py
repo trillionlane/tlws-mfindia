@@ -214,10 +214,9 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     )
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
     assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"' in provision
-    assert '--role=roles/secretmanager.admin' in provision
-    assert '--member="serviceAccount:$DEPLOY_SA"' in provision
-    assert "timedelta(hours=2)" in provision
-    assert "mfdata-tag-writer-cutover" in provision
+    assert "validate_tag_cutover_admin.py" in provision
+    assert '--reconcile "$deploy_member"' in provision
+    assert "gcloud secrets set-iam-policy tlws-mf-data-tag-writer-dsn-dev" in provision
     assert '"$legacy_job" == "true" || "$current_job" == "true"' in provision
     assert '[[ "$legacy_job" == "true" || "$current_job" != "true" ]]' in provision
     assert 'ensure_secret_access tlws-mf-data-ingest-dsn-dev "$TAG_WRITER_SA"' not in provision
