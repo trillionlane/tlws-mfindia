@@ -214,6 +214,7 @@ create_database_principal mfdata_admin tlws-mf-data-admin-dsn-dev
 create_database_principal mfdata_ingest tlws-mf-data-ingest-dsn-dev
 create_database_principal mfdata_association_writer tlws-mf-data-association-writer-dsn-dev
 create_database_principal mfdata_audit tlws-mf-data-audit-dsn-dev
+create_database_principal mfdata_tag_writer tlws-mf-data-tag-writer-dsn-dev
 
 # Cloud SQL grants cloudsqlsuperuser to built-in users by default. Remove every
 # inherited database role immediately; migration 018 also clears the user's
@@ -232,6 +233,13 @@ gcloud sql users assign-roles mfdata_audit \
   --database-roles= \
   --revoke-existing-roles \
   --quiet
+gcloud sql users assign-roles mfdata_tag_writer \
+  --instance="$SQL_INSTANCE" \
+  --project="$PROJECT_ID" \
+  --type=BUILT_IN \
+  --database-roles= \
+  --revoke-existing-roles \
+  --quiet
 
 ensure_secret_access tlws-mf-data-runtime-dsn-dev "$RUNTIME_SA"
 ensure_secret_access tlws-mf-data-admin-dsn-dev "$MIGRATE_SA"
@@ -239,6 +247,7 @@ ensure_secret_access tlws-mf-data-admin-dsn-dev "$RESTORE_SA"
 ensure_secret_access tlws-mf-data-ingest-dsn-dev "$INGEST_SA"
 ensure_secret_access tlws-mf-data-association-writer-dsn-dev "$ASSOCIATION_WRITER_SA"
 ensure_secret_access tlws-mf-data-audit-dsn-dev "$AUDIT_SA"
+ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"
 
 gcloud storage buckets add-iam-policy-binding gs://tlws_mf_data_source \
   --member="serviceAccount:$RESTORE_SA" \
