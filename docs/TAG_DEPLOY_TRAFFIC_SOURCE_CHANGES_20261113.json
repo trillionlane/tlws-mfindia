@@ -3,7 +3,7 @@
   "historical_only": true,
   "modified": {
     ".github/workflows/deploy-dev.yml": {
-      "current_sha256": "66aa54321d593b277293bcb369ac6b6ec5b750a2c3eac764068e92ac62bf2305",
+      "current_sha256": "c2ac4d80e479f0cf34972de5d78b98eed44dd2007853f81254e59c7390d696a4",
       "previous_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421"
     },
     ".github/workflows/refresh-nav-dev.yml": {
@@ -15,7 +15,7 @@
       "previous_sha256": "b8526707d2b707c82d6635ff11a4492923f02f8f006b398708fc5db91e5c6c86"
     },
     "scripts/provision_dev_infra.sh": {
-      "current_sha256": "a04ac690c2164dddc0158e8ea6e48bdcb32cc7841de7a329c10a1e0d2678618e",
+      "current_sha256": "843deb79563b69ebe642a5a58c34708df1b1b63c78648e793a96ead604dae789",
       "previous_sha256": "24b35e3af3889d3582411a7d1374640d0a410dea12c2951f7ad5723ca14f43fa"
     },
     "scripts/refresh_daily_v2.py": {
@@ -59,7 +59,7 @@
       "previous_sha256": "2c7cef15fa14d1bbc933eceb393cb4d7ba93cfb8500a1fad1f78580ffc022be2"
     },
     "tests/test_private_deployment.py": {
-      "current_sha256": "71224325b796b8d4dce56a43561282e5d220b42f0ab2f09c1cd3176106750bea",
+      "current_sha256": "81d8f1c4b46e71a3a9bce568bda60cc5b8fce5818bce0a49cf13c8942d899997",
       "previous_sha256": "283b4da1a4da63a926f944398aa2ff5384b15f052f31aa83d7c68eed384377d0"
     },
     "tests/test_fund_tag_api_postgres.py": {
@@ -71,11 +71,11 @@
       "previous_sha256": "132085bf9fb25b401dfabcc28fe535d575a54128d38cc9db223e7c4d31cbdc2e"
     },
     "tests/test_fund_tagging_postgres.py": {
-      "current_sha256": "ca64ddc155d17d0d548f0dc3fded8bf5dbf3272d1e98283f5b347bdbbcd05a1d",
+      "current_sha256": "b0034b749c7fcd74d2bdd21708b917ca32d575c350a4a1e52f13ffa48290611a",
       "previous_sha256": "031651aafdbce8d7d01ba49badb9d229437ae17abcfe56f9817c655045c75e65"
     },
     "tests/test_fund_values_postgres.py": {
-      "current_sha256": "d3bcdcad736bba5c8703dee73e32c2eb79afbfc8ea7bde3a2655dde856f28056",
+      "current_sha256": "beb13afa5c1a499048e41c14dd95bae1c265f3a12c16081a1075f676f8aba015",
       "previous_sha256": "95fe7acd3c60f4f0ccfb77f5e5fc6edfcef8687ade2ece96b644172a2a80c290"
     },
     "tests/test_nav_family_continuity_postgres.py": {

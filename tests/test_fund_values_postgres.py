@@ -130,3 +130,21 @@ def test_packaged_values_factory_reads_tags_exposure_and_values_from_one_reader(
     assert exposure.json()["portfolio_as_of"] == "2026-08-31"
     assert screened.json()["portfolio_as_of"] == "2026-08-31"
     assert screened.json()["positive_live_assignments_claimed"] is False
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_packaged_values_factory_keeps_factual_tags_available_without_portfolios(tagging_db):
+    dsn = tagging_db
+    with writer(dsn) as conn:
+        published = tag_store.publish(conn)
+
+    with client(dsn) as api:
+        tags = api.get(tag_reads.PREFIX + "/funds/1")
+        exposure = api.get(exposure_reads.PREFIX + "/funds/1")
+        screened = api.get(values_reads.PREFIX + "/funds/1")
+
+    assert tags.status_code == 200
+    assert tags.json()["snapshot_id"] == published["snapshot_id"]
+    assert tags.json()["funds"][0]["code"] == 1
+    assert exposure.status_code == screened.status_code == 503
+    assert exposure.json()["detail"] == screened.json()["detail"] == "DATASET_NOT_FOUND"

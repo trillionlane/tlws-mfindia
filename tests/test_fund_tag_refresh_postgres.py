@@ -1,23 +1,34 @@
 """Hosted-only native proof for independently attested factual-tag refresh."""
 
+from dataclasses import replace
+from datetime import datetime, timezone
+import importlib
+from pathlib import Path
+
 import psycopg
 from psycopg.rows import dict_row
 import pytest
 
+from mfdataindia.ingest.amfi_client import FetchResult
+from mfdataindia.ingest.amfi_navall import ParseReport
 from mfdataindia.store.catalogue_lock import catalogue_publication_lock
-from mfdataindia.tagging import refresh
+from mfdataindia.tagging import refresh, source_evidence
 from test_fund_tagging_postgres import (
     append_source_receipt,
     tagging_db as tagging_db,
     writer,
 )
 from test_ro01_reader_policy_postgres import connect, ro01_db as ro01_db, values
+from test_nav_family_continuity import DAY, scheme
 
 pytestmark = pytest.mark.postgres
+ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
-def test_native_legacy_full_waits_for_first_receipt_then_publishes_once(tagging_db):
+def test_native_legacy_full_waits_for_new_full_v2_receipt_then_publishes_once(
+    tagging_db, monkeypatch, capsys
+):
     dsn = tagging_db
     baseline = values(dsn)
 
@@ -36,8 +47,51 @@ def test_native_legacy_full_waits_for_first_receipt_then_publishes_once(tagging_
     with connect(dsn) as owner:
         assert owner.execute("SELECT count(*) AS n FROM mf_tagging.snapshots").fetchone()["n"] == 0
 
-    with connect(dsn, autocommit=False) as owner:
-        receipt = append_source_receipt(owner)
+    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
+    daily = importlib.import_module("refresh_daily_v2")
+    schemes = [
+        scheme(1, "Fund 1", None, amc="Verified fixture"),
+        replace(
+            scheme(2, "Fund 2", None, amc="Verified fixture"),
+            option="IDCW",
+        ),
+        scheme(3, "New Fund 3", "INFTEST00003", amc="Verified fixture"),
+    ]
+    fetch = FetchResult(
+        "https://portal.amfiindia.com/spages/NAVAll.txt",
+        200,
+        "fixture",
+        "f" * 64,
+        1,
+        datetime(2026, 11, 14, 12, tzinfo=timezone.utc),
+        0,
+        "FIXTURE",
+    )
+    monkeypatch.setattr(daily, "resolve_dsn", lambda *args, **kwargs: dsn)
+    monkeypatch.setattr(
+        daily,
+        "AmfiClient",
+        lambda *args, **kwargs: type("Client", (), {"fetch_navall": lambda self: fetch})(),
+    )
+    monkeypatch.setattr(
+        daily,
+        "parse_navall",
+        lambda text: (
+            schemes,
+            ParseReport(data_rows=3, distinct_amcs=1, distinct_categories=1),
+        ),
+    )
+    monkeypatch.setattr(daily, "validate_feed", lambda *args, **kwargs: DAY)
+    monkeypatch.setattr(
+        daily,
+        "validate_full_snapshot_completeness",
+        lambda *args, **kwargs: {"fixture": "actual-v2-publication"},
+    )
+    assert daily.main([]) == 0
+    capsys.readouterr()
+    with connect(dsn) as owner:
+        receipt = source_evidence.latest(owner)
+        assert receipt["source_kind"] == "full-catalogue"
     first = refresh.publish_verified(environ=environment, connector=connector)
     second = refresh.publish_verified(environ=environment, connector=connector)
     assert first["state"] == "PUBLISHED"

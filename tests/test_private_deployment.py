@@ -140,9 +140,22 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest" not in tag_refresh
     assert 'value(spec.template.spec.containers[0].image)' in tag_refresh
     assert 'containers[0].image\' <<<"$job_json")" = "$live_image"' in tag_refresh
+    assert "TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@" in deploy
+    assert "TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@" in tag_refresh
+    assert '--service-account="$TAG_RUNTIME_SERVICE_ACCOUNT"' in deploy
+    assert 'serviceAccountName\' <<<"$job_json")" = "$TAG_RUNTIME_SERVICE_ACCOUNT"' in tag_refresh
+    validation_shell = tag_refresh.split("      - name: Validate supervised execution contract", 1)[1].split(
+        "      - id: auth", 1
+    )[0].split("        run: |", 1)[1]
+    assert "${{ inputs." not in validation_shell
+    assert 'test "$CONFIRM_PROJECT" = "$EXPECTED_PROJECT"' in validation_shell
+    assert 'test "$CONFIRM_JOB" = "$TAG_REFRESH_JOB"' in validation_shell
     assert "create_database_principal mfdata_tag_writer tlws-mf-data-tag-writer-dsn-dev" in provision
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
-    assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"' in provision
+    assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"' in provision
+    assert 'ensure_secret_access tlws-mf-data-ingest-dsn-dev "$TAG_WRITER_SA"' not in provision
+    assert 'remove_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"' in provision
+    assert "ensure_service_account tlws-mf-data-tag-writer-dev" in provision
     assert "store.install(conn, ROOT)" in installer
     assert "047_tag_input_publications.sql" in installer
     assert "TAGGING_INSTALL_FAILED" in installer

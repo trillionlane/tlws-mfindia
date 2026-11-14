@@ -24,6 +24,7 @@ env:
   EXPECTED_REGION: asia-south1
   SERVICE_NAME: tlws-mf-data-dev
   TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
+  TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@trillionlane-dev.iam.gserviceaccount.com
 
 jobs:
   refresh:
@@ -36,10 +37,13 @@ jobs:
       id-token: write
     steps:
       - name: Validate supervised execution contract
+        env:
+          CONFIRM_PROJECT: ${{ inputs.confirm_project }}
+          CONFIRM_JOB: ${{ inputs.confirm_job }}
         run: |
           set -euo pipefail
-          test "${{ inputs.confirm_project }}" = "$EXPECTED_PROJECT"
-          test "${{ inputs.confirm_job }}" = "$TAG_REFRESH_JOB"
+          test "$CONFIRM_PROJECT" = "$EXPECTED_PROJECT"
+          test "$CONFIRM_JOB" = "$TAG_REFRESH_JOB"
           test "$GITHUB_REPOSITORY" = "trillionlane/tlws-mfindia"
           test "$GITHUB_REPOSITORY_ID" = "1403671867"
           test "$GITHUB_REF" = "refs/heads/main"
@@ -57,6 +61,7 @@ jobs:
           job_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
           live_image="$(gcloud run services describe "$SERVICE_NAME" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format='value(spec.template.spec.containers[0].image)')"
           test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$job_json")" = "$live_image"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$job_json")" = "$TAG_RUNTIME_SERVICE_ACCOUNT"
           jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$job_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$job_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$job_json" >/dev/null

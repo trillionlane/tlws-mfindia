@@ -27,6 +27,7 @@ RUNTIME_SA="tlws-mf-data-runtime-dev@$PROJECT_ID.iam.gserviceaccount.com"
 MIGRATE_SA="tlws-mf-data-migrate-dev@$PROJECT_ID.iam.gserviceaccount.com"
 RESTORE_SA="tlws-mf-data-restore-dev@$PROJECT_ID.iam.gserviceaccount.com"
 INGEST_SA="tlws-mf-data-ingest-dev@$PROJECT_ID.iam.gserviceaccount.com"
+TAG_WRITER_SA="tlws-mf-data-tag-writer-dev@$PROJECT_ID.iam.gserviceaccount.com"
 SCHEDULER_SA="tlws-mf-data-scheduler-dev@$PROJECT_ID.iam.gserviceaccount.com"
 ASSOCIATION_WRITER_SA="tlws-mf-assoc-writer-dev@$PROJECT_ID.iam.gserviceaccount.com"
 AUDIT_SA="tlws-mf-data-audit-dev@$PROJECT_ID.iam.gserviceaccount.com"
@@ -75,6 +76,24 @@ ensure_secret_access() {
     --quiet >/dev/null
 }
 
+remove_secret_access() {
+  local secret="$1"
+  local service_account="$2"
+  local member="serviceAccount:$service_account"
+  if gcloud secrets get-iam-policy "$secret" \
+    --project="$PROJECT_ID" \
+    --flatten='bindings[].members' \
+    --filter="bindings.role=roles/secretmanager.secretAccessor AND bindings.members=$member" \
+    --format='value(bindings.members)' | grep -Fx "$member" >/dev/null; then
+    gcloud secrets remove-iam-policy-binding "$secret" \
+      --project="$PROJECT_ID" \
+      --member="$member" \
+      --role=roles/secretmanager.secretAccessor \
+      --condition=None \
+      --quiet >/dev/null
+  fi
+}
+
 ensure_act_as() {
   local service_account="$1"
   gcloud iam service-accounts add-iam-policy-binding "$service_account" \
@@ -90,6 +109,7 @@ ensure_service_account tlws-mf-data-runtime-dev "MFDataIndia DEV read-only runti
 ensure_service_account tlws-mf-data-migrate-dev "MFDataIndia DEV migration runner"
 ensure_service_account tlws-mf-data-restore-dev "MFDataIndia DEV snapshot restore runner"
 ensure_service_account tlws-mf-data-ingest-dev "MFDataIndia DEV ingestion runner"
+ensure_service_account tlws-mf-data-tag-writer-dev "MFDataIndia DEV factual-tag writer"
 ensure_service_account tlws-mf-data-scheduler-dev "MFDataIndia DEV scheduler invoker"
 ensure_service_account tlws-mf-assoc-writer-dev "MFDataIndia DEV association writer"
 ensure_service_account tlws-mf-data-audit-dev "MFDataIndia DEV NAV-quality auditor"
@@ -115,7 +135,7 @@ ensure_project_role "serviceAccount:$DEPLOY_SA" roles/run.admin
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudsql.viewer
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/cloudscheduler.admin
 ensure_project_role "serviceAccount:$DEPLOY_SA" roles/logging.viewer
-for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA" "$ASSOCIATION_WRITER_SA" "$AUDIT_SA"; do
+for account in "$RUNTIME_SA" "$MIGRATE_SA" "$RESTORE_SA" "$INGEST_SA" "$TAG_WRITER_SA" "$ASSOCIATION_WRITER_SA" "$AUDIT_SA"; do
   ensure_project_role "serviceAccount:$account" roles/cloudsql.client
   ensure_act_as "$account"
 done
@@ -247,7 +267,8 @@ ensure_secret_access tlws-mf-data-admin-dsn-dev "$RESTORE_SA"
 ensure_secret_access tlws-mf-data-ingest-dsn-dev "$INGEST_SA"
 ensure_secret_access tlws-mf-data-association-writer-dsn-dev "$ASSOCIATION_WRITER_SA"
 ensure_secret_access tlws-mf-data-audit-dsn-dev "$AUDIT_SA"
-ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"
+ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"
+remove_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"
 
 gcloud storage buckets add-iam-policy-binding gs://tlws_mf_data_source \
   --member="serviceAccount:$RESTORE_SA" \

@@ -18,7 +18,8 @@ FAMILY_SQL = """SELECT f.amfi_scheme_code AS code,v.group_key,ff.tlws_mf_id AS f
  ORDER BY f.amfi_scheme_code LIMIT 50001"""
 
 RECEIPT_COLUMNS = (
-    "publication_sequence", "publication_id", "source_kind", "source_snapshot_run_id",
+    "publication_sequence", "publication_id", "predecessor_publication_id",
+    "source_kind", "source_snapshot_run_id",
     "catalogue_observed_on", "observed_on", "catalogue_census_hash",
     "family_projection_hash", "receipt_content_hash",
 )
@@ -35,10 +36,12 @@ def observations(conn):
     }
 
 
-def _receipt_document(*, source_kind, source_snapshot_run_id, catalogue_observed_on,
+def _receipt_document(*, predecessor_publication_id, source_kind, source_snapshot_run_id,
+                      catalogue_observed_on,
                       observed_on, catalogue_census_hash, family_projection_hash):
     return {
         "format": "mfdata-tag-input-publication-v1",
+        "predecessor_publication_id": predecessor_publication_id,
         "source_kind": source_kind,
         "source_snapshot_run_id": source_snapshot_run_id,
         "catalogue_observed_on": catalogue_observed_on.isoformat(),
@@ -54,7 +57,21 @@ def append(conn, *, source_kind: str, source_snapshot_run_id: int,
     if expected_catalogue_hash is not None:
         policy.require(hashes["catalogue_census_hash"] == expected_catalogue_hash,
                        "CATALOGUE_CHANGED_DURING_FAMILY_REBUILD")
+    columns = ",".join(RECEIPT_COLUMNS)
+    predecessor = conn.execute(f"""SELECT {columns}
+        FROM mf_identity.tag_input_publications
+        ORDER BY publication_sequence DESC LIMIT 1""").fetchone()
+    if predecessor is not None:
+        predecessor = validate(predecessor)
+    if (source_kind == "fund-family-rebuild" and predecessor is not None
+            and predecessor["source_snapshot_run_id"] == source_snapshot_run_id
+            and predecessor["catalogue_observed_on"] == catalogue_observed_on
+            and predecessor["catalogue_census_hash"] == hashes["catalogue_census_hash"]
+            and predecessor["family_projection_hash"] == hashes["family_projection_hash"]):
+        return describe(predecessor)
+    predecessor_id = predecessor["publication_id"] if predecessor else None
     document = _receipt_document(
+        predecessor_publication_id=predecessor_id,
         source_kind=source_kind,
         source_snapshot_run_id=source_snapshot_run_id,
         catalogue_observed_on=catalogue_observed_on,
@@ -63,19 +80,35 @@ def append(conn, *, source_kind: str, source_snapshot_run_id: int,
     )
     publication_id = fingerprint(document)
     row = conn.execute("""INSERT INTO mf_identity.tag_input_publications(
-        publication_id,source_kind,source_snapshot_run_id,catalogue_observed_on,observed_on,
+        publication_id,predecessor_publication_id,source_kind,source_snapshot_run_id,
+        catalogue_observed_on,observed_on,
         catalogue_census_hash,family_projection_hash,receipt_content_hash)
-        VALUES(%s,%s,%s,%s,%s,%s,%s,%s)
+        VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
         ON CONFLICT(publication_id) DO NOTHING
         RETURNING publication_sequence""", (
-        publication_id, source_kind, source_snapshot_run_id, catalogue_observed_on, observed_on,
+        publication_id, predecessor_id, source_kind, source_snapshot_run_id,
+        catalogue_observed_on, observed_on,
         hashes["catalogue_census_hash"], hashes["family_projection_hash"], publication_id,
     )).fetchone()
     if row is None:
         row = conn.execute("""SELECT publication_sequence FROM mf_identity.tag_input_publications
             WHERE publication_id=%s""", (publication_id,)).fetchone()
-    return {"publication_id": publication_id, "publication_sequence": row["publication_sequence"],
-            **document}
+    return {"publication_id": publication_id,
+            "publication_sequence": row["publication_sequence"], **document}
+
+
+def describe(row):
+    document = _receipt_document(
+        predecessor_publication_id=row["predecessor_publication_id"],
+        source_kind=row["source_kind"],
+        source_snapshot_run_id=row["source_snapshot_run_id"],
+        catalogue_observed_on=row["catalogue_observed_on"],
+        observed_on=row["observed_on"],
+        catalogue_census_hash=row["catalogue_census_hash"],
+        family_projection_hash=row["family_projection_hash"],
+    )
+    return {"publication_id": row["publication_id"],
+            "publication_sequence": row["publication_sequence"], **document}
 
 
 def validate(row):
@@ -84,9 +117,15 @@ def validate(row):
     try:
         catalogue_date = row["catalogue_observed_on"]
         observed = row["observed_on"]
+        predecessor_id = row["predecessor_publication_id"]
         policy.require(type(catalogue_date) is date and type(observed) is date
                        and observed >= catalogue_date, "TAGGING_SOURCE_RECEIPT_DIFFERS")
+        policy.require(predecessor_id is None or (
+            type(predecessor_id) is str and len(predecessor_id) == 64
+            and all(character in "0123456789abcdef" for character in predecessor_id)
+        ), "TAGGING_SOURCE_RECEIPT_DIFFERS")
         document = _receipt_document(
+            predecessor_publication_id=predecessor_id,
             source_kind=row["source_kind"],
             source_snapshot_run_id=row["source_snapshot_run_id"],
             catalogue_observed_on=catalogue_date,
@@ -106,4 +145,14 @@ def latest(conn):
     columns = ",".join(RECEIPT_COLUMNS)
     row = conn.execute(f"""SELECT {columns} FROM mf_identity.tag_input_publications
         ORDER BY publication_sequence DESC LIMIT 1""").fetchone()
-    return validate(row)
+    row = validate(row)
+    predecessor = conn.execute("""SELECT publication_id
+        FROM mf_identity.tag_input_publications
+        WHERE publication_sequence < %s
+        ORDER BY publication_sequence DESC LIMIT 1""", (
+            row["publication_sequence"],
+        )).fetchone()
+    expected = predecessor["publication_id"] if predecessor else None
+    policy.require(row["predecessor_publication_id"] == expected,
+                   "TAGGING_SOURCE_RECEIPT_DIFFERS")
+    return row

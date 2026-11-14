@@ -4,6 +4,8 @@ BEGIN;
 CREATE TABLE mf_identity.tag_input_publications (
     publication_sequence bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     publication_id text NOT NULL UNIQUE CHECK (publication_id ~ '^[0-9a-f]{64}$'),
+    predecessor_publication_id text NULL
+        REFERENCES mf_identity.tag_input_publications(publication_id) ON DELETE RESTRICT,
     source_kind text NOT NULL CHECK (source_kind IN ('full-catalogue','fund-family-rebuild')),
     source_snapshot_run_id bigint NOT NULL
         REFERENCES mf.source_snapshot_runs(snapshot_run_id) ON DELETE RESTRICT,
@@ -29,7 +31,7 @@ BEGIN
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='mfdata_tag_writer') THEN
         GRANT USAGE ON SCHEMA mf_identity TO mfdata_tag_writer;
-        GRANT SELECT(publication_sequence, publication_id, source_kind,
+        GRANT SELECT(publication_sequence, publication_id, predecessor_publication_id, source_kind,
             source_snapshot_run_id, catalogue_observed_on, observed_on,
             catalogue_census_hash, family_projection_hash, receipt_content_hash)
             ON mf_identity.tag_input_publications TO mfdata_tag_writer;

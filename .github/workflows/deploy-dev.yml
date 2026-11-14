@@ -44,6 +44,7 @@ env:
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   REFRESH_JOB: tlws-mf-data-nav-refresh-dev
   TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev
+  TAG_RUNTIME_SERVICE_ACCOUNT: tlws-mf-data-tag-writer-dev@trillionlane-dev.iam.gserviceaccount.com
   TAG_INSTALL_JOB: tlws-mf-data-tag-install-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
@@ -394,7 +395,7 @@ jobs:
             --project="$EXPECTED_PROJECT" \
             --region="$EXPECTED_REGION" \
             --image="${{ steps.image.outputs.uri }}" \
-            --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
+            --service-account="$TAG_RUNTIME_SERVICE_ACCOUNT" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
             --set-secrets=MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
             --command=/app/.venv/bin/python \
@@ -485,7 +486,7 @@ jobs:
 
           tag_refresh_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
           test "$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$tag_refresh_json")" = "$refresh_image"
-          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$tag_refresh_json")" = "${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"
+          test "$(jq -er '.spec.template.spec.template.spec.serviceAccountName' <<<"$tag_refresh_json")" = "$TAG_RUNTIME_SERVICE_ACCOUNT"
           jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$tag_refresh_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$tag_refresh_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$tag_refresh_json" >/dev/null

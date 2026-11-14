@@ -1,7 +1,9 @@
 """Real disposable hosted PostgreSQL only; reuse existing migrated RO01 fixture."""
 
 from datetime import date
+import importlib.util
 from pathlib import Path
+import sys
 
 from fastapi.testclient import TestClient
 import psycopg
@@ -12,7 +14,6 @@ import pytest
 
 from mfdataindia.datasets import policy as datasets
 from mfdataindia.datasets.app import create_app
-from mfdataindia.load.fund_family import build_fund_family
 from mfdataindia.store.postgres import PostgresStore
 from mfdataindia.tagging import policy as p, source_evidence, store
 from test_ro01_reader_policy_postgres import (
@@ -77,8 +78,19 @@ def writer(dsn):
     )
 
 
+def family_script():
+    path = ROOT / "scripts" / "build_fund_family.py"
+    spec = importlib.util.spec_from_file_location("atomic_build_fund_family", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
-def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservation(tagging_db):
+def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservation(
+    tagging_db, monkeypatch
+):
     dsn = tagging_db
     before_generator = generator_capabilities(dsn)
     with writer(dsn) as conn:
@@ -116,10 +128,29 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
         )
     # A family-only source rebuild leaves prior assessments immutable until the
     # dedicated writer publishes the newly attested projection.
-    with PostgresStore(dsn, use_copy=False) as core:
-        build_fund_family(core)
-    with connect(dsn, autocommit=False) as owner:
-        append_source_receipt(owner, source_kind="fund-family-rebuild")
+    module = family_script()
+    monkeypatch.setattr(sys, "argv", ["build_fund_family.py", "--dsn", dsn])
+    monkeypatch.setenv("MF_TEST_NO_COPY", "1")
+    original_append = module.source_evidence.append
+    with connect(dsn) as owner:
+        before_family = owner.execute("SELECT * FROM mf.fund_family ORDER BY group_key").fetchall()
+        before_receipt = module.source_evidence.latest(owner)
+
+    def fail_after_rebuild(*args, **kwargs):
+        raise p.TaggingError("SYNTHETIC_RECEIPT_FAILURE")
+
+    monkeypatch.setattr(module.source_evidence, "append", fail_after_rebuild)
+    with pytest.raises(p.TaggingError, match="SYNTHETIC_RECEIPT_FAILURE"):
+        module.main()
+    with connect(dsn) as owner:
+        assert owner.execute("SELECT * FROM mf.fund_family ORDER BY group_key").fetchall() == before_family
+        assert module.source_evidence.latest(owner) == before_receipt
+
+    monkeypatch.setattr(module.source_evidence, "append", original_append)
+    assert module.main() == 0
+    with connect(dsn) as owner:
+        rebuilt_receipt = module.source_evidence.latest(owner)
+        assert rebuilt_receipt["publication_sequence"] > before_receipt["publication_sequence"]
     with writer(dsn) as conn:
         assert (
             conn.execute("SELECT * FROM mf_tagging.assessments ORDER BY code,dimension").fetchall()
@@ -279,3 +310,34 @@ def test_native_definitions_from_other_version_survive_current_publication(taggi
             == 2
         )
         assert store.publish(conn)["state"] == "UNCHANGED"
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_native_same_day_family_a_b_a_creates_ordered_transition_receipts(
+    tagging_db, monkeypatch
+):
+    dsn = tagging_db
+    module = family_script()
+    monkeypatch.setattr(sys, "argv", ["build_fund_family.py", "--dsn", dsn])
+    monkeypatch.setenv("MF_TEST_NO_COPY", "1")
+    assert module.main() == 0
+
+    with connect(dsn) as owner:
+        first_a = source_evidence.latest(owner)
+    with connect(dsn, autocommit=False) as owner:
+        owner.execute("UPDATE mf.fund_family SET group_key='1B' WHERE group_key='1'")
+        owner.execute("UPDATE mf.fund_variants SET group_key='1B' WHERE group_key='1'")
+        b = append_source_receipt(owner, source_kind="fund-family-rebuild")
+    with connect(dsn, autocommit=False) as owner:
+        owner.execute("UPDATE mf.fund_family SET group_key='1' WHERE group_key='1B'")
+        owner.execute("UPDATE mf.fund_variants SET group_key='1' WHERE group_key='1B'")
+        second_a = append_source_receipt(owner, source_kind="fund-family-rebuild")
+
+    assert first_a["family_projection_hash"] != b["family_projection_hash"]
+    assert first_a["family_projection_hash"] == second_a["family_projection_hash"]
+    assert first_a["publication_id"] != second_a["publication_id"]
+    assert first_a["publication_sequence"] < b["publication_sequence"] < second_a["publication_sequence"]
+    assert b["predecessor_publication_id"] == first_a["publication_id"]
+    assert second_a["predecessor_publication_id"] == b["publication_id"]
+    with writer(dsn) as conn:
+        assert store.publish(conn)["state"] == "PUBLISHED"
