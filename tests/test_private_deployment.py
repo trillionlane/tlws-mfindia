@@ -59,7 +59,11 @@ def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutatio
     assert ":testIamPermissions" in preflight
     assert "https://secretmanager.googleapis.com/v1/projects/" in preflight
     assert "secretmanager.secrets.setIamPolicy" in preflight
-    assert "mfdata-tag-writer-cutover" in preflight
+    assert 'python3 scripts/validate_tag_cutover_admin.py "$deploy_member"' in preflight
+    validator = (ROOT / "scripts/validate_tag_cutover_admin.py").read_text()
+    assert 'TITLE = "mfdata-tag-writer-cutover"' in validator
+    assert "MAX_WINDOW = timedelta(hours=2)" in validator
+    assert "EXPRESSION.fullmatch" in validator
     assert 'if [[ "$ingest_has_tag_access" == "true" ]]' in preflight
     assert "$members == ([$tag] | sort) or $members == ([$tag,$ingest] | sort)" in preflight
     assert '"/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"' in preflight

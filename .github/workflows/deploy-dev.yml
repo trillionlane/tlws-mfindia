@@ -266,19 +266,8 @@ jobs:
               "https://secretmanager.googleapis.com/v1/projects/$EXPECTED_PROJECT/secrets/tlws-mf-data-tag-writer-dsn-dev:testIamPermissions")"
             jq -e '.permissions == ["secretmanager.secrets.setIamPolicy"]' \
               <<<"$permission_json" >/dev/null
-            jq -e --arg member "$deploy_member" '
-              any(.bindings[]?;
-                .role == "roles/secretmanager.admin"
-                and .condition.title == "mfdata-tag-writer-cutover"
-                and (.condition.expression | startswith("request.time < timestamp("))
-                and any(.members[]?; . == $member))
-              and all(.bindings[]?;
-                if .role == "roles/secretmanager.admin"
-                then all(.members[]?; . != $member) or (
-                  .condition.title == "mfdata-tag-writer-cutover"
-                  and (.condition.expression | startswith("request.time < timestamp(")))
-                else true end)
-            ' <<<"$tag_secret_policy" >/dev/null
+            python3 scripts/validate_tag_cutover_admin.py "$deploy_member" \
+              <<<"$tag_secret_policy"
           fi
           legacy_job=false
           if jq -e '.spec.template.spec.template.spec.containers[0].args ==
