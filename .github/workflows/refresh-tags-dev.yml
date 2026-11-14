@@ -74,16 +74,21 @@ jobs:
             --wait --quiet --format='value(metadata.name)')"
           [[ "$execution_name" == "$TAG_REFRESH_JOB"-* ]]
           log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$TAG_REFRESH_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$execution_name\""
-          logs_json="$(gcloud logging read "$log_filter" \
-            --project="$EXPECTED_PROJECT" --freshness=10m --limit=50 \
-            --order=desc --format=json)"
-          publish_result="$(jq -cer '
-            [.[] | .textPayload? | fromjson? |
-             select(.format == "mfdata-tag-refresh-attempt-v1"
-                    and (.state == "PUBLISHED" or .state == "UNCHANGED"))]
-            | if length == 1 then .[0]
-              else error("expected one exact publication result") end
-          ' <<<"$logs_json")"
+          publish_result=""
+          for attempt in 1 2 3 4 5; do
+            logs_json="$(gcloud logging read "$log_filter" \
+              --project="$EXPECTED_PROJECT" --freshness=10m --limit=50 \
+              --order=desc --format=json)"
+            if candidate="$(jq -cer -f scripts/tag_publication_log.jq <<<"$logs_json")"; then
+              publish_result="$candidate"
+              break
+            fi
+            if [[ "$attempt" -eq 5 ]]; then
+              echo "Exact tag publication receipt unavailable for completed execution" >&2
+              exit 1
+            fi
+            sleep 5
+          done
           published_snapshot="$(jq -er '.tag_snapshot_id |
             select(type == "string" and test("^[0-9a-f]{64}$"))' <<<"$publish_result")"
           jq -e '.source_publication_id |

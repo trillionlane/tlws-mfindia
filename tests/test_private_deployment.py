@@ -51,11 +51,13 @@ def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutatio
     assert "roles/iam.serviceAccountUser" in preflight
     assert "tlws-mf-data-tag-writer-dsn-dev" in preflight
     assert "roles/secretmanager.secretAccessor" in preflight
-    assert preflight.count(".condition? == null") == 4
+    assert preflight.count(".condition? == null") == 5
     assert 'ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"' in preflight
     assert 'test "$TAG_RUNTIME_SERVICE_ACCOUNT" != "$INGEST_SERVICE_ACCOUNT"' in preflight
     assert "Tag or ingest runtime has project-wide secret access" in preflight
     assert "tlws-mf-data-ingest-dsn-dev" in preflight
+    assert 'select(.role == "roles/secretmanager.admin"' in preflight
+    assert 'if [[ "$ingest_has_tag_access" == "true" ]]' in preflight
     assert "$members == ([$tag] | sort) or $members == ([$tag,$ingest] | sort)" in preflight
     assert '"/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"' in preflight
     assert '["/app/scripts/refresh_daily_v2.py"]' in preflight
@@ -136,10 +138,15 @@ def test_read_deployment_cuts_over_refresh_job_before_legacy_secret_revoke() -> 
     assert "gcloud scheduler" not in workflow
     cutover = workflow.split(
         "      - name: Cut over NAV job before revoking legacy tag-secret access", 1
-    )[1].split("      - name: Deploy and execute the zero-retry migration job", 1)[0]
+    )[1].split("      - name: Deploy private read-only service", 1)[0]
+    assert workflow.index(
+        "Install or verify the zero-retry factual-tagging sidecar"
+    ) < workflow.index("Cut over NAV job before revoking legacy tag-secret access")
     assert "MFDATAINDIA_TAG_REFRESH_DSN" in cutover
     assert "status.completionTime" in cutover
     assert "gcloud secrets remove-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev" in cutover
+    assert "--role=roles/secretmanager.admin" in cutover
+    assert "all(. != $member)" in cutover
     assert cutover.index("gcloud run jobs deploy") < cutover.index(
         "gcloud secrets remove-iam-policy-binding"
     )
@@ -186,6 +193,9 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "--args=/app/scripts/smoke_private_api.py,--require-tags" in tag_refresh
     assert 'id: publication' in tag_refresh
     assert 'labels.\\"run.googleapis.com/execution_name\\"' in tag_refresh
+    assert "scripts/tag_publication_log.jq" in tag_refresh
+    assert "for attempt in 1 2 3 4 5" in tag_refresh
+    assert "sleep 5" in tag_refresh
     assert "steps.publication.outputs.published_snapshot" in tag_refresh
     assert "--expected-tag-snapshot" in tag_refresh
     assert 'gcloud run jobs execute "$PRIVATE_SMOKE_JOB"' in tag_refresh
@@ -194,9 +204,11 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     )
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
     assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"' in provision
+    assert '--role=roles/secretmanager.admin' in provision
+    assert '--member="serviceAccount:$DEPLOY_SA"' in provision
     assert 'ensure_secret_access tlws-mf-data-ingest-dsn-dev "$TAG_WRITER_SA"' not in provision
     assert 'remove_secret_access' not in provision
-    assert "deployment workflow first replaces the legacy NAV job" in provision
+    assert "deployment workflow installs the required migrations" in provision
     assert "ensure_service_account tlws-mf-data-tag-writer-dev" in provision
     assert 'ensure_project_role "serviceAccount:$DEPLOY_SA" roles/iam.securityReviewer' in provision
     assert "store.install(conn, ROOT)" in installer

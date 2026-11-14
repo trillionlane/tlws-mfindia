@@ -253,8 +253,17 @@ ensure_secret_access tlws-mf-data-ingest-dsn-dev "$INGEST_SA"
 ensure_secret_access tlws-mf-data-association-writer-dsn-dev "$ASSOCIATION_WRITER_SA"
 ensure_secret_access tlws-mf-data-audit-dsn-dev "$AUDIT_SA"
 ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"
-# The deployment workflow first replaces the legacy NAV job that mounts this
-# secret, verifies no old execution remains, and only then revokes ingest access.
+# Scoped only to this secret so the deployer can complete the one-time legacy
+# binding cutover after the old NAV execution has drained.
+gcloud secrets add-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev \
+  --project="$PROJECT_ID" \
+  --member="serviceAccount:$DEPLOY_SA" \
+  --role=roles/secretmanager.admin \
+  --condition=None \
+  --quiet >/dev/null
+# The deployment workflow installs the required migrations, replaces the legacy
+# NAV job, verifies no old execution remains, revokes ingest access, and removes
+# this temporary deployer binding.
 
 gcloud storage buckets add-iam-policy-binding gs://tlws_mf_data_source \
   --member="serviceAccount:$RESTORE_SA" \
