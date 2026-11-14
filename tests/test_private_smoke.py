@@ -62,11 +62,18 @@ def successful_responses() -> list[Response]:
 
 
 def successful_tag_response() -> Response:
+    snapshot_id = "a" * 64
     return Response(
         200,
         {
-            "snapshot_id": "a" * 64,
-            "funds": [{"code": 100033, "assessments": []}],
+            "snapshot_id": snapshot_id,
+            "funds": [
+                {
+                    "code": 100033,
+                    "state": "found",
+                    "assessments": [{"snapshot_id": snapshot_id} for _ in range(18)],
+                }
+            ],
         },
     )
 
@@ -107,6 +114,29 @@ def test_private_smoke_can_require_tags_through_the_same_oidc_boundary() -> None
     tag_url, tag_request = session.requests[-1]
     assert tag_url == "https://mfdata.example.run.app/api/fund-tags/v1/funds/100033"
     assert tag_request["headers"]["Authorization"] == "Bearer short-lived-token"
+
+
+def test_private_tag_smoke_rejects_missing_fund_or_assessments() -> None:
+    session = Session(
+        [
+            *successful_responses(),
+            Response(
+                200,
+                {
+                    "snapshot_id": "a" * 64,
+                    "funds": [{"code": 100033, "state": "not-found", "assessments": []}],
+                },
+            ),
+        ]
+    )
+
+    with pytest.raises(smoke_private_api.PrivateSmokeError, match="factual-tag contract"):
+        smoke_private_api.run_smoke(
+            "https://mfdata.example.run.app",
+            "https://mfdata.example.run.app",
+            session,
+            require_tags=True,
+        )
 
 
 @pytest.mark.parametrize(

@@ -111,6 +111,22 @@ def test_orphan_and_wrong_uuid_do_not_get_reissued(change, expected):
     assert actual["mapping_state"] == expected and actual["family_id"] is None
 
 
+def test_durable_family_id_survives_rename_but_cannot_span_current_keys():
+    durable = tlws_mf_id("SYNTHETIC")
+    renamed = p.prepare([row(group_key="RENAMED", family_id=durable)])
+    assert renamed["mapping_counts"] == {"FAMILY_VERIFIED": 1}
+    assert assessment(renamed, "amc")["family_id"] == durable
+
+    reused = p.prepare(
+        [
+            row(group_key="RENAMED", family_id=durable),
+            row(code=2, group_key="OTHER", family_id=durable),
+        ]
+    )
+    assert reused["mapping_counts"] == {"FAMILY_AMBIGUOUS": 2}
+    assert all(item["family_id"] is None for item in reused["assessments"])
+
+
 def test_plan_option_difference_and_out_of_scope_accounted():
     result = p.prepare(
         [row(), row(code=2, option_type="IDCW"), row(code=3, plan_type="DIRECT", in_scope=False)]

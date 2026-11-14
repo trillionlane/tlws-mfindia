@@ -5,8 +5,7 @@ from datetime import date
 import hashlib
 import json
 from pathlib import Path
-
-from mfdataindia.load.fund_family import tlws_mf_id
+import uuid
 
 VERSION = 'mfdata-fund-tags-v1'
 OWNER = 'mfdata_admin'
@@ -50,6 +49,13 @@ def canonical(value):
 
 def digest(value):
     return hashlib.sha256(canonical(value)).hexdigest()
+
+
+def valid_family_id(value):
+    try:
+        return type(value) is str and str(uuid.UUID(value)) == value
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 def validate(rows):
@@ -100,17 +106,22 @@ def prepare(rows):
     policy_hash = digest({'contract': CONTRACT,
                           'implementation_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()})
     snapshot = digest({'policy_hash': policy_hash, 'source_hash': source_hash})
-    groups = {}
+    groups, family_ids, family_keys = {}, {}, {}
     for r in rows:
         if r['group_key']:
             groups.setdefault(r['group_key'], set()).add(
                 (r['amc_id'], r['scheme_type'], r['scheme_category']))
+            if r['family_id']:
+                family_ids.setdefault(r['group_key'], set()).add(r['family_id'])
+                family_keys.setdefault(r['family_id'], set()).add(r['group_key'])
     definitions, assessments, mapping_counts = {}, [], {}
     for r in rows:
         key = r['group_key']
         if not key or not r['family_id']:
             mapping = 'FAMILY_MISSING'
-        elif len(groups[key]) != 1 or r['family_id'] != tlws_mf_id(key):
+        elif (len(groups[key]) != 1 or not valid_family_id(r['family_id'])
+              or family_ids.get(key) != {r['family_id']}
+              or family_keys.get(r['family_id']) != {key}):
             mapping = 'FAMILY_AMBIGUOUS'
         else:
             mapping = 'FAMILY_VERIFIED'

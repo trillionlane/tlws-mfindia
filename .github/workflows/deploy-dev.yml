@@ -212,19 +212,19 @@ jobs:
             '.email == $email and (.disabled // false) == false' <<<"$tag_identity" >/dev/null
           project_policy="$(gcloud projects get-iam-policy "$EXPECTED_PROJECT" --format=json)"
           jq -e --arg member "$tag_member" '
-            .bindings[] | select(.role == "roles/cloudsql.client") |
+            .bindings[] | select(.role == "roles/cloudsql.client" and (.condition? == null)) |
             .members[]? | select(. == $member)
           ' <<<"$project_policy" >/dev/null
           tag_identity_policy="$(gcloud iam service-accounts get-iam-policy \
             "$TAG_RUNTIME_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" --format=json)"
           jq -e --arg member "$deploy_member" '
-            .bindings[] | select(.role == "roles/iam.serviceAccountUser") |
+            .bindings[] | select(.role == "roles/iam.serviceAccountUser" and (.condition? == null)) |
             .members[]? | select(. == $member)
           ' <<<"$tag_identity_policy" >/dev/null
           tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
             --project="$EXPECTED_PROJECT" --format=json)"
           jq -e --arg member "$tag_member" '
-            .bindings[] | select(.role == "roles/secretmanager.secretAccessor") |
+            .bindings[] | select(.role == "roles/secretmanager.secretAccessor" and (.condition? == null)) |
             .members[]? | select(. == $member)
           ' <<<"$tag_secret_policy" >/dev/null
           if jq -e --arg member "$ingest_member" '

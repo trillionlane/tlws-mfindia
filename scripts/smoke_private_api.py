@@ -150,13 +150,25 @@ def run_smoke(
         )
         funds = tags.get("funds") if isinstance(tags, dict) else None
         snapshot_id = tags.get("snapshot_id") if isinstance(tags, dict) else None
+        assessments = funds[0].get("assessments") if (
+            isinstance(funds, list) and len(funds) == 1 and isinstance(funds[0], dict)
+        ) else None
         if (
             not isinstance(snapshot_id, str)
             or len(snapshot_id) != 64
+            or any(character not in "0123456789abcdef" for character in snapshot_id)
             or not isinstance(funds, list)
             or len(funds) != 1
             or not isinstance(funds[0], dict)
             or funds[0].get("code") != code
+            or funds[0].get("state") != "found"
+            or not isinstance(assessments, list)
+            or len(assessments) != 18
+            or any(
+                not isinstance(assessment, dict)
+                or assessment.get("snapshot_id") != snapshot_id
+                for assessment in assessments
+            )
         ):
             raise PrivateSmokeError("private API factual-tag contract failed")
 

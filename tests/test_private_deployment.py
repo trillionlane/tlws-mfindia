@@ -51,6 +51,7 @@ def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutatio
     assert "roles/iam.serviceAccountUser" in preflight
     assert "tlws-mf-data-tag-writer-dsn-dev" in preflight
     assert "roles/secretmanager.secretAccessor" in preflight
+    assert preflight.count("(.condition? == null)") == 3
     assert 'ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"' in preflight
     assert workflow.index(
         "Verify dedicated tag runtime prerequisites before mutation"
