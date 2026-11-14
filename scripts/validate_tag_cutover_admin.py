@@ -20,7 +20,12 @@ EXPRESSION = re.compile(
 )
 
 
-def validate(policy: dict[str, object], member: str, now: datetime) -> datetime:
+def validate(
+    policy: dict[str, object],
+    member: str,
+    now: datetime,
+    minimum_remaining: timedelta = timedelta(0),
+) -> datetime:
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("now must be timezone-aware")
     bindings = policy.get("bindings")
@@ -47,16 +52,19 @@ def validate(policy: dict[str, object], member: str, now: datetime) -> datetime:
         tzinfo=timezone.utc
     )
     remaining = expiry - now.astimezone(timezone.utc)
-    if remaining <= timedelta(0) or remaining > MAX_WINDOW:
-        raise ValueError("cutover deadline is expired or exceeds two hours")
+    if remaining <= timedelta(0) or remaining < minimum_remaining or remaining > MAX_WINDOW:
+        raise ValueError("cutover deadline is expired, too short, or exceeds two hours")
     return expiry
 
 
 def reconcile(
-    policy: dict[str, object], member: str, now: datetime
+    policy: dict[str, object],
+    member: str,
+    now: datetime,
+    minimum_remaining: timedelta = timedelta(0),
 ) -> tuple[dict[str, object], bool]:
     try:
-        validate(policy, member, now)
+        validate(policy, member, now, minimum_remaining)
     except ValueError:
         pass
     else:
@@ -93,23 +101,63 @@ def reconcile(
     )
     result["bindings"] = reconciled
     result["version"] = max(3, int(result.get("version", 0)))
-    validate(result, member, now)
+    validate(result, member, now, minimum_remaining)
     return result, True
+
+
+def admission_state(
+    policy: dict[str, object],
+    deploy_member: str,
+    ingest_member: str,
+    now: datetime,
+    minimum_remaining: timedelta,
+) -> str:
+    bindings = policy.get("bindings")
+    if not isinstance(bindings, list):
+        raise ValueError("policy bindings are unavailable")
+    ingest_access = any(
+        isinstance(binding, dict)
+        and binding.get("role") == "roles/secretmanager.secretAccessor"
+        and ingest_member in binding.get("members", [])
+        for binding in bindings
+    )
+    deploy_admin = any(
+        isinstance(binding, dict)
+        and binding.get("role") == ROLE
+        and deploy_member in binding.get("members", [])
+        for binding in bindings
+    )
+    if not ingest_access and not deploy_admin:
+        return "NONE"
+    validate(policy, deploy_member, now, minimum_remaining)
+    return "REQUIRED"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reconcile", action="store_true")
+    parser.add_argument("--admission-state", action="store_true")
+    parser.add_argument("--ingest-member")
+    parser.add_argument("--minimum-seconds", type=int, default=0)
     parser.add_argument("member")
     args = parser.parse_args()
+    if args.reconcile and args.admission_state:
+        parser.error("choose reconcile or admission-state")
+    if args.minimum_seconds < 0:
+        parser.error("minimum-seconds cannot be negative")
     policy = json.load(sys.stdin)
     now = datetime.now(timezone.utc)
+    minimum = timedelta(seconds=args.minimum_seconds)
     if args.reconcile:
-        result, _ = reconcile(policy, args.member, now)
+        result, _ = reconcile(policy, args.member, now, minimum)
         json.dump(result, sys.stdout, sort_keys=True)
         sys.stdout.write("\n")
+    elif args.admission_state:
+        if not args.ingest_member:
+            parser.error("admission-state requires ingest-member")
+        print(admission_state(policy, args.member, args.ingest_member, now, minimum))
     else:
-        validate(policy, args.member, now)
+        validate(policy, args.member, now, minimum)
     return 0
 
 

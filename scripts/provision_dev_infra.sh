@@ -289,19 +289,20 @@ if refresh_json="$(gcloud run jobs describe tlws-mf-data-nav-refresh-dev \
   if [[ "$ingest_has_tag_access" == "true" \
       && ( "$legacy_job" == "true" || "$current_job" == "true" ) ]]; then
     deploy_member="serviceAccount:$DEPLOY_SA"
-    if ! python3 "$(dirname "$0")/validate_tag_cutover_admin.py" "$deploy_member" \
-      <<<"$tag_secret_policy" 2>/dev/null; then
+    if ! python3 "$(dirname "$0")/validate_tag_cutover_admin.py" \
+      --minimum-seconds 3600 "$deploy_member" <<<"$tag_secret_policy" 2>/dev/null; then
       policy_file="$(mktemp)"
       trap 'rm -f "$policy_file"' EXIT
       python3 "$(dirname "$0")/validate_tag_cutover_admin.py" \
-        --reconcile "$deploy_member" <<<"$tag_secret_policy" >"$policy_file"
+        --reconcile --minimum-seconds 3600 "$deploy_member" \
+        <<<"$tag_secret_policy" >"$policy_file"
       gcloud secrets set-iam-policy tlws-mf-data-tag-writer-dsn-dev "$policy_file" \
         --project="$PROJECT_ID" --quiet >/dev/null
     fi
     tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
       --project="$PROJECT_ID" --format=json)"
-    python3 "$(dirname "$0")/validate_tag_cutover_admin.py" "$deploy_member" \
-      <<<"$tag_secret_policy"
+    python3 "$(dirname "$0")/validate_tag_cutover_admin.py" \
+      --minimum-seconds 3600 "$deploy_member" <<<"$tag_secret_policy"
     # deploy-dev installs migrations first, replaces and drains the legacy job,
     # revokes ingest access, then runs the independently executable cleanup.
   elif [[ "$legacy_job" == "true" || "$current_job" != "true" ]]; then

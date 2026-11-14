@@ -257,7 +257,14 @@ jobs:
           ' <<<"$tag_secret_policy" >/dev/null; then
             ingest_has_tag_access=true
           fi
-          if [[ "$ingest_has_tag_access" == "true" ]]; then
+          if ! cutover_permission_state="$(python3 scripts/validate_tag_cutover_admin.py \
+            --admission-state --minimum-seconds 3600 \
+            --ingest-member "$ingest_member" "$deploy_member" \
+            <<<"$tag_secret_policy")"; then
+            echo "Tag-secret cutover grant is unsafe; run operator provisioning cleanup before deployment" >&2
+            exit 1
+          fi
+          if [[ "$cutover_permission_state" == "REQUIRED" ]]; then
             access_token="$(gcloud auth print-access-token)"
             permission_json="$(curl --fail --silent --show-error --request POST \
               --header "Authorization: Bearer $access_token" \
@@ -266,8 +273,6 @@ jobs:
               "https://secretmanager.googleapis.com/v1/projects/$EXPECTED_PROJECT/secrets/tlws-mf-data-tag-writer-dsn-dev:testIamPermissions")"
             jq -e '.permissions == ["secretmanager.secrets.setIamPolicy"]' \
               <<<"$permission_json" >/dev/null
-            python3 scripts/validate_tag_cutover_admin.py "$deploy_member" \
-              <<<"$tag_secret_policy"
           fi
           legacy_job=false
           if jq -e '.spec.template.spec.template.spec.containers[0].args ==

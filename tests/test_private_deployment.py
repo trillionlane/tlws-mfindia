@@ -59,12 +59,14 @@ def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutatio
     assert ":testIamPermissions" in preflight
     assert "https://secretmanager.googleapis.com/v1/projects/" in preflight
     assert "secretmanager.secrets.setIamPolicy" in preflight
-    assert 'python3 scripts/validate_tag_cutover_admin.py "$deploy_member"' in preflight
+    assert "python3 scripts/validate_tag_cutover_admin.py" in preflight
+    assert "--admission-state --minimum-seconds 3600" in preflight
+    assert 'if [[ "$cutover_permission_state" == "REQUIRED" ]]' in preflight
+    assert "run operator provisioning cleanup before deployment" in preflight
     validator = (ROOT / "scripts/validate_tag_cutover_admin.py").read_text()
     assert 'TITLE = "mfdata-tag-writer-cutover"' in validator
     assert "MAX_WINDOW = timedelta(hours=2)" in validator
     assert "EXPRESSION.fullmatch" in validator
-    assert 'if [[ "$ingest_has_tag_access" == "true" ]]' in preflight
     assert "$members == ([$tag] | sort) or $members == ([$tag,$ingest] | sort)" in preflight
     assert '"/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"' in preflight
     assert '["/app/scripts/refresh_daily_v2.py"]' in preflight
@@ -215,7 +217,7 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
     assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"' in provision
     assert "validate_tag_cutover_admin.py" in provision
-    assert '--reconcile "$deploy_member"' in provision
+    assert "--reconcile --minimum-seconds 3600" in provision
     assert "gcloud secrets set-iam-policy tlws-mf-data-tag-writer-dsn-dev" in provision
     assert '"$legacy_job" == "true" || "$current_job" == "true"' in provision
     assert '[[ "$legacy_job" == "true" || "$current_job" != "true" ]]' in provision

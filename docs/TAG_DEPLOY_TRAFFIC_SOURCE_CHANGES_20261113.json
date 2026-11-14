@@ -3,7 +3,7 @@
   "historical_only": true,
   "modified": {
     ".github/workflows/deploy-dev.yml": {
-      "current_sha256": "ca09cf7cdb6f087ddf147cfb06c72eb2aaeda291bd2dc37abac9cc2528853b30",
+      "current_sha256": "b1d0c04197f362e588b8b16443751c7de73119551d87f5849b49857e98d2c478",
       "previous_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421"
     },
     ".github/workflows/refresh-nav-dev.yml": {
@@ -15,7 +15,7 @@
       "previous_sha256": "b8526707d2b707c82d6635ff11a4492923f02f8f006b398708fc5db91e5c6c86"
     },
     "scripts/provision_dev_infra.sh": {
-      "current_sha256": "cd1eba5692d2211b3e0e8b4b7ba82e94cc9516d6e9044cfbcef1eff6d2dd1b4a",
+      "current_sha256": "058e91a56fdbfbda95fe579252db06d7a52b0d36131cba23e3c83897d547de34",
       "previous_sha256": "24b35e3af3889d3582411a7d1374640d0a410dea12c2951f7ad5723ca14f43fa"
     },
     "scripts/refresh_daily_v2.py": {
@@ -63,7 +63,7 @@
       "previous_sha256": "2c7cef15fa14d1bbc933eceb393cb4d7ba93cfb8500a1fad1f78580ffc022be2"
     },
     "tests/test_private_deployment.py": {
-      "current_sha256": "0a0bbca33fedd3586a4226e2e0a6482372de9f661bc45f556a7be0a556ffea4f",
+      "current_sha256": "24ae5ac75b4b7baa41b798ea5701d2b38fcd22a4b222edd31ef506800d086732",
       "previous_sha256": "283b4da1a4da63a926f944398aa2ff5384b15f052f31aa83d7c68eed384377d0"
     },
     "tests/test_private_smoke.py": {

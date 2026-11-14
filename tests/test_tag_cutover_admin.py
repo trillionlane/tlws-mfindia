@@ -10,11 +10,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from validate_tag_cutover_admin import reconcile, validate  # noqa: E402
+from validate_tag_cutover_admin import admission_state, reconcile, validate  # noqa: E402
 
 
 MEMBER = "serviceAccount:tlws-mf-data-deploy-dev@trillionlane-dev.iam.gserviceaccount.com"
 NOW = datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc)
+INGEST = "serviceAccount:tlws-mf-data-ingest-dev@trillionlane-dev.iam.gserviceaccount.com"
 
 
 def policy(expression: str, *, duplicate: bool = False) -> dict[str, object]:
@@ -124,3 +125,29 @@ def test_expired_grant_is_replaced_without_unrelated_binding_loss() -> None:
         binding.get("role") == "roles/secretmanager.secretAccessor"
         for binding in replaced["bindings"]
     )
+
+
+def test_partial_cutover_with_expired_deployer_binding_fails_admission() -> None:
+    partial = policy("request.time < timestamp('2026-11-14T17:00:00Z')")
+
+    with pytest.raises(ValueError):
+        admission_state(partial, MEMBER, INGEST, NOW, timedelta(hours=1))
+
+
+def test_partial_cutover_with_valid_deployer_binding_requires_permission() -> None:
+    partial = policy("request.time < timestamp('2026-11-14T19:30:00Z')")
+
+    assert admission_state(partial, MEMBER, INGEST, NOW, timedelta(hours=1)) == "REQUIRED"
+
+
+def test_completed_cutover_without_deployer_binding_needs_no_permission() -> None:
+    completed = {
+        "bindings": [
+            {
+                "role": "roles/secretmanager.secretAccessor",
+                "members": ["serviceAccount:tag-writer@example.test"],
+            }
+        ]
+    }
+
+    assert admission_state(completed, MEMBER, INGEST, NOW, timedelta(hours=1)) == "NONE"
