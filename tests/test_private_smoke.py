@@ -61,21 +61,34 @@ def successful_responses() -> list[Response]:
     ]
 
 
-def successful_tag_response() -> Response:
+def successful_tag_responses() -> list[Response]:
     snapshot_id = "a" * 64
-    return Response(
-        200,
-        {
-            "snapshot_id": snapshot_id,
-            "funds": [
-                {
-                    "code": 100033,
-                    "state": "found",
-                    "assessments": [{"snapshot_id": snapshot_id} for _ in range(18)],
-                }
-            ],
-        },
-    )
+    return [
+        Response(
+            200,
+            {
+                "snapshot_id": snapshot_id,
+                "dimensions": list(smoke_private_api.EXPECTED_TAG_DIMENSIONS),
+                "published_funds": 1,
+            },
+        ),
+        Response(
+            200,
+            {
+                "snapshot_id": snapshot_id,
+                "funds": [
+                    {
+                        "code": 100033,
+                        "state": "found",
+                        "assessments": [
+                            {"snapshot_id": snapshot_id, "dimension": dimension}
+                            for dimension in smoke_private_api.EXPECTED_TAG_DIMENSIONS
+                        ],
+                    }
+                ],
+            },
+        ),
+    ]
 
 
 def test_private_smoke_uses_metadata_oidc_and_bounded_reads() -> None:
@@ -101,7 +114,7 @@ def test_private_smoke_uses_metadata_oidc_and_bounded_reads() -> None:
 
 
 def test_private_smoke_can_require_tags_through_the_same_oidc_boundary() -> None:
-    session = Session([*successful_responses(), successful_tag_response()])
+    session = Session([*successful_responses(), *successful_tag_responses()])
 
     smoke_private_api.run_smoke(
         "https://mfdata.example.run.app",
@@ -110,7 +123,7 @@ def test_private_smoke_can_require_tags_through_the_same_oidc_boundary() -> None
         require_tags=True,
     )
 
-    assert len(session.requests) == 7
+    assert len(session.requests) == 8
     tag_url, tag_request = session.requests[-1]
     assert tag_url == "https://mfdata.example.run.app/api/fund-tags/v1/funds/100033"
     assert tag_request["headers"]["Authorization"] == "Bearer short-lived-token"
@@ -120,15 +133,31 @@ def test_private_tag_smoke_rejects_missing_fund_or_assessments() -> None:
     session = Session(
         [
             *successful_responses(),
-            Response(
-                200,
-                {
-                    "snapshot_id": "a" * 64,
-                    "funds": [{"code": 100033, "state": "not-found", "assessments": []}],
-                },
-            ),
+            *successful_tag_responses()[:1],
+            Response(200, {
+                "snapshot_id": "a" * 64,
+                "funds": [{"code": 100033, "state": "not-found", "assessments": []}],
+            }),
         ]
     )
+
+    with pytest.raises(smoke_private_api.PrivateSmokeError, match="factual-tag contract"):
+        smoke_private_api.run_smoke(
+            "https://mfdata.example.run.app",
+            "https://mfdata.example.run.app",
+            session,
+            require_tags=True,
+        )
+
+
+def test_private_tag_smoke_rejects_duplicate_or_wrong_snapshot_assessments() -> None:
+    discovery, tags = successful_tag_responses()
+    payload = tags._payload
+    payload["funds"][0]["assessments"][-1] = {
+        "snapshot_id": "b" * 64,
+        "dimension": smoke_private_api.EXPECTED_TAG_DIMENSIONS[0],
+    }
+    session = Session([*successful_responses(), discovery, tags])
 
     with pytest.raises(smoke_private_api.PrivateSmokeError, match="factual-tag contract"):
         smoke_private_api.run_smoke(

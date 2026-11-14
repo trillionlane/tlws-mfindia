@@ -3,7 +3,7 @@
   "historical_only": true,
   "modified": {
     ".github/workflows/deploy-dev.yml": {
-      "current_sha256": "6551ee2d94dc17289edd5b5866991841259359e94bbf1e76ce791eeeb86e4daf",
+      "current_sha256": "901fe94ac0647912e733c2ae750db47f7aa374412936383dc78c784ccb9e369a",
       "previous_sha256": "d13ad25a1dbf97331b58abc72ed748e2e23f4678ed833616242a7f9873d9c421"
     },
     ".github/workflows/refresh-nav-dev.yml": {
@@ -23,7 +23,7 @@
       "previous_sha256": "4dd13e9ca8e406a8ce1474f9ee2c0dfc75be87278a256a34ea9fb962ee08d470"
     },
     "scripts/smoke_private_api.py": {
-      "current_sha256": "6d5c208c92b209ee636a2d0e89867c00756fc629d8cba1b9ff76fe5226f661bc",
+      "current_sha256": "ca54c0c9d80f2e18d096d6ae4597153185b64b85d443967041f7d437cbc321e6",
       "previous_sha256": "25e97d28c959d8de01298dccac534ce4e8a2da18fb4d079184e2285a8fdad459"
     },
     "src/mfdataindia/jobs/nav_continuity.py": {
@@ -31,11 +31,11 @@
       "previous_sha256": "871025b23e0ad3097a238cb1da3ec19538f09ea46ff9db03cbc1eebbeffa4d2d"
     },
     "src/mfdataindia/tagging/policy.py": {
-      "current_sha256": "98cbe548e96cf69ce44c2d22ed8a2f80aed6e830bda59566196f7e8ca2ae4e7d",
+      "current_sha256": "f75a60e998c7e85a29eb4d3961cba304d99c4ba4b6f85d5ca3bdceafeaca0c94",
       "previous_sha256": "db9a01d47b824c1ad67fcda450b38345b3973d66d1acd9a9a8c6000cf5969a18"
     },
     "src/mfdataindia/tagging/store.py": {
-      "current_sha256": "76ba14501c97fe2c543321265dd35cd5448a56b3046d303c83de19102d59686f",
+      "current_sha256": "f813bc9a421e7b5ea524f92b7bbccabe44747630022b74353daeac2384467286",
       "previous_sha256": "2261c2bbf251cd9ee49a6ddf1cd620620af836ef57d48860e6c03c7475e969a9"
     },
     "uv.lock": {
@@ -63,11 +63,11 @@
       "previous_sha256": "2c7cef15fa14d1bbc933eceb393cb4d7ba93cfb8500a1fad1f78580ffc022be2"
     },
     "tests/test_private_deployment.py": {
-      "current_sha256": "547c1f8f6b0686a83468821483eaa5851cc8bdaade31dad74274258245eeb554",
+      "current_sha256": "548ba5f079dbebc581c7a8d689d1e6f2ffccecb4b9d930e7c48388094ebb51bd",
       "previous_sha256": "283b4da1a4da63a926f944398aa2ff5384b15f052f31aa83d7c68eed384377d0"
     },
     "tests/test_private_smoke.py": {
-      "current_sha256": "2dfab95b0e9bbd74b219e2c47d1648a4deee08f3f1cb9796a7f5ad6501ed416f",
+      "current_sha256": "a884295691d346937b1442b962bcb3558d004370270c2dae0cfb20ef6be3c8dc",
       "previous_sha256": "bb23f226a7118171873b5c2083fa9561036635bb215518aec336a57b11ab9a86"
     },
     "tests/test_fund_tag_api_postgres.py": {
@@ -75,11 +75,11 @@
       "previous_sha256": "b035ccdaef7bdf4afada8949d217290cb036b13c9444aecbf90056a94f1b2e18"
     },
     "tests/test_fund_tagging.py": {
-      "current_sha256": "f5f170bb0cd74bcc89d73ac925f77f83e3b90b37e57a216a71f07bd3207224d9",
+      "current_sha256": "9551f19d5599defc0162b98f92b6bdbdbd30b1bd8380cc85c8f29e7a4b0fa8e6",
       "previous_sha256": "132085bf9fb25b401dfabcc28fe535d575a54128d38cc9db223e7c4d31cbdc2e"
     },
     "tests/test_fund_tagging_postgres.py": {
-      "current_sha256": "3aa44c82c56b9bf49dc26f217fa5fcc6deebc45d3f9a390494afc182c5d10853",
+      "current_sha256": "8e81c2a15da3ed349c74abc81adc726d187b563a26b833fa3a41ed1754efcb0a",
       "previous_sha256": "031651aafdbce8d7d01ba49badb9d229437ae17abcfe56f9817c655045c75e65"
     },
     "tests/test_fund_values_postgres.py": {

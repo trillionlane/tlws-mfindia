@@ -11,15 +11,16 @@ from mfdataindia.datasets import enrollment
 from . import policy as p, source_evidence
 
 FILE = 'sql/operations/fund_tagging_v1.sql'
-SQL_SHA256 = '388f64a8d1e8ae8978bb647633b697b29b8aa6f546853115a48587067ddb0a1d'
+SQL_SHA256 = '3eda52bdcca2a93e48f79a2de02e08c8ad72f641294346469d10fe2bcfa3661d'
 TABLES = ('assessments', 'current', 'definitions', 'head', 'observations', 'snapshots')
 CENSUS_SQL = '''SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS amc,
  f.scheme_name,f.scheme_type,f.scheme_category,f.category_source,f.plan_type,f.plan_source,
  f.option_type,f.is_etf,f.in_scope,f.last_seen_in_source::text AS last_seen,
- v.group_key,ff.tlws_mf_id AS family_id
+ v.group_key,ff.tlws_mf_id AS family_id,b.family_id AS durable_family_id
  FROM mf.funds f JOIN mf.amcs a ON a.amc_id=f.amc_id
  LEFT JOIN mf.fund_variants v ON v.amfi_scheme_code=f.amfi_scheme_code
  LEFT JOIN mf.fund_family ff ON ff.group_key=v.group_key
+ LEFT JOIN mf_identity.variant_families b ON b.amfi_scheme_code=f.amfi_scheme_code
  ORDER BY f.amfi_scheme_code LIMIT 50001'''
 
 

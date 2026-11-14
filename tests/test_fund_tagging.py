@@ -30,6 +30,7 @@ def row(**changes):
         "last_seen": "2026-10-31",
         "group_key": "SYNTHETIC",
         "family_id": tlws_mf_id("SYNTHETIC"),
+        "durable_family_id": tlws_mf_id("SYNTHETIC"),
     }
     value.update(changes)
     return value
@@ -101,9 +102,12 @@ def test_same_key_conflicting_membership_withheld_without_losing_scheme_facts(fi
 @pytest.mark.parametrize(
     "change,expected",
     [
-        ({"group_key": None}, "FAMILY_MISSING"),
-        ({"family_id": None}, "FAMILY_MISSING"),
+        ({"group_key": None, "family_id": None, "durable_family_id": None}, "FAMILY_MISSING"),
+        ({"family_id": None, "durable_family_id": None}, "FAMILY_MISSING"),
+        ({"family_id": None}, "FAMILY_AMBIGUOUS"),
         ({"family_id": "wrong"}, "FAMILY_AMBIGUOUS"),
+        ({"durable_family_id": None}, "FAMILY_AMBIGUOUS"),
+        ({"durable_family_id": tlws_mf_id("OTHER")}, "FAMILY_AMBIGUOUS"),
     ],
 )
 def test_orphan_and_wrong_uuid_do_not_get_reissued(change, expected):
@@ -113,14 +117,16 @@ def test_orphan_and_wrong_uuid_do_not_get_reissued(change, expected):
 
 def test_durable_family_id_survives_rename_but_cannot_span_current_keys():
     durable = tlws_mf_id("SYNTHETIC")
-    renamed = p.prepare([row(group_key="RENAMED", family_id=durable)])
+    renamed = p.prepare([
+        row(group_key="RENAMED", family_id=durable, durable_family_id=durable)
+    ])
     assert renamed["mapping_counts"] == {"FAMILY_VERIFIED": 1}
     assert assessment(renamed, "amc")["family_id"] == durable
 
     reused = p.prepare(
         [
-            row(group_key="RENAMED", family_id=durable),
-            row(code=2, group_key="OTHER", family_id=durable),
+            row(group_key="RENAMED", family_id=durable, durable_family_id=durable),
+            row(code=2, group_key="OTHER", family_id=durable, durable_family_id=durable),
         ]
     )
     assert reused["mapping_counts"] == {"FAMILY_AMBIGUOUS": 2}

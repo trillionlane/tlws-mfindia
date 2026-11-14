@@ -49,9 +49,9 @@ def test_native_legacy_full_waits_for_new_full_v2_receipt_then_publishes_once(
     monkeypatch.syspath_prepend(str(ROOT / "scripts"))
     daily = importlib.import_module("refresh_daily_v2")
     schemes = [
-        scheme(1, "Fund 1", None, amc="Verified fixture"),
+        scheme(1, "Fund 1", "INFTEST00001", amc="Verified fixture"),
         replace(
-            scheme(2, "Fund 2", None, amc="Verified fixture"),
+            scheme(2, "Fund 2", "INFTEST00002", amc="Verified fixture"),
             option="IDCW",
         ),
         scheme(3, "New Fund 3", "INFTEST00003", amc="Verified fixture"),
@@ -91,6 +91,10 @@ def test_native_legacy_full_waits_for_new_full_v2_receipt_then_publishes_once(
     with connect(dsn) as owner:
         receipt = source_evidence.latest(owner)
         assert receipt["source_kind"] == "full-catalogue"
+        assert owner.execute("""SELECT bool_and(b.family_id=f.tlws_mf_id) AS matched
+            FROM mf_identity.variant_families b
+            JOIN mf.fund_variants v USING(amfi_scheme_code)
+            JOIN mf.fund_family f USING(group_key)""").fetchone()["matched"] is True
     # The real v2 publication intentionally changes the source catalogue. The
     # preservation baseline belongs immediately before the independent tag
     # writer so only that writer is proved source-read-only.

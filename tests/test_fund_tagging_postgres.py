@@ -72,6 +72,11 @@ def tagging_db(ro01_db, pg_dsn):
         )
         try:
             adopt(ro01_db)
+            with connect(ro01_db, autocommit=False) as owner:
+                owner.execute("""UPDATE mf.funds
+                    SET isin_growth_or_div_payout = CASE amfi_scheme_code
+                        WHEN 1 THEN 'INFTEST00001' WHEN 2 THEN 'INFTEST00002' END
+                    WHERE amfi_scheme_code IN (1,2)""")
             with PostgresStore(ro01_db, use_copy=False) as database:
                 build_fund_family(database)
                 database.apply_migrations(
@@ -118,7 +123,7 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
     with writer(dsn) as conn:
         first = store.publish(conn)
         assert first["state"] == "PUBLISHED" and first["funds"] == 2
-        assert first["mapping_counts"] == {"FAMILY_MISSING": 2}
+        assert first["mapping_counts"] == {"FAMILY_VERIFIED": 2}
         old_rows = conn.execute(
             "SELECT * FROM mf_tagging.assessments ORDER BY code,dimension"
         ).fetchall()
@@ -154,6 +159,17 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
     monkeypatch.setattr(sys, "argv", ["build_fund_family.py", "--dsn", dsn])
     monkeypatch.setenv("MF_TEST_NO_COPY", "1")
     original_append = module.source_evidence.append
+    with connect(dsn, autocommit=False) as owner:
+        owner.execute("""INSERT INTO mf.funds(
+            amfi_scheme_code,amc_id,scheme_name,scheme_name_norm,scheme_type,
+            scheme_category,category_source,plan_type,plan_source,option_type,
+            in_scope,last_seen_in_source,isin_growth_or_div_payout)
+            VALUES(3,1,'Fund 3','FUND 3','OPEN_ENDED',
+                   'Equity Scheme - Large Cap Fund','AMFI','REGULAR','COLUMN','GROWTH',
+                   true,'2026-10-31','INFTEST00003')""")
+        owner.execute("""INSERT INTO mf.fund_variants(
+            amfi_scheme_code,group_key,base_scheme_name) VALUES(3,'3','Fund 3')""")
+        append_source_receipt(owner)
     with connect(dsn) as owner:
         before_family = owner.execute("SELECT * FROM mf.fund_family ORDER BY group_key").fetchall()
         before_receipt = module.source_evidence.latest(owner)
@@ -183,7 +199,8 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
         )
         changed = store.publish(conn)
         assert changed["state"] == "PUBLISHED" and changed["snapshot_id"] != first["snapshot_id"]
-        assert changed["mapping_counts"] == {"FAMILY_VERIFIED": 2}
+        assert changed["funds"] == 3
+        assert changed["mapping_counts"] == {"FAMILY_VERIFIED": 3}
     assert generator_capabilities(dsn) == before_generator
 
 
@@ -359,6 +376,7 @@ def test_native_same_day_family_a_b_a_creates_ordered_transition_receipts(taggin
         b_tags = store.publish(conn)
         assert b_tags["state"] == "PUBLISHED"
         assert b_tags["source_publication_id"] == b["publication_id"]
+        assert b_tags["mapping_counts"] == {"FAMILY_VERIFIED": 2}
     with connect(dsn, autocommit=False) as owner:
         owner.execute("UPDATE mf.fund_family SET group_key='1' WHERE group_key='1B'")
         owner.execute("UPDATE mf.fund_variants SET group_key='1' WHERE group_key='1B'")
@@ -386,3 +404,27 @@ def test_native_same_day_family_a_b_a_creates_ordered_transition_receipts(taggin
     assert unchanged["snapshot_id"] == second_a_tags["snapshot_id"]
     with connect(dsn) as owner:
         assert owner.execute("SELECT count(*) AS n FROM mf_tagging.snapshots").fetchone()["n"] == 3
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_native_durable_family_binding_conflict_is_receipted_and_withheld(tagging_db):
+    dsn = tagging_db
+    with connect(dsn, autocommit=False) as owner:
+        family_one = owner.execute(
+            "SELECT family_id FROM mf_identity.variant_families WHERE amfi_scheme_code=1"
+        ).fetchone()["family_id"]
+        owner.execute(
+            "UPDATE mf_identity.variant_families SET family_id=%s WHERE amfi_scheme_code=2",
+            (family_one,),
+        )
+        receipt = append_source_receipt(owner, source_kind="fund-family-rebuild")
+
+    with writer(dsn) as conn:
+        published = store.publish(conn)
+        code_two = conn.execute("""SELECT document FROM mf_tagging.current
+            WHERE code=2 AND dimension='amc'""").fetchone()["document"]
+
+    assert published["source_publication_id"] == receipt["publication_id"]
+    assert published["mapping_counts"] == {"FAMILY_VERIFIED": 1, "FAMILY_AMBIGUOUS": 1}
+    assert code_two["mapping_state"] == "FAMILY_AMBIGUOUS"
+    assert code_two["family_id"] is None

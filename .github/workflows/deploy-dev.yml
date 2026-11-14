@@ -206,6 +206,7 @@ jobs:
           tag_member="serviceAccount:$TAG_RUNTIME_SERVICE_ACCOUNT"
           deploy_member="serviceAccount:$DEPLOY_SERVICE_ACCOUNT"
           ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"
+          test "$TAG_RUNTIME_SERVICE_ACCOUNT" != "$INGEST_SERVICE_ACCOUNT"
           tag_identity="$(gcloud iam service-accounts describe "$TAG_RUNTIME_SERVICE_ACCOUNT" \
             --project="$EXPECTED_PROJECT" --format=json)"
           jq -e --arg email "$TAG_RUNTIME_SERVICE_ACCOUNT" \
@@ -215,6 +216,13 @@ jobs:
             .bindings[] | select(.role == "roles/cloudsql.client" and (.condition? == null)) |
             .members[]? | select(. == $member)
           ' <<<"$project_policy" >/dev/null
+          if jq -e --arg tag "$tag_member" --arg ingest "$ingest_member" '
+            [.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+             .members[]? | select(. == $tag or . == $ingest)] | length > 0
+          ' <<<"$project_policy" >/dev/null; then
+            echo "Tag or ingest runtime has project-wide secret access" >&2
+            exit 1
+          fi
           tag_identity_policy="$(gcloud iam service-accounts get-iam-policy \
             "$TAG_RUNTIME_SERVICE_ACCOUNT" --project="$EXPECTED_PROJECT" --format=json)"
           jq -e --arg member "$deploy_member" '
@@ -224,16 +232,19 @@ jobs:
           tag_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-tag-writer-dsn-dev \
             --project="$EXPECTED_PROJECT" --format=json)"
           jq -e --arg member "$tag_member" '
-            .bindings[] | select(.role == "roles/secretmanager.secretAccessor" and (.condition? == null)) |
-            .members[]? | select(. == $member)
+            ([.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+              .members[]?] | sort) == ([$member] | sort)
+            and all(.bindings[]? | select(.role == "roles/secretmanager.secretAccessor");
+                    .condition? == null)
           ' <<<"$tag_secret_policy" >/dev/null
-          if jq -e --arg member "$ingest_member" '
-            .bindings[] | select(.role == "roles/secretmanager.secretAccessor") |
-            .members[]? | select(. == $member)
-          ' <<<"$tag_secret_policy" >/dev/null; then
-            echo "Ingest runtime still has tag-writer secret access" >&2
-            exit 1
-          fi
+          ingest_secret_policy="$(gcloud secrets get-iam-policy tlws-mf-data-ingest-dsn-dev \
+            --project="$EXPECTED_PROJECT" --format=json)"
+          jq -e --arg member "$ingest_member" '
+            ([.bindings[]? | select(.role == "roles/secretmanager.secretAccessor") |
+              .members[]?] | sort) == ([$member] | sort)
+            and all(.bindings[]? | select(.role == "roles/secretmanager.secretAccessor");
+                    .condition? == null)
+          ' <<<"$ingest_secret_policy" >/dev/null
 
       - name: Verify private-read access before publishing
         shell: bash

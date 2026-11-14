@@ -65,7 +65,12 @@ def test_observations_hash_catalogue_and_family_as_disjoint_exact_projections():
             "last_seen": "2026-11-14",
         }
     ]
-    families = [{"code": 1, "group_key": None, "family_id": None}]
+    families = [{
+        "code": 1,
+        "group_key": None,
+        "family_id": None,
+        "durable_family_id": None,
+    }]
 
     class Connection:
         def execute(self, statement):

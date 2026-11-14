@@ -12,9 +12,11 @@ CATALOGUE_SQL = """SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS
  FROM mf.funds f JOIN mf.amcs a ON a.amc_id=f.amc_id
  ORDER BY f.amfi_scheme_code LIMIT 50001"""
 
-FAMILY_SQL = """SELECT f.amfi_scheme_code AS code,v.group_key,ff.tlws_mf_id AS family_id
+FAMILY_SQL = """SELECT f.amfi_scheme_code AS code,v.group_key,ff.tlws_mf_id AS family_id,
+ b.family_id AS durable_family_id
  FROM mf.funds f LEFT JOIN mf.fund_variants v ON v.amfi_scheme_code=f.amfi_scheme_code
  LEFT JOIN mf.fund_family ff ON ff.group_key=v.group_key
+ LEFT JOIN mf_identity.variant_families b ON b.amfi_scheme_code=f.amfi_scheme_code
  ORDER BY f.amfi_scheme_code LIMIT 50001"""
 
 RECEIPT_COLUMNS = (

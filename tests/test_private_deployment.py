@@ -51,8 +51,12 @@ def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutatio
     assert "roles/iam.serviceAccountUser" in preflight
     assert "tlws-mf-data-tag-writer-dsn-dev" in preflight
     assert "roles/secretmanager.secretAccessor" in preflight
-    assert preflight.count("(.condition? == null)") == 3
+    assert preflight.count(".condition? == null") == 4
     assert 'ingest_member="serviceAccount:$INGEST_SERVICE_ACCOUNT"' in preflight
+    assert 'test "$TAG_RUNTIME_SERVICE_ACCOUNT" != "$INGEST_SERVICE_ACCOUNT"' in preflight
+    assert "Tag or ingest runtime has project-wide secret access" in preflight
+    assert "tlws-mf-data-ingest-dsn-dev" in preflight
+    assert preflight.count("] | sort) == ([$member] | sort)") == 2
     assert workflow.index(
         "Verify dedicated tag runtime prerequisites before mutation"
     ) < workflow.index("Build and publish immutable image")

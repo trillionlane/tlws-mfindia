@@ -21,6 +21,28 @@ METADATA_IDENTITY_URL = (
 )
 REQUEST_TIMEOUT_SECONDS = 15
 METADATA_TIMEOUT_SECONDS = 3
+EXPECTED_TAG_DIMENSIONS = (
+    "amc",
+    "scheme-category",
+    "scheme-structure",
+    "plan",
+    "option",
+    "vehicle",
+    "asset-class",
+    "risk",
+    "strategy",
+    "market-cap",
+    "geography",
+    "sector",
+    "theme",
+    "duration-credit",
+    "benchmark",
+    "esg-strategy",
+    "environment",
+    "values-screen",
+    "entity-exposure",
+    "assessment",
+)
 
 
 class PrivateSmokeError(RuntimeError):
@@ -141,6 +163,25 @@ def run_smoke(
         raise PrivateSmokeError("private API NAV contract failed")
 
     if require_tags:
+        discovery = _get_json(
+            session,
+            base_url,
+            "/api/fund-tags/v1",
+            token,
+            label="factual-tag discovery",
+        )
+        published_snapshot = (
+            discovery.get("snapshot_id") if isinstance(discovery, dict) else None
+        )
+        if (
+            not isinstance(published_snapshot, str)
+            or len(published_snapshot) != 64
+            or any(character not in "0123456789abcdef" for character in published_snapshot)
+            or discovery.get("dimensions") != list(EXPECTED_TAG_DIMENSIONS)
+            or not isinstance(discovery.get("published_funds"), int)
+            or discovery["published_funds"] < 1
+        ):
+            raise PrivateSmokeError("private API factual-tag discovery contract failed")
         tags = _get_json(
             session,
             base_url,
@@ -155,15 +196,20 @@ def run_smoke(
         ) else None
         if (
             not isinstance(snapshot_id, str)
-            or len(snapshot_id) != 64
-            or any(character not in "0123456789abcdef" for character in snapshot_id)
+            or snapshot_id != published_snapshot
             or not isinstance(funds, list)
             or len(funds) != 1
             or not isinstance(funds[0], dict)
             or funds[0].get("code") != code
             or funds[0].get("state") != "found"
             or not isinstance(assessments, list)
-            or len(assessments) != 18
+            or len(assessments) != len(EXPECTED_TAG_DIMENSIONS)
+            or {
+                assessment.get("dimension")
+                for assessment in assessments
+                if isinstance(assessment, dict)
+            }
+            != set(EXPECTED_TAG_DIMENSIONS)
             or any(
                 not isinstance(assessment, dict)
                 or assessment.get("snapshot_id") != snapshot_id
@@ -188,7 +234,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         session.close()
-    print(f"private MFDataIndia smoke passed: endpoints={6 if args.require_tags else 5}")
+    print(f"private MFDataIndia smoke passed: endpoints={7 if args.require_tags else 5}")
     return 0
 
 
