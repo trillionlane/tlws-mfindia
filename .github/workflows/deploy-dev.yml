@@ -43,6 +43,7 @@ env:
   ASSOCIATION_WRITER_PROVISIONED: ${{ vars.MFDATAINDIA_ASSOCIATION_WRITER_PROVISIONED || 'false' }}
   MIGRATION_JOB: tlws-mf-data-migrate-dev
   REFRESH_JOB: tlws-mf-data-nav-refresh-dev
+  TAG_INSTALL_JOB: tlws-mf-data-tag-install-dev
   PRIVATE_SMOKE_JOB: tlws-mf-data-private-smoke-dev
   INSIGHTS_SERVICE_NAME: trillion-insights-api-dev
   INSIGHTS_RUNTIME_SERVICE_ACCOUNT: trillion-insights-runtime-dev@trillionlane-dev.iam.gserviceaccount.com
@@ -242,6 +243,30 @@ jobs:
             --wait \
             --quiet
 
+      - name: Install or verify the zero-retry factual-tagging sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run jobs deploy "$TAG_INSTALL_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --image="${{ steps.image.outputs.uri }}" \
+            --service-account="${{ vars.GCP_TLWS_MF_DATA_MIGRATE_SERVICE_ACCOUNT }}" \
+            --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-admin-dsn-dev:latest \
+            --command=/app/.venv/bin/python \
+            --args=/app/scripts/install_fund_tagging.py \
+            --tasks=1 \
+            --max-retries=0 \
+            --task-timeout=2m \
+            --labels=product=mfdataindia,component=tag-install,environment=dev,managed-by=github-actions \
+            --quiet
+          gcloud run jobs execute "$TAG_INSTALL_JOB" \
+            --project="$EXPECTED_PROJECT" \
+            --region="$EXPECTED_REGION" \
+            --wait \
+            --quiet
+
       - name: Deploy private read-only service
         shell: bash
         run: |
@@ -255,8 +280,10 @@ jobs:
             --ingress=internal \
             --no-allow-unauthenticated \
             --add-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
-            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-runtime-dsn-dev:latest \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-review-read-dsn-dev:latest \
             --set-env-vars=APP_ENV=dev,DEPLOYMENT_GIT_SHA=$RELEASE_CANDIDATE_SHA,MFDATAINDIA_POOL_MIN_SIZE=1,MFDATAINDIA_POOL_MAX_SIZE=10 \
+            --command=/app/.venv/bin/uvicorn \
+            --args=mfdataindia.tagging.app:create_app,--factory,--host,0.0.0.0,--port,8080,--no-access-log \
             --cpu=1 \
             --memory=512Mi \
             --concurrency=40 \
@@ -345,10 +372,10 @@ jobs:
             --image="${{ steps.image.outputs.uri }}" \
             --service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}" \
             --set-cloudsql-instances="${{ vars.GCP_TLWS_MF_DATA_CLOUD_SQL_INSTANCE }}" \
-            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest \
+            --set-secrets=MFDATAINDIA_DSN=tlws-mf-data-ingest-dsn-dev:latest,MFDATAINDIA_TAG_REFRESH_DSN=tlws-mf-data-tag-writer-dsn-dev:latest \
             --set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL \
             --command=/app/.venv/bin/python \
-            --args=/app/scripts/refresh_daily.py \
+            --args=/app/scripts/refresh_fund_tags_after_success.py,daily-amfi-refresh \
             --tasks=1 \
             --parallelism=1 \
             --max-retries=0 \
@@ -414,6 +441,9 @@ jobs:
           esac
           deployed_sha="$(jq -er '.spec.template.spec.containers[0].env[] | select(.name == "DEPLOYMENT_GIT_SHA") | .value' <<<"$service_json")"
           test "$deployed_sha" = "$RELEASE_CANDIDATE_SHA"
+          jq -e '.spec.template.spec.containers[0].command == ["/app/.venv/bin/uvicorn"]' <<<"$service_json" >/dev/null
+          jq -e '.spec.template.spec.containers[0].args == ["mfdataindia.tagging.app:create_app","--factory","--host","0.0.0.0","--port","8080","--no-access-log"]' <<<"$service_json" >/dev/null
+          jq -e '.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-review-read-dsn-dev"' <<<"$service_json" >/dev/null
 
           refresh_json="$(gcloud run jobs describe "$REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
           refresh_image="$(jq -er '.spec.template.spec.template.spec.containers[0].image' <<<"$refresh_json")"
@@ -427,7 +457,8 @@ jobs:
           test "$refresh_scope" = "FULL"
           jq -e '.spec.template.spec.template.spec.maxRetries == 0' <<<"$refresh_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].command == ["/app/.venv/bin/python"]' <<<"$refresh_json" >/dev/null
-          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_daily.py"]' <<<"$refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"]' <<<"$refresh_json" >/dev/null
+          jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$refresh_json" >/dev/null
           echo "MFDataIndia private DEV read service and refresh job reconciled"
 
       - name: Reconcile the optional association writer revision
