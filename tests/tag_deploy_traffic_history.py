@@ -8,7 +8,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "3741d683c78447cc9f53890625b449f709423406"
-MANIFEST_SHA256 = "d6a0c6c68417f119a9bc4cb4f59d99e8d0ca46e0306c43a8a24cb178604d6b24"
+MANIFEST_SHA256 = "1794dd6027bc6303b9b7d299654f5bb8e6cd75c236dc71b2abc26feee2da00e8"
 
 
 @lru_cache(maxsize=1)

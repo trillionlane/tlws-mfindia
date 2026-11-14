@@ -85,6 +85,23 @@ def test_install_uses_one_direct_owner_transaction(monkeypatch, capsys):
     }
 
 
+def test_install_accepts_recognized_preserving_upgrade(monkeypatch, capsys):
+    loaded = module()
+    monkeypatch.setenv("MFDATAINDIA_DSN", "secret-value")
+    monkeypatch.setattr(loaded, "PostgresStore", Database)
+    monkeypatch.setattr(
+        loaded.store,
+        "install",
+        lambda *_args, **_kwargs: {"state": "UPGRADED", "source_rows_changed": 0},
+    )
+
+    assert loaded.main() == 0
+    assert json.loads(capsys.readouterr().out) == {
+        "source_rows_changed": 0,
+        "state": "UPGRADED",
+    }
+
+
 def test_install_failure_is_bounded_and_value_safe(monkeypatch, capsys):
     loaded = module()
     monkeypatch.setenv("MFDATAINDIA_DSN", "must-not-appear")

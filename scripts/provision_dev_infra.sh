@@ -76,24 +76,6 @@ ensure_secret_access() {
     --quiet >/dev/null
 }
 
-remove_secret_access() {
-  local secret="$1"
-  local service_account="$2"
-  local member="serviceAccount:$service_account"
-  if gcloud secrets get-iam-policy "$secret" \
-    --project="$PROJECT_ID" \
-    --flatten='bindings[].members' \
-    --filter="bindings.role=roles/secretmanager.secretAccessor AND bindings.members=$member" \
-    --format='value(bindings.members)' | grep -Fx "$member" >/dev/null; then
-    gcloud secrets remove-iam-policy-binding "$secret" \
-      --project="$PROJECT_ID" \
-      --member="$member" \
-      --role=roles/secretmanager.secretAccessor \
-      --condition=None \
-      --quiet >/dev/null
-  fi
-}
-
 ensure_act_as() {
   local service_account="$1"
   gcloud iam service-accounts add-iam-policy-binding "$service_account" \
@@ -271,7 +253,8 @@ ensure_secret_access tlws-mf-data-ingest-dsn-dev "$INGEST_SA"
 ensure_secret_access tlws-mf-data-association-writer-dsn-dev "$ASSOCIATION_WRITER_SA"
 ensure_secret_access tlws-mf-data-audit-dsn-dev "$AUDIT_SA"
 ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"
-remove_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"
+# The deployment workflow first replaces the legacy NAV job that mounts this
+# secret, verifies no old execution remains, and only then revokes ingest access.
 
 gcloud storage buckets add-iam-policy-binding gs://tlws_mf_data_source \
   --member="serviceAccount:$RESTORE_SA" \

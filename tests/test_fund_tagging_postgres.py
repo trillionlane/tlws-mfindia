@@ -114,6 +114,18 @@ def family_script():
     return module
 
 
+def tagging_rows(conn):
+    return {
+        table: conn.execute(
+            sql.SQL("""SELECT count(*) AS rows,
+                md5(COALESCE(string_agg(to_jsonb(value)::text,''
+                    ORDER BY to_jsonb(value)::text),'')) AS digest
+                FROM mf_tagging.{} AS value""").format(sql.Identifier(table))
+        ).fetchone()
+        for table in store.TABLES
+    }
+
+
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
 def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservation(
     tagging_db, monkeypatch
@@ -202,6 +214,34 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
         assert changed["funds"] == 3
         assert changed["mapping_counts"] == {"FAMILY_VERIFIED": 3}
     assert generator_capabilities(dsn) == before_generator
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_native_prior_sidecar_seal_upgrades_narrow_grant_without_data_change(tagging_db):
+    dsn = tagging_db
+    with writer(dsn) as conn:
+        store.publish(conn)
+    with connect(dsn, autocommit=False) as owner:
+        before = tagging_rows(owner)
+        owner.execute("REVOKE ALL ON mf_identity.variant_families FROM mfdata_tag_writer")
+        owner.execute(
+            sql.SQL("COMMENT ON SCHEMA mf_tagging IS {}").format(
+                sql.Literal(next(iter(store.PRIOR_SEALS)))
+            )
+        )
+        upgraded = store.install(owner, ROOT)
+        replay = store.install(owner, ROOT)
+        after = tagging_rows(owner)
+        privilege = owner.execute("""SELECT
+            has_column_privilege('mfdata_tag_writer','mf_identity.variant_families',
+                                 'amfi_scheme_code','SELECT')
+            AND has_column_privilege('mfdata_tag_writer','mf_identity.variant_families',
+                                     'family_id','SELECT') AS allowed""").fetchone()["allowed"]
+
+    assert upgraded["state"] == "UPGRADED"
+    assert replay["state"] == "ALREADY_INSTALLED"
+    assert before == after
+    assert privilege is True
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)

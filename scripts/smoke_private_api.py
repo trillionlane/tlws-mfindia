@@ -115,6 +115,7 @@ def run_smoke(
     session: requests.Session,
     *,
     require_tags: bool = False,
+    expected_tag_snapshot: str | None = None,
 ) -> None:
     base_url = _service_url(base_url, name="MFDATAINDIA_PRIVATE_BASE_URL")
     audience = _service_url(audience, name="MFDATAINDIA_PRIVATE_AUDIENCE")
@@ -163,6 +164,15 @@ def run_smoke(
         raise PrivateSmokeError("private API NAV contract failed")
 
     if require_tags:
+        if (
+            not isinstance(expected_tag_snapshot, str)
+            or len(expected_tag_snapshot) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in expected_tag_snapshot
+            )
+        ):
+            raise PrivateSmokeError("expected factual-tag publication snapshot is absent")
         discovery = _get_json(
             session,
             base_url,
@@ -175,8 +185,7 @@ def run_smoke(
         )
         if (
             not isinstance(published_snapshot, str)
-            or len(published_snapshot) != 64
-            or any(character not in "0123456789abcdef" for character in published_snapshot)
+            or published_snapshot != expected_tag_snapshot
             or discovery.get("dimensions") != list(EXPECTED_TAG_DIMENSIONS)
             or not isinstance(discovery.get("published_funds"), int)
             or discovery["published_funds"] < 1
@@ -222,13 +231,20 @@ def run_smoke(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--require-tags", action="store_true")
+    parser.add_argument("--expected-tag-snapshot")
     args = parser.parse_args(argv)
     base_url = os.environ.get("MFDATAINDIA_PRIVATE_BASE_URL", "")
     audience = os.environ.get("MFDATAINDIA_PRIVATE_AUDIENCE", "")
     session = requests.Session()
     session.trust_env = False
     try:
-        run_smoke(base_url, audience, session, require_tags=args.require_tags)
+        run_smoke(
+            base_url,
+            audience,
+            session,
+            require_tags=args.require_tags,
+            expected_tag_snapshot=args.expected_tag_snapshot,
+        )
     except (PrivateSmokeError, requests.RequestException) as exc:
         print(f"private MFDataIndia smoke failed: {exc}", file=sys.stderr)
         return 1

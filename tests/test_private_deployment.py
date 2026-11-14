@@ -56,7 +56,9 @@ def test_dev_preflight_verifies_deployed_insights_and_tag_runtime_before_mutatio
     assert 'test "$TAG_RUNTIME_SERVICE_ACCOUNT" != "$INGEST_SERVICE_ACCOUNT"' in preflight
     assert "Tag or ingest runtime has project-wide secret access" in preflight
     assert "tlws-mf-data-ingest-dsn-dev" in preflight
-    assert preflight.count("] | sort) == ([$member] | sort)") == 2
+    assert "$members == ([$tag] | sort) or $members == ([$tag,$ingest] | sort)" in preflight
+    assert '"/app/scripts/refresh_fund_tags_after_success.py","daily-amfi-refresh"' in preflight
+    assert '["/app/scripts/refresh_daily_v2.py"]' in preflight
     assert workflow.index(
         "Verify dedicated tag runtime prerequisites before mutation"
     ) < workflow.index("Build and publish immutable image")
@@ -117,13 +119,13 @@ def test_association_writer_is_separate_private_and_default_off() -> None:
     assert "verify_optional_association_writer_dev.sh" in workflow
 
 
-def test_read_deployment_reconciles_refresh_job_without_executing_it() -> None:
+def test_read_deployment_cuts_over_refresh_job_before_legacy_secret_revoke() -> None:
     workflow = (ROOT / ".github" / "workflows" / "deploy-dev.yml").read_text()
 
     assert "REFRESH_JOB: tlws-mf-data-nav-refresh-dev" in workflow
-    assert "Reconcile the six-hour NAV and catalogue refresh job" in workflow
+    assert "Cut over NAV job before revoking legacy tag-secret access" in workflow
     assert '--image="${{ steps.image.outputs.uri }}"' in workflow
-    assert '--service-account="${{ vars.GCP_TLWS_MF_DATA_INGEST_SERVICE_ACCOUNT }}"' in workflow
+    assert '--service-account="$INGEST_SERVICE_ACCOUNT"' in workflow
     assert "--set-env-vars=MFDATAINDIA_SNAPSHOT_SCOPE=FULL" in workflow
     assert "--args=/app/scripts/refresh_daily_v2.py" in workflow
     assert "TAG_REFRESH_JOB: tlws-mf-data-tag-refresh-dev" in workflow
@@ -132,6 +134,15 @@ def test_read_deployment_reconciles_refresh_job_without_executing_it() -> None:
     assert "refresh_scope" in workflow
     assert 'gcloud run jobs execute "$REFRESH_JOB"' not in workflow
     assert "gcloud scheduler" not in workflow
+    cutover = workflow.split(
+        "      - name: Cut over NAV job before revoking legacy tag-secret access", 1
+    )[1].split("      - name: Deploy and execute the zero-retry migration job", 1)[0]
+    assert "MFDATAINDIA_TAG_REFRESH_DSN" in cutover
+    assert "status.completionTime" in cutover
+    assert "gcloud secrets remove-iam-policy-binding tlws-mf-data-tag-writer-dsn-dev" in cutover
+    assert cutover.index("gcloud run jobs deploy") < cutover.index(
+        "gcloud secrets remove-iam-policy-binding"
+    )
 
 
 def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None:
@@ -173,6 +184,10 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "Verify published tags through packaged authenticated service" in tag_refresh
     assert 'containers[0].args == ["/app/scripts/smoke_private_api.py"]' in tag_refresh
     assert "--args=/app/scripts/smoke_private_api.py,--require-tags" in tag_refresh
+    assert 'id: publication' in tag_refresh
+    assert 'labels.\\"run.googleapis.com/execution_name\\"' in tag_refresh
+    assert "steps.publication.outputs.published_snapshot" in tag_refresh
+    assert "--expected-tag-snapshot" in tag_refresh
     assert 'gcloud run jobs execute "$PRIVATE_SMOKE_JOB"' in tag_refresh
     assert (
         "create_database_principal mfdata_tag_writer tlws-mf-data-tag-writer-dsn-dev" in provision
@@ -180,10 +195,12 @@ def test_tag_activation_uses_direct_owner_writer_and_reader_principals() -> None
     assert "gcloud sql users assign-roles mfdata_tag_writer" in provision
     assert 'ensure_secret_access tlws-mf-data-tag-writer-dsn-dev "$TAG_WRITER_SA"' in provision
     assert 'ensure_secret_access tlws-mf-data-ingest-dsn-dev "$TAG_WRITER_SA"' not in provision
-    assert 'remove_secret_access tlws-mf-data-tag-writer-dsn-dev "$INGEST_SA"' in provision
+    assert 'remove_secret_access' not in provision
+    assert "deployment workflow first replaces the legacy NAV job" in provision
     assert "ensure_service_account tlws-mf-data-tag-writer-dev" in provision
     assert 'ensure_project_role "serviceAccount:$DEPLOY_SA" roles/iam.securityReviewer' in provision
     assert "store.install(conn, ROOT)" in installer
+    assert '"UPGRADED"' in installer
     assert "047_tag_input_publications.sql" in installer
     assert "TAGGING_INSTALL_FAILED" in installer
 

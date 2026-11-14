@@ -12,6 +12,12 @@ from . import policy as p, source_evidence
 
 FILE = 'sql/operations/fund_tagging_v1.sql'
 SQL_SHA256 = '3eda52bdcca2a93e48f79a2de02e08c8ad72f641294346469d10fe2bcfa3661d'
+PRIOR_SEALS = frozenset({
+    'fund-tagging-v1:388f64a8d1e8ae8978bb647633b697b29b8aa6f546853115a48587067ddb0a1d:'
+    '5c2318ad2fcf50c4e46823c6322d8662cbfdd48ac6d1be178ba5023b1ac3f485',
+})
+UPGRADE_SQL = '''GRANT USAGE ON SCHEMA mf_identity TO mfdata_tag_writer;
+GRANT SELECT(amfi_scheme_code,family_id) ON mf_identity.variant_families TO mfdata_tag_writer;'''
 TABLES = ('assessments', 'current', 'definitions', 'head', 'observations', 'snapshots')
 CENSUS_SQL = '''SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS amc,
  f.scheme_name,f.scheme_type,f.scheme_category,f.category_source,f.plan_type,f.plan_source,
@@ -57,14 +63,24 @@ def limits(conn):
     p.require(row['ok'], 'TAGGING_PUBLICATION_BUSY')
 
 
-def installed(conn):
-    expected = 'fund-tagging-v1:' + SQL_SHA256 + ':' + p.digest(p.CONTRACT)
+def expected_seal():
+    return 'fund-tagging-v1:' + SQL_SHA256 + ':' + p.digest(p.CONTRACT)
+
+
+def installation(conn, allowed_seals):
     namespace = conn.execute("SELECT pg_get_userbyid(nspowner) AS owner,obj_description(oid,'pg_namespace') AS seal FROM pg_namespace WHERE nspname='mf_tagging'").fetchone()
-    p.require(namespace and namespace['owner'] == p.OWNER and namespace['seal'] == expected,
+    p.require(namespace and namespace['owner'] == p.OWNER
+              and namespace['seal'] in allowed_seals,
               'TAGGING_INSTALLATION_DIFFERS')
     rows = conn.execute("SELECT relname,relkind,pg_get_userbyid(relowner) AS owner FROM pg_class WHERE relnamespace='mf_tagging'::regnamespace AND relkind IN('r','p','v','m','S') ORDER BY relname").fetchall()
     p.require(rows == [{'relname': t, 'relkind': 'r', 'owner': p.OWNER} for t in TABLES],
               'TAGGING_INSTALLATION_DIFFERS')
+    return namespace['seal']
+
+
+def installed(conn):
+    expected = expected_seal()
+    installation(conn, {expected})
     return expected
 
 
@@ -77,16 +93,22 @@ def install(conn, root):
     limits(conn)
     raw = (Path(root) / FILE).read_bytes()
     p.require(hashlib.sha256(raw).hexdigest() == SQL_SHA256, 'TAGGING_INSTALLATION_SOURCE_DIFFERS')
-    if conn.execute("SELECT 1 FROM pg_namespace WHERE nspname='mf_tagging'").fetchone():
-        installed(conn)
-        return {'state': 'ALREADY_INSTALLED', 'source_rows_changed': 0}
     writer = conn.execute('''SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls
         OR EXISTS(SELECT 1 FROM pg_auth_members WHERE member=r.oid) AS unsafe
         FROM pg_roles r WHERE rolname=%s''', (p.WRITER,)).fetchone()
     p.require(writer and writer['unsafe'] is False, 'TAGGING_NARROW_WRITER_REQUIRED')
     writer_safety(conn, p.WRITER)
+    if conn.execute("SELECT 1 FROM pg_namespace WHERE nspname='mf_tagging'").fetchone():
+        expected = expected_seal()
+        existing = installation(conn, {expected, *PRIOR_SEALS})
+        if existing == expected:
+            return {'state': 'ALREADY_INSTALLED', 'source_rows_changed': 0}
+        conn.execute(UPGRADE_SQL)
+        conn.execute(sql.SQL('COMMENT ON SCHEMA mf_tagging IS {}').format(sql.Literal(expected)))
+        installed(conn)
+        return {'state': 'UPGRADED', 'source_rows_changed': 0, 'commit_performed': False}
     conn.execute(raw.decode())
-    seal = 'fund-tagging-v1:' + SQL_SHA256 + ':' + p.digest(p.CONTRACT)
+    seal = expected_seal()
     conn.execute(sql.SQL('COMMENT ON SCHEMA mf_tagging IS {}').format(sql.Literal(seal)))
     for table in ('definitions', 'current'):
         enrollment.enroll(conn, 'mf_tagging', table, classification='fund_research',

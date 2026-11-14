@@ -57,7 +57,8 @@ jobs:
           service_account: ${{ vars.GCP_TLWS_MF_DATA_DEPLOY_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Execute one independent zero-retry factual-tag publication
+      - id: publication
+        name: Execute one independent zero-retry factual-tag publication
         run: |
           set -euo pipefail
           job_json="$(gcloud run jobs describe "$TAG_REFRESH_JOB" --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --format=json)"
@@ -68,8 +69,28 @@ jobs:
           jq -e '.spec.template.spec.template.spec.containers[0].args == ["/app/scripts/publish_fund_tags.py"]' <<<"$job_json" >/dev/null
           jq -e '.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_TAG_REFRESH_DSN") | .valueFrom.secretKeyRef.name == "tlws-mf-data-tag-writer-dsn-dev"' <<<"$job_json" >/dev/null
           jq -e '[.spec.template.spec.template.spec.containers[0].env[] | select(.name == "MFDATAINDIA_DSN")] | length == 0' <<<"$job_json" >/dev/null
-          gcloud run jobs execute "$TAG_REFRESH_JOB" \
-            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" --wait --quiet
+          execution_name="$(gcloud run jobs execute "$TAG_REFRESH_JOB" \
+            --project="$EXPECTED_PROJECT" --region="$EXPECTED_REGION" \
+            --wait --quiet --format='value(metadata.name)')"
+          [[ "$execution_name" == "$TAG_REFRESH_JOB"-* ]]
+          log_filter="resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$TAG_REFRESH_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$execution_name\""
+          logs_json="$(gcloud logging read "$log_filter" \
+            --project="$EXPECTED_PROJECT" --freshness=10m --limit=50 \
+            --order=desc --format=json)"
+          publish_result="$(jq -cer '
+            [.[] | .textPayload? | fromjson? |
+             select(.format == "mfdata-tag-refresh-attempt-v1"
+                    and (.state == "PUBLISHED" or .state == "UNCHANGED"))]
+            | if length == 1 then .[0]
+              else error("expected one exact publication result") end
+          ' <<<"$logs_json")"
+          published_snapshot="$(jq -er '.tag_snapshot_id |
+            select(type == "string" and test("^[0-9a-f]{64}$"))' <<<"$publish_result")"
+          jq -e '.source_publication_id |
+            type == "string" and test("^[0-9a-f]{64}$")' <<<"$publish_result" >/dev/null
+          jq -e '.source_publication_sequence | type == "number" and . > 0' \
+            <<<"$publish_result" >/dev/null
+          echo "published_snapshot=$published_snapshot" >> "$GITHUB_OUTPUT"
       - name: Verify published tags through packaged authenticated service
         run: |
           set -euo pipefail
@@ -85,6 +106,6 @@ jobs:
           gcloud run jobs execute "$PRIVATE_SMOKE_JOB" \
             --project="$EXPECTED_PROJECT" \
             --region="$EXPECTED_REGION" \
-            --args=/app/scripts/smoke_private_api.py,--require-tags \
+            --args=/app/scripts/smoke_private_api.py,--require-tags,--expected-tag-snapshot,${{ steps.publication.outputs.published_snapshot }} \
             --wait \
             --quiet

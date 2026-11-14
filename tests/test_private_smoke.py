@@ -121,6 +121,7 @@ def test_private_smoke_can_require_tags_through_the_same_oidc_boundary() -> None
         "https://mfdata.example.run.app",
         session,
         require_tags=True,
+        expected_tag_snapshot="a" * 64,
     )
 
     assert len(session.requests) == 8
@@ -147,6 +148,7 @@ def test_private_tag_smoke_rejects_missing_fund_or_assessments() -> None:
             "https://mfdata.example.run.app",
             session,
             require_tags=True,
+            expected_tag_snapshot="a" * 64,
         )
 
 
@@ -165,6 +167,28 @@ def test_private_tag_smoke_rejects_duplicate_or_wrong_snapshot_assessments() -> 
             "https://mfdata.example.run.app",
             session,
             require_tags=True,
+            expected_tag_snapshot="a" * 64,
+        )
+
+
+def test_private_tag_smoke_requires_exact_completed_publication_snapshot() -> None:
+    session = Session([*successful_responses(), *successful_tag_responses()])
+    with pytest.raises(smoke_private_api.PrivateSmokeError, match="expected factual-tag"):
+        smoke_private_api.run_smoke(
+            "https://mfdata.example.run.app",
+            "https://mfdata.example.run.app",
+            session,
+            require_tags=True,
+        )
+
+    session = Session([*successful_responses(), *successful_tag_responses()])
+    with pytest.raises(smoke_private_api.PrivateSmokeError, match="discovery contract"):
+        smoke_private_api.run_smoke(
+            "https://mfdata.example.run.app",
+            "https://mfdata.example.run.app",
+            session,
+            require_tags=True,
+            expected_tag_snapshot="b" * 64,
         )
 
 

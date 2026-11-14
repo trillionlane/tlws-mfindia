@@ -30,7 +30,7 @@ def main() -> int:
             conn = database.connect()
             with conn.transaction():
                 report = store.install(conn, ROOT)
-        if report.get("state") not in {"INSTALLED", "ALREADY_INSTALLED"}:
+        if report.get("state") not in {"INSTALLED", "ALREADY_INSTALLED", "UPGRADED"}:
             raise ValueError("unexpected install result")
         print(
             json.dumps(
