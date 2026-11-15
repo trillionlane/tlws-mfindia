@@ -124,8 +124,14 @@ def run_retrieval(archive, execution, connector_revision, capture, *, publish=No
                     or capture_receipt['connector_revision'] != connector_revision
                     or capture_receipt['publication'] != 'NOT_ATTEMPTED'):
                 raise PilotError('CAPTURE_RECEIPT_DIFFERS')
-            receipt['retrieved_at_utc'] = capture_receipt['observed_at_utc']
-            receipt['http_status'] = capture_receipt['http_status']
+            observed = capture_receipt['observed_at_utc']
+            status = capture_receipt['http_status']
+            if (type(observed) is not str or not observed.endswith('Z')
+                    or datetime.fromisoformat(observed).tzinfo is None
+                    or (status is not None and (type(status) is not int or not 100 <= status <= 599))):
+                raise PilotError('CAPTURE_RECEIPT_DIFFERS')
+            receipt['retrieved_at_utc'] = observed
+            receipt['http_status'] = status
             if exit_code or capture_receipt['outcome'] not in RETAINED:
                 receipt['reason'] = 'CONNECTOR_CAPTURE_FAILED'
             else:

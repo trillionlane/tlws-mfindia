@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def fixture(dsn):
     raw = b'\n'.join((ROOT / 'tests/fixtures/nse01/sch44_synthetic.psv').read_bytes().splitlines()[:2]) + b'\n'
-    digest = sha256(raw).hexdigest()
+    digest = '00a85cad911ecb1bdc50af522d6aa19c75fbfcb79ec976fd8860f9c4e319f838'
+    assert len(raw) == 972 and sha256(raw).hexdigest() == digest
     with connect(dsn, autocommit=False) as owner:
         owner.execute((ROOT / 'sql/optional/048_nse_sch44_uat_publication.sql').read_text())
         owner.execute("UPDATE mf.funds SET isin_growth_or_div_payout='INZZ00000019',plan_type='REGULAR',option_type='GROWTH',in_scope=true WHERE amfi_scheme_code=1")
