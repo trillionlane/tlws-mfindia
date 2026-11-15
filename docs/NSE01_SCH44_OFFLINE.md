@@ -92,3 +92,70 @@ The example Member ID is synthetic. The report includes the environment and
 report selection and records that the Member ID was supplied. The ID itself
 stays in the private settings file. The source hash binds these settings
 to the export. This caller-provided metadata leaves full scope unverified.
+
+## API retrieval from the approved NSE connector
+
+NSE's [MF Invest API v1.9.7, section “Scheme Master, NAV & Settlement calendar Download API”](https://www.nseinvest.com/nsemfdesk/resources/upload/apidetails/NSEMF_API_Details_V1.9.7.pdf#page=191)
+defines a POST to `/nsemfdesk/api/v2/reports/MASTER_DOWNLOAD` with
+`{"file_type":"SCH"}` for the consolidated Scheme Master. The documented
+filename contains `ALL`. That is a file-type label. The selector confirms
+the report family without establishing the member's full coverage.
+
+Run the adapter from the approved TLAM connector checkout with its existing
+dependencies and UAT runtime configuration. Inject the existing private
+credential references through the operator environment or secret bindings.
+Keep credential values and the Member ID out of the command line and the
+repository. Bind the operator-approved checkout to its exact revision. The
+adapter checks that the checkout is clean and matches that revision before it
+loads the connector. Use a new private directory path for each invocation.
+
+```sh
+cd "$APPROVED_TLAM_CHECKOUT"
+TSX_TSCONFIG_PATH="$PWD/tsconfig.json" node --import tsx \
+  "$MFDATA_CHECKOUT/scripts/capture_nse_sch44.mjs" \
+  --connector-root "$PWD" --connector-revision "$APPROVED_CONNECTOR_SHA" \
+  --output-dir "$PRIVATE_NEW_CAPTURE_DIR"
+```
+
+The existing connector owns authentication, endpoint allowlisting, session
+setup, transport time and byte limits, and its configured quota policy. The
+adapter calls `downloadMasterOnce` once for SCH, preserves the complete
+decoded file bytes after checking the connector-observed digest, and records a
+safe receipt. The receipt tracks the observed filename, provider-derived
+export date when usable, capture time, SHA-256, bytes, header width and rows.
+No downloaded value becomes a path. A missing or unrecognized filename leaves
+the source date unknown and returns a nonzero status even when the valid
+reference bytes were retained. A provider denial, interrupted download or
+credential-bearing response leaves only safe failure evidence. No live import
+or active-snapshot change is available from this adapter.
+
+After capture, pass the local bytes and receipt to the existing dry run.
+The SCH44 parser checks the full ordered header and every source row. It
+rechecks the receipt against the exact file bytes and counts. A capture without
+a usable export date can still produce an explicitly undated diagnostic
+report. Separate the timestamp of retrieval from the date of the source file.
+
+```sh
+cd "$MFDATA_CHECKOUT"
+uv run python -m mfdataindia.nse.sch44 \
+  --source "$PRIVATE_NEW_CAPTURE_DIR/source.txt" \
+  --api-receipt "$PRIVATE_NEW_CAPTURE_DIR/receipt.json" \
+  --catalogue "$PRIVATE_DATED_CATALOGUE" \
+  --crosswalk "$PRIVATE_REVIEWED_CROSSWALK"
+```
+
+### Scheduling proposal for review
+
+Once NSE confirms the expected file date and member scope, pilot one UAT
+capture **07:00 Asia/Kolkata each weekday** via the existing connector runtime.
+Confirm that timing against the issuer's availability before enabling it.
+Keep retrieval and dry-run results separate from any activation decision.
+
+Use a stable private connector scope, environment, report type, provider export
+date and content SHA-256 for duplicate detection. The same date and hash are a
+no-op. Retain a changed hash on the same date as a revision for review.
+Missing dates, unknown scope, layout changes or incomplete transfer hold the
+candidate. Keep the previous active snapshot available. Stop and surface a
+sanitized status on authentication, entitlement or egress failure, and reconcile
+an uncertain capture before making another request. Do not replace the active
+snapshot automatically.

@@ -180,3 +180,48 @@ def test_member_id_is_per_export_private_and_bound_to_source(inputs):
     with pytest.raises(contract.ImportError, match='INVALID_EXPORT_CONTEXT'):
         sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk,
                      export_context={**context, 'member_id': 'invalid'})
+
+
+def test_api_capture_is_bound_to_the_local_file_and_keeps_scope_unverified(inputs):
+    snapshot, walk = inputs
+    receipt = {
+        'format': 'nse01-sch-api-capture-v1', 'environment': 'UAT', 'method': 'POST',
+        'endpoint': '/nsemfdesk/api/v2/reports/MASTER_DOWNLOAD', 'file_type': 'SCH',
+        'report_type': 'CONSOLIDATED_SCHEME_MASTER', 'source_scope': 'UNVERIFIED',
+        'outcome': 'RETAINED_FOR_OFFLINE_VALIDATION', 'http_status': 200, 'header_columns': 44,
+        'provider_transport_started': True, 'post_invoked': True,
+        'sha256': sha256(SOURCE).hexdigest(), 'byte_length': len(SOURCE), 'row_count': 5,
+        'export_date': '2026-09-18', 'filename': 'NSE_NSEINVEST_ALL_18092026.txt',
+        'connector_revision': 'a' * 40,
+    }
+    result = sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk, api_receipt=receipt)
+    assert result['api_capture']['filename'] == receipt['filename']
+    assert result['source_scope'] == 'UNVERIFIED'
+    assert result['publication'] == 'NOT_ATTEMPTED'
+    with pytest.raises(contract.ImportError, match='SCH_API_RECEIPT_SOURCE_DIFFERS'):
+        sch44.report(edit_position(14, '1'), '2026-09-18', contract.canonical(snapshot),
+                     walk, api_receipt=receipt)
+    with pytest.raises(contract.ImportError, match='INVALID_SCH_API_RECEIPT'):
+        sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk,
+                     api_receipt={**receipt, 'file_type': 'SIP'})
+
+
+def test_undated_api_capture_cannot_invent_source_date(inputs):
+    snapshot, walk = inputs
+    receipt = {
+        'format': 'nse01-sch-api-capture-v1', 'environment': 'UAT', 'method': 'POST',
+        'endpoint': '/nsemfdesk/api/v2/reports/MASTER_DOWNLOAD', 'file_type': 'SCH',
+        'report_type': 'CONSOLIDATED_SCHEME_MASTER', 'source_scope': 'UNVERIFIED',
+        'outcome': 'RETAINED_EXPORT_DATE_UNVERIFIED', 'http_status': 200, 'header_columns': 44,
+        'provider_transport_started': True, 'post_invoked': True,
+        'sha256': sha256(SOURCE).hexdigest(), 'byte_length': len(SOURCE), 'row_count': 5,
+        'export_date': None, 'filename': None, 'connector_revision': 'a' * 40,
+    }
+    result = sch44.report(SOURCE, None, contract.canonical(snapshot), walk, api_receipt=receipt)
+    assert result['result'] == 'UNDATED_API_DRY_RUN'
+    assert result['source_date'] is None
+    assert result['api_capture']['filename'] is None
+    with pytest.raises(contract.ImportError, match='SCH_API_RECEIPT_SOURCE_DIFFERS'):
+        sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk, api_receipt=receipt)
+    with pytest.raises(contract.ImportError, match='INVALID_SOURCE_DATE'):
+        sch44.report(SOURCE, None, contract.canonical(snapshot), walk)

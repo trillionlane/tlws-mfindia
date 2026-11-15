@@ -206,13 +206,48 @@ def _export_context(value, source_sha256):
             'member_id_recorded': True}
 
 
-def report(source, source_date, catalogue_bytes, walk, *, export_context=None):
+def _api_capture(value, source_sha256, source_bytes, source_date, source_rows):
+    c.require(type(value) is dict and all(value.get(key) == expected for key, expected in {
+        'format': 'nse01-sch-api-capture-v1', 'environment': 'UAT', 'method': 'POST',
+        'endpoint': '/nsemfdesk/api/v2/reports/MASTER_DOWNLOAD', 'file_type': 'SCH',
+        'report_type': 'CONSOLIDATED_SCHEME_MASTER', 'source_scope': 'UNVERIFIED',
+        'http_status': 200, 'header_columns': 44,
+    }.items()) and value.get('provider_transport_started') is True
+        and value.get('post_invoked') is True, 'INVALID_SCH_API_RECEIPT')
+    c.require(value.get('sha256') == source_sha256 and value.get('byte_length') == source_bytes
+              and value.get('row_count') == source_rows and value.get('export_date') == source_date,
+              'SCH_API_RECEIPT_SOURCE_DIFFERS')
+    filename = value.get('filename')
+    revision = value.get('connector_revision')
+    c.require(type(revision) is str and re.fullmatch(r'[0-9a-f]{40}', revision), 'INVALID_SCH_API_RECEIPT')
+    if source_date is None:
+        c.require(value.get('outcome') == 'RETAINED_EXPORT_DATE_UNVERIFIED'
+                  and (filename is None or (type(filename) is str
+                       and re.fullmatch(r'NSE_NSEINVEST_ALL_[0-9]{8}\.TXT', filename.upper()))),
+                  'INVALID_SCH_API_RECEIPT')
+    else:
+        year, month, day = source_date.split('-')
+        c.require(value.get('outcome') == 'RETAINED_FOR_OFFLINE_VALIDATION'
+                  and type(filename) is str
+                  and filename.upper() == f'NSE_NSEINVEST_ALL_{day}{month}{year}.TXT',
+                  'INVALID_SCH_API_RECEIPT')
+    return {'environment': 'UAT', 'report_type': value['report_type'],
+            'filename': filename, 'connector_revision': revision}
+
+
+def report(source, source_date, catalogue_bytes, walk, *, export_context=None, api_receipt=None):
     """Return private-safe counts; a candidate ISIN hit never proves a match."""
-    _date(source_date)
+    if source_date is None and type(api_receipt) is dict:
+        source_date = api_receipt.get('export_date')
+    undated_api = source_date is None and type(api_receipt) is dict and export_context is None
+    if not undated_api:
+        _date(source_date)
     rows = parse(source)
     source_sha256 = sha256(source).hexdigest()
     context = (_export_context(export_context, source_sha256)
                if export_context is not None else None)
+    capture = (_api_capture(api_receipt, source_sha256, len(source), source_date, len(rows))
+               if api_receipt is not None else None)
     snapshot, funds = catalogue(catalogue_bytes)
     mapping.validate_crosswalk(walk)
     by_isin = defaultdict(set)
@@ -243,9 +278,10 @@ def report(source, source_date, catalogue_bytes, walk, *, export_context=None):
         reasons[status][reason] += 1
 
     return {
-        'profile': PROFILE, 'result': 'HISTORICAL_DRY_RUN', 'source_scope': 'UNVERIFIED',
+        'profile': PROFILE, 'result': 'UNDATED_API_DRY_RUN' if undated_api else 'HISTORICAL_DRY_RUN',
+        'source_scope': 'UNVERIFIED',
         'source_date': source_date, 'source_sha256': source_sha256,
-        'export_context': context,
+        'export_context': context, 'api_capture': capture,
         'source_bytes': len(source), 'source_rows': len(rows),
         'catalogue_as_of': snapshot['as_of'], 'catalogue_dataset_version': snapshot['dataset_version'],
         'catalogue_sha256': sha256(catalogue_bytes).hexdigest(), 'catalogue_rows': len(funds),
@@ -270,21 +306,27 @@ def _read(path, limit):
 def main(argv=None):
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, required=True)
-    parser.add_argument('--source-date', required=True, help='Recorded export date (YYYY-MM-DD)')
+    parser.add_argument('--source-date', help='Export date (YYYY-MM-DD); optional with an API receipt')
     parser.add_argument('--catalogue', type=Path, required=True, help='Dated canonical catalogue JSON')
     parser.add_argument('--crosswalk', type=Path, required=True, help='Reviewed AMC and scheme mappings')
     parser.add_argument('--export-context', type=Path,
                         help='Private settings from the public NSE export form')
+    parser.add_argument('--api-receipt', type=Path,
+                        help='Private receipt written by the approved NSE SCH connector capture')
     args = parser.parse_args(argv)
     try:
         context = None
         if args.export_context is not None:
             context = c.decode(_read(args.export_context, 4096))
             c.require(type(context) is dict, 'INVALID_EXPORT_CONTEXT')
+        receipt = None
+        if args.api_receipt is not None:
+            receipt = c.decode(_read(args.api_receipt, 4096))
+            c.require(type(receipt) is dict, 'INVALID_SCH_API_RECEIPT')
         result = report(_read(args.source, c.MAX_BYTES), args.source_date,
                         _read(args.catalogue, c.MAX_BYTES),
                         _json(_read(args.crosswalk, c.MAX_BYTES), 'INVALID_CROSSWALK'),
-                        export_context=context)
+                        export_context=context, api_receipt=receipt)
     except (OSError, c.ImportError) as error:
         parser.exit(2, 'SCH44_DRY_RUN: ' + (
             str(error) if isinstance(error, c.ImportError) else 'INPUT_UNAVAILABLE'
