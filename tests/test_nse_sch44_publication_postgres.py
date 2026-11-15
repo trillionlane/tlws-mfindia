@@ -18,9 +18,10 @@ def fixture(dsn):
     assert len(raw) == 972 and sha256(raw).hexdigest() == digest
     with connect(dsn, autocommit=False) as owner:
         owner.execute((ROOT / 'sql/optional/048_nse_sch44_uat_publication.sql').read_text())
-        owner.execute("UPDATE mf.funds SET isin_growth_or_div_payout='INZZ00000019',plan_type='REGULAR',option_type='GROWTH',in_scope=true WHERE amfi_scheme_code=1")
+        owner.execute("UPDATE mf.funds SET isin_growth_or_div_payout='INZZ00000019',plan_type='REGULAR',option_type='GROWTH' WHERE amfi_scheme_code=1")
         funds = owner.execute(store.FUNDS).fetchall()
     canonical = next(row for row in funds if row['amfi_scheme_code'] == 1)
+    assert canonical['in_scope'] is True
     walk = {'format': 'nse01-crosswalk-v1', 'version': 'sch44-synthetic',
             'amcs': {'FIXTURE_AMC': canonical['amfi_amc_name']},
             'targets': [{'amc_code': 'FIXTURE_AMC', 'scheme_code': 'SYNTH_A', 'isin': 'INZZ00000019',
