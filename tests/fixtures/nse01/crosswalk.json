@@ -1,0 +1,86 @@
+{
+  "amcs": {
+    "FIXTURE_AMC": "Verified fixture"
+  },
+  "format": "nse01-crosswalk-v1",
+  "targets": [
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 1,
+      "isin": "INFX00000001",
+      "isin_slot": "isin_growth_or_div_payout",
+      "option": "GROWTH",
+      "plan": "REGULAR",
+      "reinvestment_flag": "0",
+      "scheme_code": "SCH_G",
+      "source_name": "FIXTURE SCH_G"
+    },
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 2,
+      "isin": "INFX00000002",
+      "isin_slot": "isin_growth_or_div_payout",
+      "option": "IDCW",
+      "plan": "REGULAR",
+      "reinvestment_flag": "0",
+      "scheme_code": "SCH_P",
+      "source_name": "FIXTURE SCH_P"
+    },
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 2,
+      "isin": "INFX00000003",
+      "isin_slot": "isin_div_reinvest",
+      "option": "IDCW",
+      "plan": "REGULAR",
+      "reinvestment_flag": "1",
+      "scheme_code": "SCH_R",
+      "source_name": "FIXTURE SCH_R"
+    },
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 3,
+      "isin": "INFX00000004",
+      "isin_slot": "isin_growth_or_div_payout",
+      "option": "GROWTH",
+      "plan": "DIRECT",
+      "reinvestment_flag": "0",
+      "scheme_code": "SCH_D",
+      "source_name": "FIXTURE SCH_D"
+    },
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 1,
+      "isin": "INFX00000006",
+      "isin_slot": "isin_growth_or_div_payout",
+      "option": "GROWTH",
+      "plan": "REGULAR",
+      "reinvestment_flag": "0",
+      "scheme_code": "SCH_A",
+      "source_name": "FIXTURE SCH_A"
+    },
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 4,
+      "isin": "INFX00000006",
+      "isin_slot": "isin_growth_or_div_payout",
+      "option": "GROWTH",
+      "plan": "REGULAR",
+      "reinvestment_flag": "0",
+      "scheme_code": "SCH_A",
+      "source_name": "FIXTURE SCH_A"
+    },
+    {
+      "amc_code": "FIXTURE_AMC",
+      "amfi_scheme_code": 1,
+      "isin": "INFX00000007",
+      "isin_slot": "isin_growth_or_div_payout",
+      "option": "GROWTH",
+      "plan": "REGULAR",
+      "reinvestment_flag": "0",
+      "scheme_code": "SCH_F",
+      "source_name": "FIXTURE SCH_F"
+    }
+  ],
+  "version": "synthetic-v1"
+}

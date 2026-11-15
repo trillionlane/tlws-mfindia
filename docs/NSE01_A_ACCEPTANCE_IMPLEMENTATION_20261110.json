@@ -1,0 +1,223 @@
+{
+  "acceptance_cases": [
+    {
+      "gates_NSE01_A": true,
+      "id": "FAMILY_FIELD_ACCOUNTING",
+      "tests": [
+        "tests/test_nse01_parser.py::test_family_field_accounting",
+        "tests/test_nse01_parser.py::test_every_sch_position_is_exposed_or_privately_held_with_a_reason"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "SCH_DOC43_RETAINED44",
+      "tests": [
+        "tests/test_nse01_parser.py::test_sch_doc43_retained44_stay_distinct"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "SCH_OPAQUE_ID",
+      "tests": [
+        "tests/test_nse01_parser.py::test_sch_opaque_id_and_original_bytes"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "REQUEST_ALLOWLIST",
+      "tests": [
+        "tests/test_nse01_parser.py::test_request_allowlist_no_db_or_intent"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "PRECISE_DECIMAL",
+      "tests": [
+        "tests/test_nse01_parser.py::test_precise_decimal_without_rounding"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "HEADERS_CELLS_BOM",
+      "tests": [
+        "tests/test_nse01_parser.py::test_headers_cells_bom_crlf_preserve_final_blank"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "ERROR_AND_TRUNCATION",
+      "tests": [
+        "tests/test_nse01_parser.py::test_error_and_truncation_not_empty_universe",
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "REQUIREDNESS",
+      "tests": [
+        "tests/test_nse01_parser.py::test_requiredness_and_flags_plans_never_invent_regular_or_permission"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "FLAGS_PLANS",
+      "tests": [
+        "tests/test_nse01_parser.py::test_requiredness_and_flags_plans_never_invent_regular_or_permission"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "CROSSWALK_EXACT",
+      "tests": [
+        "tests/test_nse01_parser.py::test_crosswalk_exact_code_amc_plan_option_and_isin_slots"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "MAPPING_AMBIGUITY",
+      "tests": [
+        "tests/test_nse01_parser.py::test_mapping_ambiguity_and_out_of_scope_retained",
+        "tests/test_nse01_postgres.py::test_native_exact_mapping_ambiguity_and_duplicate_accounting"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "OUT_OF_SCOPE",
+      "tests": [
+        "tests/test_nse01_parser.py::test_mapping_ambiguity_and_out_of_scope_retained",
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "DUPLICATE_KEYS",
+      "tests": [
+        "tests/test_nse01_parser.py::test_duplicate_keys_identical_preserved_conflict_blocks",
+        "tests/test_nse01_postgres.py::test_native_exact_mapping_ambiguity_and_duplicate_accounting"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "FIRST_IMPORT",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "REENTRY",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "CONCURRENT_SAME_WORK",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_concurrent_same_work_one_publisher_and_no_duplicate"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "SAME_DATE_REVISION",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "REMOVAL_DISABLED",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "PRESERVATION_FAILURE",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "COMMIT_UNKNOWN",
+      "tests": [
+        "tests/test_nse01_failures.py::test_commit_rollback_ambiguity_dominates_and_no_retry",
+        "tests/test_nse01_postgres.py::test_native_commit_unknown_inspect_only_and_stale_head_preservation"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "API_DATASET_CHAIN",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "API_DENIALS",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_reader_denials_private_evidence_missing_grants_unsafe_identity"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "AMC_CANONICAL_PRESERVATION",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "PACKAGE_MAIN",
+      "tests": [
+        "tests/test_nse01_parser.py::test_package_main_actual_environ_dry_run_no_connection_or_operation",
+        "tests/test_nse01_package.py::test_packaged_main_parser_and_migration_without_db_or_provider"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "SCH_AMBIGUITY_BOUNDARIES",
+      "tests": [
+        "tests/test_nse01_parser.py::test_ambiguity_boundaries_all_fourteen_policies",
+        "tests/test_nse01_parser.py::test_valid_unknown_flags_withhold_only_fields_when_identity_is_exact",
+        "tests/test_nse01_parser.py::test_optional_name_is_not_a_join_key_and_known_option_conflict_still_withholds_row",
+        "tests/test_nse01_parser.py::test_unknown_flag_cannot_choose_between_conflicting_isin_slots"
+      ]
+    },
+    {
+      "gates_NSE01_A": true,
+      "id": "SCH_WITHHOLDING_ACCOUNTING",
+      "tests": [
+        "tests/test_nse01_postgres.py::test_native_exact_mapping_ambiguity_and_duplicate_accounting",
+        "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+      ]
+    }
+  ],
+  "additional_full_gate": {
+    "id": "FULL_CLEAN_TRUNCATION",
+    "tests": [
+      "tests/test_nse01_parser.py::test_clean_truncation_full_expected_hash_and_count_are_independent",
+      "tests/test_nse01_parser.py::test_caller_cannot_certify_clean_truncation_as_full",
+      "tests/test_nse01_failures.py::test_store_rejects_structurally_valid_but_untrusted_full_before_sql",
+      "tests/test_nse01_package.py::test_packaged_main_parser_and_migration_without_db_or_provider",
+      "tests/test_nse01_postgres.py::test_native_first_import_reentry_revision_removal_full_gate_and_api"
+    ]
+  },
+  "base": "474a6928844fe07db5810f1524b6c2b84eba46fc",
+  "deferred_gates": [
+    "SIP27_28_STEPUP",
+    "STP_DESTINATION",
+    "SWP_SCALE",
+    "NAV_HEADERLESS",
+    "SET_DOMAIN",
+    "FAMILY_VECTOR",
+    "FAILURE_ISOLATION",
+    "LIVE_PROD_REFERENCE"
+  ],
+  "format": "nse01-a-acceptance-implementation-v1",
+  "live_source_authentication_or_consumer_acceptance": false,
+  "native_location": "Existing hosted disposable PostgreSQL Verify; no local PostgreSQL",
+  "results": "Final-head actual outcomes in PR and retained evidence; entries are coverage bindings, not PASS declarations",
+  "reviewed_contract": "357c13e6c432aa890f5a96f5eff2ef829fcd56e0"
+}

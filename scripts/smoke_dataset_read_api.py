@@ -107,6 +107,10 @@ async def smoke(factory=create_app, *, command_verified=False):
 
 
 if __name__ == '__main__':
+    # Reuse the existing BOTH-image dataset gate; all prior ASGI checks below
+    # still execute. This adds an actual offline main/parser/truncation smoke.
+    from mfdataindia.nse.smoke import run as nse01_offline_smoke
+    print(json.dumps(nse01_offline_smoke(),sort_keys=True))
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--image-command-json',type=Path)
     args = parser.parse_args()
