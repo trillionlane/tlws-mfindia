@@ -1,3 +1,4 @@
+from hashlib import sha256
 import json
 from pathlib import Path
 import subprocess
@@ -135,14 +136,47 @@ def test_crosswalk_conflict_with_same_code_and_slot_cannot_be_exact(inputs):
 
 def test_cli_only_reads_input_files(tmp_path, inputs):
     snapshot, walk = inputs
-    paths = [tmp_path / name for name in ('source.psv', 'catalogue.json', 'crosswalk.json')]
-    payloads = [SOURCE, contract.canonical(snapshot), contract.canonical(walk)]
+    paths = [tmp_path / name for name in (
+        'source.psv', 'catalogue.json', 'crosswalk.json', 'export.json',
+    )]
+    context = {'format': sch44.EXPORT_CONTEXT_FORMAT, 'environment': 'UAT',
+               'report_type': 'CONSOLIDATED_SCHEME_MASTER', 'member_id': '000000042',
+               'source_sha256': sha256(SOURCE).hexdigest()}
+    payloads = [SOURCE, contract.canonical(snapshot), contract.canonical(walk),
+                contract.canonical(context)]
     for path, raw in zip(paths, payloads, strict=True):
         path.write_bytes(raw)
     completed = subprocess.run([
         sys.executable, '-m', 'mfdataindia.nse.sch44', '--source', str(paths[0]),
         '--source-date', '2026-09-18', '--catalogue', str(paths[1]), '--crosswalk', str(paths[2]),
+        '--export-context', str(paths[3]),
     ], text=True, capture_output=True, check=True)
-    assert json.loads(completed.stdout)['counts']['EXACT'] == 1
+    result = json.loads(completed.stdout)
+    assert result['counts']['EXACT'] == 1
+    assert result['export_context']['member_id_recorded']
+    assert context['member_id'] not in completed.stdout
     assert sorted(tmp_path.iterdir()) == sorted(paths)
     assert [path.read_bytes() for path in paths] == payloads
+
+
+def test_member_id_is_per_export_private_and_bound_to_source(inputs):
+    snapshot, walk = inputs
+    context = {'format': sch44.EXPORT_CONTEXT_FORMAT, 'environment': 'UAT',
+               'report_type': 'CONSOLIDATED_SCHEME_MASTER', 'member_id': '000000042',
+               'source_sha256': sha256(SOURCE).hexdigest()}
+    run = sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk,
+                       export_context=context)
+    changed = sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk,
+                           export_context={**context, 'member_id': '421234567'})
+    assert changed == run
+    assert run['export_context'] == {'environment': 'UAT',
+                                     'report_type': 'CONSOLIDATED_SCHEME_MASTER',
+                                     'member_id_recorded': True}
+    assert context['member_id'] not in json.dumps(run)
+    assert run['source_scope'] == 'UNVERIFIED'
+    with pytest.raises(contract.ImportError, match='EXPORT_CONTEXT_SOURCE_DIFFERS'):
+        sch44.report(edit_position(14, '0'), '2026-09-18', contract.canonical(snapshot),
+                     walk, export_context=context)
+    with pytest.raises(contract.ImportError, match='INVALID_EXPORT_CONTEXT'):
+        sch44.report(SOURCE, '2026-09-18', contract.canonical(snapshot), walk,
+                     export_context={**context, 'member_id': 'invalid'})

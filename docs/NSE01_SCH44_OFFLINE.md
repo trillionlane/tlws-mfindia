@@ -69,3 +69,26 @@ new export, retain the exact downloaded bytes, date, environment, selected
 filters and independent evidence of the intended complete scope. The
 `CONSOLIDATED SCHEME MASTER` report selection identifies the report type.
 `ALL` in the filename carries no scope authority.
+
+### Public export settings
+
+On the public NSE MF Desk, select **Masters → Scheme Master** and choose
+**Consolidated Scheme Master**. Supply the Member ID for the intended
+environment on each download. The repository carries no default Member ID.
+Use the same value in a private, per-export JSON file to record the settings
+alongside the downloaded bytes. Pass that file with `--export-context`.
+
+```json
+{
+  "format": "nse01-sch44-export-context-v1",
+  "environment": "UAT",
+  "report_type": "CONSOLIDATED_SCHEME_MASTER",
+  "member_id": "000000042",
+  "source_sha256": "<SHA-256 of the exact export>"
+}
+```
+
+The example Member ID is synthetic. The report includes the environment and
+report selection and records that the Member ID was supplied. The ID itself
+stays in the private settings file. The source hash binds these settings
+to the export. This caller-provided metadata leaves full scope unverified.

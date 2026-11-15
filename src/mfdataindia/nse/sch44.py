@@ -14,6 +14,7 @@ from .schema import HEADERS44
 
 PROFILE = 'SCH-OBSERVED-44-DRY-RUN-v1'
 CATALOGUE_FORMAT = 'nse01-mfdata-catalogue-v1'
+EXPORT_CONTEXT_FORMAT = 'nse01-sch44-export-context-v1'
 NUMBER = re.compile(r'(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)\Z')
 INTEGER = re.compile(r'[0-9]+\Z')
 DECIMALS = (12, 13, 14, 15, 19, 20, 21, 22, 23, 24, 35)
@@ -192,10 +193,26 @@ def _resolve(cells, walk, targets, funds, candidates):
     return 'EXACT', 'EXPLICIT_CROSSWALK_AND_EXACT_CANONICAL_SLOT'
 
 
-def report(source, source_date, catalogue_bytes, walk):
+def _export_context(value, source_sha256):
+    c.require(type(value) is dict and set(value) == {
+        'format', 'environment', 'report_type', 'member_id', 'source_sha256',
+    } and value['format'] == EXPORT_CONTEXT_FORMAT, 'INVALID_EXPORT_CONTEXT')
+    c.require(value['environment'] in ('PRODUCTION', 'UAT')
+              and value['report_type'] == 'CONSOLIDATED_SCHEME_MASTER'
+              and type(value['member_id']) is str
+              and re.fullmatch(r'[0-9]{1,20}', value['member_id']), 'INVALID_EXPORT_CONTEXT')
+    c.require(value['source_sha256'] == source_sha256, 'EXPORT_CONTEXT_SOURCE_DIFFERS')
+    return {'environment': value['environment'], 'report_type': value['report_type'],
+            'member_id_recorded': True}
+
+
+def report(source, source_date, catalogue_bytes, walk, *, export_context=None):
     """Return private-safe counts; a candidate ISIN hit never proves a match."""
     _date(source_date)
     rows = parse(source)
+    source_sha256 = sha256(source).hexdigest()
+    context = (_export_context(export_context, source_sha256)
+               if export_context is not None else None)
     snapshot, funds = catalogue(catalogue_bytes)
     mapping.validate_crosswalk(walk)
     by_isin = defaultdict(set)
@@ -227,7 +244,8 @@ def report(source, source_date, catalogue_bytes, walk):
 
     return {
         'profile': PROFILE, 'result': 'HISTORICAL_DRY_RUN', 'source_scope': 'UNVERIFIED',
-        'source_date': source_date, 'source_sha256': sha256(source).hexdigest(),
+        'source_date': source_date, 'source_sha256': source_sha256,
+        'export_context': context,
         'source_bytes': len(source), 'source_rows': len(rows),
         'catalogue_as_of': snapshot['as_of'], 'catalogue_dataset_version': snapshot['dataset_version'],
         'catalogue_sha256': sha256(catalogue_bytes).hexdigest(), 'catalogue_rows': len(funds),
@@ -255,11 +273,18 @@ def main(argv=None):
     parser.add_argument('--source-date', required=True, help='Recorded export date (YYYY-MM-DD)')
     parser.add_argument('--catalogue', type=Path, required=True, help='Dated canonical catalogue JSON')
     parser.add_argument('--crosswalk', type=Path, required=True, help='Reviewed AMC and scheme mappings')
+    parser.add_argument('--export-context', type=Path,
+                        help='Private settings from the public NSE export form')
     args = parser.parse_args(argv)
     try:
+        context = None
+        if args.export_context is not None:
+            context = c.decode(_read(args.export_context, 4096))
+            c.require(type(context) is dict, 'INVALID_EXPORT_CONTEXT')
         result = report(_read(args.source, c.MAX_BYTES), args.source_date,
                         _read(args.catalogue, c.MAX_BYTES),
-                        _json(_read(args.crosswalk, c.MAX_BYTES), 'INVALID_CROSSWALK'))
+                        _json(_read(args.crosswalk, c.MAX_BYTES), 'INVALID_CROSSWALK'),
+                        export_context=context)
     except (OSError, c.ImportError) as error:
         parser.exit(2, 'SCH44_DRY_RUN: ' + (
             str(error) if isinstance(error, c.ImportError) else 'INPUT_UNAVAILABLE'
