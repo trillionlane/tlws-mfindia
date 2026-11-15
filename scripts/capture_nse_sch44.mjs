@@ -149,7 +149,10 @@ async function main() {
       nseInvestTransport.downloadMasterOnce(runtime.NSE_RUNTIME_INSTANCE_ID, 'SCH', null, stage, exchange),
   });
   console.log(json(result).trimEnd());
-  if (result.outcome !== 'RETAINED_FOR_OFFLINE_VALIDATION') process.exitCode = 1;
+  if (result.outcome !== 'RETAINED_FOR_OFFLINE_VALIDATION'
+      && result.outcome !== 'RETAINED_EXPORT_DATE_UNVERIFIED') {
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { captureSchemeMaster } from '../scripts/capture_nse_sch44.mjs';
 
@@ -81,4 +83,69 @@ test('a missing filename does not turn the retrieval timestamp into an export da
   assert.equal(result.filename_status, 'HEADER_MISSING');
   assert.equal(result.export_date, null);
   assert.deepEqual(await readFile(join(dir, 'source.txt')), source);
+});
+
+
+test('the capture CLI exits zero for both retention outcomes and nonzero for a denial', async (t) => {
+  const parent = await mkdtemp(join(tmpdir(), 'nse-sch-cli-'));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const root = join(parent, 'connector');
+  const nse = join(root, 'src/server/connectors/nse');
+  await mkdir(nse, { recursive: true });
+  await writeFile(join(nse, 'nse-runtime-configuration.ts'), `
+    export const NSE_RUNTIME_INSTANCE_ID = 'fixture-uat';
+    export const runtimeNseConfiguration = () => ({ baseUrl: 'https://nseinvestuat.nseindia.com' });
+  `);
+  await writeFile(join(nse, 'nse-transport.ts'), `
+    export const nseInvestTransport = {
+      async downloadMasterOnce(instance, fileType, organization, stage, observe) {
+        if (instance !== 'fixture-uat' || fileType !== 'SCH' || organization !== null) throw Error('WRONG_REQUEST');
+        stage({ phase: 'PROVIDER_REQUEST', stage: 'TRANSPORT_STARTED' });
+        if (process.env.SCH_FIXTURE_MODE === 'denied') {
+          observe({ httpStatus: 403, postInvoked: true });
+          throw Object.assign(Error('SYNTHETIC_SECRET'), { classification: 'PROVIDER_ROLE_FORBIDDEN', httpStatus: 403 });
+        }
+        observe({ httpStatus: 200, postInvoked: true, complete: true, representation: 'DECODED',
+          credentialsExcluded: false, receivedPrefixSha256: '${digest}' });
+        return { body: Buffer.from('${source.toString('base64')}', 'base64'), httpStatus: 200,
+          contentDisposition: process.env.SCH_FIXTURE_MODE === 'dated'
+            ? 'attachment; filename=NSE_NSEINVEST_ALL_18092026.txt' : null };
+      },
+    };
+  `);
+  const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  git('init', '-q');
+  git('add', '.');
+  git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+    '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'Fixture connector');
+  const head = git('rev-parse', 'HEAD');
+  const cli = fileURLToPath(new URL('../scripts/capture_nse_sch44.mjs', import.meta.url));
+  for (const [mode, outcome, exitCode, exportDate] of [
+    ['undated', 'RETAINED_EXPORT_DATE_UNVERIFIED', 0, null],
+    ['dated', 'RETAINED_FOR_OFFLINE_VALIDATION', 0, '2026-09-18'],
+    ['denied', 'DOWNLOAD_FAILED', 1, undefined],
+  ]) {
+    await t.test(mode, async () => {
+      const dir = join(parent, mode);
+      const run = spawnSync(process.execPath, [cli, '--connector-root', root,
+        '--connector-revision', head, '--output-dir', dir], {
+        encoding: 'utf8', env: { ...process.env, SCH_FIXTURE_MODE: mode },
+      });
+      assert.equal(run.stderr, '');
+      const receipt = JSON.parse(await readFile(join(dir, 'receipt.json'), 'utf8'));
+      assert.deepEqual(JSON.parse(run.stdout), receipt);
+      assert.equal(receipt.outcome, outcome);
+      assert.equal(receipt.export_date, exportDate);
+      assert.equal(receipt.source_scope, 'UNVERIFIED');
+      assert.equal(receipt.publication, 'NOT_ATTEMPTED');
+      assert.equal(run.status, exitCode);
+      if (exitCode === 0) {
+        assert.deepEqual(await readFile(join(dir, 'source.txt')), source);
+      } else {
+        assert.equal(receipt.http_status, 403);
+        assert.equal(receipt.reason, 'PROVIDER_ROLE_FORBIDDEN');
+        assert.deepEqual((await readdir(dir)).sort(), ['attempt.json', 'receipt.json']);
+      }
+    });
+  }
 });

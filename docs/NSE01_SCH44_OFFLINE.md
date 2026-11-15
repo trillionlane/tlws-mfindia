@@ -123,11 +123,12 @@ adapter calls `downloadMasterOnce` once for SCH, preserves the complete
 decoded file bytes after checking the connector-observed digest, and records a
 safe receipt. The receipt tracks the observed filename, provider-derived
 export date when usable, capture time, SHA-256, bytes, header width and rows.
-No downloaded value becomes a path. A missing or unrecognized filename leaves
-the source date unknown and returns a nonzero status even when the valid
-reference bytes were retained. A provider denial, interrupted download or
-credential-bearing response leaves only safe failure evidence. No live import
-or active-snapshot change is available from this adapter.
+No downloaded value becomes a path. Both retention outcomes exit zero. A
+missing or unrecognized filename leaves the export date unknown and the scope
+unverified in the receipt. A provider denial, interrupted download or
+credential-bearing response exits nonzero and leaves only safe failure
+evidence. The exit status reports retention. Publication still requires a
+verified export date and full scope, and this adapter has no publication path.
 
 After capture, pass the local bytes and receipt to the existing dry run.
 The SCH44 parser checks the full ordered header and every source row. It
