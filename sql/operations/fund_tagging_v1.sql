@@ -46,3 +46,5 @@ GRANT SELECT(amfi_scheme_code,amc_id,scheme_name,scheme_type,scheme_category,cat
 GRANT SELECT(amc_id,amfi_amc_name) ON mf.amcs TO mfdata_tag_writer;
 GRANT SELECT(amfi_scheme_code,group_key) ON mf.fund_variants TO mfdata_tag_writer;
 GRANT SELECT(group_key,tlws_mf_id) ON mf.fund_family TO mfdata_tag_writer;
+GRANT USAGE ON SCHEMA mf_identity TO mfdata_tag_writer;
+GRANT SELECT(amfi_scheme_code,family_id) ON mf_identity.variant_families TO mfdata_tag_writer;

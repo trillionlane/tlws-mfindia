@@ -48,7 +48,10 @@ def main(argv=None):
             ).fetchone()
             if identity != {"database": "mfdataindia", "principal": "mfdata_admin"}:
                 raise RuntimeError("family identity installation requires the existing owner connection")
-            applied = store.apply_migrations(root / "sql/optional", files=("046_fund_family_continuity.sql",))
+            applied = store.apply_migrations(
+                root / "sql/optional",
+                files=("046_fund_family_continuity.sql", "047_tag_input_publications.sql"),
+            )
         print(json.dumps({"applied": applied}, sort_keys=True))
         return 0
     if opts.status:

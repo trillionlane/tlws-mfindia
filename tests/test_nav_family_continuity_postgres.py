@@ -46,7 +46,10 @@ def start(store, old_source):
     load_parsed_amfi(store, old_source, source_date=date(2026, 11, 4))
     build_fund_family(store)
     store.refresh_dataset_summary("native_test_baseline")
-    store.apply_migrations(ROOT / "sql/optional", files=("046_fund_family_continuity.sql",))
+    store.apply_migrations(
+        ROOT / "sql/optional",
+        files=("046_fund_family_continuity.sql", "047_tag_input_publications.sql"),
+    )
 
 
 def fetch():
@@ -122,6 +125,9 @@ def test_native_all_25_rekeys_preserve_ids_slugs_tags_and_replay(nav_store):
     assert nav.freshness(store)["dataset_version"] == version
     assert conn.execute("SELECT count(*) AS n FROM mf_identity.family_renames").fetchone()["n"] == 25
     assert conn.execute("SELECT count(*) AS n FROM mf.source_snapshot_runs").fetchone()["n"] == 1
+    assert conn.execute(
+        "SELECT count(*) AS n FROM mf_identity.tag_input_publications"
+    ).fetchone()["n"] == 1
 
 
 def test_native_identity_hold_preserves_catalogue_and_publishes_unrelated_prices(nav_store):
@@ -141,6 +147,9 @@ def test_native_identity_hold_preserves_catalogue_and_publishes_unrelated_prices
                         (DAY,)).fetchall() == [{"amfi_scheme_code": 1}]
     assert publish_catalogue(store, source)["state"] == "CATALOGUE_HELD"
     assert conn.execute("SELECT count(*) AS n FROM mf_identity.catalogue_holds").fetchone()["n"] == 1
+    assert conn.execute(
+        "SELECT count(*) AS n FROM mf_identity.tag_input_publications"
+    ).fetchone()["n"] == 0
 
 
 def test_native_backfill_selects_only_missing_keys(nav_store):

@@ -8,18 +8,25 @@ from psycopg.pq import TransactionStatus
 from psycopg.types.json import Jsonb
 
 from mfdataindia.datasets import enrollment
-from . import policy as p
+from . import policy as p, source_evidence
 
 FILE = 'sql/operations/fund_tagging_v1.sql'
-SQL_SHA256 = '388f64a8d1e8ae8978bb647633b697b29b8aa6f546853115a48587067ddb0a1d'
+SQL_SHA256 = '3eda52bdcca2a93e48f79a2de02e08c8ad72f641294346469d10fe2bcfa3661d'
+PRIOR_SEALS = frozenset({
+    'fund-tagging-v1:388f64a8d1e8ae8978bb647633b697b29b8aa6f546853115a48587067ddb0a1d:'
+    '5c2318ad2fcf50c4e46823c6322d8662cbfdd48ac6d1be178ba5023b1ac3f485',
+})
+UPGRADE_SQL = '''GRANT USAGE ON SCHEMA mf_identity TO mfdata_tag_writer;
+GRANT SELECT(amfi_scheme_code,family_id) ON mf_identity.variant_families TO mfdata_tag_writer;'''
 TABLES = ('assessments', 'current', 'definitions', 'head', 'observations', 'snapshots')
 CENSUS_SQL = '''SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS amc,
  f.scheme_name,f.scheme_type,f.scheme_category,f.category_source,f.plan_type,f.plan_source,
  f.option_type,f.is_etf,f.in_scope,f.last_seen_in_source::text AS last_seen,
- v.group_key,ff.tlws_mf_id AS family_id
+ v.group_key,ff.tlws_mf_id AS family_id,b.family_id AS durable_family_id
  FROM mf.funds f JOIN mf.amcs a ON a.amc_id=f.amc_id
  LEFT JOIN mf.fund_variants v ON v.amfi_scheme_code=f.amfi_scheme_code
  LEFT JOIN mf.fund_family ff ON ff.group_key=v.group_key
+ LEFT JOIN mf_identity.variant_families b ON b.amfi_scheme_code=f.amfi_scheme_code
  ORDER BY f.amfi_scheme_code LIMIT 50001'''
 
 
@@ -56,14 +63,24 @@ def limits(conn):
     p.require(row['ok'], 'TAGGING_PUBLICATION_BUSY')
 
 
-def installed(conn):
-    expected = 'fund-tagging-v1:' + SQL_SHA256 + ':' + p.digest(p.CONTRACT)
+def expected_seal():
+    return 'fund-tagging-v1:' + SQL_SHA256 + ':' + p.digest(p.CONTRACT)
+
+
+def installation(conn, allowed_seals):
     namespace = conn.execute("SELECT pg_get_userbyid(nspowner) AS owner,obj_description(oid,'pg_namespace') AS seal FROM pg_namespace WHERE nspname='mf_tagging'").fetchone()
-    p.require(namespace and namespace['owner'] == p.OWNER and namespace['seal'] == expected,
+    p.require(namespace and namespace['owner'] == p.OWNER
+              and namespace['seal'] in allowed_seals,
               'TAGGING_INSTALLATION_DIFFERS')
     rows = conn.execute("SELECT relname,relkind,pg_get_userbyid(relowner) AS owner FROM pg_class WHERE relnamespace='mf_tagging'::regnamespace AND relkind IN('r','p','v','m','S') ORDER BY relname").fetchall()
     p.require(rows == [{'relname': t, 'relkind': 'r', 'owner': p.OWNER} for t in TABLES],
               'TAGGING_INSTALLATION_DIFFERS')
+    return namespace['seal']
+
+
+def installed(conn):
+    expected = expected_seal()
+    installation(conn, {expected})
     return expected
 
 
@@ -76,16 +93,22 @@ def install(conn, root):
     limits(conn)
     raw = (Path(root) / FILE).read_bytes()
     p.require(hashlib.sha256(raw).hexdigest() == SQL_SHA256, 'TAGGING_INSTALLATION_SOURCE_DIFFERS')
-    if conn.execute("SELECT 1 FROM pg_namespace WHERE nspname='mf_tagging'").fetchone():
-        installed(conn)
-        return {'state': 'ALREADY_INSTALLED', 'source_rows_changed': 0}
     writer = conn.execute('''SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls
         OR EXISTS(SELECT 1 FROM pg_auth_members WHERE member=r.oid) AS unsafe
         FROM pg_roles r WHERE rolname=%s''', (p.WRITER,)).fetchone()
     p.require(writer and writer['unsafe'] is False, 'TAGGING_NARROW_WRITER_REQUIRED')
     writer_safety(conn, p.WRITER)
+    if conn.execute("SELECT 1 FROM pg_namespace WHERE nspname='mf_tagging'").fetchone():
+        expected = expected_seal()
+        existing = installation(conn, {expected, *PRIOR_SEALS})
+        if existing == expected:
+            return {'state': 'ALREADY_INSTALLED', 'source_rows_changed': 0}
+        conn.execute(UPGRADE_SQL)
+        conn.execute(sql.SQL('COMMENT ON SCHEMA mf_tagging IS {}').format(sql.Literal(expected)))
+        installed(conn)
+        return {'state': 'UPGRADED', 'source_rows_changed': 0, 'commit_performed': False}
     conn.execute(raw.decode())
-    seal = 'fund-tagging-v1:' + SQL_SHA256 + ':' + p.digest(p.CONTRACT)
+    seal = expected_seal()
     conn.execute(sql.SQL('COMMENT ON SCHEMA mf_tagging IS {}').format(sql.Literal(seal)))
     for table in ('definitions', 'current'):
         enrollment.enroll(conn, 'mf_tagging', table, classification='fund_research',
@@ -143,12 +166,34 @@ def publish(conn):
         limits(conn)
         principal(conn, p.WRITER)
         installed(conn)
+        receipt = source_evidence.latest(conn)
         candidate = census(conn)
-        snapshot = candidate['snapshot_id']
+        p.require(candidate['catalogue_census_hash'] == receipt['catalogue_census_hash']
+                  and candidate['family_projection_hash'] == receipt['family_projection_hash'],
+                  'TAGGING_SOURCE_RECEIPT_DIFFERS')
+        # A factual state may legitimately recur after an intervening committed
+        # transition (A -> B -> A). Bind the stored version to the ordered source
+        # receipt so history remains immutable without treating the final A as a
+        # silent rollback. Immediate replay of the same receipt remains a no-op.
+        snapshot = p.digest({
+            'policy_hash': candidate['policy_hash'],
+            'source_hash': candidate['source_hash'],
+            'source_publication_id': receipt['publication_id'],
+        })
+        candidate['snapshot_id'] = snapshot
+        candidate['source_publication_id'] = receipt['publication_id']
+        candidate['source_publication_sequence'] = receipt['publication_sequence']
+        candidate['assessments'] = [
+            {**assessment, 'snapshot_id': snapshot}
+            for assessment in candidate['assessments']
+        ]
         head = conn.execute('SELECT snapshot_id FROM mf_tagging.head WHERE singleton').fetchone()
         if head and head['snapshot_id'] == snapshot:
             verify_candidate(conn, candidate)
-            return {'state': 'UNCHANGED', 'snapshot_id': snapshot, 'source_rows_changed': 0,
+            return {'state': 'UNCHANGED', 'snapshot_id': snapshot,
+                    'source_publication_id': receipt['publication_id'],
+                    'source_publication_sequence': receipt['publication_sequence'],
+                    'source_rows_changed': 0,
                     'consumer_acceptance': 'NOT_OBSERVED'}
         # An old snapshot cannot be restored as a silent head rollback.
         p.require(not conn.execute('SELECT 1 FROM mf_tagging.snapshots WHERE snapshot_id=%s',
@@ -166,4 +211,7 @@ def publish(conn):
         _insert(conn, 'current', [{k: r[k] for k in ('code', 'dimension', 'document')} for r in historical])
         verify_candidate(conn, candidate)
         conn.execute('INSERT INTO mf_tagging.head VALUES(true,%s) ON CONFLICT(singleton) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id', (snapshot,))
-        return {'state': 'PUBLISHED', **report, 'source_rows_changed': 0}
+        return {'state': 'PUBLISHED', **report,
+                'source_publication_id': receipt['publication_id'],
+                'source_publication_sequence': receipt['publication_sequence'],
+                'source_rows_changed': 0}

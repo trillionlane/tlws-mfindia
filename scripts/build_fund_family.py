@@ -10,16 +10,23 @@ families (bootstrap / NAVAll refresh) so new funds get their own ID + slug.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from mfdataindia.load.fund_family import build_fund_family  # noqa: E402
+from mfdataindia.load import family_continuity  # noqa: E402
 from mfdataindia.store.dsn import DsnError, describe_dsn, resolve_dsn  # noqa: E402
+from mfdataindia.store.catalogue_lock import catalogue_publication_lock  # noqa: E402
 from mfdataindia.store.postgres import PostgresStore  # noqa: E402
+from mfdataindia.tagging import policy, source_evidence  # noqa: E402
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def main() -> int:
@@ -42,10 +49,44 @@ def main() -> int:
     use_copy = os.environ.get("MF_TEST_NO_COPY") is None
     store = PostgresStore(dsn, use_copy=use_copy)
     with store:
-        rep = build_fund_family(store, dry_run=args.dry_run)
-        if not args.dry_run:
-            store.refresh_dataset_summary("fund_family_build")
-    print("FUND_FAMILY REPORT:", rep)
+        if args.dry_run:
+            with store.connect().transaction() as conn:
+                counts = conn.execute("""SELECT
+                    (SELECT count(DISTINCT group_key) FROM mf.fund_variants) AS variants,
+                    (SELECT count(*) FROM mf.fund_family) AS families""").fetchone()
+            report = {"dry_run": True, **counts}
+        else:
+            with catalogue_publication_lock(store.connect(), wait=True):
+                with store.transaction() as conn:
+                    prior = source_evidence.latest(conn)
+                    before = source_evidence.observations(conn)
+                    policy.require(
+                        before["catalogue_census_hash"] == prior["catalogue_census_hash"],
+                        "CATALOGUE_CHANGED_DURING_FAMILY_REBUILD",
+                    )
+                    family_continuity.rebuild(conn)
+                    after = source_evidence.observations(conn)
+                    policy.require(
+                        after["catalogue_census_hash"] == before["catalogue_census_hash"],
+                        "CATALOGUE_CHANGED_DURING_FAMILY_REBUILD",
+                    )
+                    receipt = source_evidence.append(
+                        conn,
+                        source_kind="fund-family-rebuild",
+                        source_snapshot_run_id=prior["source_snapshot_run_id"],
+                        catalogue_observed_on=prior["catalogue_observed_on"],
+                        observed_on=datetime.now(IST).date(),
+                        expected_catalogue_hash=before["catalogue_census_hash"],
+                    )
+                    store.refresh_dataset_summary("fund_family_build")
+                    report = {
+                        "dry_run": False,
+                        "catalogue_census_hash": after["catalogue_census_hash"],
+                        "family_projection_hash": after["family_projection_hash"],
+                        "source_publication_id": receipt["publication_id"],
+                        "source_publication_sequence": receipt["publication_sequence"],
+                    }
+    print("FUND_FAMILY REPORT:", json.dumps(report, sort_keys=True))
     return 0
 
 
