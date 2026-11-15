@@ -1,0 +1,22 @@
+{
+  "format": "nse-sch44-uat-pilot-proposal-v1",
+  "enabled": false,
+  "project": "trillionlane-dev",
+  "region": "asia-south1",
+  "job": {
+    "name": "tlws-mf-data-nse-sch44-uat",
+    "command": ["python", "-m", "mfdataindia.nse.sch44_pilot"],
+    "tasks": 1,
+    "parallelism": 1,
+    "maxRetries": 0,
+    "timeoutSeconds": 600
+  },
+  "schedule": {
+    "cron": "0 7 * * 1-5",
+    "timeZone": "Asia/Kolkata",
+    "retryCount": 0,
+    "target": "https://run.googleapis.com/v2/projects/trillionlane-dev/locations/asia-south1/jobs/tlws-mf-data-nse-sch44-uat:run",
+    "httpMethod": "POST"
+  },
+  "publication": "UAT_APPROVED_FULL_SNAPSHOT_ONLY"
+}
