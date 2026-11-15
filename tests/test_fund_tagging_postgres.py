@@ -74,8 +74,10 @@ def tagging_db(ro01_db, pg_dsn):
             adopt(ro01_db)
             with connect(ro01_db, autocommit=False) as owner:
                 owner.execute("""UPDATE mf.funds
-                    SET isin_growth_or_div_payout = CASE amfi_scheme_code
-                        WHEN 1 THEN 'INFTEST00001' WHEN 2 THEN 'INFTEST00002' END
+                    SET isin_growth_or_div_payout = COALESCE(
+                        isin_growth_or_div_payout,
+                        CASE amfi_scheme_code
+                            WHEN 1 THEN 'INFTEST00001' WHEN 2 THEN 'INFTEST00002' END)
                     WHERE amfi_scheme_code IN (1,2)""")
             with PostgresStore(ro01_db, use_copy=False) as database:
                 build_fund_family(database)
@@ -175,10 +177,10 @@ def test_native_atomic_publication_dataset_reads_reentry_and_rebuild_preservatio
         owner.execute("""INSERT INTO mf.funds(
             amfi_scheme_code,amc_id,scheme_name,scheme_name_norm,scheme_type,
             scheme_category,category_source,plan_type,plan_source,option_type,
-            in_scope,last_seen_in_source,isin_growth_or_div_payout)
+            last_seen_in_source,isin_growth_or_div_payout)
             VALUES(3,1,'Fund 3','FUND 3','OPEN_ENDED',
                    'Equity Scheme - Large Cap Fund','AMFI','REGULAR','COLUMN','GROWTH',
-                   true,'2026-10-31','INFTEST00003')""")
+                   '2026-10-31','INFTEST00003')""")
         owner.execute("""INSERT INTO mf.fund_variants(
             amfi_scheme_code,group_key,base_scheme_name) VALUES(3,'3','Fund 3')""")
         append_source_receipt(owner)

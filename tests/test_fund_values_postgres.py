@@ -127,7 +127,7 @@ def test_packaged_values_factory_reads_tags_exposure_and_values_from_one_reader(
     assert tags.status_code == exposure.status_code == screened.status_code == 200
     assert tags.json()["snapshot_id"] == published["snapshot_id"]
     assert tags.json()["funds"][0]["code"] == 1
-    assert exposure.json()["portfolio_as_of"] == "2026-08-31"
+    assert exposure.json()["metadata"]["portfolio_as_of"] == "2026-08-31"
     assert screened.json()["portfolio_as_of"] == "2026-08-31"
     assert screened.json()["positive_live_assignments_claimed"] is False
 

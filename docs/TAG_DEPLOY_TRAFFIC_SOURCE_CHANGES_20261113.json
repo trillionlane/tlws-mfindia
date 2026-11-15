@@ -79,11 +79,11 @@
       "previous_sha256": "132085bf9fb25b401dfabcc28fe535d575a54128d38cc9db223e7c4d31cbdc2e"
     },
     "tests/test_fund_tagging_postgres.py": {
-      "current_sha256": "478049a31c4974b20793ad4d31c0a542448d7e80ca451ac629ff67cc59537928",
+      "current_sha256": "aa7fe2f4b833f5d0e53238aa954266fd624b168d1743a43495905457a4ddac27",
       "previous_sha256": "031651aafdbce8d7d01ba49badb9d229437ae17abcfe56f9817c655045c75e65"
     },
     "tests/test_fund_values_postgres.py": {
-      "current_sha256": "beb13afa5c1a499048e41c14dd95bae1c265f3a12c16081a1075f676f8aba015",
+      "current_sha256": "80a8882b48bd4407e4046757c65f2caf3dfe34a3f3efe62403307cd923faa66e",
       "previous_sha256": "95fe7acd3c60f4f0ccfb77f5e5fc6edfcef8687ade2ece96b644172a2a80c290"
     },
     "tests/test_nav_family_continuity_postgres.py": {
