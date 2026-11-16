@@ -222,7 +222,7 @@ def test_real_main_is_offline_and_does_not_read_environment(tmp_path, capsys, mo
     assert "synthetic-secret-marker" not in capsys.readouterr().out
 
 
-def test_same_head_cannot_hide_damaged_projection(monkeypatch):
+def test_same_head_cannot_hide_damaged_projection(monkeypatch, caplog):
     from contextlib import nullcontext
     from types import SimpleNamespace
     from psycopg.pq import TransactionStatus
@@ -243,6 +243,8 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
             return nullcontext()
 
         def execute(self, statement):
+            if statement.lstrip().startswith("SELECT current_setting('statement_timeout')"):
+                return Result({"statement_timeout": "30s", "transaction_timeout": "2min", "lock_timeout": "5s"})
             if statement == 'SELECT snapshot_id FROM mf_tagging.head WHERE singleton':
                 return Result({"snapshot_id": candidate["snapshot_id"]})
             if statement == 'SELECT count(*) AS n FROM mf_tagging.current':
@@ -266,6 +268,7 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
             "family_projection_hash": candidate["family_projection_hash"],
         },
     )
+    caplog.set_level("INFO", logger="mfdataindia.tagging.phases")
     with pytest.raises(p.TaggingError, match="TAGGING_PUBLICATION_INCOMPLETE"):
         store.publish(Connection())
 

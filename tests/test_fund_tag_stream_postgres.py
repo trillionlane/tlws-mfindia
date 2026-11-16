@@ -68,6 +68,7 @@ def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch
         verify(conn, candidate)
 
     caplog.set_level(logging.INFO, logger="mfdataindia.tagging.phases")
+    caplog.clear()
     with monkeypatch.context() as patch, writer(tagging_db) as conn:
         patch.setattr(store, "_insert", corrupt_late)
         patch.setattr(store, "verify_candidate", verify_limits)
