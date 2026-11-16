@@ -230,11 +230,11 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
     candidate = p.prepare([row()])
 
     class Result:
-        def fetchone(self):
-            return {"snapshot_id": candidate["snapshot_id"]}
+        def __init__(self, row):
+            self.row = row
 
-        def fetchall(self):
-            return []  # Previously published projection was damaged.
+        def fetchone(self):
+            return self.row
 
     class Connection:
         info = SimpleNamespace(transaction_status=TransactionStatus.IDLE)
@@ -242,10 +242,18 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
         def transaction(self):
             return nullcontext()
 
-        def execute(self, *args):
-            return Result()
+        def execute(self, statement):
+            if statement == 'SELECT snapshot_id FROM mf_tagging.head WHERE singleton':
+                return Result({"snapshot_id": candidate["snapshot_id"]})
+            if statement == 'SELECT count(*) AS n FROM mf_tagging.current':
+                return Result({"n": 0})  # Previously published projection was damaged.
+            assert statement == 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'
 
-    for name in ("limits", "principal", "installed"):
+    def publication_limits(conn, *, publication):
+        assert publication is True
+
+    monkeypatch.setattr(store, "limits", publication_limits)
+    for name in ("principal", "installed"):
         monkeypatch.setattr(store, name, lambda *args: None)
     monkeypatch.setattr(store, "census", lambda conn: candidate)
     monkeypatch.setattr(
