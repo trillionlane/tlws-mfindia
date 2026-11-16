@@ -1,7 +1,12 @@
 """Bounded atomic factual snapshot; no provider calls, hidden grants or mutation retry."""
 from __future__ import annotations
 
+from contextlib import closing, contextmanager
+from itertools import zip_longest
+import json
+import logging
 from pathlib import Path
+from time import perf_counter
 
 from psycopg import sql
 from psycopg.pq import TransactionStatus
@@ -55,10 +60,11 @@ def writer_safety(conn, role):
     p.require(unsafe and unsafe['unsafe'] is False, 'TAGGING_UNSAFE_WRITER')
 
 
-def limits(conn):
+def limits(conn, *, publication=False):
     conn.execute("SET LOCAL statement_timeout='5s'")
     conn.execute("SET LOCAL lock_timeout='5s'")
-    conn.execute("SET LOCAL transaction_timeout='15s'")
+    conn.execute("SET LOCAL transaction_timeout='120s'" if publication
+                 else "SET LOCAL transaction_timeout='15s'")
     row = conn.execute("SELECT pg_try_advisory_xact_lock(hashtextextended('mf-fund-tagging-v1',0)) AS ok").fetchone()
     p.require(row['ok'], 'TAGGING_PUBLICATION_BUSY')
 
@@ -134,12 +140,26 @@ def verify_candidate(conn, candidate):
     Damaged history/projection is stopped, not repaired or silently replayed.
     """
     snapshot = candidate['snapshot_id']
-    expected_current = sorted(({'code': a['code'], 'dimension': a['dimension'], 'document': a}
-        for a in candidate['assessments']), key=lambda r: (r['code'], r['dimension']))
-    actual = conn.execute('SELECT code,dimension,document FROM mf_tagging.current ORDER BY code,dimension').fetchall()
-    p.require(actual == expected_current, 'TAGGING_PUBLICATION_INCOMPLETE')
-    historical = conn.execute('SELECT code,dimension,document FROM mf_tagging.assessments WHERE snapshot_id=%s ORDER BY code,dimension', (snapshot,)).fetchall()
-    p.require(historical == expected_current, 'TAGGING_HISTORY_DIFFERS')
+    expected = sorted(candidate['assessments'], key=lambda a: (a['code'], a['dimension']))
+    count = conn.execute('SELECT count(*) AS n FROM mf_tagging.current').fetchone()['n']
+    p.require(count == len(expected), 'TAGGING_PUBLICATION_INCOMPLETE')
+
+    # History supplies every expected key and document. The current key is
+    # unique, so matching each key and document plus the total excludes extras.
+    # Return the history document only once per key and bound client readback.
+    with conn.cursor() as cursor, closing(cursor.stream("""
+        SELECT h.code,h.dimension,h.document,
+               (h.document = c.document) IS TRUE AS current_matches
+        FROM mf_tagging.assessments h
+        LEFT JOIN mf_tagging.current c USING (code,dimension)
+        WHERE h.snapshot_id=%s ORDER BY h.code,h.dimension
+    """, (snapshot,), size=512)) as rows:
+        for actual, wanted in zip_longest(rows, expected):
+            p.require(actual is not None and wanted is not None
+                      and actual['code'] == wanted['code']
+                      and actual['dimension'] == wanted['dimension']
+                      and actual['document'] == wanted, 'TAGGING_HISTORY_DIFFERS')
+            p.require(actual['current_matches'], 'TAGGING_PUBLICATION_INCOMPLETE')
     observations = conn.execute('SELECT code,document FROM mf_tagging.observations WHERE snapshot_id=%s ORDER BY code', (snapshot,)).fetchall()
     p.require(observations == [{'code': r['code'], 'document': r} for r in candidate['observations']],
               'TAGGING_HISTORY_DIFFERS')
@@ -152,6 +172,22 @@ def verify_candidate(conn, candidate):
                          'funds': candidate['funds'], 'report': report}, 'TAGGING_HISTORY_DIFFERS')
 
 
+@contextmanager
+def _phase(name):
+    logger = logging.getLogger("mfdataindia.tagging.phases")
+    start = perf_counter()
+    event = {"format": "mfdata-tag-publication-phase-v1", "phase": name}
+    logger.info("%s", json.dumps({**event, "state": "STARTED"}))
+    completed = False
+    try:
+        yield
+        completed = True
+    finally:
+        state = "COMPLETE" if completed else "FAILED"
+        logger.info("%s", json.dumps({**event, "state": state,
+                                      "elapsed_seconds": round(perf_counter() - start, 4)}))
+
+
 def publish(conn):
     """Own exactly one transaction; an escaping COMMIT error is not replayable.
 
@@ -161,13 +197,15 @@ def publish(conn):
     """
     p.require(conn.info.transaction_status == TransactionStatus.IDLE,
               'TAGGING_IDLE_CONNECTION_REQUIRED')
-    with conn.transaction():
-        conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
-        limits(conn)
-        principal(conn, p.WRITER)
-        installed(conn)
-        receipt = source_evidence.latest(conn)
-        candidate = census(conn)
+    with _phase('transaction'), conn.transaction():
+        with _phase('receipt_and_guards'):
+            conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+            limits(conn, publication=True)
+            principal(conn, p.WRITER)
+            installed(conn)
+            receipt = source_evidence.latest(conn)
+        with _phase('census'):
+            candidate = census(conn)
         p.require(candidate['catalogue_census_hash'] == receipt['catalogue_census_hash']
                   and candidate['family_projection_hash'] == receipt['family_projection_hash'],
                   'TAGGING_SOURCE_RECEIPT_DIFFERS')
@@ -189,7 +227,8 @@ def publish(conn):
         ]
         head = conn.execute('SELECT snapshot_id FROM mf_tagging.head WHERE singleton').fetchone()
         if head and head['snapshot_id'] == snapshot:
-            verify_candidate(conn, candidate)
+            with _phase('readback'):
+                verify_candidate(conn, candidate)
             return {'state': 'UNCHANGED', 'snapshot_id': snapshot,
                     'source_publication_id': receipt['publication_id'],
                     'source_publication_sequence': receipt['publication_sequence'],
@@ -199,18 +238,25 @@ def publish(conn):
         p.require(not conn.execute('SELECT 1 FROM mf_tagging.snapshots WHERE snapshot_id=%s',
                                   (snapshot,)).fetchone(), 'TAGGING_PRIOR_SNAPSHOT_REQUIRES_REVIEW')
         report = {k: v for k, v in candidate.items() if k not in {'definitions', 'assessments', 'observations'}}
-        conn.execute('INSERT INTO mf_tagging.snapshots(snapshot_id,source_hash,policy_hash,funds,report) VALUES(%s,%s,%s,%s,%s)',
+        with _phase('snapshot_row'):
+            conn.execute('INSERT INTO mf_tagging.snapshots(snapshot_id,source_hash,policy_hash,funds,report) VALUES(%s,%s,%s,%s,%s)',
                      (snapshot, candidate['source_hash'], candidate['policy_hash'], candidate['funds'], Jsonb(report)))
-        _insert(conn, 'definitions', candidate['definitions'])
-        _insert(conn, 'observations', [{'snapshot_id': snapshot, 'code': r['code'],
-                                      'document': r} for r in candidate['observations']])
+        with _phase('definitions'):
+            _insert(conn, 'definitions', candidate['definitions'])
+        with _phase('observations'):
+            _insert(conn, 'observations', [{'snapshot_id': snapshot, 'code': r['code'],
+                                          'document': r} for r in candidate['observations']])
         historical = [{'snapshot_id': snapshot, 'code': a['code'], 'dimension': a['dimension'],
                        'document': a} for a in candidate['assessments']]
-        _insert(conn, 'assessments', historical)
-        conn.execute('DELETE FROM mf_tagging.current')
-        _insert(conn, 'current', [{k: r[k] for k in ('code', 'dimension', 'document')} for r in historical])
-        verify_candidate(conn, candidate)
-        conn.execute('INSERT INTO mf_tagging.head VALUES(true,%s) ON CONFLICT(singleton) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id', (snapshot,))
+        with _phase('assessment_history'):
+            _insert(conn, 'assessments', historical)
+        with _phase('current_projection'):
+            conn.execute('DELETE FROM mf_tagging.current')
+            _insert(conn, 'current', [{k: r[k] for k in ('code', 'dimension', 'document')} for r in historical])
+        with _phase('readback'):
+            verify_candidate(conn, candidate)
+        with _phase('head_advance'):
+            conn.execute('INSERT INTO mf_tagging.head VALUES(true,%s) ON CONFLICT(singleton) DO UPDATE SET snapshot_id=EXCLUDED.snapshot_id', (snapshot,))
         return {'state': 'PUBLISHED', **report,
                 'source_publication_id': receipt['publication_id'],
                 'source_publication_sequence': receipt['publication_sequence'],

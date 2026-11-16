@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 import sys
 
@@ -13,6 +14,8 @@ from mfdataindia.tagging.refresh import publish_verified  # noqa: E402
 
 
 def main() -> int:
+    logging.basicConfig(level=logging.WARNING, format="%(message)s")
+    logging.getLogger("mfdataindia.tagging.phases").setLevel(logging.INFO)
     result = publish_verified()
     print(json.dumps(result, sort_keys=True))
     if result["state"] in {"PUBLISHED", "UNCHANGED"}:

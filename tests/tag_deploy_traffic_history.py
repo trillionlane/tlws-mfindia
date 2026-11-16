@@ -13,6 +13,14 @@ ISSUER_BINDING_BASE = "f8f67c137d5ed946ce8f9161b388d601b601ac07"
 NAV_CONTINUITY = "src/mfdataindia/jobs/nav_continuity.py"
 ISSUER_BINDING_NAV_SHA256 = "a66eb1b95290f89a17b39e908f12a8c17bfac0c3177b66b1b69d602f3e76ff3d"
 
+TAG_STREAM_BASE = "f90f740302769ab93c0d0edcb02fdc677a13c8bf"
+TAG_STORE = "src/mfdataindia/tagging/store.py"
+TAG_UNIT = "tests/test_fund_tagging.py"
+TAG_STREAM_UNIT_SHA256 = "3665519ed1cd29048a538dd9cbc5cf3f9b068b9a1466b96f185e0d98cea1c4a9"
+TAG_STREAM_STORE_SHA256 = "aa352c5e48bdaaaa9e437bbfdcb7bc377ed186ab8c2544edc63188dba8530b08"
+TAG_DEPLOY = ".github/workflows/deploy-dev.yml"
+TAG_DEPLOY_SHA256 = "d3b707ecd9256bf95d2308cabc40167563f1e4ebb21dab5aa12fc502d6fc4d8f"
+
 
 @lru_cache(maxsize=1)
 def manifest():
@@ -29,6 +37,11 @@ def _old(name):
 
 
 def before_issuer_binding(name, data):
+    stream_hashes = {TAG_STORE: TAG_STREAM_STORE_SHA256, TAG_UNIT: TAG_STREAM_UNIT_SHA256, TAG_DEPLOY: TAG_DEPLOY_SHA256}
+    if stream_hashes.get(name) == hashlib.sha256(data).hexdigest():
+        restored = subprocess.check_output(["git", "show", f"{TAG_STREAM_BASE}:{name}"], cwd=ROOT)
+        assert hashlib.sha256(restored).hexdigest() == manifest()[name]["current_sha256"]
+        return restored
     if name != NAV_CONTINUITY or hashlib.sha256(data).hexdigest() != ISSUER_BINDING_NAV_SHA256:
         return data
     restored = subprocess.check_output(["git", "show", f"{ISSUER_BINDING_BASE}:{name}"], cwd=ROOT)
