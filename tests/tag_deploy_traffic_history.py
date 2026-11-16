@@ -20,6 +20,9 @@ TAG_STREAM_UNIT_SHA256 = "3665519ed1cd29048a538dd9cbc5cf3f9b068b9a1466b96f185e0d
 TAG_STREAM_STORE_SHA256 = "aa352c5e48bdaaaa9e437bbfdcb7bc377ed186ab8c2544edc63188dba8530b08"
 TAG_DEPLOY = ".github/workflows/deploy-dev.yml"
 TAG_DEPLOY_SHA256 = "d3b707ecd9256bf95d2308cabc40167563f1e4ebb21dab5aa12fc502d6fc4d8f"
+TAG_STATEMENT_BASE = "faf25bd5839a1a42c4ed10ab0fb3a0f501afd8cb"
+TAG_STATEMENT_STORE_SHA256 = "799eba42bc5c0dfaca68e148fb483d2c22a4f6d342bec82c2da95fa0065b5987"
+TAG_STATEMENT_UNIT_SHA256 = "eda5b87a72f0ba48926cb16a393ac07c8c7cc383548300317b06c49534fe2a63"
 
 
 @lru_cache(maxsize=1)
@@ -37,6 +40,12 @@ def _old(name):
 
 
 def before_issuer_binding(name, data):
+    if name == TAG_UNIT and hashlib.sha256(data).hexdigest() == TAG_STATEMENT_UNIT_SHA256:
+        data = subprocess.check_output(["git", "show", f"{TAG_STATEMENT_BASE}:{name}"], cwd=ROOT)
+        assert hashlib.sha256(data).hexdigest() == TAG_STREAM_UNIT_SHA256
+    if name == TAG_STORE and hashlib.sha256(data).hexdigest() == TAG_STATEMENT_STORE_SHA256:
+        data = subprocess.check_output(["git", "show", f"{TAG_STATEMENT_BASE}:{name}"], cwd=ROOT)
+        assert hashlib.sha256(data).hexdigest() == TAG_STREAM_STORE_SHA256
     stream_hashes = {TAG_STORE: TAG_STREAM_STORE_SHA256, TAG_UNIT: TAG_STREAM_UNIT_SHA256, TAG_DEPLOY: TAG_DEPLOY_SHA256}
     if stream_hashes.get(name) == hashlib.sha256(data).hexdigest():
         restored = subprocess.check_output(["git", "show", f"{TAG_STREAM_BASE}:{name}"], cwd=ROOT)

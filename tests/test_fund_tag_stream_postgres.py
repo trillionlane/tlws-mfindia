@@ -32,6 +32,8 @@ def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch
         before = tagging_rows(owner)
         store.limits(owner)
         assert owner.execute("SHOW transaction_timeout").fetchone()["transaction_timeout"] == "15s"
+        assert owner.execute("SHOW statement_timeout").fetchone()["statement_timeout"] == "5s"
+        assert owner.execute("SHOW lock_timeout").fetchone()["lock_timeout"] == "5s"
         owner.execute("""
             INSERT INTO mf.funds (
                 amfi_scheme_code,amc_id,scheme_name,scheme_name_norm,scheme_type,scheme_category,
@@ -61,11 +63,12 @@ def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch
                    current_setting('statement_timeout') AS statement,
                    current_setting('lock_timeout') AS lock
         """).fetchone()
-        assert row == {"transaction": "2min", "statement": "5s", "lock": "5s"}
+        assert row == {"transaction": "2min", "statement": "30s", "lock": "5s"}
         seen.append(candidate["snapshot_id"])
         verify(conn, candidate)
 
     caplog.set_level(logging.INFO, logger="mfdataindia.tagging.phases")
+    caplog.clear()
     with monkeypatch.context() as patch, writer(tagging_db) as conn:
         patch.setattr(store, "_insert", corrupt_late)
         patch.setattr(store, "verify_candidate", verify_limits)
@@ -73,8 +76,13 @@ def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch
             store.publish(conn)
         assert len(seen) == 1
         assert tagging_rows(conn) == before
-    phases = [json.loads(record.message) for record in caplog.records
-              if record.name == "mfdataindia.tagging.phases"]
+    records = [json.loads(record.message) for record in caplog.records
+               if record.name == "mfdataindia.tagging.phases"]
+    assert [event for event in records if event["format"] == "mfdata-tag-publication-limits-v1"] == [{
+        "format": "mfdata-tag-publication-limits-v1",
+        "statement_timeout": "30s", "transaction_timeout": "2min", "lock_timeout": "5s",
+    }]
+    phases = [event for event in records if event["format"] == "mfdata-tag-publication-phase-v1"]
     assert [(event["phase"], event["state"]) for event in phases[-2:]] == [
         ("readback", "FAILED"), ("transaction", "FAILED"),
     ]

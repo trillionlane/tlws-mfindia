@@ -61,7 +61,8 @@ def writer_safety(conn, role):
 
 
 def limits(conn, *, publication=False):
-    conn.execute("SET LOCAL statement_timeout='5s'")
+    conn.execute("SET LOCAL statement_timeout='30s'" if publication
+                 else "SET LOCAL statement_timeout='5s'")
     conn.execute("SET LOCAL lock_timeout='5s'")
     conn.execute("SET LOCAL transaction_timeout='120s'" if publication
                  else "SET LOCAL transaction_timeout='15s'")
@@ -188,6 +189,17 @@ def _phase(name):
                                       "elapsed_seconds": round(perf_counter() - start, 4)}))
 
 
+def _log_publication_limits(conn):
+    logger = logging.getLogger("mfdataindia.tagging.phases")
+    if logger.isEnabledFor(logging.INFO):
+        row = conn.execute("""
+            SELECT current_setting('statement_timeout') AS statement_timeout,
+                   current_setting('transaction_timeout') AS transaction_timeout,
+                   current_setting('lock_timeout') AS lock_timeout
+        """).fetchone()
+        logger.info("%s", json.dumps({"format": "mfdata-tag-publication-limits-v1", **row}))
+
+
 def publish(conn):
     """Own exactly one transaction; an escaping COMMIT error is not replayable.
 
@@ -201,6 +213,7 @@ def publish(conn):
         with _phase('receipt_and_guards'):
             conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             limits(conn, publication=True)
+            _log_publication_limits(conn)
             principal(conn, p.WRITER)
             installed(conn)
             receipt = source_evidence.latest(conn)
