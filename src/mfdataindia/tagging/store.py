@@ -19,6 +19,8 @@ PRIOR_SEALS = frozenset({
 UPGRADE_SQL = '''GRANT USAGE ON SCHEMA mf_identity TO mfdata_tag_writer;
 GRANT SELECT(amfi_scheme_code,family_id) ON mf_identity.variant_families TO mfdata_tag_writer;'''
 TABLES = ('assessments', 'current', 'definitions', 'head', 'observations', 'snapshots')
+INSERT_BATCH_ROWS = 500
+INSERT_PIPELINE_BATCHES = 16
 CENSUS_SQL = '''SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS amc,
  f.scheme_name,f.scheme_type,f.scheme_category,f.category_source,f.plan_type,f.plan_source,
  f.option_type,f.is_etf,f.in_scope,f.last_seen_in_source::text AS last_seen,
@@ -122,9 +124,18 @@ def census(conn):
 
 
 def _insert(conn, table, rows):
-    for offset in range(0, len(rows), 500):
-        conn.execute(sql.SQL('INSERT INTO mf_tagging.{} SELECT * FROM jsonb_populate_recordset(NULL::mf_tagging.{},%s) ON CONFLICT DO NOTHING').format(
-            sql.Identifier(table), sql.Identifier(table)), (Jsonb(rows[offset:offset+500]),))
+    if not rows:
+        return
+    relation = sql.Identifier('mf_tagging', table)
+    insert = sql.SQL('INSERT INTO {} SELECT * FROM jsonb_populate_recordset(NULL::{},%s) ON CONFLICT DO NOTHING').format(
+        relation, relation)
+    # Synchronize bounded groups before continuing to the next phase. A batch
+    # error propagates inside publish's transaction, before verification or head advance.
+    with conn.pipeline() as pipeline:
+        for batch, offset in enumerate(range(0, len(rows), INSERT_BATCH_ROWS), start=1):
+            conn.execute(insert, (Jsonb(rows[offset:offset + INSERT_BATCH_ROWS]),))
+            if batch % INSERT_PIPELINE_BATCHES == 0:
+                pipeline.sync()
 
 
 def verify_candidate(conn, candidate):

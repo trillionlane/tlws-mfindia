@@ -13,6 +13,10 @@ ISSUER_BINDING_BASE = "f8f67c137d5ed946ce8f9161b388d601b601ac07"
 NAV_CONTINUITY = "src/mfdataindia/jobs/nav_continuity.py"
 ISSUER_BINDING_NAV_SHA256 = "a66eb1b95290f89a17b39e908f12a8c17bfac0c3177b66b1b69d602f3e76ff3d"
 
+TAG_PIPELINE_BASE = "f90f740302769ab93c0d0edcb02fdc677a13c8bf"
+TAG_STORE = "src/mfdataindia/tagging/store.py"
+TAG_PIPELINE_STORE_SHA256 = "cbe0042ba2ec4078a138dca7323eecfe6a3eff78c97964f41a372bba4f052907"
+
 
 @lru_cache(maxsize=1)
 def manifest():
@@ -29,6 +33,10 @@ def _old(name):
 
 
 def before_issuer_binding(name, data):
+    if name == TAG_STORE and hashlib.sha256(data).hexdigest() == TAG_PIPELINE_STORE_SHA256:
+        restored = subprocess.check_output(["git", "show", f"{TAG_PIPELINE_BASE}:{name}"], cwd=ROOT)
+        assert hashlib.sha256(restored).hexdigest() == manifest()[name]["current_sha256"]
+        return restored
     if name != NAV_CONTINUITY or hashlib.sha256(data).hexdigest() != ISSUER_BINDING_NAV_SHA256:
         return data
     restored = subprocess.check_output(["git", "show", f"{ISSUER_BINDING_BASE}:{name}"], cwd=ROOT)
