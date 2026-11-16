@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tag_deploy_traffic_history import BASE, ROOT, manifest, previous
+from tag_deploy_traffic_history import BASE, NAV_CONTINUITY, ROOT, before_issuer_binding, manifest, previous
 
 
 def test_exact_modified_files_restore_to_tag04_main() -> None:
@@ -39,7 +39,7 @@ def test_exact_modified_files_restore_to_tag04_main() -> None:
     }
     for name, row in rows.items():
         current = (ROOT / name).read_bytes()
-        assert hashlib.sha256(current).hexdigest() == row["current_sha256"]
+        assert hashlib.sha256(before_issuer_binding(name, current)).hexdigest() == row["current_sha256"]
         restored = previous(name, current)
         assert hashlib.sha256(restored).hexdigest() == row["previous_sha256"]
 
@@ -50,6 +50,8 @@ def test_unlisted_external_and_tampered_bytes_fail_closed(tmp_path: Path) -> Non
     assert previous(tmp_path / "outside", arbitrary) is arbitrary
     with pytest.raises(AssertionError):
         previous(".github/workflows/deploy-dev.yml", arbitrary)
+    with pytest.raises(AssertionError):
+        previous(NAV_CONTINUITY, (ROOT / NAV_CONTINUITY).read_bytes() + b"\n")
 
 
 def test_manifest_base_is_exact_tag04_main() -> None:

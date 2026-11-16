@@ -9,6 +9,9 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "3741d683c78447cc9f53890625b449f709423406"
 MANIFEST_SHA256 = "2db476fa6c07a6ebb7566e97521a84c20306dcb864bf96b9f5124bd20919023b"
+ISSUER_BINDING_BASE = "f8f67c137d5ed946ce8f9161b388d601b601ac07"
+NAV_CONTINUITY = "src/mfdataindia/jobs/nav_continuity.py"
+ISSUER_BINDING_NAV_SHA256 = "a66eb1b95290f89a17b39e908f12a8c17bfac0c3177b66b1b69d602f3e76ff3d"
 
 
 @lru_cache(maxsize=1)
@@ -25,6 +28,14 @@ def _old(name):
     return subprocess.check_output(["git", "show", f"{BASE}:{name}"], cwd=ROOT)
 
 
+def before_issuer_binding(name, data):
+    if name != NAV_CONTINUITY or hashlib.sha256(data).hexdigest() != ISSUER_BINDING_NAV_SHA256:
+        return data
+    restored = subprocess.check_output(["git", "show", f"{ISSUER_BINDING_BASE}:{name}"], cwd=ROOT)
+    assert hashlib.sha256(restored).hexdigest() == manifest()[name]["current_sha256"]
+    return restored
+
+
 def previous(path, data):
     assert type(data) is bytes
     try:
@@ -34,6 +45,7 @@ def previous(path, data):
     row = manifest().get(name)
     if row is None:
         return data
+    data = before_issuer_binding(name, data)
     digest = hashlib.sha256(data).hexdigest()
     if digest == row["previous_sha256"]:
         return data
