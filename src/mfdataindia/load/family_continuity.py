@@ -10,11 +10,20 @@ from psycopg.types.json import Jsonb
 from mfdataindia.ingest.amfi_navall import AmfiScheme
 from mfdataindia.load.amfi_to_store import clean_isin, variant_rows
 from mfdataindia.load.fund_family import tags_for
-from mfdataindia.load.normalise import slugify
+from mfdataindia.load.normalise import base_scheme_key, slugify
 
 # Issuer continuity confirmed by official Addendum No. 21/2026-27.
 # Resolve the feed label to the existing AMC row and its registered bindings.
 ISSUER_ALIASES = {"Zerodha CASE Mutual Fund": "Zerodha Mutual Fund"}
+
+# The DEV catalogue hold affected only these existing variants. The committed
+# issuer may already use the newer label after an earlier NAV refresh.
+ZERODHA_ISSUER_LABELS = frozenset((*ISSUER_ALIASES, *ISSUER_ALIASES.values()))
+ZERODHA_HELD_CODES = frozenset({
+    152156, 152157, 152327, 152476, 152667, 152668, 153011, 153413, 153436,
+    153656, 153757, 153811, 153837, 153905, 153906, 153932, 154109, 154306,
+    154321, 154436, 154437, 154619, 154697, 154764, 154813,
+})
 
 # NSE/NMFTM/72131 lists the payout and reinvestment ISINs for both plans.
 # The prior AMFI rows published only payout; the current feed fills the second slot.
@@ -57,6 +66,30 @@ def normalize_issuers(schemes: list[AmfiScheme]) -> list[AmfiScheme]:
         if scheme.amc in ISSUER_ALIASES else scheme
         for scheme in schemes
     ]
+
+
+def bind_held_zerodha_issuers(
+    schemes: list[AmfiScheme], existing: dict[int, Variant],
+) -> list[AmfiScheme]:
+    """Use the committed AMC row for the known label-only changes."""
+    labels = {existing[code].issuer for code in ZERODHA_HELD_CODES & existing.keys()}
+    if len(labels) != 1 or not labels <= ZERODHA_ISSUER_LABELS:
+        return schemes
+    committed_label, = labels
+    bound = []
+    for scheme in schemes:
+        if (scheme.amc in ZERODHA_ISSUER_LABELS and scheme.amc != committed_label
+                and scheme.amfi_scheme_code.isascii() and scheme.amfi_scheme_code.isdecimal()):
+            code = int(scheme.amfi_scheme_code)
+            old = existing.get(code) if code in ZERODHA_HELD_CODES else None
+            if (old is not None and old.key and old.key == base_scheme_key(scheme.scheme_name)
+                    and any(old.isins)
+                    and (scheme.plan_type, scheme.option,
+                         clean_isin(scheme.isin_div_payout_or_growth),
+                         clean_isin(scheme.isin_div_reinvestment)) == (old.plan, old.option, *old.isins)):
+                scheme = replace(scheme, amc=committed_label)
+        bound.append(scheme)
+    return bound
 
 
 def read_identities(conn) -> tuple[dict[int, Variant], dict[str, str]]:
