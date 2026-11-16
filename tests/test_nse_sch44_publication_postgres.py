@@ -144,7 +144,8 @@ def test_native_uat_workflow_publishes_successive_approved_exports_and_holds_unv
             boundary.setattr(pilot.requests, 'Session', lambda: nullcontext(storage))
             boundary.setattr(pilot.subprocess, 'run', connector)
             boundary.setattr(psycopg, 'connect', publisher_conninfo)
-            assert pilot.main(args) == 0
+            status = pilot.main(args)
+        assert status == 0, receipt_output.getvalue()
         return json.loads(receipt_output.getvalue())
 
     before = head(nse_db)
@@ -168,7 +169,7 @@ def test_native_uat_workflow_publishes_successive_approved_exports_and_holds_unv
         assert head(nse_db) == active and page(client) == active_page
 
         undated = run('undated', second_raw, None)
-        missing_scope = run('missing-scope', unreviewed_raw, '2026-09-22')
+        missing_scope = run('missingscope', unreviewed_raw, '2026-09-22')
         assert undated['export_date'] is None and undated['payload']['reused']
         assert undated['publication_reason'] == 'SCH44_EXPORT_DATE_UNVERIFIED'
         assert missing_scope['source_scope'] == 'UNVERIFIED'
