@@ -1,6 +1,8 @@
 """Bounded atomic factual snapshot; no provider calls, hidden grants or mutation retry."""
 from __future__ import annotations
 
+from contextlib import closing
+from itertools import zip_longest
 from pathlib import Path
 
 from psycopg import sql
@@ -19,8 +21,6 @@ PRIOR_SEALS = frozenset({
 UPGRADE_SQL = '''GRANT USAGE ON SCHEMA mf_identity TO mfdata_tag_writer;
 GRANT SELECT(amfi_scheme_code,family_id) ON mf_identity.variant_families TO mfdata_tag_writer;'''
 TABLES = ('assessments', 'current', 'definitions', 'head', 'observations', 'snapshots')
-INSERT_BATCH_ROWS = 500
-INSERT_PIPELINE_BATCHES = 16
 CENSUS_SQL = '''SELECT f.amfi_scheme_code AS code,f.amc_id,a.amfi_amc_name AS amc,
  f.scheme_name,f.scheme_type,f.scheme_category,f.category_source,f.plan_type,f.plan_source,
  f.option_type,f.is_etf,f.in_scope,f.last_seen_in_source::text AS last_seen,
@@ -57,10 +57,11 @@ def writer_safety(conn, role):
     p.require(unsafe and unsafe['unsafe'] is False, 'TAGGING_UNSAFE_WRITER')
 
 
-def limits(conn):
+def limits(conn, *, publication=False):
     conn.execute("SET LOCAL statement_timeout='5s'")
     conn.execute("SET LOCAL lock_timeout='5s'")
-    conn.execute("SET LOCAL transaction_timeout='15s'")
+    conn.execute("SET LOCAL transaction_timeout='45s'" if publication
+                 else "SET LOCAL transaction_timeout='15s'")
     row = conn.execute("SELECT pg_try_advisory_xact_lock(hashtextextended('mf-fund-tagging-v1',0)) AS ok").fetchone()
     p.require(row['ok'], 'TAGGING_PUBLICATION_BUSY')
 
@@ -124,18 +125,9 @@ def census(conn):
 
 
 def _insert(conn, table, rows):
-    if not rows:
-        return
-    relation = sql.Identifier('mf_tagging', table)
-    insert = sql.SQL('INSERT INTO {} SELECT * FROM jsonb_populate_recordset(NULL::{},%s) ON CONFLICT DO NOTHING').format(
-        relation, relation)
-    # Synchronize bounded groups before continuing to the next phase. A batch
-    # error propagates inside publish's transaction, before verification or head advance.
-    with conn.pipeline() as pipeline:
-        for batch, offset in enumerate(range(0, len(rows), INSERT_BATCH_ROWS), start=1):
-            conn.execute(insert, (Jsonb(rows[offset:offset + INSERT_BATCH_ROWS]),))
-            if batch % INSERT_PIPELINE_BATCHES == 0:
-                pipeline.sync()
+    for offset in range(0, len(rows), 500):
+        conn.execute(sql.SQL('INSERT INTO mf_tagging.{} SELECT * FROM jsonb_populate_recordset(NULL::mf_tagging.{},%s) ON CONFLICT DO NOTHING').format(
+            sql.Identifier(table), sql.Identifier(table)), (Jsonb(rows[offset:offset+500]),))
 
 
 def verify_candidate(conn, candidate):
@@ -145,12 +137,26 @@ def verify_candidate(conn, candidate):
     Damaged history/projection is stopped, not repaired or silently replayed.
     """
     snapshot = candidate['snapshot_id']
-    expected_current = sorted(({'code': a['code'], 'dimension': a['dimension'], 'document': a}
-        for a in candidate['assessments']), key=lambda r: (r['code'], r['dimension']))
-    actual = conn.execute('SELECT code,dimension,document FROM mf_tagging.current ORDER BY code,dimension').fetchall()
-    p.require(actual == expected_current, 'TAGGING_PUBLICATION_INCOMPLETE')
-    historical = conn.execute('SELECT code,dimension,document FROM mf_tagging.assessments WHERE snapshot_id=%s ORDER BY code,dimension', (snapshot,)).fetchall()
-    p.require(historical == expected_current, 'TAGGING_HISTORY_DIFFERS')
+    expected = sorted(candidate['assessments'], key=lambda a: (a['code'], a['dimension']))
+    count = conn.execute('SELECT count(*) AS n FROM mf_tagging.current').fetchone()['n']
+    p.require(count == len(expected), 'TAGGING_PUBLICATION_INCOMPLETE')
+
+    # History supplies every expected key and document. The current key is
+    # unique, so matching each key and document plus the total excludes extras.
+    # Return the history document only once per key and bound client readback.
+    with conn.cursor() as cursor, closing(cursor.stream("""
+        SELECT h.code,h.dimension,h.document,
+               (h.document = c.document) IS TRUE AS current_matches
+        FROM mf_tagging.assessments h
+        LEFT JOIN mf_tagging.current c USING (code,dimension)
+        WHERE h.snapshot_id=%s ORDER BY h.code,h.dimension
+    """, (snapshot,), size=512)) as rows:
+        for actual, wanted in zip_longest(rows, expected):
+            p.require(actual is not None and wanted is not None
+                      and actual['code'] == wanted['code']
+                      and actual['dimension'] == wanted['dimension']
+                      and actual['document'] == wanted, 'TAGGING_HISTORY_DIFFERS')
+            p.require(actual['current_matches'], 'TAGGING_PUBLICATION_INCOMPLETE')
     observations = conn.execute('SELECT code,document FROM mf_tagging.observations WHERE snapshot_id=%s ORDER BY code', (snapshot,)).fetchall()
     p.require(observations == [{'code': r['code'], 'document': r} for r in candidate['observations']],
               'TAGGING_HISTORY_DIFFERS')
@@ -174,7 +180,7 @@ def publish(conn):
               'TAGGING_IDLE_CONNECTION_REQUIRED')
     with conn.transaction():
         conn.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
-        limits(conn)
+        limits(conn, publication=True)
         principal(conn, p.WRITER)
         installed(conn)
         receipt = source_evidence.latest(conn)
