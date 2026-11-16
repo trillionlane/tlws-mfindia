@@ -17,7 +17,9 @@ TAG_STREAM_BASE = "f90f740302769ab93c0d0edcb02fdc677a13c8bf"
 TAG_STORE = "src/mfdataindia/tagging/store.py"
 TAG_UNIT = "tests/test_fund_tagging.py"
 TAG_STREAM_UNIT_SHA256 = "3665519ed1cd29048a538dd9cbc5cf3f9b068b9a1466b96f185e0d98cea1c4a9"
-TAG_STREAM_STORE_SHA256 = "4156d9feac661d87ee5181457acf5116684c5dfb20143e19048093bfabb7f92c"
+TAG_STREAM_STORE_SHA256 = "aa352c5e48bdaaaa9e437bbfdcb7bc377ed186ab8c2544edc63188dba8530b08"
+TAG_DEPLOY = ".github/workflows/deploy-dev.yml"
+TAG_DEPLOY_SHA256 = "d3b707ecd9256bf95d2308cabc40167563f1e4ebb21dab5aa12fc502d6fc4d8f"
 
 
 @lru_cache(maxsize=1)
@@ -35,7 +37,7 @@ def _old(name):
 
 
 def before_issuer_binding(name, data):
-    stream_hashes = {TAG_STORE: TAG_STREAM_STORE_SHA256, TAG_UNIT: TAG_STREAM_UNIT_SHA256}
+    stream_hashes = {TAG_STORE: TAG_STREAM_STORE_SHA256, TAG_UNIT: TAG_STREAM_UNIT_SHA256, TAG_DEPLOY: TAG_DEPLOY_SHA256}
     if stream_hashes.get(name) == hashlib.sha256(data).hexdigest():
         restored = subprocess.check_output(["git", "show", f"{TAG_STREAM_BASE}:{name}"], cwd=ROOT)
         assert hashlib.sha256(restored).hexdigest() == manifest()[name]["current_sha256"]

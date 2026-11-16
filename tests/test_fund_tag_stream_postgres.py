@@ -1,5 +1,8 @@
 """PostgreSQL rollback proof for late streamed tag readback failures."""
 
+import json
+import logging
+
 import pytest
 
 from mfdataindia.tagging import policy, store
@@ -22,7 +25,7 @@ pytestmark = pytest.mark.postgres
         ("assessments", "TAGGING_HISTORY_DIFFERS"),
     ],
 )
-def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch, table, reason):
+def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch, caplog, table, reason):
     with writer(tagging_db) as conn:
         store.publish(conn)
     with connect(tagging_db, autocommit=False) as owner:
@@ -58,10 +61,11 @@ def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch
                    current_setting('statement_timeout') AS statement,
                    current_setting('lock_timeout') AS lock
         """).fetchone()
-        assert row == {"transaction": "45s", "statement": "5s", "lock": "5s"}
+        assert row == {"transaction": "2min", "statement": "5s", "lock": "5s"}
         seen.append(candidate["snapshot_id"])
         verify(conn, candidate)
 
+    caplog.set_level(logging.INFO, logger="mfdataindia.tagging.phases")
     with monkeypatch.context() as patch, writer(tagging_db) as conn:
         patch.setattr(store, "_insert", corrupt_late)
         patch.setattr(store, "verify_candidate", verify_limits)
@@ -69,6 +73,12 @@ def test_late_stream_mismatch_rolls_back_every_tag_table(tagging_db, monkeypatch
             store.publish(conn)
         assert len(seen) == 1
         assert tagging_rows(conn) == before
+    phases = [json.loads(record.message) for record in caplog.records
+              if record.name == "mfdataindia.tagging.phases"]
+    assert [(event["phase"], event["state"]) for event in phases[-2:]] == [
+        ("readback", "FAILED"), ("transaction", "FAILED"),
+    ]
+    assert all(event["elapsed_seconds"] >= 0 for event in phases if event["state"] != "STARTED")
 
     with writer(tagging_db) as conn:
         published = store.publish(conn)

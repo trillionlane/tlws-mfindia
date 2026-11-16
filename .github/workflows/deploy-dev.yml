@@ -547,7 +547,7 @@ jobs:
             --tasks=1 \
             --parallelism=1 \
             --max-retries=0 \
-            --task-timeout=2m \
+            --task-timeout=150s \
             --cpu=1 \
             --memory=512Mi \
             --labels=product=mfdataindia,environment=dev,operation=tag-refresh,managed-by=github-actions \
