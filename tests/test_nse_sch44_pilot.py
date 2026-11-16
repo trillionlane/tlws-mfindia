@@ -6,7 +6,7 @@ from urllib.parse import unquote
 
 import pytest
 
-from mfdataindia.nse import sch44_pilot as pilot
+from mfdataindia.nse import contract, sch44_pilot as pilot, sch44_publication
 
 SOURCE = (Path(__file__).parent / 'fixtures/nse01/sch44_synthetic.psv').read_bytes()
 REV = 'a' * 40
@@ -81,9 +81,13 @@ def fake_capture(data=SOURCE, *, failure=False, observed_at='2026-11-15T14:08:34
             receipt['outcome'] = 'DOWNLOAD_FAILED'
         else:
             (path / 'source.txt').write_bytes(data)
+            filename = None
+            if date:
+                year, month, day = date.split('-')
+                filename = f'NSE_NSEINVEST_ALL_{day}{month}{year}.txt'
             receipt.update(outcome='RETAINED_FOR_OFFLINE_VALIDATION' if date else 'RETAINED_EXPORT_DATE_UNVERIFIED',
-                           header_columns=44, row_count=5,
-                           filename='NSE_NSEINVEST_ALL_15112026.txt' if date else None,
+                           header_columns=44, row_count=len(data.splitlines()) - 1,
+                           filename=filename,
                            export_date=date, sha256=hashlib.sha256(data).hexdigest(), byte_length=len(data))
         (path / 'receipt.json').write_text(json.dumps(receipt))
         return int(failure)
@@ -167,6 +171,24 @@ def test_mismatched_existing_payload_is_not_overwritten():
     assert second['result'] == 'FAILED'
     assert second['reason'] == 'ARCHIVE_OBJECT_DIFFERS'
     assert storage.objects[name][1] == corrupted
+
+
+def test_export_approval_index_requires_independent_pin_and_exact_entry_key():
+    digest = hashlib.sha256(SOURCE).hexdigest()
+    approval = dict.fromkeys(sch44_publication.APPROVAL_FIELDS)
+    approval.update(format=sch44_publication.APPROVAL_FORMAT, expected_sha256=digest)
+    index = {'format': sch44_publication.APPROVAL_INDEX_FORMAT, 'exports': {digest: approval}}
+    approval_pin = contract.digest(approval)
+    assert sch44_publication.approval_for_export(approval, approval_pin, SOURCE) == (approval, approval_pin)
+    index_pin = contract.digest(index)
+    assert sch44_publication.approval_for_export(index, index_pin, SOURCE) == (approval, approval_pin)
+    with pytest.raises(contract.ImportError, match='SCH44_APPROVAL_UNAVAILABLE'):
+        sch44_publication.approval_for_export(index, index_pin, SOURCE + b'\n')
+    changed = {**index, 'exports': {'0' * 64: approval}}
+    with pytest.raises(contract.ImportError, match='SCH44_APPROVAL_UNTRUSTED'):
+        sch44_publication.approval_for_export(changed, index_pin, SOURCE)
+    with pytest.raises(contract.ImportError, match='SCH44_APPROVAL_INVALID'):
+        sch44_publication.approval_for_export(changed, contract.digest(changed), SOURCE)
 
 
 def test_schedule_contract_is_disabled_and_has_no_task_retry():

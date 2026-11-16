@@ -1,5 +1,9 @@
 # SCH44 UAT workflow
 
+The UAT operating model is **scheduled retrieval with per-export publication
+approval**. The documented NSE response and the observed UAT response do not
+establish the date and complete member scope automatically.
+
 ## Rollout
 
 The checked-in [schedule contract](../config/nse_sch44_uat_pilot.json) specifies
@@ -46,7 +50,41 @@ The receipt has separate UTC retrieval and provider export date fields.
 An undated, valid SCH44 response is a successful capture and records publication
 held. A failed or invalid capture cannot advance the snapshot.
 
-## Publish only with an accepted UAT package
+## Trusted evidence for standing publication approval
+
+A future standing approval would authorize a fixed evidence source and
+validation policy. Every export would still need its own trusted evidence:
+
+- **Provider provenance and payload binding.** Evidence must come from an
+  authenticated NSE report metadata endpoint or an NSE-issued manifest verified
+  against a trusted issuer identity. It must identify the UAT member, SCH
+  report, and exact payload by issuer digest or a verifiable immutable NSE
+  report ID linked to the downloaded bytes. Retain the download digest and
+  evidence independently of the worker's own receipt.
+- **Export date.** NSE must state the date or as-of value that applies to that
+  report. Verify its meaning, format and time zone under the issuer contract
+  and reconcile it with the capture's date. A filename date labelled system
+  date and the local retrieval time do not establish an effective export date
+  on their own.
+- **Complete member scope.** NSE must identify the entitled universe for the
+  member and environment, state that the report contains it in full without
+  filters, and supply an authoritative row count or equivalent inventory
+  reconciliation. Verify it against the exact downloaded bytes and parsed
+  records. An `ALL` label, successful authentication, or a locally calculated
+  count and hash cannot show that an export is complete.
+- **Publication checks.** Each export must still pass the approved SCH44
+  layout, complete reviewed mapping, canonical catalogue digest and expected
+  snapshot checks. Evidence scope and policy changes require new review.
+
+[NSE MF Invest API v1.9.7, pp. 191–192](https://www.nseinvest.com/nsemfdesk/resources/upload/apidetails/NSEMF_API_Details_V1.9.7.pdf#page=191)
+documents the SCH download and its suggested filename, with no per-export
+metadata proving the complete member universe. The retained UAT response on
+15 November 2026 had 15,500 SCH44 rows and no verified export date or scope.
+No automatic evidence channel has been established. Do not issue standing
+publication approval on the basis of that response. The current worker holds
+undated captures even if their bytes match an already approved export.
+
+## Publish under per-export approval
 
 Add `--approval` and `--crosswalk` pointing to separately reviewed, private,
 read-only files. Set `NSE_SCH44_APPROVAL_SHA256` to the independent SHA-256 of
@@ -58,7 +96,7 @@ through `NSE_SCH44_UAT_CLOUD_SQL_INSTANCE`. The publisher uses only existing SCH
 publication privileges and canonical reads. The capture child cannot read
 this DSN from its environment.
 
-The approval format is `nse-sch44-uat-publish-v1`. It binds environment
+The per-export format is `nse-sch44-uat-publish-v1`. It binds environment
 `UAT`, scope `FULL`, a private member scope reference, independent digests for
 NSE date and completeness evidence, source date, exact bytes/SHA-256/row count,
 crosswalk digest, canonical mapping input digest, connector revision and
@@ -68,6 +106,28 @@ label cannot independently establish scope. An undated download, missing
 approval, changed content, stale canonical input or unresolved in-scope
 mappings leaves the last good snapshot active. Approved out-of-scope rows
 are retained as withheld evidence.
+
+One independently pinned document can carry multiple separately reviewed
+approvals. Use format `nse-sch44-uat-approval-index-v1` with an `exports`
+object mapping each payload SHA-256 to its complete per-export approval.
+Pin the canonical index with `NSE_SCH44_APPROVAL_SHA256`. The worker selects
+an entry by the archived payload hash and applies all existing checks, including
+the approved predecessor for each new publication. The single-approval format
+is also supported. A capture worker cannot add approvals or compute its own
+trusted pin. Keep evidence and pins under separate operator control.
+
+Review newly archived exports individually and add an approved entry only after
+verifying date, full scope and mapping. Supply the updated approval document
+and independent pin before the next eligible invocation. A dated payload
+missing from the approved index stays archived and held. The worker can publish
+it on a later scheduled retrieval of the same approved bytes and date, using a
+new execution identity. This workflow has no archive-only publisher for an
+export that NSE no longer serves.
+
+The disposable PostgreSQL workflow fixture uses one pinned index and job
+configuration for two distinct approved exports. It exercises archive,
+publication, the dataset API, replay of the older export, and both the
+undated and unapproved-scope holds. The evidence is synthetic.
 
 The existing SCH transaction writes source evidence, mappings, snapshot,
 consumer rows and the head together, with one commit. Repeat bytes observe the

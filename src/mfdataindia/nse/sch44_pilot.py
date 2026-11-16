@@ -203,9 +203,9 @@ def main(argv=None):
             from psycopg.rows import dict_row
             from . import sch44_publication, store
 
-            approval = contract.decode(sch44._read(options.approval, 256 * 1024))
+            approval_document = contract.decode(sch44._read(options.approval, 256 * 1024))
             walk = sch44._json(sch44._read(options.crosswalk, contract.MAX_BYTES), 'INVALID_CROSSWALK')
-            approval_sha256 = os.environ['NSE_SCH44_APPROVAL_SHA256']
+            approval_pin = os.environ['NSE_SCH44_APPROVAL_SHA256']
             dsn = os.environ['NSE_SCH44_UAT_DSN']
             instance = os.environ['NSE_SCH44_UAT_CLOUD_SQL_INSTANCE']
             fields = conninfo_to_dict(dsn)
@@ -216,6 +216,9 @@ def main(argv=None):
 
             def publisher(data, capture_receipt, operation):
                 try:
+                    approval, approval_sha256 = sch44_publication.approval_for_export(
+                        approval_document, approval_pin, data,
+                    )
                     sch44_publication.prepare(data, capture_receipt, approval, approval_sha256, walk)
                 except contract.ImportError as error:
                     return {'publication': 'HELD', 'publication_reason': str(error)}

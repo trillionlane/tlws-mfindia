@@ -1,12 +1,18 @@
+from contextlib import nullcontext
 from hashlib import sha256
+import json
 from pathlib import Path
-from uuid import uuid4
+from types import SimpleNamespace
+from uuid import uuid4, uuid5
 
 import psycopg
+from psycopg.conninfo import make_conninfo
 import pytest
 
-from mfdataindia.nse import contract, sch44_publication, store
+from mfdataindia.nse import contract, sch44_pilot as pilot, sch44_publication, store
 from test_nse01_postgres import api, connect, head, nse_db as nse_db, page, ro01_db as ro01_db
+from test_ro01_reader_policy_postgres import PASSWORD
+from test_nse_sch44_pilot import BUCKET, REV, Storage, fake_capture, payloads, stored_receipts
 
 pytestmark = pytest.mark.postgres
 ROOT = Path(__file__).resolve().parents[1]
@@ -81,3 +87,96 @@ def test_native_known_complete_sch44_publish_replay_and_failed_replacement(nse_d
     with connect(nse_db, 'mfdata_verified_reader') as conn:
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             conn.execute('SELECT * FROM mf_nse.source_artifacts')
+
+
+@pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
+def test_native_uat_workflow_publishes_successive_approved_exports_and_holds_unverified(
+    nse_db, tmp_path, monkeypatch, capsys,
+):
+    raw, capture_receipt, first_approval, walk = fixture(nse_db)
+    parsed = sch44_publication.prepare(raw, capture_receipt, first_approval,
+                                       contract.digest(first_approval), walk)
+    first_id = str(uuid5(store.NAMESPACE, contract.digest({
+        'manifest': parsed.manifest, 'crosswalk': walk,
+        'mapping_input': first_approval['catalogue_sha256'], 'target': 'mfdataindia.mf_nse.SCH',
+        'parser': parsed.manifest['normalization'],
+    })))
+    second_raw = raw.replace(b'SYNTHETIC GROWTH', b'SYNTHETIC REVISION')
+    unreviewed_raw = raw.replace(b'SYNTHETIC GROWTH', b'SYNTHETIC UNREVIEWED')
+    assert len({raw, second_raw, unreviewed_raw}) == 3
+    second_approval = {**first_approval, 'expected_head': first_id, 'source_date': '2026-09-21',
+                       'expected_sha256': sha256(second_raw).hexdigest(), 'expected_bytes': len(second_raw)}
+    index = {'format': sch44_publication.APPROVAL_INDEX_FORMAT, 'exports': {
+        entry['expected_sha256']: entry for entry in (first_approval, second_approval)
+    }}
+    approval_path, walk_path = tmp_path / 'approvals.json', tmp_path / 'crosswalk.json'
+    approval_path.write_bytes(contract.canonical(index))
+    walk_path.write_bytes(contract.canonical(walk))
+    args = ['--bucket', BUCKET, '--connector-root', str(tmp_path), '--connector-revision', REV,
+            '--capture-script', str(tmp_path / 'capture.mjs'), '--approval', str(approval_path),
+            '--crosswalk', str(walk_path)]
+    instance = 'trillionlane-dev:asia-south1:sch44-fixture'
+    binding = make_conninfo(host='/cloudsql/' + instance, dbname='mfdataindia', user='mfdata_ingest')
+    monkeypatch.setenv('CLOUD_RUN_JOB', pilot.PILOT_JOB)
+    monkeypatch.setenv('NSE_SCH44_APPROVAL_SHA256', contract.digest(index))
+    monkeypatch.setenv('NSE_SCH44_UAT_DSN', binding)
+    monkeypatch.setenv('NSE_SCH44_UAT_CLOUD_SQL_INSTANCE', instance)
+    storage = Storage()
+    real_connect = psycopg.connect
+    database_calls = []
+
+    def publisher_conninfo(dsn, **kwargs):
+        assert dsn == binding
+        database_calls.append(dsn)
+        return real_connect(make_conninfo(nse_db, user='mfdata_ingest', password=PASSWORD), **kwargs)
+
+    def run(execution, data, date):
+        def connector(command, **kwargs):
+            assert command[:3] == ['node', '--import', 'tsx']
+            assert 'NSE_SCH44_UAT_DSN' not in kwargs['env']
+            output = command[command.index('--output-dir') + 1]
+            return SimpleNamespace(returncode=fake_capture(data, date=date)(Path(output)))
+
+        with monkeypatch.context() as boundary:
+            boundary.setenv('CLOUD_RUN_EXECUTION', f'{pilot.PILOT_JOB}-{execution}')
+            boundary.setattr(pilot.requests, 'Session', lambda: nullcontext(storage))
+            boundary.setattr(pilot.subprocess, 'run', connector)
+            boundary.setattr(psycopg, 'connect', publisher_conninfo)
+            assert pilot.main(args) == 0
+        return json.loads(capsys.readouterr().out)
+
+    before = head(nse_db)
+    first = run('first', raw, '2026-09-18')
+    assert first['publication_effect'] == 'COMMITTED_VERIFIED'
+    assert first['snapshot_id'] == first_id
+    assert head(nse_db) == (first_id, before[1] + 1)
+    with api(nse_db) as client:
+        assert page(client)['rows'][0]['source_date'] == '2026-09-18'
+        second = run('second', second_raw, '2026-09-21')
+        assert second['publication_effect'] == 'COMMITTED_VERIFIED'
+        assert second['snapshot_id'] != first_id
+        active = (second['snapshot_id'], before[1] + 2)
+        assert head(nse_db) == active
+        active_page = page(client)
+        assert active_page['rows'][0]['source_date'] == '2026-09-21'
+
+        replay = run('replay', raw, '2026-09-18')
+        assert replay['publication'] == 'UNCHANGED' and replay['snapshot_id'] == first_id
+        assert replay['payload']['reused'] and replay['payload']['generation'] == first['payload']['generation']
+        assert head(nse_db) == active and page(client) == active_page
+
+        undated = run('undated', second_raw, None)
+        missing_scope = run('missing-scope', unreviewed_raw, '2026-09-22')
+        assert undated['export_date'] is None and undated['payload']['reused']
+        assert undated['publication_reason'] == 'SCH44_EXPORT_DATE_UNVERIFIED'
+        assert missing_scope['source_scope'] == 'UNVERIFIED'
+        assert missing_scope['publication_reason'] == 'SCH44_APPROVAL_UNAVAILABLE'
+        assert all(r['result'] == 'CAPTURED' and r['publication'] == 'HELD'
+                   for r in (undated, missing_scope))
+        assert head(nse_db) == active and page(client) == active_page
+
+    assert len(database_calls) == 3
+    assert set(payloads(storage).values()) == {raw, second_raw, unreviewed_raw}
+    assert stored_receipts(storage) == [first, second, replay, undated, missing_scope]
+    with connect(nse_db) as owner:
+        assert owner.execute('SELECT count(*) AS n FROM mf_nse.snapshots').fetchone()['n'] == 2

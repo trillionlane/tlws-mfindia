@@ -7,11 +7,31 @@ from . import contract as c, mapping, sch44, store
 from .parser import Parsed
 
 APPROVAL_FORMAT = 'nse-sch44-uat-publish-v1'
+APPROVAL_INDEX_FORMAT = 'nse-sch44-uat-approval-index-v1'
 APPROVAL_FIELDS = {
     'format', 'environment', 'scope', 'member_scope_reference', 'scope_evidence_sha256',
     'date_evidence_sha256', 'source_date', 'expected_sha256', 'expected_rows', 'expected_bytes',
     'crosswalk_sha256', 'catalogue_sha256', 'connector_revision', 'expected_head',
 }
+
+
+def approval_for_export(document, pin, raw):
+    """Select a per-export approval from an independently pinned document."""
+    c.require(type(document) is dict and type(pin) is str and c.HASH.fullmatch(pin)
+              and c.digest(document) == pin, 'SCH44_APPROVAL_UNTRUSTED')
+    if document.get('format') == APPROVAL_FORMAT:
+        return document, pin
+    c.require(document.get('format') == APPROVAL_INDEX_FORMAT
+              and set(document) == {'format', 'exports'}
+              and type(document['exports']) is dict and document['exports'],
+              'SCH44_APPROVAL_INVALID')
+    for digest, approval in document['exports'].items():
+        c.require(type(digest) is str and c.HASH.fullmatch(digest) and type(approval) is dict
+                  and set(approval) == APPROVAL_FIELDS and approval['format'] == APPROVAL_FORMAT
+                  and approval['expected_sha256'] == digest, 'SCH44_APPROVAL_INVALID')
+    approval = document['exports'].get(sha256(raw).hexdigest())
+    c.require(approval is not None, 'SCH44_APPROVAL_UNAVAILABLE')
+    return approval, c.digest(approval)
 
 
 def prepare(raw, receipt, approval, approval_sha256, walk):
