@@ -1,5 +1,6 @@
-from contextlib import nullcontext
+from contextlib import nullcontext, redirect_stdout
 from hashlib import sha256
+from io import StringIO
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -91,7 +92,7 @@ def test_native_known_complete_sch44_publish_replay_and_failed_replacement(nse_d
 
 @pytest.mark.parametrize('ro01_db', ['core'], indirect=True)
 def test_native_uat_workflow_publishes_successive_approved_exports_and_holds_unverified(
-    nse_db, tmp_path, monkeypatch, capsys,
+    nse_db, tmp_path, monkeypatch,
 ):
     raw, capture_receipt, first_approval, walk = fixture(nse_db)
     parsed = sch44_publication.prepare(raw, capture_receipt, first_approval,
@@ -137,13 +138,14 @@ def test_native_uat_workflow_publishes_successive_approved_exports_and_holds_unv
             output = command[command.index('--output-dir') + 1]
             return SimpleNamespace(returncode=fake_capture(data, date=date)(Path(output)))
 
-        with monkeypatch.context() as boundary:
+        receipt_output = StringIO()
+        with monkeypatch.context() as boundary, redirect_stdout(receipt_output):
             boundary.setenv('CLOUD_RUN_EXECUTION', f'{pilot.PILOT_JOB}-{execution}')
             boundary.setattr(pilot.requests, 'Session', lambda: nullcontext(storage))
             boundary.setattr(pilot.subprocess, 'run', connector)
             boundary.setattr(psycopg, 'connect', publisher_conninfo)
             assert pilot.main(args) == 0
-        return json.loads(capsys.readouterr().out)
+        return json.loads(receipt_output.getvalue())
 
     before = head(nse_db)
     first = run('first', raw, '2026-09-18')
