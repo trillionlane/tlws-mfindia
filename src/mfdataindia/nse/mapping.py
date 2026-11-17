@@ -9,7 +9,7 @@ TARGET_KEYS = {'amc_code', 'scheme_code', 'isin', 'plan', 'option', 'isin_slot',
                'amfi_scheme_code', 'source_name', 'reinvestment_flag'}
 
 
-def crosswalk(value):
+def validate_crosswalk(value):
     c.require(type(value) is dict and set(value) == {'format', 'version', 'amcs', 'targets'}
               and value['format'] == 'nse01-crosswalk-v1', 'INVALID_CROSSWALK')
     c.require(type(value['version']) is str and c.NAME.fullmatch(value['version']), 'INVALID_CROSSWALK')
@@ -29,6 +29,10 @@ def crosswalk(value):
         c.require((row['isin_slot'] == 'isin_div_reinvest') == (row['reinvestment_flag'] == '1')
                   and (row['isin_slot'] != 'isin_div_reinvest' or row['option'] in {'IDCW', 'DIVIDEND'}),
                   'INVALID_CROSSWALK')
+
+
+def crosswalk(value):
+    validate_crosswalk(value)
     return c.decode(c.canonical(value))
 
 
