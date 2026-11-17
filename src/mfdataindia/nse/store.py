@@ -84,7 +84,7 @@ def _fingerprint(conn):
     return h.hexdigest()
 
 
-def _stage(conn, parsed, walk, operation_id, expected_head):
+def _stage(conn, parsed, walk, operation_id, expected_head, *, resolve_rows=None, mapping_pin=None):
     _identity(conn)
     _configuration(conn)
     # REPEATABLE READ pins mapping/preservation values. ACCESS SHARE protects
@@ -95,16 +95,27 @@ def _stage(conn, parsed, walk, operation_id, expected_head):
     head = conn.execute("SELECT snapshot_id,generation FROM mf_nse.family_heads WHERE family='SCH' FOR UPDATE").fetchone()
     c.require(head is not None, 'INSTALLATION_DIFFERS')
     actual_head = str(head['snapshot_id']) if head['snapshot_id'] else None
-    artifact = conn.execute('SELECT manifest FROM mf_nse.source_artifacts WHERE content_hash=%s',
+    artifact = conn.execute('SELECT artifact_id,manifest FROM mf_nse.source_artifacts WHERE content_hash=%s',
                             (parsed.manifest['expected_sha256'],)).fetchone()
     c.require(not artifact or artifact['manifest']['source_date'] == parsed.manifest['source_date'],
               'UNCHANGED_BYTES_DATE_CONFLICT')
     funds = conn.execute(FUNDS).fetchall()
     mapping_hash = c.digest(funds)
+    c.require(mapping_pin is None or mapping_pin == mapping_hash, 'MAPPING_INPUT_DIFFERS')
     work_meta = {k: v for k, v in parsed.manifest.items() if k != 'reference'}
     work = c.digest({'manifest': work_meta, 'crosswalk': walk, 'mapping_input': mapping_hash,
-                     'target': 'mfdataindia.mf_nse.SCH', 'parser': 'nse01-sch-v1'})
+                     'target': 'mfdataindia.mf_nse.SCH', 'parser': parsed.manifest['normalization']})
     prior = conn.execute('SELECT operation_id,snapshot_id,report FROM mf_nse.import_attempts WHERE work_key=%s', (work,)).fetchone()
+    if resolve_rows is not None and artifact and not prior:
+        # Scheduled SCH44 uses content identity independent of retrieval time or
+        # a new approval receipt. A retired source cannot become active again.
+        prior = conn.execute(
+            '''SELECT a.operation_id,a.snapshot_id,a.report
+               FROM mf_nse.snapshots s JOIN mf_nse.import_attempts a USING(operation_id)
+               WHERE s.artifact_id=%s AND s.schema_version=%s
+               ORDER BY s.created_at,s.snapshot_id LIMIT 1''',
+            (artifact['artifact_id'], parsed.manifest['schema']),
+        ).fetchone()
     # Same work may be observed again, but an operation identity is never reset.
     c.require(not conn.execute('SELECT 1 FROM mf_nse.observations WHERE operation_id=%s', (operation_id,)).fetchone(), 'OPERATION_SPENT')
     if prior:
@@ -114,7 +125,8 @@ def _stage(conn, parsed, walk, operation_id, expected_head):
                 'head_advanced': False}
     c.require(actual_head == expected_head, 'HEAD_CHANGED')
     before = _fingerprint(conn)
-    resolved = [mapping.resolve(row, walk, funds) for row in parsed.rows]
+    resolved = (resolve_rows(parsed.rows, walk, funds) if resolve_rows is not None
+                else [mapping.resolve(row, walk, funds) for row in parsed.rows])
     artifact_id = uuid5(NAMESPACE, parsed.manifest['expected_sha256'])
     snapshot_id = uuid5(NAMESPACE, work)
     current = {}
@@ -129,6 +141,7 @@ def _stage(conn, parsed, walk, operation_id, expected_head):
     source_date = parsed.manifest['source_date']
     old_date = conn.execute('SELECT source_date FROM mf_nse.snapshots WHERE snapshot_id=%s', (head['snapshot_id'],)).fetchone() if head['snapshot_id'] else None
     historical = bool(old_date and source_date < old_date['source_date'].isoformat())
+    c.require(resolve_rows is None or not historical, 'SCH44_EXPORT_DATE_OLDER_THAN_ACTIVE')
     state = 'HISTORICAL_ONLY' if historical else 'PUBLISHED_WITH_LIMITATIONS' if withheld or field_holds else 'PUBLISHED'
     report = {'format': 'nse01-import-result-v1', 'operation_id': operation_id, 'snapshot_id': str(snapshot_id),
               'state': state, 'source_rows': len(resolved), 'exposed_rows': len(current),
@@ -179,6 +192,11 @@ def publish(conn, parsed, walk, operation_id, *, expected_head):
     c.operation(operation_id)
     parsed = parser.parse_full(parsed.raw, parsed.manifest)
     walk = mapping.crosswalk(walk)
+    return _publish_transaction(conn, parsed, walk, operation_id, expected_head=expected_head)
+
+
+def _publish_transaction(conn, parsed, walk, operation_id, *, expected_head,
+                         resolve_rows=None, mapping_pin=None):
     c.require(conn.info.transaction_status == TransactionStatus.IDLE, 'IMPORT_IDLE_CONNECTION_REQUIRED')
     report = {'format': 'nse01-import-result-v1', 'operation_id': operation_id, 'stage': 'transaction',
               'effect': 'NO_PUBLICATION', 'state': 'VALIDATED_NOT_PUBLISHED', 'disposition': 'STOP',
@@ -187,7 +205,9 @@ def publish(conn, parsed, walk, operation_id, *, expected_head):
     try:
         conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ')
         conn.execute(LIMITS)
-        staged = _stage(conn, parsed, walk, operation_id, expected_head)
+        stage_options = ({'resolve_rows': resolve_rows, 'mapping_pin': mapping_pin}
+                         if resolve_rows is not None else {})
+        staged = _stage(conn, parsed, walk, operation_id, expected_head, **stage_options)
         report.update(staged, stage='commit', effect='UNKNOWN', state='COMMIT_UNKNOWN', disposition='INSPECT_ONLY')
         committing = True
         conn.commit()
