@@ -222,7 +222,7 @@ def test_real_main_is_offline_and_does_not_read_environment(tmp_path, capsys, mo
     assert "synthetic-secret-marker" not in capsys.readouterr().out
 
 
-def test_same_head_cannot_hide_damaged_projection(monkeypatch):
+def test_same_head_cannot_hide_damaged_projection(monkeypatch, caplog):
     from contextlib import nullcontext
     from types import SimpleNamespace
     from psycopg.pq import TransactionStatus
@@ -230,11 +230,11 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
     candidate = p.prepare([row()])
 
     class Result:
-        def fetchone(self):
-            return {"snapshot_id": candidate["snapshot_id"]}
+        def __init__(self, row):
+            self.row = row
 
-        def fetchall(self):
-            return []  # Previously published projection was damaged.
+        def fetchone(self):
+            return self.row
 
     class Connection:
         info = SimpleNamespace(transaction_status=TransactionStatus.IDLE)
@@ -242,10 +242,20 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
         def transaction(self):
             return nullcontext()
 
-        def execute(self, *args):
-            return Result()
+        def execute(self, statement):
+            if statement.lstrip().startswith("SELECT current_setting('statement_timeout')"):
+                return Result({"statement_timeout": "30s", "transaction_timeout": "2min", "lock_timeout": "5s"})
+            if statement == 'SELECT snapshot_id FROM mf_tagging.head WHERE singleton':
+                return Result({"snapshot_id": candidate["snapshot_id"]})
+            if statement == 'SELECT count(*) AS n FROM mf_tagging.current':
+                return Result({"n": 0})  # Previously published projection was damaged.
+            assert statement == 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'
 
-    for name in ("limits", "principal", "installed"):
+    def publication_limits(conn, *, publication):
+        assert publication is True
+
+    monkeypatch.setattr(store, "limits", publication_limits)
+    for name in ("principal", "installed"):
         monkeypatch.setattr(store, name, lambda *args: None)
     monkeypatch.setattr(store, "census", lambda conn: candidate)
     monkeypatch.setattr(
@@ -258,6 +268,7 @@ def test_same_head_cannot_hide_damaged_projection(monkeypatch):
             "family_projection_hash": candidate["family_projection_hash"],
         },
     )
+    caplog.set_level("INFO", logger="mfdataindia.tagging.phases")
     with pytest.raises(p.TaggingError, match="TAGGING_PUBLICATION_INCOMPLETE"):
         store.publish(Connection())
 

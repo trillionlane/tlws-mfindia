@@ -40,6 +40,7 @@ def publish_prices(store, schemes, fetch, *, as_of: date):
     with store.transaction() as conn:
         acquire_nav_data_operation_lock(conn)
         existing, _ = families.read_identities(conn)
+        schemes = families.bind_held_zerodha_issuers(schemes, existing)
         source, conflicts = families.read_source(schemes)
         rows = verified_prices(schemes, existing, source, conflicts)
         if not rows:
@@ -83,6 +84,7 @@ def publish_catalogue(store, schemes, report, fetch, *, as_of: date, feed_date: 
                     and prior["content_hash"] == fetch.content_sha256):
                 return {"state": "CATALOGUE_UNCHANGED", "snapshot": prior}
             existing, keys = families.read_identities(conn)
+            schemes = families.bind_held_zerodha_issuers(schemes, existing)
             source, conflicts = families.read_source(schemes)
             resolution = families.resolve(existing, keys, source, conflicts)
             if resolution.holds:
