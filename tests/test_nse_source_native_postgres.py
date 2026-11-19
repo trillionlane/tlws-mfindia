@@ -3,6 +3,7 @@
 ASGI proves application responses, not Cloud Run IAM or live TLAM acceptance.
 """
 
+from copy import deepcopy
 from hashlib import sha256
 import json
 from time import perf_counter
@@ -165,6 +166,14 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
         conn.rollback()
     replay = publish(dsn, raw, plan)
     assert replay["state"] == "UNCHANGED" and not replay["head_advanced"]
+    retrieved_again = deepcopy(plan)
+    retrieved_again["metadata"].update(
+        retrieved_at_utc="2026-11-19T10:00:00Z", object_generation="456"
+    )
+    observation = publish(dsn, raw, retrieved_again)
+    assert observation["state"] == "UNCHANGED" and not observation["head_advanced"]
+    assert observation["snapshot_id"] == result["snapshot_id"]
+
     assert baseline(dsn) == before and generator_capabilities(dsn) == generator
     # Same filename generation date, changed source bytes. Old snapshot remains.
     revised = raw.replace(b"Current title", b"Revised title")

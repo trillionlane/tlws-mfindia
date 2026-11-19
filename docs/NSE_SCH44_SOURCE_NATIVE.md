@@ -44,6 +44,9 @@ and commit once. Existing 5s statement/lock and 15s transaction limits apply.
 A failed precommit check rolls back; COMMIT uncertainty is inspect-only with no
 blind retry. Durable operation reservation remains the existing operator's duty.
 A known replay creates no snapshot/route and never reactivates a retired revision.
+Retrieval time and archive location/generation are observation provenance; changing
+only those records another observation without duplicating source business rows.
+The full candidate hash still binds all provenance for independent review.
 A changed payload is a new reviewed revision; old snapshots remain immutable.
 
 The owner's generation-date policy is filename-based. For the retained production

@@ -202,6 +202,16 @@ def prepare(
     return {"metadata": metadata, "rows": resolved}
 
 
+def snapshot_key(plan):
+    """Retrieval observations do not create duplicate source business rows."""
+    metadata = {
+        k: v
+        for k, v in plan["metadata"].items()
+        if k not in {"retrieved_at_utc", "object_uri", "object_generation"}
+    }
+    return c.digest({"metadata": metadata, "rows": plan["rows"]})
+
+
 def _stage(conn, parsed, walk, operation_id, expected_head, **unused):
     store._identity(conn)
     store._configuration(conn)
@@ -221,7 +231,7 @@ def _stage(conn, parsed, walk, operation_id, expected_head, **unused):
         and str(version["dataset_version"]) == meta["catalogue_version"],
         "MAPPING_INPUT_DIFFERS",
     )
-    work = c.digest(plan)
+    work = snapshot_key(plan)
     prior = conn.execute(
         "SELECT snapshot_id,report FROM mf_nse.import_attempts WHERE work_key=%s", (work,)
     ).fetchone()

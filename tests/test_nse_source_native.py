@@ -183,3 +183,17 @@ def test_candidate_hash_survives_json_file_roundtrip():
     assert c.canonical(decoded) == raw
     assert c.digest(decoded) == c.digest(plan) == sha256(raw).hexdigest()
     assert all(isinstance(k, str) for k in plan["rows"][0]["field_holds"])
+
+
+def test_snapshot_identity_excludes_only_retrieval_observations():
+    plan = native.prepare(**inputs())
+    replay = deepcopy(plan)
+    replay["metadata"].update(
+        retrieved_at_utc="2026-11-19T10:00:00Z",
+        object_generation="456",
+        object_uri="gs://synthetic-private/replay.txt",
+    )
+    assert c.digest(replay) != c.digest(plan)  # still separately reviewed/bound
+    assert native.snapshot_key(replay) == native.snapshot_key(plan)
+    replay["rows"][0]["disposition"] = "MF_HELD"
+    assert native.snapshot_key(replay) != native.snapshot_key(plan)
