@@ -99,6 +99,8 @@ def prepare(
     )
     rows = sch44.parse(raw)
     c.require(provenance["channel"] == "NSE_PRODUCTION_WEBSITE", "PRODUCTION_SOURCE_REQUIRED")
+    c.require(type(provenance["filename"]) is str, "SOURCE_FILENAME_INVALID")
+    c.require(type(provenance["retrieved_at_utc"]) is str, "SOURCE_RETRIEVAL_INVALID")
     match = re.fullmatch(r"NSE_NSEINVEST_ALL_([0-9]{8})\.txt", provenance["filename"], re.I)
     c.require(match is not None, "SOURCE_FILENAME_INVALID")
     try:
@@ -135,6 +137,7 @@ def prepare(
     c.require(
         type(decisions) is list
         and len(decisions) == len(rows)
+        and all(type(r) is dict for r in decisions)
         and [r.get("source_line") for r in decisions] == list(range(2, len(rows) + 2)),
         "PRODUCT_REVIEW_COVERAGE_DIFFERS",
     )

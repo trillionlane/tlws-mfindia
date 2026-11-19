@@ -158,3 +158,17 @@ def test_actual_file_preparation_cli_is_private_and_offline(tmp_path, capsys):
     with pytest.raises(SystemExit) as error:
         main(argv)
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize(
+    "field,value,reason",
+    [
+        ("filename", None, "SOURCE_FILENAME_INVALID"),
+        ("retrieved_at_utc", None, "SOURCE_RETRIEVAL_INVALID"),
+    ],
+)
+def test_malformed_metadata_fails_with_allowlisted_reason(field, value, reason):
+    args = inputs()
+    args["provenance"][field] = value
+    with pytest.raises(c.ImportError, match=reason):
+        native.prepare(**args)

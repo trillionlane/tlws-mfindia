@@ -157,6 +157,12 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
         response = client.get(url, params={"limit": 100})
         assert response.status_code == 200, response.text
         assert len(response.json()["rows"]) == 4  # source-native includes held/SIF, not attached
+    # Current identity drift can withhold an old exact link but never create a
+    # replacement. Read on the same real transaction; rollback fixture change.
+    with connect(dsn, autocommit=False) as conn:
+        conn.execute("UPDATE mf.funds SET isin_growth_or_div_payout=NULL WHERE amfi_scheme_code=1")
+        assert native.fund_section(conn, 1)["status"] == "NO_VERIFIED_LINK"
+        conn.rollback()
     replay = publish(dsn, raw, plan)
     assert replay["state"] == "UNCHANGED" and not replay["head_advanced"]
     assert baseline(dsn) == before and generator_capabilities(dsn) == generator
@@ -192,7 +198,7 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
         )
     assert baseline(dsn) == before and generator_capabilities(dsn) == generator
     for sql in (
-        "DELETE FROM mf_nse.source_routes",
+        "DELETE FROM mf_nse.source_head",
         "UPDATE mf_nse.source_head SET generation=0",
         "CREATE TABLE mf_nse.forbidden(x int)",
         "ALTER ROLE mfdata_verified_reader CREATEDB",
