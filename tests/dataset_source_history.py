@@ -7,9 +7,8 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def previous(path, data):
+def source_native_previous(path, data):
     assert type(data) is bytes
-    from amc_loading_history import previous as amc_previous
     # Intentional current API/schema/contract change. Validate complete bytes
     # before restoring the reviewed predecessor for old release assertions.
     name = Path(path).resolve().relative_to(ROOT).as_posix() if Path(path).resolve().is_relative_to(ROOT) else None
@@ -20,6 +19,13 @@ def previous(path, data):
     if row and hashlib.sha256(data).hexdigest() == row['current_sha256']:
         data = subprocess.check_output(['git', 'show', current['base']+':'+name], cwd=ROOT)
         assert hashlib.sha256(data).hexdigest() == row['previous_sha256'], name
+    return data
+
+
+def previous(path, data):
+    assert type(data) is bytes
+    from amc_loading_history import previous as amc_previous
+    data = source_native_previous(path, data)
     data = amc_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()

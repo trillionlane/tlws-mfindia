@@ -95,7 +95,9 @@ current Verify image smoke, additive OpenAPI, fund query composition, and respon
 models, plus explicit attribution v4 and its three spec/controller pairs.
 `NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json` pins their complete
 before/after bytes. The existing historical helper verifies these bytes before
-returning predecessor bytes to older release assertions. Historical authority
+returning predecessor bytes to older release assertions. The two original dataset
+workflow assertions explicitly compose that same finite source-native inverse
+before applying their unchanged historical hashes and exact workflow comparisons. Historical authority
 files are not rewritten. Current attribution v4 binds the new query and source-version
 bytes in all three specs/controllers without changing SQL, scope, transaction limits
 or spent-operation guards. The existing current-authority tests and packaged smokes
