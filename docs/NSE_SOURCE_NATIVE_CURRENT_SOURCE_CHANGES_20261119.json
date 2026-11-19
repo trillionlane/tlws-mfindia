@@ -1,0 +1,23 @@
+{
+  "base": "d36363f44a312542c0a69726304c129ee3ce7fee",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/verify.yml": {
+      "current_sha256": "2b58c4c87aa99240a38d6b6e2a564933742be99255db68dd79c003e054f84e34",
+      "previous_sha256": "fa1f31d2f7eee9da3dcd0a6aac95cb1a66565a10c9ae0c0b377a6b702b80116c"
+    },
+    "contracts/mfdataindia-openapi-v2.json": {
+      "current_sha256": "6c6dce9fd9d49fde141f3dc83a3ad9a52979f499b5737d6ff333a69deec9d2a0",
+      "previous_sha256": "3ec28d1387161e789c68f66076d01d31b2c0a3489ea65a699c1b2e83ac772e66"
+    },
+    "src/mfdataindia/api/queries.py": {
+      "current_sha256": "a435979fc4d5185b7e43e35507e5174c8ae1b9205d1706243caf75ab18af8443",
+      "previous_sha256": "1e93b6312e19ed47d04417409debefaef81a1b5b5e4f0422d83fc9f13be52edc"
+    },
+    "src/mfdataindia/api/schemas.py": {
+      "current_sha256": "e3169358c8a687a96b04a1d5cc5a589164a0a26026c86cc43d016710da3ae455",
+      "previous_sha256": "ced0fe2a782407cf34ec6a67480b4b93154f55214dcb95906d4a67ff7d56158e"
+    }
+  },
+  "scope": "Sprint 4 source-native fund-details extension and packaged image smoke. Full literal current files checked before historical bytes; behavior is tested by test_nse_source_native and its PostgreSQL/API regression. No historical authority or runtime permission change."
+}

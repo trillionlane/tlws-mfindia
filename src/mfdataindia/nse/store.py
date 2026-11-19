@@ -196,7 +196,7 @@ def publish(conn, parsed, walk, operation_id, *, expected_head):
 
 
 def _publish_transaction(conn, parsed, walk, operation_id, *, expected_head,
-                         resolve_rows=None, mapping_pin=None):
+                         resolve_rows=None, mapping_pin=None, stage=None):
     c.require(conn.info.transaction_status == TransactionStatus.IDLE, 'IMPORT_IDLE_CONNECTION_REQUIRED')
     report = {'format': 'nse01-import-result-v1', 'operation_id': operation_id, 'stage': 'transaction',
               'effect': 'NO_PUBLICATION', 'state': 'VALIDATED_NOT_PUBLISHED', 'disposition': 'STOP',
@@ -207,7 +207,7 @@ def _publish_transaction(conn, parsed, walk, operation_id, *, expected_head,
         conn.execute(LIMITS)
         stage_options = ({'resolve_rows': resolve_rows, 'mapping_pin': mapping_pin}
                          if resolve_rows is not None else {})
-        staged = _stage(conn, parsed, walk, operation_id, expected_head, **stage_options)
+        staged = (stage or _stage)(conn, parsed, walk, operation_id, expected_head, **stage_options)
         report.update(staged, stage='commit', effect='UNKNOWN', state='COMMIT_UNKNOWN', disposition='INSPECT_ONLY')
         committing = True
         conn.commit()

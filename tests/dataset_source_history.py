@@ -10,6 +10,16 @@ ROOT = Path(__file__).resolve().parents[1]
 def previous(path, data):
     assert type(data) is bytes
     from amc_loading_history import previous as amc_previous
+    # Intentional current API/schema/contract change. Validate complete bytes
+    # before restoring the reviewed predecessor for old release assertions.
+    name = Path(path).resolve().relative_to(ROOT).as_posix() if Path(path).resolve().is_relative_to(ROOT) else None
+    current_raw = (ROOT / 'docs/NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json').read_bytes()
+    assert hashlib.sha256(current_raw).hexdigest() == '7260488f36d59b8c02965bfcee57f01b66161974e605a5ef842f1881c966e11c'
+    current = json.loads(current_raw)
+    row = current['modified'].get(name)
+    if row and hashlib.sha256(data).hexdigest() == row['current_sha256']:
+        data = subprocess.check_output(['git', 'show', current['base']+':'+name], cwd=ROOT)
+        assert hashlib.sha256(data).hexdigest() == row['previous_sha256'], name
     data = amc_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()
