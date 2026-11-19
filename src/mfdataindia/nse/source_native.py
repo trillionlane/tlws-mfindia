@@ -226,6 +226,8 @@ def _stage(conn, parsed, walk, operation_id, expected_head, **unused):
             "INSERT INTO mf_nse.observations(operation_id,snapshot_id,manifest,disposition) VALUES(%s,%s,%s,%s)",
             (operation_id, prior["snapshot_id"], Jsonb(meta), "UNCHANGED"),
         )
+        source_roles.identity(conn)
+        source_storage.verify(conn)
         return {
             **prior["report"],
             "operation_id": operation_id,
