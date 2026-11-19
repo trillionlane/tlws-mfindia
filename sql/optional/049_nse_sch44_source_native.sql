@@ -22,6 +22,7 @@ CREATE VIEW mf_nse.source_routes WITH (security_barrier=true) AS
  JOIN mf_nse.sch_rows r USING(snapshot_id)
  JOIN mf_nse.variant_mappings m USING(snapshot_id,row_ordinal)
  JOIN mf_nse.source_artifacts a USING(artifact_id);
+GRANT SELECT ON mf_nse.source_routes TO mfdata_ingest;
 REVOKE ALL ON mf_nse.source_configuration,mf_nse.source_head,mf_nse.source_routes FROM PUBLIC;
 -- Routine publication cannot grant or enroll. The explicit installer registers
 -- only the safe source read model through the existing enrollment lifecycle.

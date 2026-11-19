@@ -87,12 +87,16 @@ reader denials and unchanged canonical/family/generator state. Existing SCH43,
 SCH44 FULL and all legacy regressions remain enabled. Local native PostgreSQL is
 not used. Both images import the new schema and check the packaged migration.
 
-Only four existing frozen files require a finite test-only historical inverse:
+Eleven intentional current files require a finite test-only historical inverse:
 current Verify image smoke, additive OpenAPI, fund query composition, and response
-models. `NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json` pins their complete
+models, plus explicit attribution v4 and its three spec/controller pairs.
+`NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json` pins their complete
 before/after bytes. The existing historical helper verifies these bytes before
 returning predecessor bytes to older release assertions. Historical authority
-files and runtime attestation documents are not rewritten; current behavior has
+files are not rewritten. Current attribution v4 binds the new query and source-version
+bytes in all three specs/controllers without changing SQL, scope, transaction limits
+or spent-operation guards. The existing current-authority tests and packaged smokes
+verify the bindings and reject drift. Current behavior has
 independent execution tests. The importer change adds one trusted stage callback
 to the existing transaction seam without changing default legacy behavior.
 

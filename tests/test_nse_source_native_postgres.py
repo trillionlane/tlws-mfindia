@@ -171,6 +171,14 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
     revised_raw, revised_plan = prepare(dsn, revised)
     revision = publish(dsn, revised_raw, revised_plan, result["snapshot_id"])
     assert revision["snapshot_id"] != result["snapshot_id"]
+    retired_replay = publish(dsn, raw, plan)
+    assert retired_replay["state"] == "UNCHANGED" and not retired_replay["head_advanced"]
+    with read(dsn) as client:
+        assert (
+            client.get("/api/funds/1").json()["nse"]["routes"][0]["snapshot_id"]
+            == revision["snapshot_id"]
+        )
+
     with connect(dsn) as conn:
         assert conn.execute("SELECT count(*) AS n FROM mf_nse.snapshots").fetchone()["n"] == 2
         assert conn.execute("SELECT count(*) AS n FROM mf_nse.sch_rows").fetchone()["n"] == 8

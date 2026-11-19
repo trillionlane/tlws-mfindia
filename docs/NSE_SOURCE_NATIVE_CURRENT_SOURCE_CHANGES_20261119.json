@@ -17,7 +17,35 @@
     "src/mfdataindia/api/schemas.py": {
       "current_sha256": "e3169358c8a687a96b04a1d5cc5a589164a0a26026c86cc43d016710da3ae455",
       "previous_sha256": "ced0fe2a782407cf34ec6a67480b4b93154f55214dcb95906d4a67ff7d56158e"
+    },
+    "src/mfdataindia/review/core_access_metadata_controller.py": {
+      "current_sha256": "e364da41275fd0d17d9494ce1bb3dda62859743536a3f23cc925bd4ef87f267c",
+      "previous_sha256": "236b4eab93101860ba5f389525edca2ce0dcf7cdbb860a3fffcf39e7e3decbcf"
+    },
+    "src/mfdataindia/review/core_access_metadata_controller_v2.py": {
+      "current_sha256": "0e67e283e7b26a9d1e3a4afa956219bb2b72cf95ba4ba84845f16dcf7f9cc0cf",
+      "previous_sha256": "ba0ee874a3f8c3253110d1a9140f69f83bb679e72645eb3c28bb5d762b0ec134"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec.py": {
+      "current_sha256": "d8e22be40c9665f267a9ceb214313e1bab67d55069479c9c230df1183bfac63d",
+      "previous_sha256": "b25ad434c993a6f464dadad161f33d4dd756b4b1dd172181b2397d8fee6cb04a"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec_v2.py": {
+      "current_sha256": "3704b17b98eeb0cc1d416e4594c13d7ce2905a7845c4089cc73e219652b6128b",
+      "previous_sha256": "242d3704b6d10fd69a196bc3165624933e97476bba15bb38d65bbeee53450b11"
+    },
+    "src/mfdataindia/review/core_permission_controller.py": {
+      "current_sha256": "a5d5f497441786be739d68777e90802e65d3b1e331f996a668e9aeabea07493c",
+      "previous_sha256": "d430aa77f87592121b93752110372d603006de34cc5c30549231573194068fe7"
+    },
+    "src/mfdataindia/review/core_permission_spec.py": {
+      "current_sha256": "adca7342c0b06a74c12f36a91fa08c8348826fe54533152c91fc5e8d43e60ffd",
+      "previous_sha256": "e662a7cb7266436b86ae6aec66d6bf31f69aa064900af2f04122d328f9887fe0"
+    },
+    "src/mfdataindia/review/reader_policy_source_version.py": {
+      "current_sha256": "1e19d7f2027db91c4a3d5868e018fb92ec7d9876a137776f2e6073fbd119c852",
+      "previous_sha256": "0411ecbac216686a7b96def5cc59797077fe2a490bddc8eb19c9e8de808df52b"
     }
   },
-  "scope": "Sprint 4 source-native fund-details extension and packaged image smoke. Full literal current files checked before historical bytes; behavior is tested by test_nse_source_native and its PostgreSQL/API regression. No historical authority or runtime permission change."
+  "scope": "Sprint 4 additive source-native API/schema/contract, image smoke, and explicit reader-policy-source-v4 attribution with three spec/controller pins. Complete current files checked before historical byte restoration. Historical authority remains unchanged. Current regressions validate all three packaged attribution smokes and native/API behavior."
 }
