@@ -1,4 +1,4 @@
--- Explicit direct-owner installation after 045/048. Does not change SCH FULL
+-- Source-only direct owner, with the versioned 045/048 composition. Does not change SCH FULL
 -- publication, canonical mappings, existing heads, grants, or default ACLs.
 CREATE TABLE mf_nse.source_configuration (
  singleton boolean PRIMARY KEY CHECK(singleton), definition_hash text NOT NULL
@@ -8,8 +8,8 @@ CREATE TABLE mf_nse.source_head (
  snapshot_id uuid REFERENCES mf_nse.snapshots, generation bigint NOT NULL CHECK(generation>=0)
 );
 INSERT INTO mf_nse.source_head VALUES(true,NULL,0);
-GRANT SELECT ON mf_nse.source_configuration TO mfdata_ingest;
-GRANT SELECT, UPDATE ON mf_nse.source_head TO mfdata_ingest;
+GRANT SELECT ON mf_nse.source_configuration TO mfdata_nse_ingest;
+GRANT SELECT, UPDATE ON mf_nse.source_head TO mfdata_nse_ingest;
 CREATE VIEW mf_nse.source_routes WITH (security_barrier=true) AS
  SELECT s.snapshot_id,r.row_ordinal+1 AS source_line,r.original_cells,r.field_holds,
    m.disposition,m.reason,m.candidates,
@@ -22,7 +22,7 @@ CREATE VIEW mf_nse.source_routes WITH (security_barrier=true) AS
  JOIN mf_nse.sch_rows r USING(snapshot_id)
  JOIN mf_nse.variant_mappings m USING(snapshot_id,row_ordinal)
  JOIN mf_nse.source_artifacts a USING(artifact_id);
-GRANT SELECT ON mf_nse.source_routes TO mfdata_ingest;
+GRANT SELECT ON mf_nse.source_routes TO mfdata_nse_ingest;
 REVOKE ALL ON mf_nse.source_configuration,mf_nse.source_head,mf_nse.source_routes FROM PUBLIC;
 -- Routine publication cannot grant or enroll. The explicit installer registers
 -- only the safe source read model through the existing enrollment lifecycle.

@@ -11,17 +11,82 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 import psycopg
+from psycopg import sql
+from psycopg.rows import dict_row
 from psycopg.conninfo import make_conninfo
 import pytest
 
 from mfdataindia.api.app import create_app
-from mfdataindia.datasets.policy import dataset_id
-from mfdataindia.nse import contract as c, sch44, source_native as native, store
-from test_nse01_postgres import nse_db as nse_db, ro01_db as ro01_db, api as dataset_api, head
-from test_ro01_reader_policy_postgres import connect, PASSWORD, generator_capabilities
+from mfdataindia.datasets.policy import dataset_id, DatasetError
+from mfdataindia.nse import (
+    contract as c,
+    sch44,
+    source_native as native,
+    store,
+    source_roles,
+    source_storage,
+)
+from test_nse01_postgres import ro01_db as ro01_db, api as dataset_api
+from test_ro01_reader_policy_postgres import connect, PASSWORD, generator_capabilities, adopt
 from test_nse_sch44_reconcile import source, amfi, ISIN
 
 pytestmark = pytest.mark.postgres
+
+
+@pytest.fixture
+def nse_source_db(ro01_db, pg_dsn):
+    adopt(ro01_db)
+    with connect(ro01_db, autocommit=False) as owner:
+        owner.execute(
+            "INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav,source) VALUES(1,'2026-11-09',12.3456,'AMFI')"
+        )
+        owner.execute(
+            "INSERT INTO mf.nav_history(amfi_scheme_code,nav_date,nav,source) VALUES(2,'2026-11-09',12345678901234.1234,'AMFI')"
+        )
+    identities = (source_roles.OWNER, source_roles.WRITER)
+    with psycopg.connect(pg_dsn, autocommit=True) as root:
+        for name in identities:
+            root.execute(
+                sql.SQL(
+                    "CREATE ROLE {} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD {}"
+                ).format(sql.Identifier(name), sql.Literal(PASSWORD))
+            )
+        try:
+            with psycopg.connect(
+                make_conninfo(pg_dsn, dbname="mfdataindia"), autocommit=True
+            ) as admin:
+                admin.execute(
+                    sql.SQL("CREATE SCHEMA mf_nse AUTHORIZATION {}").format(
+                        sql.Identifier(source_roles.OWNER)
+                    )
+                )
+                admin.execute(
+                    sql.SQL("GRANT USAGE ON SCHEMA mf TO {}").format(
+                        sql.Identifier(source_roles.WRITER)
+                    )
+                )
+                admin.execute(
+                    sql.SQL(
+                        "GRANT SELECT ON mf.funds,mf.amcs,mf.nav_history,mf.dataset_summary TO {}"
+                    ).format(sql.Identifier(source_roles.WRITER))
+                )
+            yield ro01_db
+        finally:
+            with psycopg.connect(
+                make_conninfo(pg_dsn, dbname="mfdataindia"), autocommit=True
+            ) as admin:
+                for name in identities:
+                    admin.execute(sql.SQL("DROP OWNED BY {} CASCADE").format(sql.Identifier(name)))
+            for name in reversed(identities):
+                root.execute(sql.SQL("DROP ROLE {}").format(sql.Identifier(name)))
+
+
+def head(dsn):
+    with connect(dsn, source_roles.OWNER) as conn:
+        value = conn.execute(
+            "SELECT snapshot_id,generation FROM mf_nse.family_heads WHERE family='SCH'"
+        ).fetchone()
+        return str(value["snapshot_id"]) if value["snapshot_id"] else None, value["generation"]
 
 
 def prepare(dsn, raw=None, *, source_date="17112026"):
@@ -90,7 +155,7 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
 
 
 def publish(dsn, raw, plan, expected=None):
-    with connect(dsn, "mfdata_ingest", autocommit=False) as conn:
+    with connect(dsn, source_roles.WRITER, autocommit=False) as conn:
         return native.publish(conn, raw, plan, c.digest(plan), str(uuid4()), expected_head=expected)
 
 
@@ -110,16 +175,24 @@ def baseline(dsn):
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
-def test_native_source_all_fields_routes_api_replay_revision_and_preservation(nse_db, monkeypatch):
-    dsn = nse_db
+def test_native_source_all_fields_routes_api_replay_revision_and_preservation(
+    nse_source_db, pg_dsn
+):
+    dsn = nse_source_db
     with connect(dsn, autocommit=False) as owner:
         owner.execute("UPDATE mf.amcs SET amfi_amc_name='Fixture Mutual Fund' WHERE amc_id=1")
         owner.execute(
             "UPDATE mf.funds SET option_type='IDCW',isin_growth_or_div_payout=%s WHERE amfi_scheme_code=1",
             (ISIN,),
         )
+    with connect(dsn, source_roles.OWNER, autocommit=False) as owner:
+        owner.execute("SELECT 1")
         native.install(owner)
         native.install(owner)
+        assert (
+            owner.execute("SELECT version FROM mf_nse.configuration").fetchone()["version"]
+            == source_storage.PROFILE
+        )
     before = baseline(dsn)
     generator = generator_capabilities(dsn)
     with read(dsn) as client:
@@ -131,6 +204,14 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
     start = perf_counter()
     result = publish(dsn, raw, plan)
     assert result["effect"] == "COMMITTED_VERIFIED"
+    assert (
+        result["format"] == "nse-source-native-result-v1" and not result["full_sch_head_advanced"]
+    )
+    with connect(dsn, source_roles.WRITER, autocommit=False) as observer:
+        inspection = native.inspect(observer, result["operation_id"])
+        assert inspection["active_snapshot_id"] == result["snapshot_id"]
+        assert inspection["effect"] == "COMMITTED_VERIFIED"
+
     with read(dsn) as client:
         response = client.get("/api/funds/1")
         assert response.status_code == 200, response.text
@@ -160,7 +241,7 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
         assert len(response.json()["rows"]) == 4  # source-native includes held/SIF, not attached
     # Current identity drift can withhold an old exact link but never create a
     # replacement. Read on the same real transaction; rollback fixture change.
-    with connect(dsn, autocommit=False) as conn:
+    with psycopg.connect(make_conninfo(pg_dsn, dbname="mfdataindia"), row_factory=dict_row) as conn:
         conn.execute("UPDATE mf.funds SET isin_growth_or_div_payout=NULL WHERE amfi_scheme_code=1")
         assert native.fund_section(conn, 1)["status"] == "NO_VERIFIED_LINK"
         conn.rollback()
@@ -188,33 +269,38 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
             == revision["snapshot_id"]
         )
 
-    with connect(dsn) as conn:
+    with connect(dsn, source_roles.OWNER) as conn:
         assert conn.execute("SELECT count(*) AS n FROM mf_nse.snapshots").fetchone()["n"] == 2
         assert conn.execute("SELECT count(*) AS n FROM mf_nse.sch_rows").fetchone()["n"] == 8
         assert (
             conn.execute("SELECT generation FROM mf_nse.source_head").fetchone()["generation"] == 2
         )
-    # Fault after complete readback, before commit. All old data/head survive.
-    real_fingerprint = store._fingerprint
-    calls = []
-
-    def fail_late(conn):
-        calls.append(1)
-        return real_fingerprint(conn) if len(calls) == 1 else "injected-late-mismatch"
-
+    # A real BEFORE INSERT corruption must be found by complete readback,
+    # not a fake success/failure report. The source writer cannot bypass it.
     next_raw, next_plan = prepare(dsn, raw.replace(b"Current title", b"Later title"))
-    with monkeypatch.context() as fault:
-        fault.setattr(store, "_fingerprint", fail_late)
-        with pytest.raises(store.OutcomeError, match="CANONICAL_PRESERVATION_FAILED") as error:
+    with connect(dsn, source_roles.OWNER, autocommit=False) as owner:
+        owner.execute("""CREATE FUNCTION mf_nse.fixture_corrupt() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN NEW.original_cells=jsonb_set(NEW.original_cells,'{8}','"fixture-corrupt"');
+            RETURN NEW; END $$;
+            CREATE TRIGGER fixture_corrupt BEFORE INSERT ON mf_nse.sch_rows
+            FOR EACH ROW EXECUTE FUNCTION mf_nse.fixture_corrupt()""")
+    try:
+        with pytest.raises(store.OutcomeError, match="SOURCE_FULL_READBACK_DIFFERS") as error:
             publish(dsn, next_raw, next_plan, revision["snapshot_id"])
+    finally:
+        with connect(dsn, source_roles.OWNER, autocommit=False) as owner:
+            owner.execute(
+                "DROP TRIGGER fixture_corrupt ON mf_nse.sch_rows; DROP FUNCTION mf_nse.fixture_corrupt()"
+            )
     assert error.value.report["effect"] == "ROLLBACK_CONFIRMED"
+    assert error.value.report["head_kind"] == "SOURCE_REFERENCE"
     with read(dsn) as client:
         assert (
             client.get("/api/funds/1").json()["nse"]["routes"][0]["snapshot_id"]
             == revision["snapshot_id"]
         )
     assert baseline(dsn) == before and generator_capabilities(dsn) == generator
-    for sql in (
+    for statement in (
         "DELETE FROM mf_nse.source_head",
         "UPDATE mf_nse.source_head SET generation=0",
         "CREATE TABLE mf_nse.forbidden(x int)",
@@ -223,7 +309,7 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
     ):
         with connect(dsn, "mfdata_verified_reader") as conn:
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
-                conn.execute(sql)
+                conn.execute(statement)
     print(
         json.dumps(
             {
@@ -234,3 +320,74 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(ns
             }
         )
     )
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_native_source_role_scope_rejects_shared_elevation_and_preserves_canonical(
+    nse_source_db, pg_dsn
+):
+    from mfdataindia.datasets import catalogue, enrollment
+
+    dsn = nse_source_db
+    before = baseline_before_install(dsn)
+    with connect(dsn, autocommit=False) as shared:
+        shared.execute("SELECT 1")
+        with pytest.raises(c.ImportError, match="NSE_SOURCE_IDENTITY_UNSAFE"):
+            native.install(shared)
+        shared.rollback()
+    with connect(dsn, source_roles.OWNER, autocommit=False) as owner:
+        owner.execute("SELECT 1")
+        owner.execute("CREATE TYPE mf_nse.fixture_occupied AS ENUM ('retained')")
+        with pytest.raises(c.ImportError, match="NSE_SOURCE_EXISTING_NAMESPACE_INCOMPATIBLE"):
+            native.install(owner)
+        owner.execute("DROP TYPE mf_nse.fixture_occupied")
+        native.install(owner)
+        assert catalogue.creator_supported("mf_nse", source_roles.OWNER)
+        assert not catalogue.creator_supported("mf", source_roles.OWNER)
+        assert not catalogue.creator_supported("mf_unrelated", source_roles.OWNER)
+        with pytest.raises(DatasetError, match="NSE_SOURCE_READ_MODEL_ONLY"):
+            enrollment.enroll(
+                owner,
+                "mf_nse",
+                "source_artifacts",
+                classification="fund_research",
+                title="forbidden",
+            )
+    assert baseline_before_install(dsn) == before
+    with connect(dsn, source_roles.WRITER) as writer:
+        assert not writer.execute(
+            "SELECT has_database_privilege(current_database(),'CREATE') AS value"
+        ).fetchone()["value"]
+        for statement in (
+            "UPDATE mf.funds SET scheme_name=scheme_name",
+            "DELETE FROM mf.nav_history",
+            "UPDATE mf_nse.family_heads SET generation=0",
+            "DELETE FROM mf_nse.current_sch",
+            "CREATE TABLE mf_nse.forbidden(x int)",
+        ):
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                writer.execute(statement)
+    # A newly introduced business write grant must stop source publication too.
+    with psycopg.connect(make_conninfo(pg_dsn, dbname="mfdataindia"), autocommit=True) as admin:
+        admin.execute(
+            sql.SQL("GRANT UPDATE ON mf.funds TO {}").format(sql.Identifier(source_roles.WRITER))
+        )
+    try:
+        with connect(dsn, source_roles.WRITER, autocommit=False) as writer:
+            writer.execute("SELECT 1")
+            with pytest.raises(c.ImportError, match="NSE_SOURCE_IDENTITY_UNSAFE"):
+                source_roles.identity(writer)
+            writer.rollback()
+    finally:
+        with psycopg.connect(make_conninfo(pg_dsn, dbname="mfdataindia"), autocommit=True) as admin:
+            admin.execute(
+                sql.SQL("REVOKE UPDATE ON mf.funds FROM {}").format(
+                    sql.Identifier(source_roles.WRITER)
+                )
+            )
+    assert baseline_before_install(dsn) == before
+
+
+def baseline_before_install(dsn):
+    with connect(dsn) as conn:
+        return store._fingerprint(conn)

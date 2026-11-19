@@ -6,15 +6,28 @@ No purchase/SIP eligibility follows from a source field or collateral acceptance
 
 ## Storage and installation
 
-Reuse 045 artifacts, snapshots, original row cells, mapping evidence, observations,
-and the existing single-commit transaction/ambiguity reporting. Apply immutable
-048, then additive 049 through `nse.source_native.install` in the existing direct,
-non-elevated owner transaction. Re-entry verifies the new migration hash and
-reconciles only the safe enrolled `mf_nse.source_routes` view. Routine publication
-never enrolls, grants, migrates or resets roles. The existing SCH family head,
-current_sch and FULL publication checks remain unchanged. A separate source head
-selects the accepted source reference. Original bytes and every source line,
-including identical rows if present, remain in versioned storage.
+Reuse the immutable 045/048 table templates through the explicit versioned
+`nse-source-native-storage-v1` composition, then additive 049. The derived SQL has
+its own hash: it is not represented as historical migration 045. The two original
+migration files remain byte-identical. No live schema exists at preparation time.
+
+A separately reviewed administrator proposal provisions only the fixed direct
+identities `mfdata_nse_owner` and `mfdata_nse_ingest`, both NOINHERIT, non-elevated,
+without memberships or database CREATE. The owner owns only a pre-provisioned
+empty `mf_nse` namespace. The writer gets four canonical SELECT inputs and only
+append-only source history plus UPDATE on the separate source head. No canonical
+write/DDL or FULL-head/current_sch mutation is granted. Existing shared roles are
+not changed. Fresh DEV inspection found those shared roles elevated; rebinding a
+secret alone cannot satisfy their unchanged legacy importer guard. Credentials
+and live provisioning require separate approval and are not created by this PR.
+
+`nse.source_native.install` runs on the direct new owner in its outer transaction,
+refuses an occupied legacy namespace, and verifies the exact derived configuration
+on re-entry. Only `mf_nse.source_routes` is an eligible dataset from this creator;
+private source/control tables cannot enroll. Routine publication never enrolls,
+grants, migrates or resets roles. The existing SCH family head, current_sch and
+FULL publication checks remain unchanged. A separate source head selects the
+source reference. Original bytes and every source line remain versioned.
 
 The reader gets SELECT on the safe view, not the private payload, archive binding,
 operation records or source configuration. Existing broad/restricted profiles,
@@ -38,11 +51,19 @@ The trusted operator separately reviews the complete candidate and supplies its
 hash to `source_native.publish`, together with a fresh operation ID and expected
 source head. Revalidate payload/rows and candidate hash before database work.
 Inside REPEATABLE READ, lock the source head and verify the exact current catalogue
-version and identity-input hash. Any drift stops. Preserve canonical data, retain
+version and identity-input hash. Any drift stops. Verify both source identities cannot write canonical data before and after full
+readback inside the transaction; retain
 all 44 literal cells, fully read back every stored row/mapping and original bytes,
 and commit once. Existing 5s statement/lock and 15s transaction limits apply.
 A failed precommit check rolls back; COMMIT uncertainty is inspect-only with no
 blind retry. Durable operation reservation remains the existing operator's duty.
+`source_native.inspect` reads only the original operation and separate source
+head. An absent observation is UNKNOWN and never authorizes replay. Source result
+format identifies SOURCE_REFERENCE without claiming FULL-head advancement. The
+legacy FULL importer retains its original canonical value-fingerprint scans; the
+new source-only composition uses verified absence of canonical write capability,
+avoiding repeated full NAV-history scans. Native tests compare actual canonical
+values, including precise NUMERIC NAVs, before/after success and rollback.
 A known replay creates no snapshot/route and never reactivates a retired revision.
 Retrieval time and archive location/generation are observation provenance; changing
 only those records another observation without duplicating source business rows.
@@ -86,13 +107,19 @@ fields, null/blank distinction, both flag disagreements, withheld products and
 missing corroboration. `test_nse_source_native_postgres` uses the existing hosted
 native fixture for installation/re-entry, real fund-detail and dataset reads,
 multiple routes, SIF/held separation, replay, same-date revision, late rollback,
-reader denials and unchanged canonical/family/generator state. Existing SCH43,
+reader denials and unchanged canonical/family/generator state. The native cases
+connect as both new direct identities and prove occupied namespaces, shared-role
+callers and unsafe new grants are rejected. A real late INSERT trigger corruption
+fails full readback and rolls back the source head and history. Existing SCH43,
 SCH44 FULL and all legacy regressions remain enabled. Local native PostgreSQL is
 not used. Both images import the new schema and check the packaged migration.
 
-Eleven intentional current files require a finite test-only historical inverse:
+Sixteen intentional current files require a finite test-only historical inverse:
 current Verify image smoke, additive OpenAPI, fund query composition, and response
-models, plus explicit attribution v4 and its three spec/controller pairs.
+models, explicit attribution v4 and its three spec/controller pairs, scoped
+dataset creator/enrollment guards, the existing exhaustive early-test partition,
+and the two test-only historical composition helpers. The early gate retains all
+previous native cases and adds these source cases; the remainder is disjoint.
 `NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json` pins their complete
 before/after bytes. The existing historical helper verifies these bytes before
 returning predecessor bytes to older release assertions. The two original dataset

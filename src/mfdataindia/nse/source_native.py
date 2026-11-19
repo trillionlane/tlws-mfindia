@@ -14,7 +14,7 @@ from uuid import uuid5
 from psycopg.types.json import Jsonb
 
 from mfdataindia.datasets import enrollment, policy as datasets
-from . import contract as c, sch44, sch44_reconcile as identity, store
+from . import contract as c, sch44, sch44_reconcile as identity, store, source_storage, source_roles
 from .schema import HEADERS44
 
 PROFILE = "nse-sch44-source-native-v1"
@@ -40,17 +40,8 @@ PROVENANCE_KEYS = {
 
 
 def install(conn):
-    """Explicit existing direct-owner path; caller owns the outer transaction."""
-    store.install(conn)
-    expected = sha256(MIGRATION.read_bytes()).hexdigest()
-    present = conn.execute("SELECT to_regclass('mf_nse.source_configuration') AS value").fetchone()[
-        "value"
-    ]
-    if not present:
-        conn.execute(store.MIGRATION.with_name("048_nse_sch44_uat_publication.sql").read_text())
-        conn.execute(MIGRATION.read_text())
-        conn.execute("INSERT INTO mf_nse.source_configuration VALUES(true,%s)", (expected,))
-    _configuration(conn)
+    """Fixed source-only owner path; caller owns the outer transaction."""
+    source_storage.install(conn)
     enrollment.enroll(
         conn,
         "mf_nse",
@@ -67,16 +58,6 @@ def install(conn):
     )
     c.require(own["permissions_verified"], "READER_RECONCILIATION_FAILED")
     return own
-
-
-def _configuration(conn):
-    row = conn.execute(
-        "SELECT definition_hash FROM mf_nse.source_configuration WHERE singleton"
-    ).fetchone()
-    c.require(
-        row and row["definition_hash"] == sha256(MIGRATION.read_bytes()).hexdigest(),
-        "SOURCE_INSTALLATION_DIFFERS",
-    )
 
 
 def prepare(
@@ -213,9 +194,8 @@ def snapshot_key(plan):
 
 
 def _stage(conn, parsed, walk, operation_id, expected_head, **unused):
-    store._identity(conn)
-    store._configuration(conn)
-    _configuration(conn)
+    source_roles.identity(conn)
+    source_storage.verify(conn)
     plan = walk
     meta = plan["metadata"]
     conn.execute("LOCK TABLE mf.funds,mf.amcs,mf.nav_history IN ACCESS SHARE MODE")
@@ -255,10 +235,13 @@ def _stage(conn, parsed, walk, operation_id, expected_head, **unused):
     c.require(
         (str(head["snapshot_id"]) if head["snapshot_id"] else None) == expected_head, "HEAD_CHANGED"
     )
-    before = store._fingerprint(conn)
     snapshot_id = uuid5(store.NAMESPACE, work)
     artifact_id = uuid5(store.NAMESPACE, meta["sha256"])
     result = {
+        "format": "nse-source-native-result-v1",
+        "head_kind": "SOURCE_REFERENCE",
+        "full_sch_head_advanced": False,
+        "canonical_preservation": "WRITES_DENIED_BEFORE_AND_AFTER",
         "operation_id": operation_id,
         "snapshot_id": str(snapshot_id),
         "state": "PUBLISHED_WITH_LIMITATIONS",
@@ -345,7 +328,11 @@ def _stage(conn, parsed, walk, operation_id, expected_head, **unused):
         "SELECT original_bytes FROM mf_nse.source_artifacts WHERE artifact_id=%s", (artifact_id,)
     ).fetchone()
     c.require(bytes(retained["original_bytes"]) == parsed, "SOURCE_ORIGINAL_DIFFERS")
-    c.require(store._fingerprint(conn) == before, "CANONICAL_PRESERVATION_FAILED")
+    # Both source identities are incapable of canonical writes. Recheck the
+    # complete capability boundary inside this transaction after full readback.
+    # The legacy full importer retains its original value-preservation scans.
+    source_roles.identity(conn)
+    source_storage.verify(conn)
     conn.execute(
         "INSERT INTO mf_nse.observations(operation_id,snapshot_id,manifest,disposition) VALUES(%s,%s,%s,%s)",
         (operation_id, snapshot_id, Jsonb(meta), result["state"]),
@@ -371,9 +358,18 @@ def publish(conn, raw, plan, reviewed_sha256, operation_id, *, expected_head):
         and [tuple(r["cells"]) for r in plan["rows"]] == [cells for cells, _ in sch44.parse(raw)],
         "SOURCE_BYTES_DIFFER",
     )
-    return store._publish_transaction(
-        conn, raw, plan, operation_id, expected_head=expected_head, stage=_stage
-    )
+    try:
+        return store._publish_transaction(
+            conn, raw, plan, operation_id, expected_head=expected_head, stage=_stage
+        )
+    except store.OutcomeError as error:
+        # Source context changes no effect/ambiguity semantics of the shared seam.
+        error.report.update(
+            format="nse-source-native-result-v1",
+            head_kind="SOURCE_REFERENCE",
+            full_sch_head_advanced=False,
+        )
+        raise
 
 
 def fund_section(conn, code):
@@ -428,3 +424,39 @@ def fund_section(conn, code):
             }
         )
     return {**empty, "status": "VERIFIED_LINKS" if routes else "NO_VERIFIED_LINK", "routes": routes}
+
+
+def inspect(conn, operation_id):
+    """Read the original operation only; absence is UNKNOWN, never replay authority."""
+    from psycopg.pq import TransactionStatus
+
+    c.operation(operation_id)
+    c.require(
+        conn.info.transaction_status == TransactionStatus.IDLE, "IMPORT_IDLE_CONNECTION_REQUIRED"
+    )
+    conn.execute("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY")
+    conn.execute(store.LIMITS)
+    try:
+        source_roles.identity(conn)
+        source_storage.verify(conn)
+        observed = conn.execute(
+            "SELECT snapshot_id,disposition FROM mf_nse.observations WHERE operation_id=%s",
+            (operation_id,),
+        ).fetchone()
+        head = conn.execute(
+            "SELECT snapshot_id,generation FROM mf_nse.source_head WHERE singleton"
+        ).fetchone()
+        return {
+            "format": "nse-source-native-result-v1",
+            "head_kind": "SOURCE_REFERENCE",
+            "operation_id": operation_id,
+            "state": observed["disposition"] if observed else "UNKNOWN",
+            "snapshot_id": str(observed["snapshot_id"]) if observed else None,
+            "effect": "COMMITTED_VERIFIED" if observed else "UNKNOWN",
+            "active_snapshot_id": str(head["snapshot_id"]) if head["snapshot_id"] else None,
+            "generation": head["generation"],
+            "disposition": "INSPECT_ONLY",
+            "consumer_acceptance": "NOT_OBSERVED",
+        }
+    finally:
+        conn.rollback()

@@ -10,6 +10,10 @@
       "current_sha256": "6c6dce9fd9d49fde141f3dc83a3ad9a52979f499b5737d6ff333a69deec9d2a0",
       "previous_sha256": "3ec28d1387161e789c68f66076d01d31b2c0a3489ea65a699c1b2e83ac772e66"
     },
+    "scripts/run_ci_tests.py": {
+      "current_sha256": "5f70fe7ee6a7baae45fd3e00a69ca27e63f8f5239f777e1ef08f62176360bd6c",
+      "previous_sha256": "251003892372573cd2a224a200f4f2c2a52c722031ccb572d4bec9a516c56c82"
+    },
     "src/mfdataindia/api/queries.py": {
       "current_sha256": "a435979fc4d5185b7e43e35507e5174c8ae1b9205d1706243caf75ab18af8443",
       "previous_sha256": "1e93b6312e19ed47d04417409debefaef81a1b5b5e4f0422d83fc9f13be52edc"
@@ -17,6 +21,14 @@
     "src/mfdataindia/api/schemas.py": {
       "current_sha256": "e3169358c8a687a96b04a1d5cc5a589164a0a26026c86cc43d016710da3ae455",
       "previous_sha256": "ced0fe2a782407cf34ec6a67480b4b93154f55214dcb95906d4a67ff7d56158e"
+    },
+    "src/mfdataindia/datasets/catalogue.py": {
+      "current_sha256": "a85259e6607afb822d88d958cf486651be45600736e115f9683a3d20203ad90d",
+      "previous_sha256": "42d57fbe2bc476a5f0b6fdc44d60629b929b4a62a219c6207f4ae220b06ed7b8"
+    },
+    "src/mfdataindia/datasets/enrollment.py": {
+      "current_sha256": "5e3a0c41bb4f1ebcd0fde4cda4b3e93895a6a077b64e8a05256a42b2c43830bb",
+      "previous_sha256": "a32540db0c2af2abb299d8c12ece16d6de62682b4851fa5e2f3b49bba61d9e6a"
     },
     "src/mfdataindia/review/core_access_metadata_controller.py": {
       "current_sha256": "e364da41275fd0d17d9494ce1bb3dda62859743536a3f23cc925bd4ef87f267c",
@@ -45,7 +57,15 @@
     "src/mfdataindia/review/reader_policy_source_version.py": {
       "current_sha256": "1e19d7f2027db91c4a3d5868e018fb92ec7d9876a137776f2e6073fbd119c852",
       "previous_sha256": "0411ecbac216686a7b96def5cc59797077fe2a490bddc8eb19c9e8de808df52b"
+    },
+    "tests/tag_deploy_traffic_history.py": {
+      "current_sha256": "431ecd4d2dda94d5dc2127fcd4d1f983fd5a1dbd9967462788085a751fb78209",
+      "previous_sha256": "902ff243912d0028b97b22af562dea5991d499f3330cd323534ce13a2460ea4c"
+    },
+    "tests/test_dataset_source_changes.py": {
+      "current_sha256": "9f0b57b0c58e076acc419e067bf8950d0a067f2b232c38c9753b6af421c8ea63",
+      "previous_sha256": "99a918a6c038a2ea045f01af393ca132071d4abff6d71efa173819686493ae4e"
     }
   },
-  "scope": "Sprint 4 additive source-native API/schema/contract, image smoke, and explicit reader-policy-source-v4 attribution with three spec/controller pins. Complete current files checked before historical byte restoration. Historical authority remains unchanged. Current regressions validate all three packaged attribution smokes and native/API behavior."
+  "scope": "Source-native API/storage composition, narrow source owner enrollment, early exhaustive native gate and explicit source attribution. Finite whole-file historical inverses only. All original assertions/old authority documents remain intact; current behavior is tested directly."
 }

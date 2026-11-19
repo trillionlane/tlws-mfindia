@@ -197,3 +197,38 @@ def test_snapshot_identity_excludes_only_retrieval_observations():
     assert native.snapshot_key(replay) == native.snapshot_key(plan)
     replay["rows"][0]["disposition"] = "MF_HELD"
     assert native.snapshot_key(replay) != native.snapshot_key(plan)
+
+
+def test_source_storage_composition_preserves_templates_and_limits_roles():
+    from mfdataindia.nse import source_storage, source_roles
+    from mfdataindia.datasets import catalogue
+
+    ddl, digest = source_storage.definition()
+    assert len(digest) == 64
+    assert (
+        sha256(source_storage.store.MIGRATION.read_bytes()).hexdigest()
+        == source_storage.TEMPLATE45_SHA256
+    )
+    assert "CREATE SCHEMA" not in ddl and "CREATE ROLE" not in ddl
+    assert "AUTHORIZATION mfdata_admin" not in ddl
+    assert "TO mfdata_ingest" not in ddl
+    assert "GRANT SELECT, UPDATE ON mf_nse.family_heads" not in ddl
+    assert "GRANT SELECT, INSERT, DELETE ON mf_nse.current_sch" not in ddl
+    assert "GRANT SELECT ON mf.amcs" not in ddl
+    assert "TO " + source_roles.WRITER in ddl
+    assert catalogue.creator_supported("mf_nse", source_roles.OWNER)
+    assert not catalogue.creator_supported("mf_unrelated", source_roles.OWNER)
+    assert not catalogue.creator_supported("mf", source_roles.OWNER)
+
+
+def test_source_native_cases_use_existing_exhaustive_early_partition():
+    from test_ci_test_partition import Partition, Item, collect
+
+    items = [
+        Item("tests/test_nse_source_native_postgres.py::test_roles", True),
+        Item("tests/test_uti_v2_store.py::test_retained", True),
+        Item("tests/test_nse_source_native.py::test_file_only"),
+    ]
+    first, dropped = collect(Partition("focused"), items)
+    assert first == [items[0].nodeid, items[1].nodeid]
+    assert dropped == [items[2].nodeid]

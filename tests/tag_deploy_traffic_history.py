@@ -40,6 +40,8 @@ def _old(name):
 
 
 def before_issuer_binding(name, data):
+    from dataset_source_history import source_native_previous
+    data = source_native_previous(ROOT / name, data)
     if name == TAG_UNIT and hashlib.sha256(data).hexdigest() == TAG_STATEMENT_UNIT_SHA256:
         data = subprocess.check_output(["git", "show", f"{TAG_STATEMENT_BASE}:{name}"], cwd=ROOT)
         assert hashlib.sha256(data).hexdigest() == TAG_STREAM_UNIT_SHA256

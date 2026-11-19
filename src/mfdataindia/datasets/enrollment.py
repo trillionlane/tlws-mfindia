@@ -40,6 +40,8 @@ def enroll(conn, schema, relation, *, classification, title, key_columns=None):
     p.require(target and target['owner'] == caller['principal'] and target['kind'] in ('r','p','v','m'),
               'DATASET_ENROLLMENT_DIRECT_OWNER_REQUIRED')
     p.require(registry.creator_supported(schema,caller['principal']), 'DATASET_CREATOR_SCHEMA_POLICY_CONFLICT')
+    p.require(caller['principal'] != registry.NSE_SOURCE_OWNER or (schema,relation)==('mf_nse','source_routes'),
+              'NSE_SOURCE_READ_MODEL_ONLY')
     # A comment is the current trusted eligibility declaration. It contains no
     # credentials, row values, SQL, role grant, public ACL or executable action.
     raw = enrollment_comment(classification=classification, title=title, key_columns=key_columns)
