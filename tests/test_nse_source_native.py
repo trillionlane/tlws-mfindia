@@ -127,7 +127,8 @@ def test_independent_product_pin_and_clean_truncation():
         )
 
 
-def test_actual_file_preparation_cli_is_private_and_offline(tmp_path, capsys):
+@pytest.mark.parametrize("row_count", [1, 1800])
+def test_actual_file_preparation_cli_is_private_and_offline(tmp_path, capsys, row_count):
     import runpy
     from pathlib import Path
 
@@ -135,6 +136,21 @@ def test_actual_file_preparation_cli_is_private_and_offline(tmp_path, capsys):
         str(Path(__file__).resolve().parents[1] / "scripts/prepare_nse_source_native.py")
     )["main"]
     args = inputs()
+    if row_count > 1:
+        header, row = args["raw"].splitlines()
+        args["raw"] = b"\n".join([header] + [row] * row_count) + b"\n"
+        args["provenance"].update(
+            sha256=sha256(args["raw"]).hexdigest(),
+            byte_length=len(args["raw"]),
+            row_count=row_count,
+        )
+        decision = args["product_review"]["rows"][0]
+        args["product_review"].update(
+            source_sha256=args["provenance"]["sha256"],
+            rows=[{**decision, "source_line": line} for line in range(2, row_count + 2)],
+        )
+        args["product_review_sha256"] = c.digest(args["product_review"])
+        assert len(c.canonical(args["product_review"])) > 256 * 1024
     argv = []
     for key in (
         "raw",

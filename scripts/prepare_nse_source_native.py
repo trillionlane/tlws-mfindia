@@ -35,7 +35,7 @@ def main(argv=None):
             read(args.earlier_source),
             read(args.amfi_first),
             read(args.amfi_second),
-            c.decode(read(args.product_review)),
+            sch44._json(read(args.product_review), "PRODUCT_REVIEW_INVALID"),
             args.product_review_sha256,
         )
         body = c.canonical(candidate)
