@@ -172,3 +172,14 @@ def test_malformed_metadata_fails_with_allowlisted_reason(field, value, reason):
     args["provenance"][field] = value
     with pytest.raises(c.ImportError, match=reason):
         native.prepare(**args)
+
+
+def test_candidate_hash_survives_json_file_roundtrip():
+    import json
+
+    plan = native.prepare(**inputs())
+    raw = c.canonical(plan)
+    decoded = json.loads(raw)
+    assert c.canonical(decoded) == raw
+    assert c.digest(decoded) == c.digest(plan) == sha256(raw).hexdigest()
+    assert all(isinstance(k, str) for k in plan["rows"][0]["field_holds"])
