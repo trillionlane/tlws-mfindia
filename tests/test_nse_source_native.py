@@ -248,3 +248,29 @@ def test_source_native_cases_use_existing_exhaustive_early_partition():
     first, dropped = collect(Partition("focused"), items)
     assert first == [items[0].nodeid, items[1].nodeid]
     assert dropped == [items[2].nodeid]
+
+
+@pytest.mark.parametrize("change", ["legacy_rule", "missing_rule", "wrong_witness_hash"])
+def test_publication_rejects_stale_identity_contract_before_database(change):
+    args = inputs()
+    plan = native.prepare(**args)
+    if change == "legacy_rule":
+        plan["metadata"]["identity_rule"] = "nse-sch44-production-link-review-v1"
+    elif change == "missing_rule":
+        plan["metadata"].pop("identity_rule")
+    else:
+        plan["metadata"]["identity_evidence"]["source"] = "0" * 64
+    expected = (
+        "SOURCE_IDENTITY_EVIDENCE_DIFFERS"
+        if change == "wrong_witness_hash"
+        else "SOURCE_IDENTITY_RULE_DIFFERS"
+    )
+    with pytest.raises(c.ImportError, match=expected):
+        native.publish(
+            None,
+            args["raw"],
+            plan,
+            c.digest(plan),
+            "11111111-1111-4111-8111-111111111111",
+            expected_head=None,
+        )

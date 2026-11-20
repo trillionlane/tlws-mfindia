@@ -10,7 +10,8 @@ not adverse evidence; competing retained keys, conflicting retained ISINs and
 incompatible source tokens still block. Record an absent earlier line as null,
 never fabricate a historical witness. Source names/suffixes do not select a fund.
 
-The source-native candidate records `identity_rule`. Its fund-details route adds
+The source-native candidate records `identity_rule`. Publication rejects an old or
+missing rule version or inconsistent evidence hash set before opening a transaction. Its fund-details route adds
 `identity_evidence`: rule version, AMFI code/issuer, historical route state and
 both AMFI witness hashes/line numbers/periodicity. All 44 literal fields, original
 flag, exact AMFI slot and distinct route codes remain separate. No canonical

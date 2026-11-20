@@ -356,6 +356,17 @@ def publish(conn, raw, plan, reviewed_sha256, operation_id, *, expected_head):
         and c.digest(plan) == reviewed_sha256,
         "SOURCE_CANDIDATE_UNREVIEWED",
     )
+    meta = plan["metadata"]
+    evidence = meta.get("identity_evidence")
+    c.require(meta.get("identity_rule") == identity.PROFILE, "SOURCE_IDENTITY_RULE_DIFFERS")
+    c.require(
+        type(evidence) is dict
+        and set(evidence) == {"source", "catalogue", "earlier_source", "amfi_first", "amfi_second"}
+        and all(type(v) is str and c.HASH.fullmatch(v) for v in evidence.values())
+        and evidence["source"] == meta["sha256"]
+        and evidence["catalogue"] == meta["catalogue_sha256"],
+        "SOURCE_IDENTITY_EVIDENCE_DIFFERS",
+    )
     c.require(
         plan["metadata"]["sha256"] == sha256(raw).hexdigest()
         and [tuple(r["cells"]) for r in plan["rows"]] == [cells for cells, _ in sch44.parse(raw)],
