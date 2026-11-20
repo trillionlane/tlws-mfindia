@@ -14,15 +14,18 @@ import psycopg
 
 from . import policy as p, projections
 from mfdataindia.review import reader_access_profile as profiles
+from mfdataindia.nse.source_roles import OWNER as NSE_SOURCE_OWNER
 
 PREFIX = "mfdata-consumer-dataset-v1:"
-SUPPORTED_CREATORS = frozenset({p.OWNER, "mfdata_ingest"})
+SUPPORTED_CREATORS = frozenset({p.OWNER, "mfdata_ingest", NSE_SOURCE_OWNER})
 
 
 def creator_supported(schema, owner):
     # Do not break the accepted RO01 direct-owner guard in its existing sixteen
     # schemas. A second creator is supported for its additional enrolled
     # research schema, not by silently weakening the installed legacy policy.
+    if owner == NSE_SOURCE_OWNER:
+        return schema == "mf_nse"
     return owner in SUPPORTED_CREATORS and (schema not in p.CURRENT_SCHEMAS or owner==p.OWNER)
 SENSITIVE_NAMES = frozenset({"password", "passwd", "dsn", "connection_string", "private_key",
                              "access_token", "refresh_token", "credential", "credentials",
@@ -198,6 +201,8 @@ def verify_reader(conn):
 
 def checked(row):
     enrollment = decode_enrollment(row["enrollment"])
+    p.require(row["owner"] != NSE_SOURCE_OWNER or (row["schema"],row["relation"]) == ("mf_nse","source_routes"),
+              "NSE_SOURCE_READ_MODEL_ONLY")
     p.require((row['schema'], row['relation']) not in INTERNAL_CONTROL_RELATIONS,
               'EXCLUDED_INTERNAL_CONTROL')
     p.require((row['schema'], row['relation']) not in HELD_FOR_REVIEW,

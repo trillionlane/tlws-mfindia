@@ -14,7 +14,7 @@ from mfdataindia.ingest.amfi_navall import parse_navall
 from . import contract as c, sch44
 from .mapping import SLOTS
 
-PROFILE = 'nse-sch44-production-link-review-v1'
+PROFILE = 'nse-sch44-production-link-review-v2'
 GROWTH_SLOT = 'isin_growth_or_div_payout'
 REINVEST_SLOT = 'isin_div_reinvest'
 DISAGREEMENT = 'SOURCE_FLAG_SLOT_DISAGREEMENT'
@@ -115,10 +115,14 @@ def _resolve(row, cells, source_indexes, funds, issuers, candidates, amfi):
     previous = earlier.get(key, ())
     if len(previous) > 1 or len(earlier_codes.get(key[:2], ())) > 1:
         return 'AMBIGUOUS', 'NON_UNIQUE_EARLIER_NSE_SCHEME_KEY'
-    if not scheme or not previous:
+    if not scheme:
         return hold, 'NSE_SCHEME_KEY_NOT_CORROBORATED'
-    earlier_line, earlier_plan = previous[0]
-    if cells[7] != 'NORMAL' or earlier_plan != 'NORMAL' or flag not in {'Y', 'N', 'Z', ''}:
+    # NSE scheme codes identify source routes, not AMFI variants. A current
+    # unique route may be new; adverse retained history still cannot be waived.
+    if earlier_codes.get(key[:2]) and earlier_codes[key[:2]] != {isin}:
+        return hold, 'NSE_SCHEME_CODE_HISTORY_CONFLICT'
+    earlier_line, earlier_plan = previous[0] if previous else (None, None)
+    if cells[7] != 'NORMAL' or (previous and earlier_plan != 'NORMAL') or flag not in {'Y', 'N', 'Z', ''}:
         return hold, 'UNVERIFIED_NSE_TOKEN'
     if fund['plan_type'] not in VALID_PLANS or fund['option_type'] not in VALID_OPTIONS:
         return hold, 'CATALOGUE_PLAN_OR_OPTION_NOT_ESTABLISHED'

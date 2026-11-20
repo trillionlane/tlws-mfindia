@@ -9,7 +9,7 @@ import sys
 import pytest
 import yaml
 
-from dataset_source_history import previous
+from dataset_source_history import previous, source_native_previous
 from tag_deploy_traffic_history import previous as traffic_previous
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +23,7 @@ def test_current_source_changes_are_finite_whole_files_and_reject_tampering():
     assert set(document['modified']) == {'Dockerfile','scripts/migrate.py','.github/workflows/verify.yml',
         'tests/dev_reader_compatibility_history.py','tests/test_dev_reader_compatibility_history.py'}
     for name, row in document['modified'].items():
-        raw = traffic_previous(ROOT / name, (ROOT / name).read_bytes())
+        raw = traffic_previous(ROOT / name, source_native_previous(ROOT / name, (ROOT / name).read_bytes()))
         old = subprocess.check_output(['git','show',BASE+':'+name],cwd=ROOT)
         assert hashlib.sha256(raw).hexdigest() == row['current_sha256']
         assert previous(ROOT/name,raw) == old
@@ -38,7 +38,7 @@ def test_current_source_changes_are_finite_whole_files_and_reject_tampering():
 def test_image_smoke_is_only_additive_command_in_existing_both_image_loop():
     name = '.github/workflows/verify.yml'
     old = yaml.load(subprocess.check_output(['git','show',BASE+':'+name],cwd=ROOT),Loader=yaml.BaseLoader)
-    new = yaml.load((ROOT/name).read_bytes(),Loader=yaml.BaseLoader)
+    new = yaml.load(source_native_previous(ROOT/name, (ROOT/name).read_bytes()),Loader=yaml.BaseLoader)
     before = next(s for s in old['jobs']['verify']['steps'] if s.get('id')=='original_41')
     after = next(s for s in new['jobs']['verify']['steps'] if s.get('id')=='original_41')
     addition = '  docker run --rm --entrypoint python "$target" /app/scripts/smoke_dataset_read_api.py\n'

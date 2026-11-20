@@ -7,9 +7,25 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def source_native_previous(path, data):
+    assert type(data) is bytes
+    # Intentional current API/schema/contract change. Validate complete bytes
+    # before restoring the reviewed predecessor for old release assertions.
+    name = Path(path).resolve().relative_to(ROOT).as_posix() if Path(path).resolve().is_relative_to(ROOT) else None
+    current_raw = (ROOT / 'docs/NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json').read_bytes()
+    assert hashlib.sha256(current_raw).hexdigest() == '03bb7b5f0fcfad32aa3e84ad6d30921f67745b42f2ae583a9619b1fc015aecfb'
+    current = json.loads(current_raw)
+    row = current['modified'].get(name)
+    if row and hashlib.sha256(data).hexdigest() == row['current_sha256']:
+        data = subprocess.check_output(['git', 'show', current['base']+':'+name], cwd=ROOT)
+        assert hashlib.sha256(data).hexdigest() == row['previous_sha256'], name
+    return data
+
+
 def previous(path, data):
     assert type(data) is bytes
     from amc_loading_history import previous as amc_previous
+    data = source_native_previous(path, data)
     data = amc_previous(path, data)
     try:
         name = Path(path).resolve().relative_to(ROOT).as_posix()

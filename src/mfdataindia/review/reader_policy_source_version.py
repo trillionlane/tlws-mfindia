@@ -1,12 +1,12 @@
 """RO-01 current attribution version, not acceptance of consumed diagnostics.
 
-Only the intentional runtime profile integration changes this source pin. The
+Current attribution includes the additive source-native NSE fund-detail composition. The
 historical mapping remains in each diagnostic spec as release evidence; a new
 image/spec fingerprint is mandatory and no old receipt is re-admitted.
 """
 
 HISTORICAL_RO01_VERSION = "ro01-reader-policy-source-v1"
-VERSION = "reader-policy-source-v3"
+VERSION = "reader-policy-source-v4"
 PATH = "src/mfdataindia/review/privileges.py"
 PREVIOUS_SHA256 = "4929964f90292e48f9d81c054e848ed835d190c71a1c54230f82d0e4eb049c33"
 CURRENT_SHA256 = '7e2dd4fb88fd5b503778955601c0c362b7af25291cad4f1c7ef40362572b5c7d'
@@ -31,7 +31,7 @@ def historical_ro02_attribution(historical):
 
 QUERY_PATH = "src/mfdataindia/api/queries.py"
 QUERY_PREVIOUS_SHA256 = "c2043667ab261be1ae02eb9e5f32658c142e325739487582a555530f0e3f691e"
-QUERY_CURRENT_SHA256 = "1e93b6312e19ed47d04417409debefaef81a1b5b5e4f0422d83fc9f13be52edc"
+QUERY_CURRENT_SHA256 = "a435979fc4d5185b7e43e35507e5174c8ae1b9205d1706243caf75ab18af8443"
 
 
 def current_attribution(historical):

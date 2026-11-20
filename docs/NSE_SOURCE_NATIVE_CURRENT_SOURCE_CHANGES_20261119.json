@@ -1,0 +1,71 @@
+{
+  "base": "d36363f44a312542c0a69726304c129ee3ce7fee",
+  "historical_only": true,
+  "modified": {
+    ".github/workflows/verify.yml": {
+      "current_sha256": "2b58c4c87aa99240a38d6b6e2a564933742be99255db68dd79c003e054f84e34",
+      "previous_sha256": "fa1f31d2f7eee9da3dcd0a6aac95cb1a66565a10c9ae0c0b377a6b702b80116c"
+    },
+    "contracts/mfdataindia-openapi-v2.json": {
+      "current_sha256": "ff92aa8e1a3db581ff91a3ec8257132e92126b3f777f58e7b037cac6b2daff4e",
+      "previous_sha256": "3ec28d1387161e789c68f66076d01d31b2c0a3489ea65a699c1b2e83ac772e66"
+    },
+    "scripts/run_ci_tests.py": {
+      "current_sha256": "5f70fe7ee6a7baae45fd3e00a69ca27e63f8f5239f777e1ef08f62176360bd6c",
+      "previous_sha256": "251003892372573cd2a224a200f4f2c2a52c722031ccb572d4bec9a516c56c82"
+    },
+    "src/mfdataindia/api/queries.py": {
+      "current_sha256": "a435979fc4d5185b7e43e35507e5174c8ae1b9205d1706243caf75ab18af8443",
+      "previous_sha256": "1e93b6312e19ed47d04417409debefaef81a1b5b5e4f0422d83fc9f13be52edc"
+    },
+    "src/mfdataindia/api/schemas.py": {
+      "current_sha256": "290c3dc28c5c4fdaf1c995d00d5f14597cad12f283cb58dae8f5a8b17c7f5953",
+      "previous_sha256": "ced0fe2a782407cf34ec6a67480b4b93154f55214dcb95906d4a67ff7d56158e"
+    },
+    "src/mfdataindia/datasets/catalogue.py": {
+      "current_sha256": "a85259e6607afb822d88d958cf486651be45600736e115f9683a3d20203ad90d",
+      "previous_sha256": "42d57fbe2bc476a5f0b6fdc44d60629b929b4a62a219c6207f4ae220b06ed7b8"
+    },
+    "src/mfdataindia/datasets/enrollment.py": {
+      "current_sha256": "5e3a0c41bb4f1ebcd0fde4cda4b3e93895a6a077b64e8a05256a42b2c43830bb",
+      "previous_sha256": "a32540db0c2af2abb299d8c12ece16d6de62682b4851fa5e2f3b49bba61d9e6a"
+    },
+    "src/mfdataindia/review/core_access_metadata_controller.py": {
+      "current_sha256": "e364da41275fd0d17d9494ce1bb3dda62859743536a3f23cc925bd4ef87f267c",
+      "previous_sha256": "236b4eab93101860ba5f389525edca2ce0dcf7cdbb860a3fffcf39e7e3decbcf"
+    },
+    "src/mfdataindia/review/core_access_metadata_controller_v2.py": {
+      "current_sha256": "0e67e283e7b26a9d1e3a4afa956219bb2b72cf95ba4ba84845f16dcf7f9cc0cf",
+      "previous_sha256": "ba0ee874a3f8c3253110d1a9140f69f83bb679e72645eb3c28bb5d762b0ec134"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec.py": {
+      "current_sha256": "d8e22be40c9665f267a9ceb214313e1bab67d55069479c9c230df1183bfac63d",
+      "previous_sha256": "b25ad434c993a6f464dadad161f33d4dd756b4b1dd172181b2397d8fee6cb04a"
+    },
+    "src/mfdataindia/review/core_access_metadata_spec_v2.py": {
+      "current_sha256": "3704b17b98eeb0cc1d416e4594c13d7ce2905a7845c4089cc73e219652b6128b",
+      "previous_sha256": "242d3704b6d10fd69a196bc3165624933e97476bba15bb38d65bbeee53450b11"
+    },
+    "src/mfdataindia/review/core_permission_controller.py": {
+      "current_sha256": "a5d5f497441786be739d68777e90802e65d3b1e331f996a668e9aeabea07493c",
+      "previous_sha256": "d430aa77f87592121b93752110372d603006de34cc5c30549231573194068fe7"
+    },
+    "src/mfdataindia/review/core_permission_spec.py": {
+      "current_sha256": "adca7342c0b06a74c12f36a91fa08c8348826fe54533152c91fc5e8d43e60ffd",
+      "previous_sha256": "e662a7cb7266436b86ae6aec66d6bf31f69aa064900af2f04122d328f9887fe0"
+    },
+    "src/mfdataindia/review/reader_policy_source_version.py": {
+      "current_sha256": "1e19d7f2027db91c4a3d5868e018fb92ec7d9876a137776f2e6073fbd119c852",
+      "previous_sha256": "0411ecbac216686a7b96def5cc59797077fe2a490bddc8eb19c9e8de808df52b"
+    },
+    "tests/tag_deploy_traffic_history.py": {
+      "current_sha256": "431ecd4d2dda94d5dc2127fcd4d1f983fd5a1dbd9967462788085a751fb78209",
+      "previous_sha256": "902ff243912d0028b97b22af562dea5991d499f3330cd323534ce13a2460ea4c"
+    },
+    "tests/test_dataset_source_changes.py": {
+      "current_sha256": "9f0b57b0c58e076acc419e067bf8950d0a067f2b232c38c9753b6af421c8ea63",
+      "previous_sha256": "99a918a6c038a2ea045f01af393ca132071d4abff6d71efa173819686493ae4e"
+    }
+  },
+  "scope": "Source-native API/storage composition, narrow source owner enrollment, early exhaustive native gate and explicit source attribution. Finite whole-file historical inverses only. All original assertions/old authority documents remain intact; current behavior is tested directly."
+}

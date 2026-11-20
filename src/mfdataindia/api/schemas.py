@@ -15,7 +15,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
+from mfdataindia.nse.schema import HEADERS44
 
 # ---------------------------------------------------------------------------
 # Closed enums (rendered as literal value lists in OpenAPI)
@@ -175,6 +176,62 @@ class FundHolding(BaseModel):
     weight_pct: float | None = None
 
 
+# Literal positional source values. All 44 header aliases are required strings;
+# an empty cell stays "", sentinel dates and formatted numbers stay literal.
+Sch44Fields = create_model(
+    "Sch44Fields",
+    **{
+        f"position_{position:02d}": (str, Field(alias=header))
+        for position, header in enumerate(HEADERS44, 1)
+    },
+)
+
+
+class NseAmfiWitness(BaseModel):
+    sha256: str
+    lines: list[int]
+    periodicity: str | None
+
+
+class NseIdentityEvidence(BaseModel):
+    rule_version: str
+    amfi_scheme_code: int
+    amfi_issuer: str
+    earlier_nse_line: int | None
+    historical_route: Literal["CORROBORATED", "ABSENT_NO_ADVERSE_HISTORY"]
+    amfi_witnesses: list[NseAmfiWitness]
+
+
+class NseSourceRoute(BaseModel):
+    source_line: int
+    snapshot_id: str
+    source_sha256: str
+    generation_date: date
+    generation_date_basis: Literal["FILENAME"]
+    retrieved_at_utc: datetime
+    filename: str
+    layout: str
+    catalogue_version: str
+    link_status: Literal["VERIFIED_EXACT"]
+    identity_evidence: NseIdentityEvidence
+    source_sip_allowed: bool | None = Field(
+        description="NSE SCH44 field 29 SIP ALLOWED: Y=true, N=false, otherwise unknown, at the captured generation date. Not inferred from route code, settlement or UAT. Schedule/mandate and complete order eligibility require separate validation."
+    )
+    amfi_isin_slot: Literal["isin_growth_or_div_payout", "isin_div_reinvest"]
+    amfi_plan: str
+    amfi_option: str
+    flag_slot_disagreement: str | None
+    fields: Sch44Fields
+    field_holds: dict[str, str]
+
+
+class NseSourceSection(BaseModel):
+    version: Literal["nse-sch44-source-native-v1"]
+    status: Literal["NOT_INSTALLED", "NO_VERIFIED_LINK", "VERIFIED_LINKS"]
+    transaction_eligibility: Literal["NOT_ESTABLISHED"]
+    routes: list[NseSourceRoute]
+
+
 class FundDetail(BaseModel):
     """GET /api/funds/{code} — the full v2 detail response."""
 
@@ -207,6 +264,7 @@ class FundDetail(BaseModel):
     lifecycle: FundLifecycle
     nav_freshness: FundNavFreshness
     nav_quality: FundNavQuality
+    nse: NseSourceSection | None = None
 
 
 # ---------------------------------------------------------------------------

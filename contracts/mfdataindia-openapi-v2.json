@@ -814,6 +814,16 @@
           "nav_quality": {
             "$ref": "#/components/schemas/FundNavQuality"
           },
+          "nse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NseSourceSection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "option_type": {
             "title": "Option Type",
             "type": "string"
@@ -1924,6 +1934,251 @@
         "title": "MoversResponse",
         "type": "object"
       },
+      "NseAmfiWitness": {
+        "properties": {
+          "lines": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "periodicity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodicity"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "lines",
+          "periodicity"
+        ],
+        "title": "NseAmfiWitness",
+        "type": "object"
+      },
+      "NseIdentityEvidence": {
+        "properties": {
+          "amfi_issuer": {
+            "title": "Amfi Issuer",
+            "type": "string"
+          },
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "amfi_witnesses": {
+            "items": {
+              "$ref": "#/components/schemas/NseAmfiWitness"
+            },
+            "title": "Amfi Witnesses",
+            "type": "array"
+          },
+          "earlier_nse_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earlier Nse Line"
+          },
+          "historical_route": {
+            "enum": [
+              "CORROBORATED",
+              "ABSENT_NO_ADVERSE_HISTORY"
+            ],
+            "title": "Historical Route",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_version",
+          "amfi_scheme_code",
+          "amfi_issuer",
+          "earlier_nse_line",
+          "historical_route",
+          "amfi_witnesses"
+        ],
+        "title": "NseIdentityEvidence",
+        "type": "object"
+      },
+      "NseSourceRoute": {
+        "properties": {
+          "amfi_isin_slot": {
+            "enum": [
+              "isin_growth_or_div_payout",
+              "isin_div_reinvest"
+            ],
+            "title": "Amfi Isin Slot",
+            "type": "string"
+          },
+          "amfi_option": {
+            "title": "Amfi Option",
+            "type": "string"
+          },
+          "amfi_plan": {
+            "title": "Amfi Plan",
+            "type": "string"
+          },
+          "catalogue_version": {
+            "title": "Catalogue Version",
+            "type": "string"
+          },
+          "field_holds": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Field Holds",
+            "type": "object"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/Sch44Fields"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "flag_slot_disagreement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag Slot Disagreement"
+          },
+          "generation_date": {
+            "format": "date",
+            "title": "Generation Date",
+            "type": "string"
+          },
+          "generation_date_basis": {
+            "const": "FILENAME",
+            "title": "Generation Date Basis",
+            "type": "string"
+          },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/NseIdentityEvidence"
+          },
+          "layout": {
+            "title": "Layout",
+            "type": "string"
+          },
+          "link_status": {
+            "const": "VERIFIED_EXACT",
+            "title": "Link Status",
+            "type": "string"
+          },
+          "retrieved_at_utc": {
+            "format": "date-time",
+            "title": "Retrieved At Utc",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "source_line": {
+            "title": "Source Line",
+            "type": "integer"
+          },
+          "source_sha256": {
+            "title": "Source Sha256",
+            "type": "string"
+          },
+          "source_sip_allowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NSE SCH44 field 29 SIP ALLOWED: Y=true, N=false, otherwise unknown, at the captured generation date. Not inferred from route code, settlement or UAT. Schedule/mandate and complete order eligibility require separate validation.",
+            "title": "Source Sip Allowed"
+          }
+        },
+        "required": [
+          "source_line",
+          "snapshot_id",
+          "source_sha256",
+          "generation_date",
+          "generation_date_basis",
+          "retrieved_at_utc",
+          "filename",
+          "layout",
+          "catalogue_version",
+          "link_status",
+          "identity_evidence",
+          "source_sip_allowed",
+          "amfi_isin_slot",
+          "amfi_plan",
+          "amfi_option",
+          "flag_slot_disagreement",
+          "fields",
+          "field_holds"
+        ],
+        "title": "NseSourceRoute",
+        "type": "object"
+      },
+      "NseSourceSection": {
+        "properties": {
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/NseSourceRoute"
+            },
+            "title": "Routes",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "NOT_INSTALLED",
+              "NO_VERIFIED_LINK",
+              "VERIFIED_LINKS"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "transaction_eligibility": {
+            "const": "NOT_ESTABLISHED",
+            "title": "Transaction Eligibility",
+            "type": "string"
+          },
+          "version": {
+            "const": "nse-sch44-source-native-v1",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "status",
+          "transaction_eligibility",
+          "routes"
+        ],
+        "title": "NseSourceSection",
+        "type": "object"
+      },
       "PeerHorizon": {
         "properties": {
           "beats_pct": {
@@ -2169,6 +2424,234 @@
           "points"
         ],
         "title": "RiskRewardResponse",
+        "type": "object"
+      },
+      "Sch44Fields": {
+        "properties": {
+          "ADDITIONAL PURCHASE MAX AMOUNT": {
+            "title": "Additional Purchase Max Amount",
+            "type": "string"
+          },
+          "ADDITIONAL PURCHASE MIN AMOUNT": {
+            "title": "Additional Purchase Min Amount",
+            "type": "string"
+          },
+          "AMC ACTIVE FLAG": {
+            "title": "Amc Active Flag",
+            "type": "string"
+          },
+          "AMC CODE": {
+            "title": "Amc Code",
+            "type": "string"
+          },
+          "AMC IND": {
+            "title": "Amc Ind",
+            "type": "string"
+          },
+          "AMC SCHEME CODE": {
+            "title": "Amc Scheme Code",
+            "type": "string"
+          },
+          "CHANNEL PARTNER CODE": {
+            "title": "Channel Partner Code",
+            "type": "string"
+          },
+          "DIV REINVEST FLAG": {
+            "title": "Div Reinvest Flag",
+            "type": "string"
+          },
+          "EXIT LOAD": {
+            "title": "Exit Load",
+            "type": "string"
+          },
+          "EXIT LOAD FLAG": {
+            "title": "Exit Load Flag",
+            "type": "string"
+          },
+          "FACE VALUE": {
+            "title": "Face Value",
+            "type": "string"
+          },
+          "ISIN": {
+            "title": "Isin",
+            "type": "string"
+          },
+          "LOCK IN PERIOD": {
+            "title": "Lock In Period",
+            "type": "string"
+          },
+          "LOCK IN PERIOD_FLAG": {
+            "title": "Lock In Period Flag",
+            "type": "string"
+          },
+          "MATURITY DATE": {
+            "title": "Maturity Date",
+            "type": "string"
+          },
+          "NEW PURCHASE MIN AMOUNT": {
+            "title": "New Purchase Min Amount",
+            "type": "string"
+          },
+          "OPEN/CLOSE ENDED SCHEME": {
+            "title": "Open/Close Ended Scheme",
+            "type": "string"
+          },
+          "PLAN TYPE": {
+            "title": "Plan Type",
+            "type": "string"
+          },
+          "PURCHASE ALLOWED": {
+            "title": "Purchase Allowed",
+            "type": "string"
+          },
+          "PURCHASE AMOUNT MULTIPLIER": {
+            "title": "Purchase Amount Multiplier",
+            "type": "string"
+          },
+          "PURCHASE CUTOFF TIME": {
+            "title": "Purchase Cutoff Time",
+            "type": "string"
+          },
+          "PURCHASE TRANSACTION MODE": {
+            "title": "Purchase Transaction Mode",
+            "type": "string"
+          },
+          "REDEMPTION ALLOWED": {
+            "title": "Redemption Allowed",
+            "type": "string"
+          },
+          "REDEMPTION AMOUNT MULTIPLIER": {
+            "title": "Redemption Amount Multiplier",
+            "type": "string"
+          },
+          "REDEMPTION CUTOFF TIME": {
+            "title": "Redemption Cutoff Time",
+            "type": "string"
+          },
+          "REDEMPTION MAX AMOUNT": {
+            "title": "Redemption Max Amount",
+            "type": "string"
+          },
+          "REDEMPTION MAX QTY": {
+            "title": "Redemption Max Qty",
+            "type": "string"
+          },
+          "REDEMPTION MIN AMOUNT": {
+            "title": "Redemption Min Amount",
+            "type": "string"
+          },
+          "REDEMPTION MIN QTY": {
+            "title": "Redemption Min Qty",
+            "type": "string"
+          },
+          "REDEMPTION QTY MULTIPLIER": {
+            "title": "Redemption Qty Multiplier",
+            "type": "string"
+          },
+          "REDEMPTION TRANSACTION MODE": {
+            "title": "Redemption Transaction Mode",
+            "type": "string"
+          },
+          "REOPENING DATE": {
+            "title": "Reopening Date",
+            "type": "string"
+          },
+          "RTA AGENT CODE": {
+            "title": "Rta Agent Code",
+            "type": "string"
+          },
+          "RTA SCHEME CODE": {
+            "title": "Rta Scheme Code",
+            "type": "string"
+          },
+          "SCHEME CODE": {
+            "title": "Scheme Code",
+            "type": "string"
+          },
+          "SCHEME NAME": {
+            "title": "Scheme Name",
+            "type": "string"
+          },
+          "SCHEME START DATE": {
+            "title": "Scheme Start Date",
+            "type": "string"
+          },
+          "SCHEME TYPE": {
+            "title": "Scheme Type",
+            "type": "string"
+          },
+          "SETTLEMENT TYPE": {
+            "title": "Settlement Type",
+            "type": "string"
+          },
+          "SIP ALLOWED": {
+            "title": "Sip Allowed",
+            "type": "string"
+          },
+          "STP ENABLED": {
+            "title": "Stp Enabled",
+            "type": "string"
+          },
+          "SWITCH ALLOWED": {
+            "title": "Switch Allowed",
+            "type": "string"
+          },
+          "SWP ENABLED": {
+            "title": "Swp Enabled",
+            "type": "string"
+          },
+          "UNIQUE SR NO": {
+            "title": "Unique Sr No",
+            "type": "string"
+          }
+        },
+        "required": [
+          "UNIQUE SR NO",
+          "SCHEME CODE",
+          "RTA SCHEME CODE",
+          "AMC SCHEME CODE",
+          "ISIN",
+          "AMC CODE",
+          "SCHEME TYPE",
+          "PLAN TYPE",
+          "SCHEME NAME",
+          "PURCHASE ALLOWED",
+          "PURCHASE TRANSACTION MODE",
+          "NEW PURCHASE MIN AMOUNT",
+          "ADDITIONAL PURCHASE MIN AMOUNT",
+          "ADDITIONAL PURCHASE MAX AMOUNT",
+          "PURCHASE AMOUNT MULTIPLIER",
+          "PURCHASE CUTOFF TIME",
+          "REDEMPTION ALLOWED",
+          "REDEMPTION TRANSACTION MODE",
+          "REDEMPTION MIN QTY",
+          "REDEMPTION QTY MULTIPLIER",
+          "REDEMPTION MAX QTY",
+          "REDEMPTION MIN AMOUNT",
+          "REDEMPTION MAX AMOUNT",
+          "REDEMPTION AMOUNT MULTIPLIER",
+          "REDEMPTION CUTOFF TIME",
+          "RTA AGENT CODE",
+          "AMC ACTIVE FLAG",
+          "DIV REINVEST FLAG",
+          "SIP ALLOWED",
+          "STP ENABLED",
+          "SWP ENABLED",
+          "SWITCH ALLOWED",
+          "SETTLEMENT TYPE",
+          "AMC IND",
+          "FACE VALUE",
+          "SCHEME START DATE",
+          "MATURITY DATE",
+          "EXIT LOAD FLAG",
+          "EXIT LOAD",
+          "LOCK IN PERIOD_FLAG",
+          "LOCK IN PERIOD",
+          "CHANNEL PARTNER CODE",
+          "REOPENING DATE",
+          "OPEN/CLOSE ENDED SCHEME"
+        ],
+        "title": "Sch44Fields",
         "type": "object"
       },
       "ValidationError": {

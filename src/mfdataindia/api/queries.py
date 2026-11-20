@@ -945,6 +945,8 @@ def fund_detail(conn, code: int, *, plan: str = DEFAULT_PLAN_SCOPE) -> Optional[
         latest_nav_date=latest["nav_date"] if latest else None,
     )
     out["nav_quality"] = _nav_quality(conn, code, dataset_version=dataset_version)
+    from mfdataindia.nse.source_native import fund_section
+    out["nse"] = fund_section(conn, code)
     return out
 
 
