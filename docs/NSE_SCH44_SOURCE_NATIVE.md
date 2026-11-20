@@ -48,6 +48,37 @@ retaining PR165's production code/issuer/ISIN-slot and
 explicit plan/option checks, not a unique ISIN or the literal NSE flag alone.
 Product evidence can withhold a link, never create an exact identity.
 
+Reasons follow the final disposition: `MF_EXACT`, `MF_HELD` and `MF_UNMATCHED`
+use the current identity resolver's reason. `SIF`, `OTHER_VERIFIED_OUT_OF_SCOPE`
+and `UNCLASSIFIED` retain their independently reviewed product reason. A stale
+product-review reason must not describe a freshly recomputed MF identity result.
+Regressions deliberately disagree on these reasons and check the persisted
+authenticated dataset response, including all three product exclusions.
+
+The correction regenerates candidate SHA256
+`5e8122da1d7debf24528d207e2aba5ea83ecde4bb3f369707004efaee1037be4`
+from the same production payload and catalogue v92. Against the retained prior
+candidate `222e0b7c878ba8d17f89eeb8dd1f97abc8b08e277637be3531c146633e14d283`,
+exactly 13 `MF_UNMATCHED` reasons change: seven to
+`CATALOGUE_PLAN_OR_OPTION_NOT_ESTABLISHED` and six to
+`EXPLICIT_AMFI_VARIANT_NOT_CORROBORATED`, all previously
+`NSE_SCHEME_KEY_NOT_CORROBORATED`. Every other row field and metadata value is
+identical. Both independent CLI generations are byte-identical. Totals remain
+13,876 rows, 610,544 literal cells, 12,119 exact links, 147 held, 1,387 unmatched,
+165 SIF, 17 other verified out of scope and 41 unclassified. Birla issuer
+corroboration remains pending. The new source snapshot UUID, if separately
+approved and published, is `0d745502-6470-5ffc-adbc-9315bbbaf13a`.
+
+The private full-size rehearsal uses the exact candidate, payload and matching
+14,492-variant identity catalogue in isolated Cloud Build PostgreSQL 18.6,
+following the earlier disposable benchmark pattern. It calls the real publisher
+and full readback under unchanged 5s statement/lock and 15s transaction limits.
+The private harness, source/input hashes, phase timings, commit/rollback evidence
+and unchanged canonical/FULL-head checks are retained with the review packet;
+the actual result and exact-head hosted Verify are reported in PR170. Private
+inputs are not committed to this public repository. This rehearsal is separate
+from the hosted native API regressions and is not live publication evidence.
+
 The trusted operator separately reviews the complete candidate and supplies its
 hash to `source_native.publish`, together with a fresh operation ID and expected
 source head. Revalidate payload/rows and candidate hash before database work.

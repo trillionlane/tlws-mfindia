@@ -76,6 +76,30 @@ def test_product_holds_cannot_create_canonical_links(disposition):
     plan = native.prepare(**args)
     assert plan["rows"][0]["disposition"] == disposition
     assert plan["rows"][0]["link"] is None
+    assert plan["rows"][0]["reason"] == "CONVENTIONAL_AMFI_EVIDENCE"
+
+
+@pytest.mark.parametrize("outcome", ["MF_EXACT", "MF_HELD", "MF_UNMATCHED"])
+def test_identity_reason_follows_current_disposition_not_stale_product_review(outcome):
+    args = inputs()
+    args["product_review"]["rows"][0].update(
+        disposition="MF_UNMATCHED", reason="STALE_PRODUCT_REASON"
+    )
+    args["product_review_sha256"] = c.digest(args["product_review"])
+    if outcome == "MF_HELD":
+        args["amfi_second"] = args["amfi_second"].replace(b"Regular Plan;", b";")
+    elif outcome == "MF_UNMATCHED":
+        args["raw"] = args["raw"].replace(b"INZZ00000019", b"INZZ00000027")
+        args["provenance"]["sha256"] = sha256(args["raw"]).hexdigest()
+        args["product_review"]["source_sha256"] = args["provenance"]["sha256"]
+        args["product_review_sha256"] = c.digest(args["product_review"])
+    current = identity.report(
+        *(args[k] for k in ("raw", "catalogue", "earlier_source", "amfi_first", "amfi_second"))
+    )["rows"][0]
+    assert current["reason"] != "STALE_PRODUCT_REASON"
+    (row,) = native.prepare(**args)["rows"]
+    assert row["disposition"] == outcome
+    assert row["reason"] == current["reason"]
 
 
 def test_product_review_cannot_promote_unverified_identity():

@@ -89,7 +89,7 @@ def head(dsn):
         return str(value["snapshot_id"]) if value["snapshot_id"] else None, value["generation"]
 
 
-def prepare(dsn, raw=None, *, source_date="17112026"):
+def prepare(dsn, raw=None, *, source_date="17112026", reason_cases=False):
     if raw is None:
         header, cell = source(flag="Y").decode().splitlines()
         cells = cell.split("|")
@@ -111,9 +111,16 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
         held[0] = "000004"
         held[1] = "UNKNOWN_ROUTE"
         held[5] = "UNKNOWN_ISSUER_MF"
-        raw = (
-            "\n".join([header, *("|".join(r) for r in [cells, second, sif, held])]) + "\n"
-        ).encode()
+        rows = [cells, second, sif, held]
+        if reason_cases:
+            unmatched = cells.copy()
+            unmatched[0:2] = ["000005", "NO_CATALOGUE_ROUTE"]
+            unmatched[4] = "INZZ00000027"
+            other, unknown = cells.copy(), cells.copy()
+            other[0:2] = ["000006", "OTHER_PRODUCT"]
+            unknown[0:2] = ["000007", "UNCLASSIFIED_PRODUCT"]
+            rows.extend([unmatched, other, unknown])
+        raw = ("\n".join([header, *("|".join(r) for r in rows)]) + "\n").encode()
     with connect(dsn) as conn:
         funds = conn.execute(store.FUNDS).fetchall()
         version = conn.execute(
@@ -136,7 +143,11 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
                 "reason": "FIXTURE_PRODUCT_EVIDENCE",
                 "evidence_sha256": "1" * 64,
             }
-            for i, p in enumerate(["MF_EXACT", "MF_EXACT", "SIF", "MF_HELD"], 2)
+            for i, p in enumerate(
+                ["MF_EXACT", "MF_EXACT", "SIF", "MF_HELD"]
+                + (["MF_UNMATCHED", "OTHER_VERIFIED_OUT_OF_SCOPE", "UNCLASSIFIED"] if reason_cases else []),
+                2,
+            )
         ],
     }
     provenance = {
@@ -147,7 +158,7 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
         "object_generation": "123",
         "sha256": sha256(raw).hexdigest(),
         "byte_length": len(raw),
-        "row_count": 4,
+        "row_count": len(products["rows"]),
     }
     earlier = b"\n".join(raw.splitlines()[:2]) + b"\n"
     earlier = earlier.replace(b"title ignored", b"earlier title")  # no unknown fourth route witness
@@ -177,6 +188,42 @@ def baseline(dsn):
             "full_head": head(dsn),
             "families": conn.execute("SELECT * FROM mf.fund_family ORDER BY group_key").fetchall(),
         }
+
+
+@pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
+def test_native_stored_dataset_reasons_follow_final_disposition(nse_source_db):
+    dsn = nse_source_db
+    with connect(dsn, autocommit=False) as owner:
+        owner.execute("UPDATE mf.amcs SET amfi_amc_name='Fixture Mutual Fund' WHERE amc_id=1")
+        owner.execute(
+            "UPDATE mf.funds SET option_type='IDCW',isin_growth_or_div_payout=%s WHERE amfi_scheme_code=1",
+            (ISIN,),
+        )
+    with connect(dsn, source_roles.OWNER, autocommit=False) as owner:
+        owner.execute("SELECT 1")
+        native.install(owner)
+    before = baseline(dsn)
+    raw, plan = prepare(dsn, reason_cases=True)
+    assert publish(dsn, raw, plan)["effect"] == "COMMITTED_VERIFIED"
+    with dataset_api(dsn) as client:
+        response = client.get(
+            "/api/datasets/v1/" + dataset_id("mf_nse", "source_routes") + "/rows",
+            params={"limit": 100},
+        )
+        assert response.status_code == 200, response.text
+        rows = {r["source_line"]: r for r in response.json()["rows"]}
+    assert len(rows) == 7
+    assert (rows[5]["disposition"], rows[5]["reason"]) == (
+        "MF_HELD", "ISSUER_NOT_CORROBORATED"
+    )
+    assert (rows[6]["disposition"], rows[6]["reason"]) == (
+        "MF_UNMATCHED", "NO_CATALOGUE_ISIN_SLOT"
+    )
+    for line, disposition in ((4, "SIF"), (7, "OTHER_VERIFIED_OUT_OF_SCOPE"), (8, "UNCLASSIFIED")):
+        assert (rows[line]["disposition"], rows[line]["reason"]) == (
+            disposition, "FIXTURE_PRODUCT_EVIDENCE"
+        )
+    assert baseline(dsn) == before
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)

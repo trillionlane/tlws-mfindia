@@ -158,7 +158,11 @@ def prepare(
                 "cells": cells,
                 "field_holds": {str(k): v for k, v in holds.items()},
                 "disposition": status,
-                "reason": link["reason"] if verified else decision["reason"],
+                "reason": (
+                    link["reason"]
+                    if status in {"MF_EXACT", "MF_HELD", "MF_UNMATCHED"}
+                    else decision["reason"]
+                ),
                 "product_evidence_sha256": decision["evidence_sha256"],
                 "link": verified,
             }
