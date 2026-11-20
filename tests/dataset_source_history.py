@@ -13,7 +13,7 @@ def source_native_previous(path, data):
     # before restoring the reviewed predecessor for old release assertions.
     name = Path(path).resolve().relative_to(ROOT).as_posix() if Path(path).resolve().is_relative_to(ROOT) else None
     current_raw = (ROOT / 'docs/NSE_SOURCE_NATIVE_CURRENT_SOURCE_CHANGES_20261119.json').read_bytes()
-    assert hashlib.sha256(current_raw).hexdigest() == '2069d04d3981a08bc4df58dc6506e72b899ba85ab9bf83dcf6053fec689af016'
+    assert hashlib.sha256(current_raw).hexdigest() == '03bb7b5f0fcfad32aa3e84ad6d30921f67745b42f2ae583a9619b1fc015aecfb'
     current = json.loads(current_raw)
     row = current['modified'].get(name)
     if row and hashlib.sha256(data).hexdigest() == row['current_sha256']:

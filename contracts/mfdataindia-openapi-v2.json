@@ -1934,6 +1934,91 @@
         "title": "MoversResponse",
         "type": "object"
       },
+      "NseAmfiWitness": {
+        "properties": {
+          "lines": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "periodicity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodicity"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha256",
+          "lines",
+          "periodicity"
+        ],
+        "title": "NseAmfiWitness",
+        "type": "object"
+      },
+      "NseIdentityEvidence": {
+        "properties": {
+          "amfi_issuer": {
+            "title": "Amfi Issuer",
+            "type": "string"
+          },
+          "amfi_scheme_code": {
+            "title": "Amfi Scheme Code",
+            "type": "integer"
+          },
+          "amfi_witnesses": {
+            "items": {
+              "$ref": "#/components/schemas/NseAmfiWitness"
+            },
+            "title": "Amfi Witnesses",
+            "type": "array"
+          },
+          "earlier_nse_line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earlier Nse Line"
+          },
+          "historical_route": {
+            "enum": [
+              "CORROBORATED",
+              "ABSENT_NO_ADVERSE_HISTORY"
+            ],
+            "title": "Historical Route",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_version",
+          "amfi_scheme_code",
+          "amfi_issuer",
+          "earlier_nse_line",
+          "historical_route",
+          "amfi_witnesses"
+        ],
+        "title": "NseIdentityEvidence",
+        "type": "object"
+      },
       "NseSourceRoute": {
         "properties": {
           "amfi_isin_slot": {
@@ -1991,6 +2076,9 @@
             "title": "Generation Date Basis",
             "type": "string"
           },
+          "identity_evidence": {
+            "$ref": "#/components/schemas/NseIdentityEvidence"
+          },
           "layout": {
             "title": "Layout",
             "type": "string"
@@ -2016,6 +2104,18 @@
           "source_sha256": {
             "title": "Source Sha256",
             "type": "string"
+          },
+          "source_sip_allowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NSE SCH44 field 29 SIP ALLOWED: Y=true, N=false, otherwise unknown, at the captured generation date. Not inferred from route code, settlement or UAT. Schedule/mandate and complete order eligibility require separate validation.",
+            "title": "Source Sip Allowed"
           }
         },
         "required": [
@@ -2029,6 +2129,8 @@
           "layout",
           "catalogue_version",
           "link_status",
+          "identity_evidence",
+          "source_sip_allowed",
           "amfi_isin_slot",
           "amfi_plan",
           "amfi_option",

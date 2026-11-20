@@ -1,0 +1,201 @@
+{
+  "amfi_variants": [
+    {
+      "amfi_amc_name": "Aditya Birla Sun Life Mutual Fund",
+      "amfi_scheme_code": 101816,
+      "in_scope": true,
+      "isin_div_reinvest": "INF209K01DF0",
+      "isin_growth_or_div_payout": "INF209K01769",
+      "option_type": "IDCW",
+      "plan_type": "REGULAR",
+      "scheme_name": "Aditya Birla Sun Life Conservative Hybrid Fund"
+    },
+    {
+      "amfi_amc_name": "Aditya Birla Sun Life Mutual Fund",
+      "amfi_scheme_code": 101818,
+      "in_scope": true,
+      "isin_div_reinvest": null,
+      "isin_growth_or_div_payout": "INF209K01751",
+      "option_type": "GROWTH",
+      "plan_type": "REGULAR",
+      "scheme_name": "Aditya Birla Sun Life Conservative Hybrid Fund"
+    },
+    {
+      "amfi_amc_name": "Aditya Birla Sun Life Mutual Fund",
+      "amfi_scheme_code": 120550,
+      "in_scope": false,
+      "isin_div_reinvest": "INF209K01XI2",
+      "isin_growth_or_div_payout": "INF209K01R47",
+      "option_type": "IDCW",
+      "plan_type": "DIRECT",
+      "scheme_name": "Aditya Birla Sun Life Conservative Hybrid Fund"
+    },
+    {
+      "amfi_amc_name": "Aditya Birla Sun Life Mutual Fund",
+      "amfi_scheme_code": 120705,
+      "in_scope": false,
+      "isin_div_reinvest": null,
+      "isin_growth_or_div_payout": "INF209K01XH4",
+      "option_type": "GROWTH",
+      "plan_type": "DIRECT",
+      "scheme_name": "Aditya Birla Sun Life Conservative Hybrid Fund"
+    },
+    {
+      "amfi_amc_name": "Aditya Birla Sun Life Mutual Fund",
+      "amfi_scheme_code": 154772,
+      "in_scope": true,
+      "isin_div_reinvest": null,
+      "isin_growth_or_div_payout": "INF209KC1761",
+      "option_type": "GROWTH",
+      "plan_type": "REGULAR",
+      "scheme_name": "Aditya Birla Sun Life BSE Total Market Index Fund"
+    }
+  ],
+  "catalogue_sha256": "49ee98261e6d13e6a6c7727d8fc45ddb92b8e2b3fd9814712308cdb7cd35af66",
+  "catalogue_version": "92",
+  "format": "nse-sch44-production-identity-subset-v1",
+  "rows": [
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Z",
+        "ISIN": "INF209KC1761",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "141B",
+        "SCHEME CODE": "B141B-GR-L1",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE BSE TOTAL MARKET INDEX FUND-REGULAR GROWTH",
+        "SETTLEMENT TYPE": "L1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 206
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Z",
+        "ISIN": "INF209KC1761",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "141B",
+        "SCHEME CODE": "B141B-GR",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE BSE TOTAL MARKET INDEX FUND-REGULAR GROWTH",
+        "SETTLEMENT TYPE": "T2",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 207
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Z",
+        "ISIN": "INF209K01751",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313G",
+        "SCHEME CODE": "B313G-L1",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND - REGULAR-GROWTH",
+        "SETTLEMENT TYPE": "L1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 224
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Z",
+        "ISIN": "INF209K01751",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313G",
+        "SCHEME CODE": "B313G",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND - REGULAR-GROWTH",
+        "SETTLEMENT TYPE": "T1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 225
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "N",
+        "ISIN": "INF209K01769",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313MD",
+        "SCHEME CODE": "B313MD-DP",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND-REGULAR-IDCW MONTHLY PAYOUT",
+        "SETTLEMENT TYPE": "T1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 226
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "N",
+        "ISIN": "INF209K01769",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313MD",
+        "SCHEME CODE": "B313MD-DP-L1",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND-REGULAR-IDCW MONTHLY PAYOUT",
+        "SETTLEMENT TYPE": "L1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 227
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Y",
+        "ISIN": "INF209K01DF0",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313M",
+        "SCHEME CODE": "B313MD-DR",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND-REGULAR-IDCW MONTHLY REINVESTMENT",
+        "SETTLEMENT TYPE": "T1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 228
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Y",
+        "ISIN": "INF209K01769",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313MD",
+        "SCHEME CODE": "BS313MD-DR-L1",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND-REGULAR-IDCW MONTHLY REINVESTMENT",
+        "SETTLEMENT TYPE": "L1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 229
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Y",
+        "ISIN": "INF209K01769",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313MD",
+        "SCHEME CODE": "BS313MD-DR",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND-REGULAR-IDCW MONTHLY REINVESTMENT",
+        "SETTLEMENT TYPE": "T1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 230
+    },
+    {
+      "fields": {
+        "AMC CODE": "BIRLASUNLIFEMUTUALFUND_MF",
+        "DIV REINVEST FLAG": "Y",
+        "ISIN": "INF209K01DF0",
+        "PLAN TYPE": "NORMAL",
+        "RTA SCHEME CODE": "313M",
+        "SCHEME CODE": "B313MD-DR-L1",
+        "SCHEME NAME": "ADITYA BIRLA SUN LIFE CONSERVATIVE HYBRID FUND-REGULAR-IDCW MONTHLY REINVESTMENT",
+        "SETTLEMENT TYPE": "L1",
+        "SIP ALLOWED": "Y"
+      },
+      "source_line": 231
+    }
+  ],
+  "scope": "Public identity/route fields only. Other 44-cell values in generated test rows are synthetic, not original production limits. No member/credential fields. UAT observations are not production authority.",
+  "source_sha256": "407e9642d2cf5a006237268f5912641b998f90a46e52b4ed934ac3ef5cecc2f4"
+}

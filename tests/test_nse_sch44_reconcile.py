@@ -124,3 +124,62 @@ def test_cli_runs_offline_and_preserves_inputs(tmp_path, capsys):
     with pytest.raises(contract.ImportError, match='NSE_EVIDENCE_MUST_BE_DISTINCT'):
         review.report(inputs['source'], inputs['catalogue'], inputs['source'],
                       inputs['amfi-first'], inputs['amfi-second'])
+
+
+@pytest.mark.parametrize(("flag", "slot"), [("N", review.REINVEST_SLOT), ("Y", review.GROWTH_SLOT)])
+def test_current_only_nse_route_has_distinct_namespace_and_no_invented_history(flag, slot):
+    current = source(flag=flag)
+    earlier = source(marker="Retained").replace(b"SYNTH_A", b"OLDER_DIFFERENT_ROUTE")
+    result = review.report(
+        current, catalogue(slot), earlier, amfi(slot), amfi(slot, date="16-Nov-2026")
+    )
+    (row,) = result["rows"]
+    assert row["status"] == "EXACT" and row["amfi_code"] == 100001
+    assert row["nse_scheme_code"] == "SYNTH_A" and row["earlier_nse_line"] is None
+    assert row["amfi_isin_slot"] == slot and row["source_reinvestment_flag"] == flag
+    assert row["flag_slot_disagreement"] == review.DISAGREEMENT
+
+
+def test_retained_route_rebound_still_blocks_current_only_rule():
+    old = source(marker="Retained").replace(ISIN.encode(), OTHER_ISIN.encode())
+    row = review.report(
+        source(),
+        catalogue(review.REINVEST_SLOT),
+        old,
+        amfi(review.REINVEST_SLOT),
+        amfi(review.REINVEST_SLOT, date="16-Nov-2026"),
+    )["rows"][0]
+    assert row["status"] == "AMBIGUOUS" and row["reason"] == "NSE_SCHEME_CODE_HISTORY_CONFLICT"
+
+
+@pytest.mark.parametrize("evidence", ["issuer", "plan", "option", "periodicity", "slot"])
+def test_current_only_route_cannot_waive_other_variant_evidence(evidence):
+    slot = review.REINVEST_SLOT
+    current = source(amc="UNKNOWN_MF" if evidence == "issuer" else "FIXTURE_MF")
+    earlier = source(marker="Retained").replace(b"SYNTH_A", b"OLD_ROUTE")
+    first = amfi(
+        slot,
+        plan="" if evidence == "plan" else "Regular Plan",
+        option="" if evidence == "option" else "Monthly IDCW Option",
+        competing=evidence == "slot",
+    )
+    second = amfi(
+        slot,
+        date="16-Nov-2026",
+        option="Quarterly IDCW Option" if evidence == "periodicity" else "Monthly IDCW Option",
+    )
+    row = review.report(current, catalogue(slot), earlier, first, second)["rows"][0]
+    assert row["status"] != "EXACT" and row["amfi_isin_slot"] is None
+
+
+def test_direct_current_only_route_keeps_scope_boundary():
+    slot = review.REINVEST_SLOT
+    earlier = source(marker="Retained").replace(b"SYNTH_A", b"OLD_ROUTE")
+    row = review.report(
+        source(),
+        catalogue(slot, "DIRECT"),
+        earlier,
+        amfi(slot, plan="Direct Plan"),
+        amfi(slot, date="16-Nov-2026", plan="Direct Plan"),
+    )["rows"][0]
+    assert row["status"] == "OUT_OF_SCOPE" and row["amfi_plan"] == "DIRECT"

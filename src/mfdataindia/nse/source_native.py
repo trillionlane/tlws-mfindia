@@ -177,6 +177,7 @@ def prepare(
         "catalogue_sha256": sha256(catalogue).hexdigest(),
         "mapping_input_hash": c.digest([funds[k] for k in sorted(funds)]),
         "identity_evidence": report["input_sha256"],
+        "identity_rule": identity.PROFILE,
         "product_review_sha256": product_review_sha256,
         "counts": dict(sorted(Counter(r["disposition"] for r in resolved).items())),
     }
@@ -417,6 +418,22 @@ def fund_section(conn, code):
                 "layout": sch44.PROFILE,
                 "catalogue_version": row["catalogue_version"],
                 "link_status": "VERIFIED_EXACT",
+                "identity_evidence": {
+                    "rule_version": row["identity_rule"],
+                    "amfi_scheme_code": link["amfi_code"],
+                    "amfi_issuer": link["amfi_issuer"],
+                    "earlier_nse_line": link["earlier_nse_line"],
+                    "historical_route": "CORROBORATED"
+                    if link["earlier_nse_line"] is not None
+                    else "ABSENT_NO_ADVERSE_HISTORY",
+                    "amfi_witnesses": [
+                        {"sha256": row["identity_evidence_hashes"][name], **witness}
+                        for name, witness in zip(
+                            ("amfi_first", "amfi_second"), link["amfi_witnesses"]
+                        )
+                    ],
+                },
+                "source_sip_allowed": {"Y": True, "N": False}.get(row["original_cells"][28]),
                 "amfi_isin_slot": link["amfi_isin_slot"],
                 "amfi_plan": link["amfi_plan"],
                 "amfi_option": link["amfi_option"],

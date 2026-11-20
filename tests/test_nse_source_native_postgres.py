@@ -99,6 +99,10 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
         second = cells.copy()
         second[0] = "000002"
         second[1] = "SYNTH_A-L1"
+        cells[28] = "Y"
+        cells[32] = "T1"
+        second[28] = "N"
+        second[32] = "L1"
         sif = cells.copy()
         sif[0] = "000003"
         sif[1] = "SIF_A"
@@ -106,6 +110,7 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
         held = cells.copy()
         held[0] = "000004"
         held[1] = "UNKNOWN_ROUTE"
+        held[5] = "UNKNOWN_ISSUER_MF"
         raw = (
             "\n".join([header, *("|".join(r) for r in [cells, second, sif, held])]) + "\n"
         ).encode()
@@ -144,7 +149,7 @@ def prepare(dsn, raw=None, *, source_date="17112026"):
         "byte_length": len(raw),
         "row_count": 4,
     }
-    earlier = b"\n".join(raw.splitlines()[:4]) + b"\n"
+    earlier = b"\n".join(raw.splitlines()[:2]) + b"\n"
     earlier = earlier.replace(b"title ignored", b"earlier title")  # no unknown fourth route witness
     first = amfi("isin_growth_or_div_payout").replace(b"100001;", b"1;")
     second = amfi("isin_growth_or_div_payout", date="16-Nov-2026").replace(b"100001;", b"1;")
@@ -223,6 +228,15 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(
         routes = section["routes"]
         assert len(routes) == 2
         assert [r["fields"]["SCHEME CODE"] for r in routes] == ["SYNTH_A", "SYNTH_A-L1"]
+        assert [r["source_sip_allowed"] for r in routes] == [True, False]
+        assert [r["fields"]["SETTLEMENT TYPE"] for r in routes] == ["T1", "L1"]
+        assert [r["identity_evidence"]["historical_route"] for r in routes] == [
+            "CORROBORATED",
+            "ABSENT_NO_ADVERSE_HISTORY",
+        ]
+        assert routes[1]["identity_evidence"]["earlier_nse_line"] is None
+        assert all(len(r["identity_evidence"]["amfi_witnesses"]) == 2 for r in routes)
+        assert all(r["identity_evidence"]["amfi_scheme_code"] == 1 for r in routes)
         for row, (cells, holds) in zip(routes, sch44.parse(raw)):
             assert row["fields"] == dict(zip(native.HEADERS44, cells))
             assert len(row["fields"]) == 44
@@ -239,6 +253,15 @@ def test_native_source_all_fields_routes_api_replay_revision_and_preservation(
         response = client.get(url, params={"limit": 100})
         assert response.status_code == 200, response.text
         assert len(response.json()["rows"]) == 4  # source-native includes held/SIF, not attached
+        page = client.get(url, params={"limit": 2}).json()
+        later = client.get(url, params={"limit": 2, "cursor": page["next_cursor"]}).json()
+        assert len(page["rows"]) == len(later["rows"]) == 2 and later["next_cursor"] is None
+        assert {r["source_line"] for r in page["rows"] + later["rows"]} == {2, 3, 4, 5}
+        assert {r["disposition"] for r in page["rows"] + later["rows"]} == {
+            "MF_EXACT",
+            "MF_HELD",
+            "SIF",
+        }
     # Current identity drift can withhold an old exact link but never create a
     # replacement. Read on the same real transaction; rollback fixture change.
     with psycopg.connect(make_conninfo(pg_dsn, dbname="mfdataindia"), row_factory=dict_row) as conn:

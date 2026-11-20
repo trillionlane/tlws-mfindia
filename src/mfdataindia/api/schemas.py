@@ -178,10 +178,28 @@ class FundHolding(BaseModel):
 
 # Literal positional source values. All 44 header aliases are required strings;
 # an empty cell stays "", sentinel dates and formatted numbers stay literal.
-Sch44Fields = create_model("Sch44Fields", **{
-    f"position_{position:02d}": (str, Field(alias=header))
-    for position, header in enumerate(HEADERS44, 1)
-})
+Sch44Fields = create_model(
+    "Sch44Fields",
+    **{
+        f"position_{position:02d}": (str, Field(alias=header))
+        for position, header in enumerate(HEADERS44, 1)
+    },
+)
+
+
+class NseAmfiWitness(BaseModel):
+    sha256: str
+    lines: list[int]
+    periodicity: str | None
+
+
+class NseIdentityEvidence(BaseModel):
+    rule_version: str
+    amfi_scheme_code: int
+    amfi_issuer: str
+    earlier_nse_line: int | None
+    historical_route: Literal["CORROBORATED", "ABSENT_NO_ADVERSE_HISTORY"]
+    amfi_witnesses: list[NseAmfiWitness]
 
 
 class NseSourceRoute(BaseModel):
@@ -195,6 +213,10 @@ class NseSourceRoute(BaseModel):
     layout: str
     catalogue_version: str
     link_status: Literal["VERIFIED_EXACT"]
+    identity_evidence: NseIdentityEvidence
+    source_sip_allowed: bool | None = Field(
+        description="NSE SCH44 field 29 SIP ALLOWED: Y=true, N=false, otherwise unknown, at the captured generation date. Not inferred from route code, settlement or UAT. Schedule/mandate and complete order eligibility require separate validation."
+    )
     amfi_isin_slot: Literal["isin_growth_or_div_payout", "isin_div_reinvest"]
     amfi_plan: str
     amfi_option: str

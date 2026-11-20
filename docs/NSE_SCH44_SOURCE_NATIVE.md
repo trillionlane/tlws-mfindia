@@ -43,7 +43,8 @@ retrieval provenance, dated catalogue, distinct earlier NSE witness, both retain
 AMFI column witnesses and independently hash-pinned product decisions. It prints
 only the candidate hash. No Member ID, transport, environment DSN, database or
 cloud action is used by preparation. Input paths and private references stay out
-of Git. Recomputed identities use PR165's production code/issuer/ISIN-slot and
+of Git. Recomputed identities use the [current v2 rule](NSE_SCH44_LINK_RULE_V2_20261120.md),
+retaining PR165's production code/issuer/ISIN-slot and
 explicit plan/option checks, not a unique ISIN or the literal NSE flag alone.
 Product evidence can withhold a link, never create an exact identity.
 
@@ -81,7 +82,9 @@ relax the separate FULL snapshot gate.
 `GET /api/funds/{code}` gains `nse`, version `nse-sch44-source-native-v1`.
 Status is `NOT_INSTALLED`, `NO_VERIFIED_LINK`, or `VERIFIED_LINKS`. Routes are an
 ordered array, preserving every linked source line and route code. Each contains
-all **44 required string properties** under `fields`, using exact SCH44 header
+all **44 required string properties** under `fields`,
+`identity_evidence` with both AMFI witness hashes/lines and honest historical-route
+state, plus the dated `source_sip_allowed` declaration from NSE field 29, using exact SCH44 header
 names, plus snapshot/hash, generation date/basis, retrieval time, layout,
 catalogue version, source line, verified AMFI slot/plan/option, disagreement marker
 and field holds. `transaction_eligibility` is always `NOT_ESTABLISHED`.

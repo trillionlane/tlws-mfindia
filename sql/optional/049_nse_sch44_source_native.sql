@@ -15,6 +15,8 @@ CREATE VIEW mf_nse.source_routes WITH (security_barrier=true) AS
    m.disposition,m.reason,m.candidates,
    s.source_date AS generation_date,s.schema_version,s.mapping_input_hash,
    s.manifest->>'catalogue_version' AS catalogue_version,
+   s.manifest->'identity_evidence' AS identity_evidence_hashes,
+   s.manifest->>'identity_rule' AS identity_rule,
    s.manifest->>'filename' AS filename,
    s.manifest->>'retrieved_at_utc' AS retrieved_at_utc,
    a.content_hash AS source_sha256,h.generation
