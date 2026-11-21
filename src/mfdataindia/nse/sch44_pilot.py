@@ -18,6 +18,7 @@ import requests
 from . import contract, sch44
 
 PREFIX = 'nse-sch44/uat/'
+PRODUCTION_WEB_PREFIX = 'nse-sch44/production-web/'
 PILOT_JOB = 'tlws-mf-data-nse-sch44-uat'
 METADATA_TOKEN = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token'
 STORAGE = 'https://storage.googleapis.com'
@@ -35,7 +36,10 @@ def utc_now():
 class PrivateArchive:
     """Create-only objects in a private GCS bucket, with generation-bound deduplication."""
 
-    def __init__(self, session, bucket):
+    def __init__(self, session, bucket, *, prefix=PREFIX):
+        if prefix not in {PREFIX, PRODUCTION_WEB_PREFIX}:
+            raise PilotError('ARCHIVE_PREFIX_INVALID')
+        self.prefix = prefix
         if not re.fullmatch(r'[a-z0-9][a-z0-9_-]{1,61}[a-z0-9]', bucket):
             raise PilotError('ARCHIVE_BUCKET_INVALID')
         self.session = session
@@ -60,7 +64,7 @@ class PrivateArchive:
             raise PilotError('ARCHIVE_PRIVACY_UNVERIFIED')
 
     def create(self, key, content, *, deduplicate=False):
-        name = PREFIX + key
+        name = self.prefix + key
         checksum = base64.b64encode(md5(content, usedforsecurity=False).digest()).decode()
         upload = self.session.post(
             f'{STORAGE}/upload/storage/v1/b/{self.bucket}/o',

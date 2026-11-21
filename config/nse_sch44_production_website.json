@@ -1,0 +1,21 @@
+{
+  "format": "nse-sch44-production-website-schedule-v1",
+  "project": "trillionlane-dev",
+  "region": "asia-south1",
+  "job": {
+    "name": "tlws-mf-data-nse-sch44-production-web",
+    "tasks": 1,
+    "parallelism": 1,
+    "maxRetries": 0,
+    "timeoutSeconds": 240
+  },
+  "schedule": {
+    "cron": "0 1 * * *",
+    "timeZone": "Asia/Kolkata",
+    "retryCount": 0,
+    "httpMethod": "POST",
+    "target": "https://run.googleapis.com/v2/projects/trillionlane-dev/locations/asia-south1/jobs/tlws-mf-data-nse-sch44-production-web:run"
+  },
+  "archive_prefix": "nse-sch44/production-web/",
+  "publication": "NOT_ATTEMPTED"
+}
