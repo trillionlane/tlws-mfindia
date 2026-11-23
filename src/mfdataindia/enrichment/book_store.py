@@ -32,6 +32,10 @@ MIGRATIONS = {
     ),
     6: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
     8: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
+    9: (
+        "050_sbi_document_as_of_evidence.sql",
+        "ba2e7fb6073136a57bdfced59c30d5705d2e61b80e9d69ef338a346d9a52b422",
+    ),
     7: ("041_uti_book_evidence.sql", "ef9a081ed0e46df618aa8b66a8c412387662761e0b7cd91c62e16a26ef07c702"),
     5: (
         "044_uti_complete_aum_rows.sql",

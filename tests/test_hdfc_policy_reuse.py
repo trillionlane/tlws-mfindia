@@ -30,14 +30,14 @@ def test_installer_scope_constructs_each_policy_once_and_resets_after_error(monk
     monkeypatch.setattr(book_sources, '_construct_current_policy', construct)
     with pytest.raises(RuntimeError, match='controlled'):
         with book_sources.reuse_current_policies():
-            assert calls == {v: 1 for v in range(1, 9)}
+            assert calls == {v: 1 for v in range(1, 10)}
             for _ in range(3):
                 book_sources.current_policies()
-            assert calls == {v: 1 for v in range(1, 9)}
+            assert calls == {v: 1 for v in range(1, 10)}
             raise RuntimeError('controlled')
     before = calls.copy()
     with book_sources.reuse_current_policies():
-        assert calls == before + Counter({v: 1 for v in range(1, 9)})
+        assert calls == before + Counter({v: 1 for v in range(1, 10)})
 
 
 def test_reuse_returns_isolated_documents_and_does_not_cross_contexts():
@@ -50,7 +50,7 @@ def test_reuse_returns_isolated_documents_and_does_not_cross_contexts():
         with book_sources.select_registry(7):
             assert book_sources.current_policy() == book_sources.current_policy(7)
         assert book_sources.current_policy() == book_sources.current_policy(5)
-        for version in (True, 0, 9, '8'):
+        for version in (True, 0, 10, '8'):
             with pytest.raises(ValueError):
                 book_sources.current_policy(version)
     assert book_sources._prepared_policies.get() is None
