@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:trillionlane:mfdata:execution-reference-consumer:1",
+  "title": "MFData execution-reference consumer record v1",
+  "description": "Consumer-required offline contract for a future reviewed MFData execution-reference publication. This schema does not claim that MFData currently publishes this record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "executionReferenceId",
+    "snapshotId",
+    "sourceAsOf",
+    "expiresAt",
+    "variant",
+    "mapping",
+    "providerReference"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1"
+    },
+    "executionReferenceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "snapshotId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "sourceAsOf": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amfiSchemeCode",
+        "matchedIsinSlot",
+        "isin",
+        "planCode",
+        "optionCode"
+      ],
+      "properties": {
+        "amfiSchemeCode": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "matchedIsinSlot": {
+          "enum": ["GROWTH_OR_DIV_PAYOUT", "DIV_REINVEST"]
+        },
+        "isin": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{9}[0-9]$"
+        },
+        "planCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Z0-9][A-Z0-9_-]*$"
+        },
+        "optionCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[A-Z0-9][A-Z0-9_-]*$"
+        }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reasonCodes"],
+      "properties": {
+        "status": {
+          "enum": [
+            "MAPPED",
+            "AMBIGUOUS",
+            "UNMAPPED",
+            "CONFLICT",
+            "OUT_OF_SCOPE"
+          ]
+        },
+        "reasonCodes": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          }
+        }
+      }
+    },
+    "providerReference": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/providerReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mapping": {
+            "properties": {
+              "status": {
+                "const": "MAPPED"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "providerReference": {
+            "$ref": "#/$defs/providerReference"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "providerReference": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "providerReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "schemeCode"],
+      "properties": {
+        "provider": {
+          "const": "NSE"
+        },
+        "schemeCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    }
+  }
+}
