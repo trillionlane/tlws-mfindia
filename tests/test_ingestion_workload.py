@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import pytest
 
-from mfdataindia.enrichment import ingestion_workload as workload, book_sources
+from mfdataindia.enrichment import ingestion_workload as workload, book_sources, book_store
 from test_allocated_amc_workload import environment
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -81,6 +81,20 @@ def test_current_profile_preserves_all_six_predecessor_configurations_exactly():
     allocation=workload.allocation(ROOT)
     assert allocation['book_configuration_sha256']!=__import__('mfdataindia.review.policy',fromlist=['fingerprint']).fingerprint(book_sources.configuration(6))
     assert book_sources.CURRENT_VERSION==5 and book_sources.registry(7)['sources'][-1]['adapter']=='uti-english-monthly-book-v1'
+
+
+def test_source_compatibility_descriptor_keeps_registry9_and_migration50_unallocated():
+    document = workload.allocation(ROOT)
+    assert document['format'] == 'official-amc-discovery-workload-v6'
+    assert document['id'] == 'official-amc-discovery-dev-v6'
+    assert document['previous_current_allocation_sha256'] == workload.PREVIOUS_SHA256
+    assert document['source_compatibility'] == workload.SOURCE_COMPATIBILITY
+    assert document['live_execution_approval'] is False
+    assert book_sources.CURRENT_VERSION == 5
+    assert document['source_compatibility']['allocated_registry_version'] == 8
+    assert document['source_compatibility']['excluded_registry_versions'] == [9]
+    assert book_store.MIGRATIONS[8][0] == '041_uti_book_evidence.sql'
+    assert book_store.MIGRATIONS[9][0] == '050_sbi_document_as_of_evidence.sql'
 
 
 @pytest.mark.parametrize('effect', ['UNKNOWN','COMMITTED_UNVERIFIED','PUBLICATION_VERIFIED'])

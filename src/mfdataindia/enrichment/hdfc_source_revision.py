@@ -19,6 +19,8 @@ def previous(path,data=None,root=None):
     name=('src/mfdataindia/enrichment/'+path.name if path.parent.resolve()==Path(__file__).parent.resolve()
           else path.resolve().relative_to(root.resolve()).as_posix())
     raw=path.read_bytes() if data is None else data
+    from mfdataindia.enrichment.sbi_document_date_source_revision import previous as sbi_previous
+    raw=sbi_previous(path,raw,root=root)
     authority=(root/FILE).read_bytes()
     if hashlib.sha256(authority).hexdigest()!=SHA256:
         raise ValueError('HDFC_PREDECESSOR_AUTHORITY_DIFFERS')
