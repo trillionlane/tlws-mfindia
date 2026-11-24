@@ -107,6 +107,7 @@ def future_alignment(root: Path) -> dict:
             "expiresAt is required literal JSON null; timestamps and omission are rejected.",
             "Mapping validity follows supersession/retirement or explicit revocation, never source age.",
             "Immutable refresh receipts and their mutable latest pointer do not change verified-unchanged mapping identity.",
+            "Mapping-semantic digests exclude acceptance/source labels; wire-content digests retain sourceAsOf integrity.",
         ],
         "futureTipQualification": [
             "Pin the independently reviewed MFData contract version and schema/fixture hashes.",
@@ -114,6 +115,7 @@ def future_alignment(root: Path) -> dict:
             "Keep every independently verified route per canonical variant in a set; no first-item-wins selection.",
             "Atomically replace from a complete accepted mapping head; reconcile explicit retirement/revocation.",
             "Failed, incomplete or conflicting refresh observations retain the last accepted mapping head.",
+            "Recompute complete prior/candidate mapping semantics; timestamp or source-label changes cannot qualify as UPDATED.",
         ],
         "activation": "NOT_AUTHORIZED",
     }

@@ -1,10 +1,99 @@
 """Synthetic closed-registry and reference-identity policy tests; no materializer."""
 
 from copy import deepcopy
+import importlib.util
+from pathlib import Path
 
 import pytest
 
 from mfdataindia.producer_contract import policy as p
+
+
+def semantic_fixture():
+    path = Path(__file__).resolve().parent / "fixtures/producer_contract/build_fixtures.py"
+    spec = importlib.util.spec_from_file_location("semantic_fixtures", path)
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    manifest, records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")])
+    return records, manifest["sections"][1]["executionMetadata"]
+
+
+@pytest.mark.parametrize("field,value", [("sourceAsOf", "2026-01-12T09:00:00Z"),
+                                         ("snapshotId", "mfref-v1:" + "0" * 64)])
+def test_mapping_semantics_excludes_record_envelope_but_wire_digest_retains_time(field, value):
+    records, meta = semantic_fixture()
+    original = p.mapping_content_digest(records, meta)
+    changed = deepcopy(records)
+    for item in changed:
+        item[field] = value
+    assert p.mapping_content_digest(changed, meta) == original
+    if field == "sourceAsOf":
+        assert p.section_content_digest(changed) != p.section_content_digest(records)
+
+
+@pytest.mark.parametrize("field,value", [("acceptedAt", "2026-01-12T09:00:00Z"),
+                                         ("nseFilenameDate", "2026-01-12"),
+                                         ("nseSource", {"snapshotId": "new-source", "digest": "b" * 64}),
+                                         ("canonicalUniverse", {"snapshotId": "new-canonical", "digest": "b" * 64}),
+                                         ("mappingPolicyVersion", "synthetic-unsupported-policy"),
+                                         ("codeRegistryVersion", "synthetic-unsupported-registry")])
+def test_mapping_digest_does_not_turn_decision_pins_or_raw_provenance_into_semantic_change(field, value):
+    records, meta = semantic_fixture()
+    # Pure projection only; successful transition tests independently reject unsupported pins.
+    assert p.mapping_content_digest(records, {**meta, field: value}) == p.mapping_content_digest(records, meta)
+
+
+def test_mapping_projection_is_exact_allowlist_and_record_order_independent():
+    records, meta = semantic_fixture()
+    expected = {
+        "version": "mfdata-mapping-semantics-v1",
+        "records": [{"variant": item["variant"], "mapping": item["mapping"],
+                     "providerReference": item["providerReference"]}
+                    for item in sorted(records, key=p.record_sort_key)],
+        "population": {key: meta[key] for key in ("universe", "recordStatusCounts", "variantOutcomeCounts",
+                                                   "exclusions", "withheldReasons")},
+    }
+    assert p.mapping_content_digest(records, meta) == p.digest(expected)
+    assert p.mapping_content_digest(list(reversed(records)), meta) == p.digest(expected)
+    assert len({item["providerReference"]["schemeCode"] for item in records}) == 2
+
+
+@pytest.mark.parametrize("change", ["route", "isin", "variant", "slot-option", "status", "reason",
+                                    "route-removal", "universe", "record-counts", "variant-counts",
+                                    "exclusions", "withheld"])
+def test_semantic_projection_includes_each_decision_and_population_component(change):
+    records, meta = semantic_fixture()
+    before = p.mapping_content_digest(records, meta)
+    items, population = deepcopy(records), deepcopy(meta)
+    if change == "route":
+        items[0]["providerReference"]["schemeCode"] = "SYNTHETIC-ROUTE-03"
+    elif change == "isin":
+        items[0]["variant"]["isin"] = "INZZ00000027"
+    elif change == "variant":
+        items[0]["variant"]["amfiSchemeCode"] += 1
+    elif change == "slot-option":
+        items[0]["variant"].update(matchedIsinSlot="DIV_REINVEST", optionCode="IDCW_REINVEST")
+    elif change in {"status", "reason"}:
+        items[0]["mapping"] = {"status": "CONFLICT", "reasonCodes": ["ISIN_CONFLICT"]}
+        items[0]["providerReference"] = None
+        if change == "reason":
+            different = deepcopy(items)
+            different[0]["mapping"]["reasonCodes"] = ["OPTION_CONFLICT"]
+            assert p.mapping_content_digest(items, population) != p.mapping_content_digest(different, population)
+    elif change == "route-removal":
+        items.pop()
+    elif change == "universe":
+        population["universe"].update(inputVariants=3, excludedVariants=2)
+    elif change == "record-counts":
+        population["recordStatusCounts"]["MAPPED"] += 1
+    elif change == "variant-counts":
+        population["variantOutcomeCounts"]["MAPPED"] += 1
+    elif change == "exclusions":
+        population["exclusions"] = {"INACTIVE": 1}
+    else:
+        population["withheldReasons"] = {"SOURCE_SNAPSHOT_INCOMPLETE": 1}
+    # Projection sensitivity only; full-section tests reject inconsistent counts/IDs.
+    assert p.mapping_content_digest(items, population) != before
 
 
 VARIANT = {"amfiSchemeCode": 123456, "matchedIsinSlot": "GROWTH_OR_DIV_PAYOUT",

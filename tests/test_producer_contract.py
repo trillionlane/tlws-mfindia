@@ -177,7 +177,8 @@ def test_root_and_section_hashes_reject_tampering_and_refresh_is_not_in_identity
         serialize(changed, SnapshotManifest)
     prior, _ = builder.refresh(manifest)
     later, receipt = builder.refresh(manifest, at="2027-01-11T10:00:00Z", prior=prior)
-    validate_refresh_transition(prior, later, observation=receipt, accepted_manifest=manifest)
+    validate_refresh_transition(prior, later, observation=receipt, accepted_manifest=manifest, accepted_records=records,
+                                prior_manifest=manifest, prior_records=records)
     assert canonical_bytes(manifest) == original
     assert records[0]["sourceAsOf"] == manifest["sections"][1]["executionMetadata"]["acceptedAt"]
 
@@ -287,9 +288,11 @@ def test_incomplete_source_cannot_unmap_replace_or_retire_a_complete_head():
     held, empty = builder.snapshot([], completeness="INCOMPLETE", eligible_variants=1, source_revision=2)
     assert not empty and held["sections"][1]["executionMetadata"]["acceptedAt"] is None
     prior, _ = builder.refresh(active)
-    proposed, receipt = builder.refresh(held, status="UPDATED", at="2026-01-12T10:00:00Z", prior=prior)
+    proposed, receipt = builder.refresh(held, status="UPDATED", at="2026-01-12T10:00:00Z", prior=prior,
+                                        candidate_digest="0" * 64)
     with pytest.raises(ContractError, match="^NEW_COMPLETE_MAPPING_REQUIRED$"):
-        validate_refresh_transition(prior, proposed, observation=receipt, accepted_manifest=held)
+        validate_refresh_transition(prior, proposed, observation=receipt, accepted_manifest=held, accepted_records=empty,
+                                    prior_manifest=active, prior_records=records)
     bad = deepcopy(held)
     bad["sections"][1]["executionMetadata"]["recordStatusCounts"]["UNMAPPED"] = 1
     rehash(bad)
@@ -322,7 +325,8 @@ def test_old_source_and_failed_refresh_never_expire_mapping_identity():
     assert manifest["sections"][1]["executionMetadata"]["nseFilenameDate"] == "2020-01-01"
     prior, _ = builder.refresh(manifest)
     verified, receipt = builder.refresh(manifest, at="2028-01-12T10:00:00Z", prior=prior)
-    validate_refresh_transition(prior, verified, observation=receipt, accepted_manifest=manifest)
+    validate_refresh_transition(prior, verified, observation=receipt, accepted_manifest=manifest, accepted_records=records,
+                                prior_manifest=manifest, prior_records=records)
     failed, failure = builder.refresh(manifest, at="2028-01-13T10:00:00Z", status="FAILED", prior=verified)
     validate_refresh_transition(verified, failed, observation=failure)
     assert canonical_bytes(manifest) == raw
@@ -331,12 +335,13 @@ def test_old_source_and_failed_refresh_never_expire_mapping_identity():
 
 
 def test_unchanged_verification_cannot_roll_acceptance_time():
-    manifest, _ = builder.snapshot([builder.record()])
+    manifest, records = builder.snapshot([builder.record()])
     prior, _ = builder.refresh(manifest)
-    revised, _ = builder.snapshot([builder.record()], accepted_at="2026-01-11T10:00:00Z")
+    revised, revised_records = builder.snapshot([builder.record()], accepted_at="2026-01-11T10:00:00Z")
     after, receipt = builder.refresh(revised, at="2026-01-12T10:00:00Z", prior=prior)
     with pytest.raises(ContractError, match="^NEW_COMPLETE_MAPPING_REQUIRED$"):
-        validate_refresh_transition(prior, after, observation=receipt, accepted_manifest=revised)
+        validate_refresh_transition(prior, after, observation=receipt, accepted_manifest=revised, accepted_records=revised_records,
+                                    prior_manifest=manifest, prior_records=records)
 
 
 def test_new_complete_snapshot_can_supersede_once_without_rewriting_old_history():
@@ -346,13 +351,16 @@ def test_new_complete_snapshot_can_supersede_once_without_rewriting_old_history(
     newer, items = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
                                    accepted_at="2026-01-12T10:00:00Z", source_revision=2)
     after, receipt = builder.refresh(newer, status="UPDATED", at="2026-01-12T11:00:00Z", prior=before)
-    assert load_json(validate_refresh_transition(before, after, observation=receipt, accepted_manifest=newer))["activeSnapshotId"] == newer["snapshotId"]
-    assert validate_refresh_transition(after, after, observation=receipt, accepted_manifest=newer) == canonical_bytes(after)
+    assert load_json(validate_refresh_transition(before, after, observation=receipt, accepted_manifest=newer, accepted_records=items,
+                                prior_manifest=old, prior_records=old_records))["activeSnapshotId"] == newer["snapshotId"]
+    assert validate_refresh_transition(after, after, observation=receipt, accepted_manifest=newer, accepted_records=items,
+                                prior_manifest=old, prior_records=old_records) == canonical_bytes(after)
     assert len(items) == 2
     assert canonical_bytes({"manifest": old, "items": old_records}) == old_bytes
     same, repeated = builder.refresh(newer, status="UPDATED", at="2026-01-13T11:00:00Z", prior=after)
     with pytest.raises(ContractError):
-        validate_refresh_transition(after, same, observation=repeated, accepted_manifest=newer)
+        validate_refresh_transition(after, same, observation=repeated, accepted_manifest=newer, accepted_records=items,
+                                prior_manifest=old, prior_records=old_records)
 
 
 def test_duplicate_json_members_and_nonfinite_numbers_are_rejected():

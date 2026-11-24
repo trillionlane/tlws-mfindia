@@ -32,6 +32,214 @@ def resign(summary, receipt):
     summary["latestObservationId"] = receipt["observationId"]
 
 
+def rebind(manifest, records):
+    rehash(manifest)
+    for record in records:
+        record["snapshotId"] = manifest["snapshotId"]
+
+
+@pytest.mark.parametrize("change", ["acceptance-time", "source-id", "source-digest", "filename-date",
+                                    "canonical-id", "canonical-digest", "combined"])
+def test_updated_cannot_relabel_unchanged_semantics_even_with_all_hashes_recomputed(change):
+    old, records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")])
+    before, _ = builder.refresh(old)
+    original = canonical_bytes({"manifest": old, "records": records})
+    candidate, items = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
+                                        accepted_at="2026-01-12T09:00:00Z" if change in
+                                        {"acceptance-time", "combined"} else "2026-01-10T10:00:00Z")
+    meta = candidate["sections"][1]["executionMetadata"]
+    if change in {"source-id", "combined"}:
+        meta["nseSource"]["snapshotId"] = "synthetic-renamed-source"
+    if change in {"source-digest", "combined"}:
+        meta["nseSource"]["digest"] = "b" * 64
+    if change in {"filename-date", "combined"}:
+        meta["nseFilenameDate"] = "2026-01-12"
+    if change == "canonical-id":
+        meta["canonicalUniverse"]["snapshotId"] = "synthetic-renamed-canonical"
+    if change == "canonical-digest":
+        meta["canonicalUniverse"]["digest"] = "b" * 64
+    rebind(candidate, items)
+    assert candidate["snapshotId"] != old["snapshotId"]
+    assert meta["mappingContentDigest"] == old["sections"][1]["executionMetadata"]["mappingContentDigest"]
+    after, receipt = builder.refresh(candidate, status="UPDATED", at="2026-01-12T10:00:00Z", prior=before)
+    with pytest.raises(ContractError, match="^MAPPING_SEMANTIC_CHANGE_REQUIRED$"):
+        validate_refresh_transition(before, after, observation=receipt,
+                                    accepted_manifest=candidate, accepted_records=items,
+                                    prior_manifest=old, prior_records=records)
+    assert canonical_bytes({"manifest": old, "records": records}) == original
+
+
+@pytest.mark.parametrize("context", ["missing-prior-manifest", "missing-prior-records", "wrong-prior-head",
+                                     "missing-candidate-records", "partial-prior", "partial-candidate"])
+def test_success_requires_complete_bound_prior_and_candidate_sections(context):
+    old, old_records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")])
+    before, _ = builder.refresh(old)
+    candidate, items = builder.snapshot([builder.record()], source_revision=2,
+                                        accepted_at="2026-01-12T09:00:00Z")
+    after, receipt = builder.refresh(candidate, status="UPDATED", at="2026-01-12T10:00:00Z", prior=before)
+    args = dict(accepted_manifest=candidate, accepted_records=items, prior_manifest=old, prior_records=old_records)
+    if context == "missing-prior-manifest":
+        args["prior_manifest"] = None
+    elif context == "missing-prior-records":
+        args["prior_records"] = None
+    elif context == "wrong-prior-head":
+        args.update(prior_manifest=candidate, prior_records=items)
+    elif context == "missing-candidate-records":
+        args["accepted_records"] = None
+    elif context == "partial-prior":
+        args["prior_records"] = old_records[:1]
+    else:
+        args["accepted_records"] = []
+    with pytest.raises(ContractError):
+        validate_refresh_transition(before, after, observation=receipt, **args)
+    assert before["activeSnapshotId"] == old["snapshotId"]
+
+
+@pytest.mark.parametrize("target", ["prior", "candidate", "receipt"])
+def test_forged_semantic_digest_is_not_accepted_even_after_rehash(target):
+    old, old_records = builder.snapshot([builder.record()])
+    candidate, items = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
+                                        source_revision=2, accepted_at="2026-01-12T09:00:00Z")
+    if target != "receipt":
+        manifest, records = (old, old_records) if target == "prior" else (candidate, items)
+        manifest["sections"][1]["executionMetadata"]["mappingContentDigest"] = "0" * 64
+        rebind(manifest, records)
+    before, _ = builder.refresh(old)
+    after, receipt = builder.refresh(candidate, status="UPDATED", at="2026-01-12T10:00:00Z", prior=before)
+    if target == "receipt":
+        receipt["candidateMappingContentDigest"] = "0" * 64
+        resign(after, receipt)
+    with pytest.raises(ContractError, match=("^REFRESH_MAPPING_DECISION_PINS_MISMATCH$" if target == "receipt"
+                                            else "^MAPPING_SEMANTIC_DIGEST_MISMATCH$")):
+        validate_refresh_transition(before, after, observation=receipt,
+                                    accepted_manifest=candidate, accepted_records=items,
+                                    prior_manifest=old, prior_records=old_records)
+
+
+@pytest.mark.parametrize("record_position", [0, 1])
+def test_complete_timestamp_integrity_is_checked_before_any_page_slice(record_position):
+    manifest, records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")])
+    records[record_position]["sourceAsOf"] = "2026-01-12T09:00:00Z"
+    manifest["sections"][1]["contentDigest"] = policy.section_content_digest(records)
+    rebind(manifest, records)
+    with pytest.raises(ContractError, match="^ACCEPTANCE_TIME_MISMATCH$"):
+        synthetic_execution_page(records, manifest=manifest, limit=1)
+
+
+def test_changed_semantics_cannot_be_relabelled_verified_unchanged():
+    manifest, records = builder.snapshot([builder.record()])
+    candidate, _ = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")])
+    before, _ = builder.refresh(manifest)
+    after, receipt = builder.refresh(manifest, at="2026-01-12T10:00:00Z", prior=before,
+                                     candidate_digest=candidate["sections"][1]["executionMetadata"]["mappingContentDigest"])
+    with pytest.raises(ContractError, match="^REFRESH_MAPPING_DECISION_PINS_MISMATCH$"):
+        validate_refresh_transition(before, after, observation=receipt,
+                                    accepted_manifest=manifest, accepted_records=records,
+                                    prior_manifest=manifest, prior_records=records)
+
+
+@pytest.mark.parametrize("target", ["prior", "candidate"])
+@pytest.mark.parametrize("tamper", ["extra-member", "derived-id", "duplicate-route", "record-counts",
+                                    "variant-counts", "evaluated-counts", "supported-pin"])
+def test_transition_validates_entire_section_before_trusting_semantic_digest(target, tamper):
+    old, old_records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")])
+    candidate, items = builder.snapshot([builder.record()], source_revision=2,
+                                        accepted_at="2026-01-12T09:00:00Z")
+    manifest, records = (old, old_records) if target == "prior" else (candidate, items)
+    descriptor = manifest["sections"][1]
+    meta = descriptor["executionMetadata"]
+    if tamper == "extra-member":
+        records[-1]["extra"] = "SYNTHETIC_SECRET_MARKER"
+    elif tamper == "derived-id":
+        records[-1]["executionReferenceId"] = "mfer-route-v1:" + "0" * 64
+    elif tamper == "duplicate-route":
+        records.append(deepcopy(records[-1]))
+        meta["recordStatusCounts"]["MAPPED"] += 1
+        descriptor["itemCount"] += 1
+    elif tamper == "record-counts":
+        meta["recordStatusCounts"]["MAPPED"] += 1
+        descriptor["itemCount"] += 1
+    elif tamper == "variant-counts":
+        meta["variantOutcomeCounts"]["MAPPED"] = 0
+    elif tamper == "evaluated-counts":
+        meta["universe"]["evaluatedVariants"] += 1
+    else:
+        meta["codeRegistryVersion"] = "SYNTHETIC_UNSUPPORTED_REGISTRY"
+    descriptor["contentDigest"] = policy.section_content_digest(records)
+    meta["mappingContentDigest"] = policy.mapping_content_digest(records, meta)
+    rebind(manifest, records)
+    before, _ = builder.refresh(old)
+    after, receipt = builder.refresh(candidate, status="UPDATED", at="2026-01-12T10:00:00Z", prior=before)
+    with pytest.raises(ContractError) as error:
+        validate_refresh_transition(before, after, observation=receipt,
+                                    accepted_manifest=candidate, accepted_records=items,
+                                    prior_manifest=old, prior_records=old_records)
+    assert "SYNTHETIC_SECRET_MARKER" not in str(error.value)
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_first_acceptance_and_exact_replay_require_no_invented_prior_head(empty):
+    manifest, records = builder.snapshot([] if empty else [builder.record()])
+    before = {"contractVersion": "mfdata-reference-refresh-status-v1", "activeSnapshotId": None,
+              "lastRefreshAttemptAt": None, "lastSuccessfulRefreshAt": None, "lastVerifiedAt": None,
+              "refreshStatus": "NOT_ATTEMPTED", "latestObservationId": None}
+    after, receipt = builder.refresh(manifest, status="UPDATED", prior=before)
+    for initial in (before, after):
+        assert validate_refresh_transition(initial, after, observation=receipt,
+                                           accepted_manifest=manifest, accepted_records=records) == canonical_bytes(after)
+    assert manifest["sections"][1]["executionMetadata"]["mappingContentDigest"] is not None
+    with pytest.raises(ContractError, match="^PRIOR_MAPPING_CONTEXT_MISMATCH$"):
+        validate_refresh_transition(before, after, observation=receipt,
+                                    accepted_manifest=manifest, accepted_records=records,
+                                    prior_manifest=manifest, prior_records=records)
+
+
+def test_exact_replay_needs_original_predecessor_and_new_attempt_cannot_reaccept_same_mapping():
+    old, old_records = builder.snapshot([builder.record("UNMAPPED")])
+    candidate, records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
+                                          source_revision=2, accepted_at="2026-01-12T09:00:00Z")
+    before, _ = builder.refresh(old)
+    after, receipt = builder.refresh(candidate, status="UPDATED", at="2026-01-12T10:00:00Z", prior=before)
+    for initial in (before, after):
+        assert validate_refresh_transition(initial, after, observation=receipt,
+                                           accepted_manifest=candidate, accepted_records=list(reversed(records)),
+                                           prior_manifest=old, prior_records=old_records) == canonical_bytes(after)
+    with pytest.raises(ContractError, match="^PRIOR_MAPPING_CONTEXT_MISMATCH$"):
+        validate_refresh_transition(after, after, observation=receipt,
+                                    accepted_manifest=candidate, accepted_records=records,
+                                    prior_manifest=candidate, prior_records=records)
+    same, items = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
+                                   source_revision=3, accepted_at="2026-01-13T09:00:00Z")
+    repeated, new_receipt = builder.refresh(same, status="UPDATED", at="2026-01-13T10:00:00Z", prior=after)
+    with pytest.raises(ContractError, match="^MAPPING_SEMANTIC_CHANGE_REQUIRED$"):
+        validate_refresh_transition(after, repeated, observation=new_receipt,
+                                    accepted_manifest=same, accepted_records=items,
+                                    prior_manifest=candidate, prior_records=records)
+
+
+@pytest.mark.parametrize("state", ["UNAVAILABLE", "INCOMPLETE", "COMPLETE"])
+def test_required_semantic_binding_cannot_be_missing_or_forged_for_completeness(state):
+    if state == "UNAVAILABLE":
+        from mfdataindia.producer_contract.execution_reference import synthetic_unavailable
+        manifest = load_json(synthetic_unavailable()[0])
+    else:
+        manifest, _ = builder.snapshot([], completeness=state, eligible_variants=1 if state == "INCOMPLETE" else 0)
+    meta = manifest["sections"][1]["executionMetadata"]
+    assert (meta["mappingContentDigest"] is not None) == (state == "COMPLETE")
+    for missing in (True, False):
+        tampered = deepcopy(manifest)
+        target = tampered["sections"][1]["executionMetadata"]
+        if missing:
+            del target["mappingContentDigest"]
+        else:
+            target["mappingContentDigest"] = None if state == "COMPLETE" else "0" * 64
+        rehash(tampered)
+        schema = load_json(c.contract_artifacts()[c.SCHEMA_PATH])
+        assert not Draft202012Validator(schema, format_checker=FormatChecker()).is_valid(tampered)
+        with pytest.raises(ContractError):
+            serialize(tampered, SnapshotManifest)
+
+
 def test_observation_and_status_have_standalone_versioned_schemas_pins_and_fixtures():
     artifacts = c.contract_artifacts()
     paths = ((c.OBSERVATION_SCHEMA_PATH, "mfdata-reference-refresh-observation-v1", "synthetic-refresh-observation.json"),
@@ -50,7 +258,7 @@ def test_observation_and_status_have_standalone_versioned_schemas_pins_and_fixtu
 
 
 def test_receipts_are_content_addressed_immutable_and_preserve_prior_attempts():
-    manifest, _ = builder.snapshot([builder.record()])
+    manifest, records = builder.snapshot([builder.record()])
     first, first_receipt = builder.refresh(manifest)
     original = serialize_refresh_observation(first_receipt)
     latest, receipt = builder.refresh(manifest, at="2026-01-12T10:00:00Z", prior=first)
@@ -68,23 +276,25 @@ def test_receipts_are_content_addressed_immutable_and_preserve_prior_attempts():
         serialize_refresh_observation(altered)
     bad_pointer = {**latest, "latestObservationId": first_receipt["observationId"]}
     with pytest.raises(ContractError, match="^REFRESH_RECEIPT_POINTER_MISMATCH$"):
-        validate_refresh_transition(first, bad_pointer, observation=receipt, accepted_manifest=manifest)
+        validate_refresh_transition(first, bad_pointer, observation=receipt, accepted_manifest=manifest, accepted_records=records,
+                                    prior_manifest=manifest, prior_records=records)
 
 
 @pytest.mark.parametrize("disposition", ["VERIFIED_UNCHANGED", "UPDATED", "FAILED", "INCOMPLETE", "CONFLICT"])
 def test_each_terminal_disposition_has_an_independent_receipt(disposition):
-    old, _ = builder.snapshot([builder.record()])
+    old, old_records = builder.snapshot([builder.record()])
     before, _ = builder.refresh(old)
-    accepted = old
+    accepted, accepted_records = old, old_records
     if disposition == "UPDATED":
-        accepted, _ = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
+        accepted, accepted_records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
                                        source_revision=2, accepted_at="2026-01-12T09:00:00Z")
     after, receipt = builder.refresh(accepted, at="2026-01-12T10:00:00Z", status=disposition, prior=before)
     encoded = serialize_refresh_observation(receipt)
     schema = load_json(c.contract_artifacts()[c.OBSERVATION_SCHEMA_PATH])
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(load_json(encoded))
     validate_refresh_transition(before, after, observation=receipt,
-                                accepted_manifest=accepted if disposition in {"VERIFIED_UNCHANGED", "UPDATED"} else None)
+                                accepted_manifest=accepted if disposition in {"VERIFIED_UNCHANGED", "UPDATED"} else None,
+                                accepted_records=accepted_records, prior_manifest=old, prior_records=old_records)
     if disposition == "FAILED":
         assert receipt["sourceSnapshotId"] is None and receipt["sourceDigest"] is None
         assert receipt["candidateMappingContentDigest"] is None
@@ -97,8 +307,9 @@ def test_new_raw_source_can_be_verified_unchanged_without_rewriting_mapping_prov
     source = {"snapshotId": "synthetic-new-raw-source-2", "digest": "b" * 64}
     after, receipt = builder.refresh(manifest, at="2026-01-12T10:00:00Z", prior=before,
                                      source_pin=source, filename_date="2026-01-12")
-    assert policy.section_content_digest(records) == receipt["candidateMappingContentDigest"]
-    result = load_json(validate_refresh_transition(before, after, observation=receipt, accepted_manifest=manifest))
+    assert policy.mapping_content_digest(records, manifest["sections"][1]["executionMetadata"]) == receipt["candidateMappingContentDigest"]
+    result = load_json(validate_refresh_transition(before, after, observation=receipt, accepted_manifest=manifest, accepted_records=records,
+                                    prior_manifest=manifest, prior_records=records))
     assert result["refreshStatus"] == "VERIFIED_UNCHANGED"
     assert result["activeSnapshotId"] == before["activeSnapshotId"]
     assert receipt["sourceDigest"] != first["sourceDigest"]
@@ -111,7 +322,7 @@ def test_new_raw_source_can_be_verified_unchanged_without_rewriting_mapping_prov
 
 @pytest.mark.parametrize("tamper", ["mapping-content", "canonical-id", "canonical-digest", "registry", "policy"])
 def test_verified_unchanged_requires_all_four_mapping_decision_pins(tamper):
-    manifest, _ = builder.snapshot([builder.record()])
+    manifest, records = builder.snapshot([builder.record()])
     before, _ = builder.refresh(manifest)
     after, receipt = builder.refresh(manifest, at="2026-01-12T10:00:00Z", prior=before,
                                      source_pin={"snapshotId": "new-raw", "digest": "b" * 64}, filename_date="2026-01-12")
@@ -127,21 +338,23 @@ def test_verified_unchanged_requires_all_four_mapping_decision_pins(tamper):
         receipt["mappingPolicyVersion"] = "unsupported-policy"
     resign(after, receipt)
     with pytest.raises(ContractError):
-        validate_refresh_transition(before, after, observation=receipt, accepted_manifest=manifest)
+        validate_refresh_transition(before, after, observation=receipt, accepted_manifest=manifest, accepted_records=records,
+                                    prior_manifest=manifest, prior_records=records)
 
 
 @pytest.mark.parametrize("field,value", [("sourceSnapshotId", "different-source-id"), ("sourceDigest", "0" * 64),
                                          ("filenameGenerationDate", "2026-01-01")])
 def test_updated_receipt_must_match_exact_new_manifest_source_pin_and_date(field, value):
-    old, _ = builder.snapshot([builder.record()])
+    old, old_records = builder.snapshot([builder.record()])
     before, _ = builder.refresh(old)
-    newer, _ = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
+    newer, new_records = builder.snapshot([builder.record(), builder.record(scheme="SYNTHETIC-ROUTE-02")],
                                 source_revision=2, accepted_at="2026-01-12T09:00:00Z")
     after, receipt = builder.refresh(newer, at="2026-01-12T10:00:00Z", status="UPDATED", prior=before)
     receipt[field] = value
     resign(after, receipt)
     with pytest.raises(ContractError, match="^REFRESH_SOURCE_PIN_MISMATCH$"):
-        validate_refresh_transition(before, after, observation=receipt, accepted_manifest=newer)
+        validate_refresh_transition(before, after, observation=receipt, accepted_manifest=newer, accepted_records=new_records,
+                                    prior_manifest=old, prior_records=old_records)
 
 
 def test_variant_outcomes_and_record_counts_use_distinct_units():

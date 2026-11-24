@@ -10,6 +10,7 @@ from typing import Literal
 POLICY_VERSION = "MFDATA-PRODUCER-MAPPING-POLICY-v1"
 REGISTRY_VERSION = "MFDATA-CODE-REGISTRY-v1"
 EXECUTION_VERSION = "mfdata-execution-reference-v1"
+MAPPING_SEMANTICS_VERSION = "mfdata-mapping-semantics-v1"
 SECTIONS = ("variants", "executionReferences", "nav", "facts", "family")
 ClosedReason = Literal[
     "NO_EXACT_NSE_REFERENCE", "MULTIPLE_PLAUSIBLE_NSE_REFERENCES",
@@ -173,6 +174,27 @@ def section_content_digest(records: list[dict]) -> str:
     # still mandatory on each wire item and fenced against the final root ID.
     return digest([{key: value for key, value in record.items() if key != "snapshotId"}
                    for record in sorted(records, key=record_sort_key)])
+
+
+def mapping_content_digest(records: list[dict], metadata: dict) -> str:
+    """Semantic projection of a validated full section, never its envelope labels.
+
+    Callers must validate the complete records/accounting before trusting this
+    digest. Explicit allowlists prevent future envelope fields entering identity.
+    Wire integrity remains independently bound by section_content_digest.
+    """
+    return digest({
+        "version": MAPPING_SEMANTICS_VERSION,
+        "records": [{
+            "variant": {key: record["variant"][key] for key in
+                        ("amfiSchemeCode", "matchedIsinSlot", "isin", "planCode", "optionCode")},
+            "mapping": {key: record["mapping"][key] for key in ("status", "reasonCodes")},
+            "providerReference": ({key: record["providerReference"][key] for key in ("provider", "schemeCode")}
+                                  if record["providerReference"] is not None else None),
+        } for record in sorted(records, key=record_sort_key)],
+        "population": {key: metadata[key] for key in
+                       ("universe", "recordStatusCounts", "variantOutcomeCounts", "exclusions", "withheldReasons")},
+    })
 
 
 def observation_id(observation: dict) -> str:

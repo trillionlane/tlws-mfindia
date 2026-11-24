@@ -65,6 +65,7 @@ def snapshot(records, *, accepted_at="2026-01-10T10:00:00Z", filename_date="2026
         "acceptedAt": accepted_at if completeness == "COMPLETE" else None,
         "nseFilenameDate": filename_date, "nseFilenameDateBasis": "FILENAME", "completeness": completeness,
     }
+    meta["mappingContentDigest"] = policy.mapping_content_digest(records, meta) if completeness == "COMPLETE" else None
     import json
     sections = json.loads(synthetic_unavailable()[0])["sections"]
     descriptor = sections[1]
@@ -99,7 +100,7 @@ def refresh(manifest, *, at="2026-01-11T10:00:00Z", status="VERIFIED_UNCHANGED",
         "filenameGenerationDate": date, "filenameDateBasis": "FILENAME" if date else None,
         "diagnosticCode": {"VERIFIED_UNCHANGED": "VERIFIED_UNCHANGED", "UPDATED": "NEW_SNAPSHOT_ACCEPTED",
                            "FAILED": "FETCH_FAILED", "INCOMPLETE": "SOURCE_INCOMPLETE", "CONFLICT": "IDENTITY_CONFLICT"}[status],
-        "candidateMappingContentDigest": candidate_digest if candidate_digest is not None else descriptor["contentDigest"] if success else None,
+        "candidateMappingContentDigest": candidate_digest if candidate_digest is not None else meta["mappingContentDigest"] if success else None,
         "canonicalUniverse": canonical_pin if canonical_pin is not None else meta["canonicalUniverse"],
         "codeRegistryVersion": meta["codeRegistryVersion"], "mappingPolicyVersion": meta["mappingPolicyVersion"],
         "previousHeadSnapshotId": previous, "retainedOrAcceptedHeadSnapshotId": resulting,

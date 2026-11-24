@@ -154,22 +154,60 @@ embedding an anonymous, overwritable observation. Standalone schemas and pinned
 fixtures exist for both contracts; `contracts/mfdata-reference-refresh.SHA256SUMS`
 binds their schema and fixture bytes. No receipt or summary enters a mapping digest.
 
+There are two distinct digests. The descriptor's `contentDigest` remains the
+complete wire-record hash excluding only the root pointer; it retains sourceAsOf
+integrity. Required `executionMetadata.mappingContentDigest` is instead the SHA-256
+of the canonical `mfdata-mapping-semantics-v1` projection: sorted records containing
+only variant (all five fields), mapping (status/reasonCodes), and providerReference
+(provider/schemeCode or null), plus population (universe, recordStatusCounts,
+variantOutcomeCounts, exclusions, withheldReasons). Canonical JSON uses UTF-8,
+sorted object keys, compact separators and no NaN. Record sorting uses the existing
+AMFI code/slot/reference-ID key; every distinct NSE route remains present.
+
+This semantic projection excludes snapshot/root/section/derived record IDs,
+sourceAsOf/acceptedAt, source IDs/hashes/dates, receipt/attempt times and envelope
+labels. The required-null expiry remains independently validated. Canonical,
+registry and policy pins are separate checks, never substitutes for changed
+semantics. Semantic digests are non-null only for COMPLETE sections (including a
+genuinely complete empty section); UNAVAILABLE and INCOMPLETE require null.
+The receipt's `candidateMappingContentDigest` binds this semantic digest, not the
+wire-content hash. Caller-supplied digests are never sufficient by themselves.
+
 `VERIFIED_UNCHANGED` permits a new raw NSE source ID, digest or filename date when
-the derived execution-section content digest, canonical-universe pin, registry
-version and mapping-policy version exactly equal the active accepted mapping.
-Candidate comparison uses the active mapping's existing acceptance timestamp;
-an unchanged assessment does not mint a new acceptance time. Raw provenance
-advances in the new immutable receipt, reached through the latest summary pointer.
-The mapping/root ID, accepted provenance and original sourceAsOf remain intact.
+the recomputed mapping-semantic digest, canonical-universe pin, registry version
+and mapping-policy version equal the active accepted mapping. The original
+manifest/root/records, accepted provenance and original sourceAsOf remain intact.
+Raw provenance advances only in a new immutable receipt and latest pointer.
+Pin-only changes cannot manufacture an UPDATED mapping; unsupported pin drift
+fails closed and retains the prior head pending an explicit reviewed transition.
 
 FAILED, INCOMPLETE and CONFLICT receipts retain the prior head and last successful/
-verified times. UPDATED requires a new complete manifest; the receipt's NSE source
-snapshot ID, digest and filename date/basis must exactly match it. Both successful
-dispositions check the candidate content digest and canonical/policy/registry pins.
-Summary ID, disposition, time and head must agree with the referenced receipt.
-`validate_refresh_transition` validates supplied synthetic objects only; it reads
-or writes no state. A rejected refresh remains distinct from a canonical variant's
-record-level CONFLICT assessment. Real publication gates remain outside this draft.
+verified times. UPDATED requires a new complete manifest and a recomputed semantic
+digest different from the bound prior mapping. Rebuilding identical mappings
+with new acceptance timestamps or labels is rejected even if every wire/section/
+root/receipt hash was recomputed. First acceptance requires an absent prior head;
+it does not invent a prior snapshot. The receipt's NSE source ID, hash and filename
+date/basis must exactly match the new manifest. Both successful dispositions bind
+canonical/policy/registry pins to the accepted manifest.
+
+Successful `validate_refresh_transition` calls require accepted_records and,
+when a previous head exists, prior_manifest/prior_records bound to that exact head.
+Complete records/accounting, both digests and every record's timestamp are checked
+before semantic comparison or page slicing. Missing or inconsistent prior context
+fails closed. Exact replay requires the original predecessor context and identical
+receipt/status; a fresh attempt cannot reaccept the same semantics as UPDATED.
+Summary ID, disposition, time and head agree with the referenced receipt.
+The validator reads or writes no state and validates supplied synthetic objects
+only; it does not attest that a real materializer derived them. A rejected refresh
+is distinct from a canonical variant's record-level CONFLICT assessment. Real
+publication gates remain outside this draft.
+
+This replaces the unmerged, unactivated draft v1 shape before first normative
+publication. It adds required metadata and changes the receipt digest meaning;
+there is no permissive fallback for the prior draft. Its reviewed commit, fixtures,
+certificate and CI remain historical evidence. A replacement commit requires new
+CI and exact-head review. Published/adopted immutable contracts require a separately
+named version, as described below; no deployed-consumer compatibility is claimed.
 
 ## Validation and future compatibility
 

@@ -96,7 +96,7 @@ def synthetic_unavailable() -> tuple[bytes, bytes]:
     metadata = {
         "canonicalUniverse": {"snapshotId": "synthetic-canonical-1", "digest": "a" * 64},
         "nseSource": None, "codeRegistryVersion": policy.REGISTRY_VERSION,
-        "mappingPolicyVersion": policy.POLICY_VERSION,
+        "mappingPolicyVersion": policy.POLICY_VERSION, "mappingContentDigest": None,
         "universe": {"inputVariants": 0, "eligibleVariants": 0, "evaluatedVariants": 0,
                      "excludedVariants": 0, "withheldEligibleVariants": 0},
         "recordStatusCounts": {status: 0 for status in ("MAPPED", "AMBIGUOUS", "UNMAPPED", "CONFLICT", "OUT_OF_SCOPE")},
@@ -127,20 +127,13 @@ def _key(item):
     return policy.record_sort_key(item)
 
 
-def synthetic_execution_page(records: list[dict], *, manifest: dict, limit: int,
-                             cursor: str | None = None) -> bytes:
-    """Deterministic fixture paging only; not a publisher or canonical mapping adapter.
-
-    Distinct route IDs for the same canonical variant are retained. Cursor is an
-    untrusted position, never authorization; a future serving layer must own access.
-    """
-    if type(records) is not list or type(limit) is not int or not 1 <= limit <= 100:
-        raise ContractError("PAGE_INVALID")
-    manifest = load_json(serialize(manifest, SnapshotManifest))
-    snapshot_id = manifest["snapshotId"]
+def _validated_execution_section(records: list[dict], manifest: dict) -> list[dict]:
+    """Validate the complete section before paging or semantic comparison."""
+    if type(records) is not list:
+        raise ContractError("COMPLETE_SECTION_REQUIRED")
     descriptor = manifest["sections"][1]
     validated = [load_json(serialize_record(item)) for item in records]
-    if any(item["snapshotId"] != snapshot_id for item in validated):
+    if any(item["snapshotId"] != manifest["snapshotId"] for item in validated):
         raise ContractError("SNAPSHOT_MISMATCH")
     if len({item["executionReferenceId"] for item in validated}) != len(validated):
         raise ContractError("DUPLICATE_REFERENCE")
@@ -167,6 +160,28 @@ def synthetic_execution_page(records: list[dict], *, manifest: dict, limit: int,
         raise ContractError("VARIANT_OUTCOME_COUNTS_MISMATCH")
     if len(by_variant) != metadata["universe"]["evaluatedVariants"]:
         raise ContractError("EVALUATED_VARIANTS_MISMATCH")
+    if any(item["sourceAsOf"] != descriptor["sourceAsOf"]
+           or item["expiresAt"] != descriptor["expiresAt"] for item in validated):
+        raise ContractError("ACCEPTANCE_TIME_MISMATCH")
+    if (metadata["completeness"] == "COMPLETE"
+            and policy.mapping_content_digest(validated, metadata) != metadata["mappingContentDigest"]):
+        raise ContractError("MAPPING_SEMANTIC_DIGEST_MISMATCH")
+    return validated
+
+
+def synthetic_execution_page(records: list[dict], *, manifest: dict, limit: int,
+                             cursor: str | None = None) -> bytes:
+    """Deterministic fixture paging only; not a publisher or canonical mapping adapter.
+
+    Distinct route IDs for the same canonical variant are retained. Cursor is an
+    untrusted position, never authorization; a future serving layer must own access.
+    """
+    if type(records) is not list or type(limit) is not int or not 1 <= limit <= 100:
+        raise ContractError("PAGE_INVALID")
+    manifest = load_json(serialize(manifest, SnapshotManifest))
+    snapshot_id = manifest["snapshotId"]
+    descriptor = manifest["sections"][1]
+    validated = _validated_execution_section(records, manifest)
     ordered = sorted(validated, key=_key)
     if cursor is not None:
         try:
@@ -206,7 +221,10 @@ def serialize_refresh_observation(value: dict) -> bytes:
 
 
 def validate_refresh_transition(before: dict, after: dict, *, observation: dict,
-                                accepted_manifest: dict | None = None) -> bytes:
+                                accepted_manifest: dict | None = None,
+                                accepted_records: list[dict] | None = None,
+                                prior_manifest: dict | None = None,
+                                prior_records: list[dict] | None = None) -> bytes:
     """Check the exact immutable receipt and mutable pointer. Never writes either."""
     before = load_json(serialize(before, RefreshStatus))
     encoded = serialize(after, RefreshStatus)
@@ -243,13 +261,37 @@ def validate_refresh_transition(before: dict, after: dict, *, observation: dict,
             raise ContractError("NEW_COMPLETE_MAPPING_REQUIRED")
         if timestamp_ms(descriptor["sourceAsOf"]) > timestamp_ms(after["lastRefreshAttemptAt"]):
             raise ContractError("ACCEPTANCE_TIME_AFTER_REFRESH")
+        _validated_execution_section(accepted_records, manifest)
+        expected_prior = receipt["previousHeadSnapshotId"] if replay else before["activeSnapshotId"]
+        prior_meta = None
+        if expected_prior is not None:
+            if prior_manifest is None or prior_records is None:
+                raise ContractError("PRIOR_MAPPING_CONTEXT_REQUIRED")
+            prior = load_json(serialize(prior_manifest, SnapshotManifest))
+            prior_descriptor = prior["sections"][1]
+            if (prior["snapshotId"] != expected_prior
+                    or prior_descriptor["availability"] != "AVAILABLE"
+                    or prior_descriptor["executionMetadata"]["completeness"] != "COMPLETE"):
+                raise ContractError("PRIOR_MAPPING_CONTEXT_MISMATCH")
+            _validated_execution_section(prior_records, prior)
+            prior_meta = prior_descriptor["executionMetadata"]
+        elif prior_manifest is not None or prior_records is not None:
+            raise ContractError("PRIOR_MAPPING_CONTEXT_MISMATCH")
         meta = descriptor["executionMetadata"]
-        if (receipt["candidateMappingContentDigest"] != descriptor["contentDigest"]
+        if (receipt["candidateMappingContentDigest"] != meta["mappingContentDigest"]
                 or receipt["canonicalUniverse"] != meta["canonicalUniverse"]
                 or receipt["codeRegistryVersion"] != meta["codeRegistryVersion"]
                 or receipt["mappingPolicyVersion"] != meta["mappingPolicyVersion"]):
             raise ContractError("REFRESH_MAPPING_DECISION_PINS_MISMATCH")
+        if after["refreshStatus"] == "VERIFIED_UNCHANGED":
+            if prior_meta is None or canonical_bytes(manifest) != canonical_bytes(prior):
+                raise ContractError("UNCHANGED_MAPPING_MUST_RETAIN_HEAD")
+            if any(meta[key] != prior_meta[key] for key in
+                   ("mappingContentDigest", "canonicalUniverse", "codeRegistryVersion", "mappingPolicyVersion")):
+                raise ContractError("REFRESH_MAPPING_DECISION_PINS_MISMATCH")
         if after["refreshStatus"] == "UPDATED":
+            if prior_meta is not None and meta["mappingContentDigest"] == prior_meta["mappingContentDigest"]:
+                raise ContractError("MAPPING_SEMANTIC_CHANGE_REQUIRED")
             if (receipt["sourceSnapshotId"] != meta["nseSource"]["snapshotId"]
                     or receipt["sourceDigest"] != meta["nseSource"]["digest"]
                     or receipt["filenameGenerationDate"] != meta["nseFilenameDate"]

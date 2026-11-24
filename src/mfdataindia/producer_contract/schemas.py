@@ -223,6 +223,15 @@ class UniverseCounts(WireModel):
 
 
 class ExecutionMetadata(WireModel):
+    model_config = ConfigDict(json_schema_extra={"allOf": [{
+        "if": {"properties": {"completeness": {"const": "COMPLETE"}}},
+        "then": {"properties": {"mappingContentDigest": {"type": "string"}}},
+        "else": {"properties": {"mappingContentDigest": {"type": "null"}}},
+    }]})
+    mappingContentDigest: Annotated[Digest | None, Field(description=(
+        "SHA-256 of mfdata-mapping-semantics-v1: validated variant/route decisions and population accounting; "
+        "excludes source, snapshot and acceptance metadata. Required null unless COMPLETE. "
+        "Distinct from the wire-record contentDigest."))]
     canonicalUniverse: SourcePin
     nseSource: SourcePin | None
     codeRegistryVersion: Literal[policy.REGISTRY_VERSION]
@@ -258,6 +267,8 @@ class ExecutionMetadata(WireModel):
     def accounting(self):
         records = self.recordStatusCounts
         variants = self.variantOutcomeCounts
+        if (self.completeness == "COMPLETE") != (self.mappingContentDigest is not None):
+            raise ValueError("MAPPING_SEMANTIC_DIGEST_REQUIRED")
         if sum(variants.model_dump().values()) != self.universe.evaluatedVariants:
             raise ValueError("VARIANT_OUTCOME_COUNTS_INVALID")
         if ((variants.MAPPED == 0 and records.MAPPED != 0) or records.MAPPED < variants.MAPPED
@@ -399,7 +410,10 @@ class RefreshObservation(WireModel):
     filenameDateBasis: Literal["FILENAME"] | None
     diagnosticCode: Literal["VERIFIED_UNCHANGED", "NEW_SNAPSHOT_ACCEPTED", "FETCH_FAILED",
                             "VALIDATION_FAILED", "SOURCE_INCOMPLETE", "IDENTITY_CONFLICT"]
-    candidateMappingContentDigest: Digest | None
+    candidateMappingContentDigest: Annotated[Digest | None, Field(description=(
+        "Candidate mfdata-mapping-semantics-v1 digest recomputed from a complete validated section, "
+        "not the wire-record contentDigest or source hash. UPDATED requires a semantic change; "
+        "VERIFIED_UNCHANGED retains the original mapping root and sourceAsOf."))]
     canonicalUniverse: SourcePin | None
     codeRegistryVersion: Literal[policy.REGISTRY_VERSION]
     mappingPolicyVersion: Literal[policy.POLICY_VERSION]
