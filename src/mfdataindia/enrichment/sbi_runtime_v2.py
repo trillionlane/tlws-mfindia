@@ -11,13 +11,12 @@ import requests
 
 from mfdataindia.enrichment import (
     amc_book_pdf,
-    book_runtime,
-    book_sources,
-    book_store,
     sbi_acquisition,
     sbi_archive,
     sbi_batch_v2 as sbi_batch,
     sbi_book_v2 as sbi_book,
+    sbi_book_sources_v2 as book_sources,
+    sbi_book_store_v2 as book_store,
 )
 from mfdataindia.enrichment.source_publication import invoke, PreparationError
 from mfdataindia.review.policy import fingerprint
@@ -44,7 +43,7 @@ def run(
         installed = book_store.installed_configuration(conn)["document"]
         if installed["source_specifications"].get(sbi_book.KEY) != spec:
             raise ValueError("reviewed SBI authority must be installed before task execution")
-        previous = book_runtime.receipt(conn, sbi_book.KEY, execution)
+        previous = book_store.receipt(conn, sbi_book.KEY, execution)
         if previous:
             return previous
         identities = book_store.population(conn, sbi_book.KEY)
@@ -178,7 +177,7 @@ def run(
             return invoke(
                 publication,
                 conn,
-                book_runtime.publish,
+                book_store.publish,
                 sbi_book.KEY,
                 execution,
                 observed,
@@ -192,7 +191,7 @@ def run(
         if publication is not None:
             raise PreparationError(phase) from None  # No failure-publication side effect.
         with psycopg.connect(dsn, row_factory=dict_row) as conn:
-            previous = book_runtime.receipt(conn, sbi_book.KEY, execution)
+            previous = book_store.receipt(conn, sbi_book.KEY, execution)
             if previous:
                 return previous
             return book_store.append_run(

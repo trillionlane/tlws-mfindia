@@ -13,15 +13,16 @@ from psycopg.rows import dict_row
 
 from mfdataindia.enrichment import (kotak_current_workload as prior,
     allocated_amc_workload as original, book_sources, book_store, ingestion_adapters,
-    ingestion_postgres, ingestion_runner, ingestion_gate, ingestion_install)
+    ingestion_postgres, ingestion_runner, ingestion_gate, ingestion_install,
+    sbi_book_sources_v2 as sbi_sources, sbi_book_store_v2 as sbi_store)
 from mfdataindia.enrichment.ingestion_discovery import SOURCES
 from mfdataindia.review.policy import fingerprint
 
 FILE = 'config/official-amc-discovery-dev-workload-v6.json'
-SHA256='80328242b8d63ba235680783eaa858db699c5e62cfee9c85ce9c9c3b7d8eeb4a'
+SHA256='22563ebc5f0eed19feb7a6092f72f4077fdac172f72e6eba74cd43705423eb88'
 PREVIOUS_SHA256='86f46acadcf953554a6e4f02b03b2edb05fc2e6b64870c0411027b007df7d675'
 SOURCE_COMPATIBILITY = {
-    'mode':'sbi_document_date_predecessor_only',
+    'mode':'sbi_document_date_isolated_dormant',
     'default_registry_version':5,
     'allocated_registry_version':8,
     'excluded_registry_versions':[9],
@@ -44,7 +45,11 @@ def allocation(root):
             or document['source_compatibility'] != SOURCE_COMPATIBILITY
             or document['live_execution_approval'] is not False
             or book_sources.CURRENT_VERSION != 5
+            or set(book_sources.REGISTRIES) != set(range(1,9))
+            or 9 in book_store.MIGRATIONS
             or book_store.MIGRATIONS[8][0] != SOURCE_COMPATIBILITY['allocated_migration']
+            or sbi_sources.registry()['version'] != 9
+            or sbi_store.MIGRATIONS[9][0] != SOURCE_COMPATIBILITY['candidate_migration_not_allocated']
             or document['tasks'] != [{'index':n,'source_key':s} for n,s in enumerate(SOURCES)]):
         raise ValueError('INGESTION_ALLOCATION_POLICY_DIFFERS')
     for name, digest in document['files'].items():

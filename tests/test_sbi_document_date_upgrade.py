@@ -1,17 +1,26 @@
-"""Source-only compatibility proofs; no database or provider is contacted."""
+"""Source proofs plus one disposable PostgreSQL migration/configuration proof."""
 
 import hashlib
+import shutil
 from pathlib import Path
+
+import pytest
+import psycopg
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from mfdataindia.enrichment import (
     book_runtime_v2,
     book_sources,
     book_store,
     sbi_book,
+    sbi_book_sources_v2 as sbi_sources,
+    sbi_book_store_v2 as sbi_store,
     sbi_method_upgrade,
     sbi_runtime_v2,
 )
 from mfdataindia.review.policy import fingerprint
+from test_verified_review_store import verified_db as verified_db
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -45,8 +54,11 @@ def test_frozen_sbi_v1_sources_and_historical_sql_are_unchanged():
 
 def test_v9_is_derived_only_from_v5_and_changes_only_sbi_adapter():
     assert book_sources.CURRENT_VERSION == 5
+    assert set(book_sources.REGISTRIES) == set(range(1, 9))
+    with pytest.raises(ValueError, match="reviewed book registry version required"):
+        book_sources.registry(9)
     previous = book_sources.registry(5)
-    revised = book_sources.registry(9)
+    revised = sbi_sources.registry()
     assert revised["authority_transition"]["previous_source_version"] == 5
     assert revised["authority_transition"]["excluded_allocated_side_versions"] == [6, 7, 8]
     expected = previous["sources"]
@@ -57,15 +69,21 @@ def test_v9_is_derived_only_from_v5_and_changes_only_sbi_adapter():
         else:
             assert new == old
     old_config = book_sources.configuration(5)
-    new_config = book_sources.configuration(9)
+    new_config = sbi_sources.configuration()
     for key, specification in old_config["source_specifications"].items():
         if key != sbi_book.KEY:
             assert new_config["source_specifications"][key] == specification
     old_sbi_hash = fingerprint(old_config["source_specifications"][sbi_book.KEY])
     assert new_config["retained_source_specification_hashes"] == {sbi_book.KEY: [old_sbi_hash]}
-    assert book_sources.current_policy(9)["previous_policy_hash"] == fingerprint(
+    assert sbi_sources.current_policy()["previous_policy_hash"] == fingerprint(
         book_sources.current_policy(5)
     )
+    assert sbi_store.MIGRATIONS == {
+        9: (
+            "050_sbi_document_as_of_evidence.sql",
+            "ba2e7fb6073136a57bdfced59c30d5705d2e61b80e9d69ef338a346d9a52b422",
+        )
+    }
 
 
 def test_migration_050_retains_every_non_sbi_seal_byte_for_byte():
@@ -118,7 +136,7 @@ def test_projection_never_promotes_document_date_to_canonical_as_of():
 
 
 def test_new_migration_and_projection_are_exactly_pinned():
-    assert hashlib.sha256(book_store.migration_source(ROOT, version=9).encode()).hexdigest() == (
+    assert hashlib.sha256(sbi_store.migration_source(ROOT, version=9).encode()).hexdigest() == (
         "ba2e7fb6073136a57bdfced59c30d5705d2e61b80e9d69ef338a346d9a52b422"
     )
     assert hashlib.sha256(sbi_method_upgrade.projection_source(ROOT).encode()).hexdigest() == (
@@ -130,7 +148,7 @@ def test_v9_runtime_route_is_explicit_and_context_local(monkeypatch):
     calls = []
 
     def run(dsn, execution):
-        calls.append((dsn, execution, book_sources.registry()["version"]))
+        calls.append((dsn, execution, sbi_sources.registry()["version"]))
         return {"status": "unchanged"}
 
     monkeypatch.setattr(sbi_runtime_v2, "run", run)
@@ -148,3 +166,42 @@ def test_v9_runtime_route_is_explicit_and_context_local(monkeypatch):
     ]
     assert result["source_key"] == sbi_book.KEY and result["status"] == "completed"
     assert book_sources.registry()["version"] == 5
+
+
+def test_isolated_registry_and_migration_tamper_fail_closed(tmp_path):
+    shutil.copytree(ROOT / "config", tmp_path / "config")
+    registry = tmp_path / "config" / sbi_sources.REGISTRY_FILE
+    registry.write_bytes(registry.read_bytes() + b"\n")
+    with pytest.raises(ValueError, match="registry differs from reviewed pin"):
+        sbi_sources.registry(root=tmp_path)
+
+    migration_dir = tmp_path / "sql" / "optional"
+    migration_dir.mkdir(parents=True)
+    migration = migration_dir / sbi_store.MIGRATIONS[9][0]
+    shutil.copyfile(ROOT / "sql" / "optional" / migration.name, migration)
+    migration.write_bytes(migration.read_bytes() + b"\n")
+    with pytest.raises(ValueError, match="migration differs from reviewed pin"):
+        sbi_store.migration_source(tmp_path)
+
+
+@pytest.mark.postgres
+def test_isolated_v9_migration_and_configuration_on_postgres(verified_db):
+    with psycopg.connect(verified_db, row_factory=dict_row) as conn:
+        for version in (1, 2, 3, 4, 5):
+            raw = book_store.migration_source(ROOT, version=version)
+            conn.execute(raw.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
+        raw = sbi_store.migration_source(ROOT)
+        conn.execute(raw.replace("\nBEGIN;\n", "\n", 1).rstrip()[: -len("COMMIT;")])
+        document = sbi_sources.configuration()
+        conn.execute(
+            "INSERT INTO mf_book_facts.configuration VALUES(1,%s,%s)",
+            (fingerprint(document), Jsonb(document)),
+        )
+        installed = sbi_store.installed_configuration(conn)
+        assert installed["document"] == document
+        assert installed["configuration_hash"] == fingerprint(document)
+        body = conn.execute(
+            "SELECT prosrc FROM pg_proc WHERE pronamespace='mf_book_facts'::regnamespace "
+            "AND proname='seal_input'"
+        ).fetchone()["prosrc"]
+        assert body == raw.split("AS $$", 1)[1].split("$$;", 1)[0]

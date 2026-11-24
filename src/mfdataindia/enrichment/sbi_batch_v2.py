@@ -4,7 +4,7 @@ import calendar
 import hashlib
 from datetime import date
 
-from mfdataindia.enrichment import book_sources, sbi_book_v2 as book
+from mfdataindia.enrichment import sbi_book_sources_v2 as book_sources, sbi_book_v2 as book
 from mfdataindia.review.policy import fingerprint
 
 

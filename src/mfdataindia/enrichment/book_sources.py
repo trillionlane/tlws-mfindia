@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 
-from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, sbi_book_v2, kotak_book, uti_book_v2, uti_book, uti_book_v3, uti_book_v4
+from mfdataindia.enrichment import absl_expansion, multi_facts, sbi_book, kotak_book, uti_book_v2, uti_book, uti_book_v3, uti_book_v4
 from mfdataindia.enrichment.evidence import public_url
 from mfdataindia.review.policy import fingerprint
 from mfdataindia.enrichment import _registered_book_policy_v6
@@ -17,7 +17,7 @@ _selected_registry = ContextVar("book_registry_selection", default=None)
 _prepared_policies = ContextVar("book_immutable_policy_construction", default=None)
 # Registry versions count source waves; policy revisions are independently
 # allocated and never reuse an already-registered (id, version) candidate.
-POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12, 7: 13, 8: 14, 9: 15}
+POLICY_VERSIONS = {1: 4, 2: 5, 3: 7, 4: 8, 5: 11, 6: 12, 7: 13, 8: 14}
 REGISTRIES = {
     1: (
         "official-book-sources-v1.json",
@@ -38,7 +38,6 @@ REGISTRIES = {
     6: ("official-book-sources-v6-kotak-layout.json", "daa758f2ffbe4917f6b6a415ea2900ed3cba7f923c922cad756c398653123eb9"),
     7: ("official-book-sources-v7-discovery-gate.json", "efab2b1de4da0e73d63702216af183f899fff12b1c6606a9d771766df4b516db"),
     8: ("official-book-sources-v8-hdfc-dynamic.json", "50146f8e0873cda4282f25a5d50707c96df0ed4ec38989d38b2619651b0da8a8"),
-    9: ("official-book-sources-v9-sbi-document-date.json", "898dab72872e82610cf17648ddb34aad3404d23a7124b68954e800b230561fab"),
     5: (
         "official-book-sources-v5-aum-row.json",
         "1c147b9b7a8b7df9b5c465aa28c5a9dbbfe17abbf40b2e08dca6f181552ea2ec",
@@ -90,7 +89,7 @@ def registry(version=None, root=None):
         if source["key"] == uti_book.KEY:
             if (
                 version < 4
-                or source["adapter"] != ("uti-english-monthly-book-v4" if version in (5, 9) else "uti-english-monthly-book-v1")
+                or source["adapter"] != ("uti-english-monthly-book-v4" if version == 5 else "uti-english-monthly-book-v1")
                 or source["amc"] != uti_book.AMC
                 or source["catalogue_api"] != uti_book.CATALOGUE
                 or source["catalogue_landing"] != "https://www.utimf.com/downloads/fund-watch"
@@ -143,7 +142,7 @@ def registry(version=None, root=None):
         if source["key"] == sbi_book.KEY:
             if (
                 version < 2
-                or source["adapter"] != ("sbi-full-book-v2" if version == 9 else "sbi-full-book-v1")
+                or source["adapter"] != "sbi-full-book-v1"
                 or source["amc"] != sbi_book.AMC
                 or source["catalogue_api"] != sbi_book.CATALOGUE
                 or source["directory_url"] != sbi_book.DIRECTORY
@@ -172,29 +171,7 @@ def registry(version=None, root=None):
             raise ValueError("bounded whole-AMC adapter scope differs")
         for original in source["identity_documents"]:
             public_url(original["url"], {"nsearchives.nseindia.com"})
-    if version == 9:
-        prior = registry(5, root)
-        expected = deepcopy(prior["sources"])
-        next(source for source in expected if source["key"] == sbi_book.KEY)["adapter"] = "sbi-full-book-v2"
-        transition = document.get("authority_transition", {})
-        if (
-            document["sources"] != expected
-            or transition.get("mode") != "sbi_document_date_revision"
-            or transition.get("source_key") != sbi_book.KEY
-            or transition.get("previous_source_version") != 5
-            or transition.get("previous_registry_hash") != fingerprint(prior)
-            or transition.get("previous_specification_hash")
-            != fingerprint(specification(sbi_book.KEY, version=5))
-            or transition.get("source_count_changed") is not False
-            or transition.get("financial_field_rules_changed") is not False
-            or transition.get("date_evidence_model_changed") is not True
-            or transition.get("retain_previous_specifications") is not True
-            or transition.get("source_rows_changed") != 0
-            or transition.get("derived_from_current_version") != 5
-            or transition.get("excluded_allocated_side_versions") != [6, 7, 8]
-        ):
-            raise ValueError("exact v5-derived SBI document-date revision required")
-    elif version == 5:
+    if version == 5:
         prior = registry(4, root)
         expected = deepcopy(prior["sources"])
         expected[-1]["adapter"] = "uti-english-monthly-book-v4"
@@ -248,7 +225,6 @@ def specification(key, *, version=None):
     item = deepcopy(source(key, version=version))
     parser = {
         "sbi-full-book-v1": sbi_book,
-        "sbi-full-book-v2": sbi_book_v2,
         "absl-full-book-v1": absl_expansion,
         "kotak-monthly-book-v1": kotak_book,
         "uti-english-monthly-book-v1": uti_book,
@@ -257,10 +233,6 @@ def specification(key, *, version=None):
         "uti-english-monthly-book-v4": uti_book_v4,
     }[item["adapter"]]
     version = registry(version)["version"]
-    if version == 9 and key != sbi_book.KEY:
-        # v9 is a v5-derived SBI-only revision; allocated v6-v8 engine changes
-        # are deliberately not inherited into any unrelated specification.
-        return specification(key, version=5)
     def current_or_retained_hash(module):
         if version <= 6:
             from mfdataindia.enrichment.amc_gate_source_revision import engine_hash
@@ -272,23 +244,18 @@ def specification(key, *, version=None):
     item["parser_policy"] = parser.policy()
     item["parser_policy_hash"] = fingerprint(item["parser_policy"])
     item["parser_engine_hash"] = hashlib.sha256(Path(parser.__file__).read_bytes()).hexdigest()
-    if parser in (sbi_book, sbi_book_v2):
+    if parser is sbi_book:
         from mfdataindia.enrichment import (
             sbi_acquisition,
             sbi_archive,
             sbi_batch,
             sbi_runtime,
-            sbi_batch_v2,
-            sbi_runtime_v2,
             amc_book_pdf,
         )
 
-        batch = sbi_batch_v2 if parser is sbi_book_v2 else sbi_batch
-        runtime = sbi_runtime_v2 if parser is sbi_book_v2 else sbi_runtime
-
         item["evidence_engine_hashes"] = {
             module.__name__.rsplit(".", 1)[-1]: current_or_retained_hash(module)
-            for module in (sbi_acquisition, sbi_archive, batch, runtime)
+            for module in (sbi_acquisition, sbi_archive, sbi_batch, sbi_runtime)
         }
         item["decoder_engine_hash"] = hashlib.sha256(
             Path(amc_book_pdf.__file__).read_bytes()
@@ -408,10 +375,6 @@ def configuration(version=None):
     if document['version'] in (7,8):
         retained = {key: sorted({fingerprint(specification(key,version=v)) for v in (4,6)})
                     for key in specifications}
-    if document["version"] == 9:
-        retained = {
-            sbi_book.KEY: [fingerprint(specification(sbi_book.KEY, version=5))]
-        }
     return {
         **({"retained_source_specification_hashes": retained} if retained else {}),
         "registry": document,
@@ -455,24 +418,6 @@ def reuse_current_policies():
 
 def _construct_current_policy(version):
     document = registry(version)
-    if document["version"] == 9:
-        previous = current_policy(5)
-        result = deepcopy(previous)
-        result.update(
-            version=15,
-            previous_policy_hash=fingerprint(previous),
-            book_source_registry_hash=fingerprint(document),
-            book_source_configuration_hash=fingerprint(configuration(9)),
-            source_registry_version=9,
-            source_authority_transition=document["authority_transition"],
-            sbi_dual_date_evidence={
-                "reporting_period": "catalogue-derived calendar month-end remains canonical publication identity",
-                "document_as_of": "exact shared Active/Passive first-page PDF date is sealed separately",
-                "explicit_field_date": "field_effective_date equals document_as_of; never relabel reporting_period",
-                "legacy_sbi_v1": "retained specification and historical batch/run behavior unchanged",
-            },
-        )
-        return result
     if document['version'] == 8:
         from mfdataindia.enrichment import hdfc_source_v2
         previous = current_policy(7)

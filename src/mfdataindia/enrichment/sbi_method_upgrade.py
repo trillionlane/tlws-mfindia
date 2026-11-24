@@ -5,7 +5,10 @@ from pathlib import Path
 
 from psycopg.types.json import Jsonb
 
-from mfdataindia.enrichment import book_sources, book_store, current_facts_store as current
+from mfdataindia.enrichment import book_sources as legacy_sources
+from mfdataindia.enrichment import current_facts_store as current
+from mfdataindia.enrichment import sbi_book_sources_v2 as book_sources
+from mfdataindia.enrichment import sbi_book_store_v2 as book_store
 from mfdataindia.enrichment.monthly_projection import owner, seal_configuration
 from mfdataindia.review import store as review
 from mfdataindia.review.policy import fingerprint
@@ -38,10 +41,10 @@ def install(conn, root, *, expected_book_hash, expected_current_hash):
                 raise ValueError("SBI_DOCUMENT_DATE_INSTALLATION_INCOMPLETE")
             return {"status": "ALREADY_INSTALLED", "source_rows_changed": 0}
         if (
-            installed["document"] != book_sources.configuration(SOURCE_VERSION)
+            installed["document"] != legacy_sources.configuration(SOURCE_VERSION)
             or installed["configuration_hash"] != expected_book_hash
             or fingerprint(prior) != expected_current_hash
-            or prior["policy_hash"] != fingerprint(book_sources.current_policy(SOURCE_VERSION))
+            or prior["policy_hash"] != fingerprint(legacy_sources.current_policy(SOURCE_VERSION))
             or not current.projection_state(conn)
         ):
             raise ValueError("SBI_DOCUMENT_DATE_V5_BASE_REQUIRED")

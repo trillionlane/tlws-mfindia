@@ -6,9 +6,9 @@ import pytest
 
 from mfdataindia.enrichment import (
     amc_book_pdf,
-    book_sources,
     sbi_batch_v2,
     sbi_book_v2,
+    sbi_book_sources_v2 as sbi_sources,
 )
 from mfdataindia.review.policy import fingerprint
 from test_sbi_book import ACTIVE, IDENTITY
@@ -211,7 +211,7 @@ def test_batch_v3_seals_both_dates_without_relabelling_period():
             "index_hash": hashlib.sha256(index).hexdigest(),
         }
     ]
-    with book_sources.select_registry(9):
+    with sbi_sources.select_registry(9):
         batch = sbi_batch_v2.compile_batch(
             [IDENTITY],
             monthly,

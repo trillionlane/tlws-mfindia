@@ -4,10 +4,10 @@ import re
 
 from mfdataindia.enrichment import (
     book_runtime as legacy,
-    book_sources,
     kotak_runtime,
     multi_facts,
     multi_runtime,
+    sbi_book_sources_v2 as sbi_sources,
     sbi_runtime_v2,
     uti_runtime_v4,
 )
@@ -15,8 +15,8 @@ from mfdataindia.review.policy import fingerprint
 
 
 def execute(dsn, execution, *, task_index):
-    with book_sources.select_registry(9):
-        registry = book_sources.registry()
+    with sbi_sources.select_registry(9):
+        registry = sbi_sources.registry()
         if (
             not re.fullmatch(re.escape(multi_facts.JOB) + r"-[a-z0-9-]{1,40}", execution)
             or type(task_index) is not int
