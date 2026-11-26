@@ -219,8 +219,18 @@ def test_required_gate_accepts_only_exact_mode_step_outcomes(job, mode):
         policy.gate(job, mode, {**good, 'unknown': good['policy']}, MANIFEST)
 
 
+_WORKFLOW_PARSE = None
+
+
 def load_workflow():
-    return yaml.load((ROOT / '.github/workflows/verify.yml').read_text(), Loader=yaml.BaseLoader)
+    # Re-read complete current bytes on EVERY call; reuse parsing, never a verdict.
+    # Keep only one revision and never expose the cached mutable tree to callers.
+    global _WORKFLOW_PARSE
+    raw = (ROOT / '.github/workflows/verify.yml').read_bytes()
+    key = hashlib.sha256(raw).digest()
+    if _WORKFLOW_PARSE is None or _WORKFLOW_PARSE[:2] != (key, raw):
+        _WORKFLOW_PARSE = (key, raw, yaml.load(raw, Loader=yaml.BaseLoader))
+    return deepcopy(_WORKFLOW_PARSE[2])
 
 
 def render_authored_gate_projection(job, context):
@@ -274,7 +284,7 @@ def test_actual_workflow_preserves_names_full_sequence_and_main_policy_without_p
     assert wf['jobs']['verify']['timeout-minutes'] == '30'
     for key in ('tests', 'verify'):
         job = wf['jobs'][key]
-        assert job['needs'] == 'plan' and job['if'] == '${{ always() }}'
+        assert job['needs'] == 'plan' and job['if'] == '${{ !cancelled() }}'
         assert job['steps'][-1]['if'] == '${{ always() }}'
         assert job['steps'][-1]['run'] == 'python scripts/ci_risk_policy.py gate --job ' + key
         authored_ids = [*[row['id'] for row in MANIFEST[key]], 'policy', 'reduced']
@@ -300,7 +310,7 @@ def test_actual_workflow_preserves_names_full_sequence_and_main_policy_without_p
     aggregate = wf['jobs']['admission']
     assert aggregate['name'] == 'Release admission'
     assert aggregate['needs'] == ['plan', 'tests', 'verify']
-    assert aggregate['if'] == '${{ always() }}'
+    assert aggregate['if'] == '${{ !cancelled() }}'
     assert aggregate['permissions'] == {'contents': 'read'}
     assert aggregate['env'] == {
         'CI_MODE': '${{ needs.plan.outputs.mode }}',
@@ -587,3 +597,520 @@ def test_current_and_future_heads_never_admit_legacy_two_job_metadata(head):
 def test_malformed_job_inventory_is_never_admitted(jobs):
     with pytest.raises(ValueError):
         policy.require_full_policy_jobs(jobs)
+
+
+def test_workflow_parse_rechecks_bytes_and_isolates_every_mutable_result(tmp_path, monkeypatch):
+    (tmp_path / '.github/workflows').mkdir(parents=True)
+    path = tmp_path / '.github/workflows/verify.yml'
+    path.write_text('jobs: {tests: {steps: [{id: original}]}}\n')
+    monkeypatch.setattr(sys.modules[__name__], 'ROOT', tmp_path)
+    monkeypatch.setattr(sys.modules[__name__], '_WORKFLOW_PARSE', None)
+    parses, reads = [], []
+    original_load, original_read = yaml.load, Path.read_bytes
+
+    def parse(*args, **kwargs):
+        parses.append(args[0])
+        return original_load(*args, **kwargs)
+
+    def read(candidate):
+        reads.append(candidate)
+        return original_read(candidate)
+
+    monkeypatch.setattr(yaml, 'load', parse)
+    monkeypatch.setattr(Path, 'read_bytes', read)
+    first = load_workflow()
+    first['jobs']['tests']['steps'][0]['id'] = 'corrupted caller copy'
+    assert load_workflow()['jobs']['tests']['steps'][0]['id'] == 'original'
+    path.write_text('jobs: {tests: {steps: [{id: changed}]}}\n')
+    assert load_workflow()['jobs']['tests']['steps'][0]['id'] == 'changed'
+    assert load_workflow()['jobs']['tests']['steps'][0]['id'] == 'changed'
+    assert reads == [path] * 4
+    assert len(parses) == 2 and parses[0] != parses[1]
+    path.write_text('jobs: [invalid\n')
+    with pytest.raises(yaml.YAMLError):
+        load_workflow()
+    assert len(parses) == 3  # A previous parsed revision cannot admit bad new bytes.
+
+
+@pytest.mark.parametrize('cancelled', [False, True])
+@pytest.mark.parametrize('planner', ['success', 'failure', 'cancelled', 'skipped'])
+def test_current_job_cancellation_conditions_preserve_failed_planner_admission(cancelled, planner):
+    workflow = load_workflow()
+    for name in ('tests', 'verify', 'admission'):
+        assert workflow['jobs'][name]['if'] == '${{ !cancelled() }}'
+    # Explicit status function: failed/skipped dependencies do not prevent the
+    # noncancelled job from running its existing fail-closed validation.
+    should_run = not cancelled
+    assert should_run is (not cancelled)
+    candidate = {'mode': 'full'}
+    environ = {'CI_PLAN_RESULT': planner, 'CI_MODE': 'full', 'CI_BINDING': policy.digest(candidate)}
+    jobs = synthetic_full_jobs()
+    jobs[0]['conclusion'] = planner
+    if cancelled:
+        jobs[1]['conclusion'] = jobs[2]['conclusion'] = 'cancelled'
+    if planner == 'success' and not cancelled:
+        assert policy.verify_plan(candidate, environ) == candidate
+        assert policy.require_full_policy_jobs(jobs)['policy'] == 'full'
+    else:
+        if planner != 'success':
+            with pytest.raises(ValueError, match='failed'):
+                policy.verify_plan(candidate, environ)
+        with pytest.raises(ValueError):
+            policy.require_full_policy_jobs(jobs)
+    assert workflow['concurrency']['cancel-in-progress'] == 'true'
+    assert workflow['concurrency']['group'] == 'tlws-mf-data-verify-${{ github.ref }}'
+
+
+def test_exact_workflow_inverse_keeps_old_proof_and_current_cancellation_independent():
+    import dataset_source_history as history
+    path = ROOT / history.CI_PHASE1_PATH
+    current = path.read_bytes()
+    old = history.ci_phase1_previous(path, current)
+    assert hashlib.sha256(current).hexdigest() == history.CI_PHASE1_CURRENT
+    assert hashlib.sha256(old).hexdigest() == history.CI_PHASE1_PREVIOUS
+    assert current.count(b'    if: ${{ !cancelled() }}\n') == 3
+    assert old.count(b'    if: ${{ !cancelled() }}\n') == 0
+    assert _pypdf_parent_bytes(path, current) == _pypdf_parent_bytes(path, old)
+    assert load_workflow()['jobs']['admission']['if'] == '${{ !cancelled() }}'
+    assert history.ci_phase1_previous(ROOT / 'README.md', current) == current
+    assert history.ci_phase1_previous(ROOT.parent / 'verify.yml', current) == current
+    with pytest.raises(AssertionError):
+        history.ci_phase1_previous(path, bytearray(current))
+
+
+@pytest.mark.parametrize('corruption', ['append', 'drop', 'duplicate', 'change'])
+def test_workflow_inverse_cannot_hide_unreviewed_bytes(corruption):
+    import dataset_source_history as history
+    path = ROOT / history.CI_PHASE1_PATH
+    current = path.read_bytes()
+    bad = {'append': current + b'\n', 'drop': current[:-1],
+           'duplicate': current + current,
+           'change': current.replace(b'!cancelled()', b'always()', 1)}[corruption]
+    assert history.ci_phase1_previous(path, bad) == bad
+    with pytest.raises(AssertionError):
+        history.previous(path, bad)
+
+
+@pytest.mark.parametrize('kind', ['symlink', 'directory', 'missing'])
+def test_workflow_inverse_rejects_nonregular_or_escaped_path(tmp_path, monkeypatch, kind):
+    import dataset_source_history as history
+    raw = (ROOT / history.CI_PHASE1_PATH).read_bytes()
+    path = tmp_path / history.CI_PHASE1_PATH
+    path.parent.mkdir(parents=True)
+    if kind == 'symlink':
+        other = tmp_path / 'elsewhere.yml'
+        other.write_bytes(raw)
+        path.symlink_to(other)
+    elif kind == 'directory':
+        path.mkdir()
+    monkeypatch.setattr(history, 'ROOT', tmp_path)
+    with pytest.raises(AssertionError):
+        history.ci_phase1_previous(path, raw)
+
+
+def test_workflow_inverse_checks_full_immutable_predecessor(monkeypatch):
+    import dataset_source_history as history
+    path = ROOT / history.CI_PHASE1_PATH
+    raw = path.read_bytes()
+    original = subprocess.check_output
+    calls = []
+
+    def retrieve(args, **kwargs):
+        calls.append((args, kwargs))
+        return original(args, **kwargs) + b'changed predecessor'
+
+    monkeypatch.setattr(history.subprocess, 'check_output', retrieve)
+    with pytest.raises(AssertionError):
+        history.ci_phase1_previous(path, raw)
+    assert calls == [(['git', 'show', history.CI_PHASE1_BASE + ':' + history.CI_PHASE1_PATH], {'cwd': ROOT})]
+
+
+def test_native_measurements_preserve_calls_results_errors_and_cleanup():
+    import run_ci_tests as runner
+    calls, tick = [], iter(range(100))
+    secret = 'synthetic-secret-must-not-escape'
+    row, rows, failure = {secret: secret}, [{secret: secret}], RuntimeError(secret)
+
+    class Cursor:
+        def execute(self, query, params=None, **kwargs):
+            calls.append(('execute', query, params, kwargs))
+            if query == 'fail':
+                raise failure
+            return self
+
+        def executemany(self, *args, **kwargs):
+            calls.append(('executemany', args, kwargs))
+            return self
+
+        def fetchone(self):
+            calls.append(('fetchone',))
+            return row
+
+        def fetchall(self):
+            calls.append(('fetchall',))
+            return rows
+
+        def fetchmany(self, size=1):
+            calls.append(('fetchmany', size))
+            return rows
+
+    originals = {name: getattr(Cursor, name) for name in ('execute', 'executemany', 'fetchone', 'fetchall', 'fetchmany')}
+    metrics = runner.NativeMeasurements('tests/test_native.py::test_case[' + secret + ']', clock=lambda: next(tick))
+    cursor = Cursor()
+    with pytest.raises(RuntimeError) as caught:
+        with metrics.observe(Cursor), metrics.phase('test_call'):
+            assert cursor.execute('SELECT * FROM pg_class', (secret,), prepare=True) is cursor
+            assert cursor.fetchone() is row
+            assert cursor.fetchall() is rows
+            assert cursor.fetchmany(7) is rows
+            assert cursor.executemany(secret, iter([row])) is cursor
+            cursor.execute('fail')
+    assert caught.value is failure
+    assert all(getattr(Cursor, name) is original for name, original in originals.items())
+    assert [entry[0] for entry in calls] == ['execute', 'fetchone', 'fetchall', 'fetchmany', 'executemany', 'execute']
+    assert calls[0] == ('execute', 'SELECT * FROM pg_class', (secret,), {'prepare': True})
+    report = metrics.report()
+    counts = report['phases']['test_call']
+    assert counts == {'elapsed_seconds': 13, 'visits': 1, 'execute_calls': 2,
+                      'executemany_calls': 1, 'literal_catalogue_calls': 1,
+                      'fetch_calls': 3, 'fetched_rows': 3, 'failed_calls': 1,
+                      'cursor_seconds': 6, 'slowest_cursor_seconds': 1}
+    assert secret not in json.dumps(report)
+    assert report['module'] == 'test_native.py'
+    assert not metrics.stack
+
+
+def test_native_phase_is_noop_without_runner_and_decorator_preserves_result():
+    import run_ci_tests as runner
+    result, calls = object(), []
+
+    @runner.native_timed('populate')
+    def helper(value, *, request=None):
+        calls.append(value)
+        return result
+
+    assert helper('same value') is result
+    metrics = runner.NativeMeasurements('tests/test_native.py::test_case')
+    request = SimpleNamespace(config=SimpleNamespace(_mf_ci_native_metrics=metrics))
+    assert helper('same value', request=request) is result
+    assert calls == ['same value', 'same value']
+    assert metrics.report()['phases']['populate']['visits'] == 1
+    assert not metrics.stack
+    with pytest.raises(ValueError, match='unknown'):
+        with metrics.phase('not-an-allowlisted-label'):
+            pytest.fail('must fail before entering')
+
+
+@pytest.mark.parametrize('failure_at', ['test', 'cleanup', None])
+def test_native_protocol_restores_observers_and_preserves_original_failure(monkeypatch, failure_at):
+    import psycopg
+    import run_ci_tests as runner
+    calls = []
+    failure = RuntimeError('synthetic-secret-do-not-report')
+
+    class Cursor:
+        def execute(self, *args, **kwargs):
+            calls.append(('execute', args, kwargs))
+            return self
+
+        def executemany(self, *args, **kwargs):
+            calls.append(('executemany', args, kwargs))
+            return self
+
+        def fetchone(self):
+            return None
+
+        def fetchall(self):
+            return []
+
+        def fetchmany(self, size=1):
+            return []
+
+    class Connection:
+        def commit(self):
+            calls.append(('commit',))
+
+        def rollback(self):
+            calls.append(('rollback',))
+
+        def close(self):
+            calls.append(('close',))
+
+    monkeypatch.setattr(psycopg, 'Cursor', Cursor)
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **k: pytest.fail('observer must not connect'))
+    execute = Cursor.execute
+    item = SimpleNamespace(nodeid='tests/test_native.py::test_protocol', config=SimpleNamespace(),
+                           get_closest_marker=lambda name: object() if name == 'postgres' else None)
+    plugin = runner.Partition('focused')
+    protocol = plugin.pytest_runtest_protocol(item)
+    next(protocol)
+    assert Cursor.execute is not execute
+    connection = Connection()
+    cursor = Cursor()
+    assert cursor.execute('SELECT retained fixture', ('synthetic-private-value',)) is cursor
+    connection.commit()
+    connection.rollback()
+    connection.close()
+    if failure_at:
+        if failure_at == 'cleanup':
+            teardown = plugin.pytest_runtest_teardown(item)
+            next(teardown)
+            with pytest.raises(RuntimeError) as caught:
+                teardown.throw(failure)
+            assert caught.value is failure
+        with pytest.raises(RuntimeError) as caught:
+            protocol.throw(failure)
+        assert caught.value is failure
+    else:
+        with pytest.raises(StopIteration):
+            next(protocol)
+    assert Cursor.execute is execute
+    assert not hasattr(item.config, '_mf_ci_native_metrics')
+    assert calls == [('execute', ('SELECT retained fixture', ('synthetic-private-value',)), {}),
+                     ('commit',), ('rollback',), ('close',)]
+    assert len(plugin.native_measurements) == 1
+    assert 'synthetic-private-value' not in json.dumps(plugin.native_measurements)
+    assert 'synthetic-secret' not in json.dumps(plugin.native_measurements)
+    assert plugin.native_measurements[0]['phases']['protocol']['visits'] == 1
+    output = []
+    plugin.pytest_terminal_summary(SimpleNamespace(write_sep=lambda *a: None, write_line=output.append))
+    assert len(output) == 2 and output[0].startswith('CI_NATIVE_MODULE ')
+    assert output[1].startswith('CI_NATIVE_TEST ')
+    assert 'synthetic-' not in '\n'.join(output)
+
+
+@pytest.mark.parametrize('name', [
+    'tests/reader_execution_native_fixture.py', 'tests/test_verified_review_store.py',
+    'tests/test_ro01_reader_policy_postgres.py', 'tests/test_certification_input_native.py',
+    'tests/test_dataset_query_profile_postgres.py', 'tests/test_reader_execution_postgres.py',
+])
+def test_native_instrumentation_retains_all_original_assertions_and_database_calls(name):
+    import ast
+    base = '25b22da659afadf419ef8c3987f4eae70ba54b7d'
+    old = subprocess.check_output(['git', 'show', base + ':' + name], cwd=ROOT)
+    current = (ROOT / name).read_bytes()
+
+    class Evidence(ast.NodeVisitor):
+        def __init__(self):
+            self.assertions, self.database_calls = [], []
+
+        def visit_Assert(self, node):
+            # The observer's optional request keyword does not change this
+            # helper's retained full-row fingerprint or its equality oracle.
+            copied = deepcopy(node)
+            for call in ast.walk(copied):
+                if isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == 'source_state':
+                    call.keywords = [key for key in call.keywords if key.arg != 'request']
+            self.assertions.append(ast.dump(copied, include_attributes=False))
+            self.generic_visit(node)
+
+        def visit_Call(self, node):
+            if isinstance(node.func, ast.Attribute) and node.func.attr in {
+                'execute', 'executemany', 'commit', 'rollback', 'close', 'apply_migrations',
+            }:
+                self.database_calls.append(ast.dump(node, include_attributes=False))
+            self.generic_visit(node)
+
+    before, after = Evidence(), Evidence()
+    before.visit(ast.parse(old))
+    after.visit(ast.parse(current))
+    assert before.assertions == after.assertions
+    assert before.database_calls == after.database_calls
+
+
+def test_native_observer_installs_and_restores_real_cursor_without_connecting(monkeypatch):
+    import psycopg
+    import run_ci_tests as runner
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **k: pytest.fail('must not connect'))
+    methods = ('execute', 'executemany', 'fetchone', 'fetchall', 'fetchmany')
+    originals = {name: getattr(psycopg.Cursor, name) for name in methods}
+    metrics = runner.NativeMeasurements('tests/test_native.py::test_real_cursor_type')
+    with metrics.observe(psycopg.Cursor):
+        assert all(getattr(psycopg.Cursor, name).__wrapped__ is originals[name] for name in methods)
+    assert all(getattr(psycopg.Cursor, name) is originals[name] for name in methods)
+    assert not metrics.phases
+
+
+PHASE1_INSTRUMENTED_INVERSES = (
+    'scripts/run_ci_tests.py',
+    'tests/test_certification_input_native.py',
+    'tests/test_verified_review_store.py',
+)
+
+
+@pytest.mark.parametrize('name', PHASE1_INSTRUMENTED_INVERSES)
+def test_instrumented_inverse_matches_exact_immutable_base_without_masking_current_code(name):
+    import dataset_source_history as history
+    assert set(history.CI_PHASE1_FILES) == {history.CI_PHASE1_PATH, *PHASE1_INSTRUMENTED_INVERSES}
+    path = ROOT / name
+    current = path.read_bytes()
+    old = subprocess.check_output(['git', 'show', history.CI_PHASE1_BASE + ':' + name], cwd=ROOT)
+    previous_hash, current_hash = history.CI_PHASE1_FILES[name]
+    assert hashlib.sha256(current).hexdigest() == current_hash
+    assert hashlib.sha256(old).hexdigest() == previous_hash
+    assert history.ci_phase1_previous(path, current) == old
+    assert _pypdf_parent_bytes(path, current) == _pypdf_parent_bytes(path, old)
+    assert history.ci_phase1_previous(ROOT / 'README.md', current) is current
+    assert history.ci_phase1_previous(ROOT.parent / name, current) is current
+    # Correct bytes for a different approved path cannot borrow its binding.
+    assert history.ci_phase1_previous(ROOT / history.CI_PHASE1_PATH, current) is current
+    with pytest.raises(AssertionError):
+        history.ci_phase1_previous(path, bytearray(current))
+    # Runtime/imported functions and current tests still see the instrumented bytes.
+    assert path.read_bytes() == current and current != old
+
+
+@pytest.mark.parametrize('name', PHASE1_INSTRUMENTED_INVERSES)
+@pytest.mark.parametrize('corruption', ['append', 'drop', 'duplicate', 'change'])
+def test_instrumented_inverse_cannot_admit_changed_bytes_to_full_historical_proof(name, corruption):
+    import dataset_source_history as history
+    path = ROOT / name
+    current = path.read_bytes()
+    bad = {'append': current + b'\n', 'drop': current[:-1], 'duplicate': current + current,
+           'change': bytes([current[0] ^ 1]) + current[1:]}[corruption]
+    assert history.ci_phase1_previous(path, bad) is bad
+    authority = json.loads((ROOT / 'docs/CI_RISK_POLICY_PARENT_AUTHORITY_20261026.json').read_bytes())
+    # This is the same complete-byte verdict as the actual 884-file proof.
+    # Some earlier historical layers reject sooner; none may admit these bytes.
+    with pytest.raises(AssertionError):
+        restored = restore_policy_parent(name, _pypdf_parent_bytes(path, bad))
+        assert hashlib.sha256(restored).hexdigest() == authority['files'][name]['sha256']
+
+
+@pytest.mark.parametrize('name', PHASE1_INSTRUMENTED_INVERSES)
+@pytest.mark.parametrize('kind', ['symlink', 'directory', 'missing', 'parent_symlink'])
+def test_instrumented_inverse_enforces_same_path_confinement(tmp_path, monkeypatch, name, kind):
+    import dataset_source_history as history
+    current = (ROOT / name).read_bytes()
+    path = tmp_path / name
+    path.parent.mkdir(parents=True)
+    if kind == 'symlink':
+        other = tmp_path / 'other.py'
+        other.write_bytes(current)
+        path.symlink_to(other)
+    elif kind == 'parent_symlink':
+        path.parent.rmdir()
+        other = tmp_path / 'other'
+        other.mkdir()
+        (other / path.name).write_bytes(current)
+        path.parent.symlink_to(other, target_is_directory=True)
+    elif kind == 'directory':
+        path.mkdir()
+    monkeypatch.setattr(history, 'ROOT', tmp_path)
+    with pytest.raises(AssertionError):
+        history.ci_phase1_previous(path, current)
+
+
+@pytest.mark.parametrize('name', PHASE1_INSTRUMENTED_INVERSES)
+def test_instrumented_inverse_checks_exact_predecessor_bytes_and_command(monkeypatch, name):
+    import dataset_source_history as history
+    path = ROOT / name
+    current = path.read_bytes()
+    original = subprocess.check_output
+    calls = []
+
+    def retrieve(args, **kwargs):
+        calls.append((args, kwargs))
+        return original(args, **kwargs) + b'unreviewed predecessor'
+
+    monkeypatch.setattr(history.subprocess, 'check_output', retrieve)
+    with pytest.raises(AssertionError):
+        history.ci_phase1_previous(path, current)
+    assert calls == [(['git', 'show', history.CI_PHASE1_BASE + ':' + name], {'cwd': ROOT})]
+
+
+@pytest.mark.parametrize('entry', ['module', 'console'])
+@pytest.mark.parametrize('module', [
+    'tests/test_verified_review_store.py', 'tests/test_ro01_reader_policy_postgres.py',
+    'tests/test_certification_input_native.py', 'tests/test_dataset_query_profile_postgres.py',
+    'tests/test_reader_execution_postgres.py', 'tests/test_ci_risk_policy.py',
+])
+def test_measurement_imports_collect_in_fresh_ordinary_pytest_process(module, entry):
+    import os
+    env = dict(os.environ, PYTHONPATH='src:tests')
+    env.pop('MF_TEST_DSN', None)
+    command = ([sys.executable, '-m', 'pytest'] if entry == 'module'
+               else [str(Path(sys.executable).parent / 'pytest')])
+    completed = subprocess.run(
+        [*command, module, '--collect-only', '-q', '--tb=short'],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+    assert completed.returncode == 0, {'module': module, 'exit_code': completed.returncode}
+    assert 'no tests collected' not in completed.stdout
+    assert 'ModuleNotFoundError' not in completed.stdout + completed.stderr
+
+
+def test_measurement_helpers_are_importable_and_noop_without_ci_in_fresh_process():
+    import os
+    env = dict(os.environ, PYTHONPATH='src:tests:.')
+    env.pop('MF_TEST_DSN', None)
+    code = '''
+from types import SimpleNamespace
+from test_verified_review_store import native_phase, native_timed
+from run_ci_tests import NativeMeasurements
+from reader_execution_native_fixture import populate
+from test_verified_review_store import source_state
+assert populate.__wrapped__.__name__ == 'populate'
+assert source_state.__wrapped__.__name__ == 'source_state'
+value = object()
+@native_timed('populate')
+def helper(*, request=None):
+    return value
+with native_phase(None, 'source_state'):
+    assert helper() is value
+metrics = NativeMeasurements('tests/test_native.py::test_import')
+request = SimpleNamespace(config=SimpleNamespace(_mf_ci_native_metrics=metrics))
+assert helper(request=request) is value
+assert metrics.report()['phases']['populate']['visits'] == 1
+print('HELPER_NOOP_AND_ACTIVE_OK')
+'''
+    result = subprocess.run([sys.executable, '-c', code], cwd=ROOT, env=env,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0
+    assert result.stdout.strip() == 'HELPER_NOOP_AND_ACTIVE_OK'
+
+
+def test_script_runner_collects_both_partitions_without_root_or_scripts_pythonpath(tmp_path):
+    import os
+    # Exercise the real entrypoint/partition/evidence wiring, replacing ONLY
+    # test execution with collection. This is a provider-free CLI smoke, never
+    # native-test or release evidence; its synthetic receipt stays in tmp_path.
+    probe = tmp_path / 'runner_collection_probe.py'
+    probe.write_text('''
+from pathlib import Path
+import runpy
+import sys
+import pytest
+script, phase, evidence = sys.argv[1:]
+root = str(Path(script).resolve().parents[1])
+sys.path[:] = [str(Path(script).parent), *[p for p in sys.path if p and p != root]]
+assert root not in sys.path
+real_main = pytest.main
+def collection_only(args, *, plugins):
+    assert args == ['tests/', '-q', '--durations=50', '--durations-min=0.1']
+    assert len(plugins) == 1
+    return real_main(['tests/', '--collect-only', '-q'], plugins=plugins)
+pytest.main = collection_only
+sys.argv = [script, phase, '--evidence', evidence]
+try:
+    runpy.run_path(script, run_name='__main__')
+except SystemExit as result:
+    assert result.code == 0
+print('COLLECTION_ONLY_RUNNER_SMOKE_OK:' + phase)
+''')
+    evidence = tmp_path / 'synthetic-collection-only-evidence.json'
+    env = dict(os.environ, PYTHONPATH='src:tests')
+    env.pop('MF_TEST_DSN', None)
+    before = None
+    for phase in ('focused', 'remainder'):
+        result = subprocess.run([sys.executable, str(probe), str(ROOT / 'scripts/run_ci_tests.py'),
+                                 phase, str(evidence)], cwd=ROOT, env=env,
+                                capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, {'phase': phase, 'exit_code': result.returncode}
+        assert 'COLLECTION_ONLY_RUNNER_SMOKE_OK:' + phase in result.stdout
+        receipt = json.loads(evidence.read_bytes())
+        assert receipt['exit_code'] == 0
+        assert receipt['inventory']['all'] and receipt['inventory']['focused']
+        assert set(receipt['inventory']['focused']) < set(receipt['inventory']['all'])
+        if before is not None:
+            assert receipt == before
+        before = receipt

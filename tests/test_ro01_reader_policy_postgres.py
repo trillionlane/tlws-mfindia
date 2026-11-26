@@ -4,6 +4,7 @@ Synthetic source fixtures provide deterministic rows, not source certification.
 No shared DEV, cloud, secret, provider, source HTTP or public acceptance proof.
 """
 
+from test_verified_review_store import native_phase
 from importlib.util import module_from_spec, spec_from_loader
 import os
 from pathlib import Path
@@ -61,7 +62,7 @@ def ro01_db(pg_dsn, monkeypatch, request):
             admin.execute("CREATE DATABASE mfdataindia OWNER mfdata_admin")
             database_created = True
             dsn = make_conninfo(pg_dsn, dbname="mfdataindia", user="mfdata_admin", password=PASSWORD)
-            with PostgresStore(dsn, use_copy=False) as store:
+            with native_phase(request, "migrations"), PostgresStore(dsn, use_copy=False) as store:
                 store.apply_migrations(ROOT / "sql")
             with connect(dsn, autocommit=False) as conn:
                 conn.execute("INSERT INTO mf.amcs(amfi_amc_name,normalised_name) VALUES('Verified fixture','VERIFIED FIXTURE')")
@@ -70,7 +71,7 @@ def ro01_db(pg_dsn, monkeypatch, request):
                                  (code, f"Fund {code}", f"FUND {code}", option))
                     conn.execute("INSERT INTO mf.fund_variants(amfi_scheme_code,group_key,base_scheme_name) VALUES(%s,%s,%s)", (code, str(code), f"Fund {code}"))
                     conn.execute("INSERT INTO mf.fund_facts(amfi_scheme_code,source,aum,return_1year) VALUES(%s,'MANUAL',123.45,999)", (code,))
-            with PostgresStore(dsn, use_copy=False) as store:
+            with native_phase(request, "migrations"), PostgresStore(dsn, use_copy=False) as store:
                 store.apply_migrations(ROOT / "sql/optional", files=("023_verified_fund_review.sql",))
             # Establish the unchanged restricted base in this disposable fixture
             # only. The supported RO-01 install path must not call this reset.

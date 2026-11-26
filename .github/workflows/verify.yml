@@ -39,7 +39,7 @@ jobs:
   tests:
     name: PostgreSQL tests, contracts, and audit
     needs: plan
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -187,7 +187,7 @@ jobs:
   verify:
     name: Test, audit, and build
     needs: plan
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -747,7 +747,7 @@ jobs:
   admission:
     name: Release admission
     needs: [plan, tests, verify]
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

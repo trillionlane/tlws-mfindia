@@ -1,6 +1,7 @@
 """Disposable PostgreSQL proofs. Never certifies a live restore or touches DEV."""
 from verified_fixture_seed import seed_fixture_nav
 from pathlib import Path
+import sys
 from uuid import uuid4
 
 import psycopg
@@ -15,10 +16,16 @@ from mfdataindia.review import store as review
 from mfdataindia.store.postgres import PostgresStore
 
 ROOT = Path(__file__).resolve().parents[1]
+# Resolve the test-only CI helper from this checkout even under console pytest.
+# All native helpers import it here; collection never depends on another test.
+sys.path.insert(0, str(ROOT / "scripts"))
+from run_ci_tests import native_phase, native_timed  # noqa: E402
+
 ROLES = ("mfdata_verified_generator", "mfdata_verified_reader", "mfdata_verified_admin")
 
 
-def source_state(conn):
+@native_timed("source_state")
+def source_state(conn, *, request=None):
     tables = conn.execute("SELECT tablename FROM pg_tables WHERE schemaname='mf' ORDER BY tablename").fetchall()
     hashes = {}
     for row in tables:
@@ -31,7 +38,7 @@ def source_state(conn):
 
 
 @pytest.fixture
-def verified_db(pg_dsn):
+def verified_db(pg_dsn, request):
     if not pg_dsn:
         pytest.skip("MF_TEST_DSN not set")
     name = "mfdata_verified_" + uuid4().hex[:12]
@@ -43,7 +50,7 @@ def verified_db(pg_dsn):
         admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
         created = []
         try:
-            with PostgresStore(dsn, use_copy=False) as base:
+            with native_phase(request, "migrations"), PostgresStore(dsn, use_copy=False) as base:
                 base.apply_migrations(ROOT / "sql")
             with psycopg.connect(dsn, row_factory=dict_row) as conn:
                 conn.execute("INSERT INTO mf.amcs(amfi_amc_name,normalised_name) VALUES('Verified fixture','VERIFIED FIXTURE')")
@@ -63,11 +70,11 @@ def verified_db(pg_dsn):
                 conn.execute('ALTER DEFAULT PRIVILEGES GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO mfdata_ingest')
                 conn.execute('CREATE TABLE mf.verified_default_control(value integer)')
                 assert conn.execute("SELECT has_table_privilege('mfdata_ingest','mf.verified_default_control','INSERT') AS allowed").fetchone()['allowed']
-                preserved=source_state(conn)
-            with PostgresStore(dsn, use_copy=False) as base:
+                preserved=source_state(conn, request=request)
+            with native_phase(request, "migrations"), PostgresStore(dsn, use_copy=False) as base:
                 base.apply_migrations(ROOT / "sql/optional", files=("023_verified_fund_review.sql",))
             with psycopg.connect(dsn, row_factory=dict_row) as conn:
-                assert source_state(conn) == preserved
+                assert source_state(conn, request=request) == preserved
                 for table in ('policies','snapshots','results','events'):
                     assert not conn.execute("SELECT has_table_privilege('mfdata_ingest',%s,'SELECT,INSERT,UPDATE,DELETE') AS allowed",('mf_review.'+table,)).fetchone()['allowed']
                 assert conn.execute("SELECT has_table_privilege('mfdata_ingest','mf.verified_default_control','INSERT') AS allowed").fetchone()['allowed']

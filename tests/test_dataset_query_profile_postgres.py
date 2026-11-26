@@ -1,4 +1,5 @@
 """Hosted disposable PostgreSQL equivalence, never live-data acceptance."""
+from test_verified_review_store import native_phase, native_timed
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
@@ -30,8 +31,9 @@ def publication_execution_id(suffix):
     return book_sources.registry(4)['job']+'-dataset-v4-'+suffix
 
 
-def populated_v4_graph(dsn, monkeypatch):
-    inputs = populate(dsn,monkeypatch,book_version=4)
+@native_timed("v4_graph")
+def populated_v4_graph(dsn, monkeypatch, *, request=None):
+    inputs = populate(dsn,monkeypatch,book_version=4,request=request)
     with connect(dsn,autocommit=False) as conn:
         conn.execute("INSERT INTO mf.amcs(amfi_amc_name,normalised_name) VALUES('SBI Mutual Fund','SBI MUTUAL FUND')")
         amc = conn.execute("SELECT amc_id FROM mf.amcs WHERE amfi_amc_name='SBI Mutual Fund'").fetchone()['amc_id']
@@ -80,8 +82,8 @@ def populated_v4_graph(dsn, monkeypatch):
 
 
 @pytest.mark.parametrize('ro01_db',['core'],indirect=True)
-def test_sealed_v4_graph_complete_typed_rows_pagination_and_drift(ro01_db,monkeypatch):
-    inputs = populated_v4_graph(ro01_db,monkeypatch)
+def test_sealed_v4_graph_complete_typed_rows_pagination_and_drift(ro01_db,monkeypatch,request):
+    inputs = populated_v4_graph(ro01_db,monkeypatch,request=request)
     adopt(ro01_db)
     identifiers = {}
     with connect(ro01_db,autocommit=False) as conn:
@@ -101,7 +103,7 @@ def test_sealed_v4_graph_complete_typed_rows_pagination_and_drift(ro01_db,monkey
         assert portfolio_store.publish(conn,inputs['portfolio_selection'])==first
     measurements = []
     expected_pages = {}
-    with connect(ro01_db,p.READER) as conn:
+    with native_phase(request,"dataset_rows"), connect(ro01_db,p.READER) as conn:
         conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
         conn.execute("SET LOCAL statement_timeout='10s'")
         graph = projections.inspect(conn)
@@ -137,7 +139,7 @@ def test_sealed_v4_graph_complete_typed_rows_pagination_and_drift(ro01_db,monkey
         assert any(row['distinct_values']>1 for row in heads)
         assert any(len(row['sources'])>1 for row in versions)
     dsn = make_conninfo(ro01_db,user=p.READER,password=PASSWORD)
-    with TestClient(create_app(dsn)) as client:
+    with native_phase(request,"dataset_http"), TestClient(create_app(dsn)) as client:
         for name,identifier in identifiers.items():
             path = '/api/datasets/v1/'+identifier
             metadata = client.get(path)

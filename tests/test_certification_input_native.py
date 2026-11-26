@@ -4,6 +4,7 @@ Synthetic source mechanics only. Endpoint routing, not financial/HTTP checks,
 is replaced: no external provider, source request or DEV acceptance claim.
 """
 
+from test_verified_review_store import native_phase
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from datetime import timedelta
@@ -104,7 +105,7 @@ def references(conn, batches, books, prior):
 
 @pytest.mark.postgres
 def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_http(
-    verified_db, monkeypatch, tmp_path, capsys
+    verified_db, monkeypatch, tmp_path, capsys, request
 ):
     # The full 52-path API starts every retained profile, unlike the narrower
     # book-store fixture. Install its real prior foundations before capturing
@@ -126,7 +127,7 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
         books = same_execution_fixture(conn)
         assert book_preservation.capture(conn, 4) == prior
         doc = references(conn, inputs[0], books, prior)
-        original = source_state(conn)
+        original = source_state(conn, request=request)
 
     private_key, verifier = trust(frozenset({"review:read"}))
     trust_doc = {"public_key": private_key.public_key().public_bytes(
@@ -220,7 +221,9 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
             submitted, _, _ = transport.prepare_submission(manifest, env, phase=phase, execution_id=EXECUTION)
             original_env = deepcopy(submitted)
             # Generated production entry, not a replacement certifier or decoder mock.
-            with monkeypatch.context() as worker:
+            measurement_phase = {"08-candidate": "certification_candidate", "11-active": "certification_active",
+                                 "15-restored": "certification_restored", "18-scheduled-http": "certification_scheduled"}[phase]
+            with native_phase(request, measurement_phase), monkeypatch.context() as worker:
                 worker.setattr(__import__("os"), "environ", submitted)
                 exec(compile(transport.worker_program(manifest_hash=manifest.seal,
                     phase=phase, execution_id=EXECUTION), "<native-certification-worker>", "exec"), {})
@@ -237,7 +240,7 @@ def test_shared_generated_worker_complete_certifier_real_pg_private_and_core_htt
         assert any(host == urlsplit(CORE_ORIGIN).hostname for _, host, _ in requests_seen)
         assert any(method == "POST" for method, _, _ in requests_seen)
         with connect(verified_db, row_factory=dict_row) as conn:
-            assert source_state(conn) == original
+            assert source_state(conn, request=request) == original
     finally:
         server.should_exit = True
         thread.join(timeout=15)

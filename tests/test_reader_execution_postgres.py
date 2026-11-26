@@ -1,4 +1,5 @@
 """Normal hosted disposable PG only, never shared DEV or consumer proof."""
+from test_verified_review_store import native_phase
 from pathlib import Path
 import json
 import os
@@ -45,8 +46,8 @@ def compilation(dsn):
 
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
-def test_native_compile_actual_populated_current_source_graph(ro01_db, monkeypatch, capsys):
-    populate(ro01_db, monkeypatch)
+def test_native_compile_actual_populated_current_source_graph(ro01_db, monkeypatch, capsys, request):
+    populate(ro01_db, monkeypatch, request=request)
     observed, state, candidates = compilation(ro01_db)
     # The first actual hosted compilation is retained in full. Fresh final-head
     # source must reproduce it, not learn a new profile from runtime metadata.
@@ -82,7 +83,7 @@ def test_native_current_source_authority_recompiles_unchanged_legacy_graph(sourc
 
 @pytest.mark.parametrize("ro01_db", ["core"], indirect=True)
 def test_native_complete_entrypoint_chain_application_and_generator_coexistence(
-        ro01_db, monkeypatch, capsys, tmp_path):
+        ro01_db, monkeypatch, capsys, tmp_path, request):
     from mfdataindia.review import reader_execution_controller as controller
     from mfdataindia.review import reader_execution_worker as worker
     from mfdataindia.review import reader_execution_application as application
@@ -100,7 +101,7 @@ def test_native_complete_entrypoint_chain_application_and_generator_coexistence(
     from reader_execution_fixtures import plan, authority, FakeProvider, GIT
     from fastapi.testclient import TestClient
 
-    inputs = populate(ro01_db, monkeypatch)
+    inputs = populate(ro01_db, monkeypatch, request=request)
     # Only the already-reviewed ephemeral-OID bijection reaches the original
     # fixed-DEV assertion validator. Actual wire/catalogue OIDs stay untouched.
     original_validation = attestation.validate_capture_result
@@ -178,8 +179,9 @@ def test_native_complete_entrypoint_chain_application_and_generator_coexistence(
         return connector(**kwargs) if not args and kwargs.get("host", "").startswith("/cloudsql/") else native_connect(*args, **kwargs)
     monkeypatch.setattr(worker.psycopg, "connect", connect_dispatch)
     generators = generator_capabilities(ro01_db)
-    result = controller.execute(value, authority(value), context, source_root=ROOT, expected_git=GIT,
-        backend_factory=factory, journal_base=tmp_path, sleep=lambda _: pytest.fail("fake provider has no wait"))
+    with native_phase(request, "reader_chain"):
+        result = controller.execute(value, authority(value), context, source_root=ROOT, expected_git=GIT,
+            backend_factory=factory, journal_base=tmp_path, sleep=lambda _: pytest.fail("fake provider has no wait"))
     assert result["state"] == "OPERATION_APPLICATION_VERIFIED", result
     assert result["grant_effect"] == "COMMITTED_ACL_VERIFIED"
     assert result["consumer_acceptance"] == "PENDING_RO04"
@@ -205,7 +207,7 @@ def test_native_complete_entrypoint_chain_application_and_generator_coexistence(
     monkeypatch.setattr(profiles, "_catalogue", catalogue)
     baseline_app = real_app.create_review_app(public_dsn("reader"), verifier=verifier,
         reader_profile=profiles.BROAD, **application.FLAGS)
-    with TestClient(baseline_app) as client:
+    with native_phase(request, "application_http"), TestClient(baseline_app) as client:
         for name, route in application.ROUTES.items():
             path = route if name == "refresh" else route.format(code=value["probe_codes"][name])
             assert client.get(path).status_code == 401
@@ -214,7 +216,8 @@ def test_native_complete_entrypoint_chain_application_and_generator_coexistence(
             assert client.post("/api/review/v1/funds/1/reviews", json={}, headers={"Authorization": "Bearer " + token}).status_code == 403
     baseline_queries = counts["calls"]
     counts["calls"] = 0
-    app_result = context.check(value)
+    with native_phase(request, "application_http"):
+        app_result = context.check(value)
     assert counts["calls"] == baseline_queries
     assert len(app_result["routes"]) == 4 and len(app_result["denied_mutation_scopes"]) == 2
     # Actual post-adoption generator publication and replay, no caller BROAD.
