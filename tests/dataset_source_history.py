@@ -22,6 +22,15 @@ CI_PHASE1_PREVIOUS = '2b58c4c87aa99240a38d6b6e2a564933742be99255db68dd79c003e054
 CI_PHASE1_CURRENT = 'e424dfc2b021c643b7e7f59637ccc2dd72337e655c3c3f9c561170665e5131ce'
 CI_PHASE1_FILES = {
     CI_PHASE1_PATH: (CI_PHASE1_PREVIOUS, CI_PHASE1_CURRENT),
+    'tests/test_ci_risk_policy.py': (
+        '73d637e1fc32345718237e70da18b0eaf0f430866905b01b51468c5be2e08b2d',
+        'f94f98e4ce0705cb00e445989cf78a3f8da8ee5b8b7d833549df32e13540997b'),
+    'tests/reader_execution_native_fixture.py': (
+        '7b63d27727becf2c8879802865fe3ea0d0091b9be30d0dc792287e16d6b64771',
+        '4df28928471a7d016ebfc50bac3f3cae0a2dd8f1d7937c8e23c6b2b0a5c6c4e6'),
+    'tests/test_reader_execution_postgres.py': (
+        'eab735e0adbddeb5ef0f338495c435599c44a75a918ce832fa94c05f2fcbeda5',
+        'fd439e3287fdade04b3b4bafd415f16e0a37bd4b108dc45211353d55db167840'),
     'scripts/run_ci_tests.py': (
         '5f70fe7ee6a7baae45fd3e00a69ca27e63f8f5239f777e1ef08f62176360bd6c',
         '833138ed8112c770e42c4fcb97d9bc71e676cafc9e64863170d6d36cc2ae4b21'),
@@ -35,7 +44,7 @@ CI_PHASE1_FILES = {
 
 
 def ci_phase1_previous(path, data):
-    """Restore four exact reviewed whole files for historical proofs only."""
+    """Restore seven exact reviewed whole files for historical proofs only."""
     assert type(data) is bytes
     candidate = Path(path)
     try:
@@ -58,6 +67,7 @@ def ci_phase1_previous(path, data):
 
 def source_native_previous(path, data):
     assert type(data) is bytes
+    data = ci_phase1_previous(path, data)
     # Intentional current API/schema/contract change. Validate complete bytes
     # before restoring the reviewed predecessor for old release assertions.
     name = Path(path).resolve().relative_to(ROOT).as_posix() if Path(path).resolve().is_relative_to(ROOT) else None
@@ -78,7 +88,6 @@ def source_native_previous(path, data):
 def previous(path, data):
     assert type(data) is bytes
     from amc_loading_history import previous as amc_previous
-    data = ci_phase1_previous(path, data)
     data = source_native_previous(path, data)
     data = amc_previous(path, data)
     try:

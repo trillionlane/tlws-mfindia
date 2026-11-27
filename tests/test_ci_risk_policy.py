@@ -935,6 +935,9 @@ PHASE1_INSTRUMENTED_INVERSES = (
     'scripts/run_ci_tests.py',
     'tests/test_certification_input_native.py',
     'tests/test_verified_review_store.py',
+    'tests/test_ci_risk_policy.py',
+    'tests/reader_execution_native_fixture.py',
+    'tests/test_reader_execution_postgres.py',
 )
 
 
@@ -1114,3 +1117,15 @@ print('COLLECTION_ONLY_RUNNER_SMOKE_OK:' + phase)
         if before is not None:
             assert receipt == before
         before = receipt
+
+
+@pytest.mark.parametrize('name', ['.github/workflows/verify.yml', *PHASE1_INSTRUMENTED_INVERSES])
+def test_direct_source_native_entry_composes_exact_current_inverse_and_keeps_tamper_visible(name):
+    import dataset_source_history as history
+    path = ROOT / name
+    current = path.read_bytes()
+    old = subprocess.check_output(['git', 'show', history.CI_PHASE1_BASE + ':' + name], cwd=ROOT)
+    restored = history.source_native_previous(path, old)
+    assert history.source_native_previous(path, current) == restored
+    for bad in (current + b'\n# unreviewed', current[:-1], current + current):
+        assert history.source_native_previous(path, bad) != restored
