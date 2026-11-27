@@ -6,6 +6,7 @@ monthly/refresh and generator publication use existing synthetic source inputs.
 """
 import hashlib
 import json
+from test_verified_review_store import native_phase, native_timed
 from pathlib import Path
 
 from mfdataindia.store.postgres import PostgresStore
@@ -30,7 +31,8 @@ def _policy(conn, document):
                          {"policy_id": document["id"], "policy_version": document["version"]})
 
 
-def populate(dsn, monkeypatch, *, book_version=5):
+@native_timed("populate")
+def populate(dsn, monkeypatch, *, book_version=5, request=None):
     base = json.loads(embedded.document("base"))
     optional = tuple(Path(row["path"]).name for row in base["files"]
                      if Path(row["path"]).parent == Path("sql/optional")
@@ -44,7 +46,7 @@ def populate(dsn, monkeypatch, *, book_version=5):
         optional = tuple(name for name in optional if name not in (
             '042_uti_physical_title_evidence.sql', '043_uti_canonical_title_evidence.sql',
             '044_uti_complete_aum_rows.sql'))
-    with PostgresStore(dsn, use_copy=False) as store:
+    with native_phase(request, "migrations"), PostgresStore(dsn, use_copy=False) as store:
         assert store.apply_migrations(ROOT / "sql/optional", files=optional) == list(optional)
     with connect(dsn, autocommit=False) as conn:
         # Numbered DDL is not the installer metadata population. Use the exact
